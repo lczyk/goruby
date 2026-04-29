@@ -20,7 +20,7 @@ var LexStartFn = startLexer
 //
 // Typically a state function would get called from LexStartFn and should
 // return LexStartFn to go back to the decision loop. It also could return
-// another non start state function if the partial input to parse is abiguous.
+// another non start state function if the partial input to parse is ambiguous.
 type StateFn func(*Lexer) StateFn
 
 // New returns a Lexer instance ready to process the given input.

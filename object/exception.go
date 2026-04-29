@@ -34,7 +34,7 @@ type exception interface {
 }
 
 // NewException creates a new exception with the given message template and
-// uses fmt.Sprintf to interpolate the args into messageinto message.
+// uses fmt.Sprintf to interpolate the args into message into the message.
 func NewException(message string, args ...interface{}) *Exception {
 	return &Exception{message: fmt.Sprintf(message, args...)}
 }

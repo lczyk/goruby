@@ -11,7 +11,7 @@ import (
 type CallContext interface {
 	// Env returns the current environment at call time
 	Env() Environment
-	// Eval represents an evalualtion method suitable to eval arbitrary Ruby
+	// Eval represents an evaluation method suitable to eval arbitrary Ruby
 	// AST Nodes and transform them into a resulting Ruby object or an error.
 	Eval(ast.Node, Environment) (RubyObject, error)
 	// Receiver returns the Ruby object the message is sent to

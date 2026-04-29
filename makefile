@@ -61,6 +61,10 @@ lint:  ## go vet + gofmt check (no writes)
 format:  ## gofmt the tree in place
 	gofmt -s -w $$(find . -name '*.go' -not -path './vendor/*')
 
+.PHONY: spellcheck
+spellcheck:  ## Spellcheck sources and docs with cspell (via npx)
+	npx --yes cspell --no-progress --gitignore "**/*.go" "**/*.md" "Makefile"
+
 .PHONY: bench
 bench:  ## Run benchmarks (override scope/duration: PKG=... BENCH=... BENCHTIME=...)
 	go test -run '^$$' -bench '$(or $(BENCH),.)' -benchmem -benchtime '$(or $(BENCHTIME),1s)' $(or $(PKG),./...)
@@ -76,7 +80,7 @@ cover-open: cover  ## Run coverage and open the HTML report in a browser
 	go tool cover -html=cover.out
 
 .PHONY: verify
-verify: lint test  ## Pre-commit gate: lint, test
+verify: lint test spellcheck  ## Pre-commit gate: lint, test, spellcheck
 	@echo "All checks passed."
 
 .PHONY: clean

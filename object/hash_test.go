@@ -52,7 +52,7 @@ func TestHashGet(t *testing.T) {
 		value := NewInteger(42)
 
 		hash := &Hash{Map: map[HashKey]hashPair{
-			key.HashKey(): hashPair{Key: key, Value: value},
+			key.HashKey(): {Key: key, Value: value},
 		}}
 
 		result, ok := hash.Get(key)
@@ -70,7 +70,7 @@ func TestHashGet(t *testing.T) {
 		assert.That(t, !ok, "Expected returned bool to be false, got true")
 		assert.Equal(t, result, nil)
 	})
-	t.Run("on uninitalized hash", func(t *testing.T) {
+	t.Run("on uninitialized hash", func(t *testing.T) {
 		key := NewString("foo")
 
 		var hash Hash
@@ -88,7 +88,7 @@ func TestHashMap(t *testing.T) {
 		value := NewInteger(42)
 
 		hash := &Hash{Map: map[HashKey]hashPair{
-			key.HashKey(): hashPair{Key: key, Value: value},
+			key.HashKey(): {Key: key, Value: value},
 		}}
 
 		var result map[RubyObject]RubyObject = hash.ObjectMap()

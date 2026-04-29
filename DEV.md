@@ -264,7 +264,7 @@
 	- [ ] new
 	- [ ] `self`
 	- [ ] singleton classes (also known as the metaclass or eigenclass) `class << self`
-	- [ ] assigment methods
+	- [ ] assignment methods
 	- [ ] self defined classes
 	- [ ] self defined classes with inheritance
 - [ ] modules

@@ -35,7 +35,7 @@ func TestAssignment(t *testing.T) {
 			rightType: reflect.TypeOf(&ast.IntegerLiteral{}),
 		},
 		{
-			name:      "local varibale",
+			name:      "local variable",
 			input:     `x = 3`,
 			leftType:  reflect.TypeOf(&ast.Identifier{}),
 			rightType: reflect.TypeOf(&ast.IntegerLiteral{}),
