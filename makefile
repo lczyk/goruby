@@ -38,13 +38,6 @@ generate-version:
 du: build  ## Show binary sizes
 	du -h ./bin/goruby ./bin/girb ./bin/grgr
 
-.PHONY: install
-install: build  ## Symlink binaries into ~/.local/bin
-	mkdir -p $(HOME)/.local/bin
-	ln -sf "$(PWD)/bin/goruby" "$(HOME)/.local/bin/goruby"
-	ln -sf "$(PWD)/bin/girb" "$(HOME)/.local/bin/girb"
-	ln -sf "$(PWD)/bin/grgr" "$(HOME)/.local/bin/grgr"
-
 .PHONY: test
 test: generate-version  ## Run the test suite with race detector
 	@if command -v gotest >/dev/null 2>&1; then \
