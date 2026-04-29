@@ -26,3 +26,7 @@ pyra.rb
 main
 .DS_Store
 *.trace
+
+/bin
+cover.html
+cover.out
