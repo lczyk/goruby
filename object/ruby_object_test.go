@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/MarcinKonowalczyk/goruby/ast"
-	"github.com/MarcinKonowalczyk/goruby/utils"
+	"github.com/lczyk/assert"
 )
 
 func TestFunctionCall(t *testing.T) {
@@ -33,10 +33,10 @@ func TestFunctionCall(t *testing.T) {
 		}
 
 		_, err := function.Call(context, nil)
-		utils.AssertNoError(t, err)
+		assert.NoError(t, err)
 
 		var expected ast.Node = functionBody
-		utils.Assert(t, reflect.DeepEqual(expected, actualEvalNode), "Expected Eval argument to equal\n%v\n\tgot\n%v\n", expected, actualEvalNode)
+		assert.That(t, reflect.DeepEqual(expected, actualEvalNode), "Expected Eval argument to equal\n%v\n\tgot\n%v\n", expected, actualEvalNode)
 	})
 	t.Run("returns any error returned by CallContext#Eval", func(t *testing.T) {
 		evalErr := fmt.Errorf("An error")
@@ -51,7 +51,7 @@ func TestFunctionCall(t *testing.T) {
 		}
 
 		_, err := function.Call(context, nil)
-		utils.Assert(t, reflect.DeepEqual(evalErr, err), "Expected error to equal\n%v\n\tgot\n%v\n", evalErr, err)
+		assert.That(t, reflect.DeepEqual(evalErr, err), "Expected error to equal\n%v\n\tgot\n%v\n", evalErr, err)
 	})
 	t.Run("uses the function env as env for CallContext#Eval", func(t *testing.T) {
 		contextEnv := NewEnvironment()
@@ -73,18 +73,18 @@ func TestFunctionCall(t *testing.T) {
 		}
 
 		_, err := function.Call(context, nil)
-		utils.AssertNoError(t, err)
+		assert.NoError(t, err)
 
 		{
 			expected := NewSymbol("bar")
 			actual, ok := evalEnv.Get("foo")
 
-			utils.Assert(t, ok, "Expected key 'foo' to be in Eval env")
-			utils.AssertEqualCmpAny(t, expected, actual, CompareRubyObjectsForTests)
+			assert.That(t, ok, "Expected key 'foo' to be in Eval env")
+			assert.EqualCmpAny(t, expected, actual, CompareRubyObjectsForTests)
 		}
 
 		_, ok := evalEnv.Get("bar")
-		utils.Assert(t, !ok, "Expected key 'bar' not to be in Eval env")
+		assert.That(t, !ok, "Expected key 'bar' not to be in Eval env")
 
 	})
 	t.Run("puts the Call args into the env for CallContext#Eval", func(t *testing.T) {
@@ -107,19 +107,19 @@ func TestFunctionCall(t *testing.T) {
 			}
 
 			_, err := function.Call(context, nil, NewInteger(300), NewString("sym"))
-			utils.AssertNoError(t, err)
+			assert.NoError(t, err)
 
 			{
 				expected := NewInteger(300)
 				actual, ok := evalEnv.Get("foo")
-				utils.Assert(t, ok, "Expected function parameter %q to be in Eval env", "foo")
-				utils.AssertEqualCmpAny(t, expected, actual, CompareRubyObjectsForTests)
+				assert.That(t, ok, "Expected function parameter %q to be in Eval env", "foo")
+				assert.EqualCmpAny(t, expected, actual, CompareRubyObjectsForTests)
 			}
 			{
 				expected := NewString("sym")
 				actual, ok := evalEnv.Get("bar")
-				utils.Assert(t, ok, "Expected function parameter %q to be in Eval env", "bar")
-				utils.AssertEqualCmpAny(t, expected, actual, CompareRubyObjectsForTests)
+				assert.That(t, ok, "Expected function parameter %q to be in Eval env", "bar")
+				assert.EqualCmpAny(t, expected, actual, CompareRubyObjectsForTests)
 			}
 		})
 		t.Run("with default params", func(t *testing.T) {
@@ -133,22 +133,22 @@ func TestFunctionCall(t *testing.T) {
 			}
 
 			_, err := function.Call(context, nil, NewInteger(300), NewSymbol("sym"))
-			utils.AssertNoError(t, err)
+			assert.NoError(t, err)
 
 			{
 				actual, ok := evalEnv.Get("foo")
-				utils.Assert(t, ok, "Expected function parameter %q to be in Eval env", "foo")
-				utils.AssertEqualCmpAny(t, NewInteger(12), actual, CompareRubyObjectsForTests)
+				assert.That(t, ok, "Expected function parameter %q to be in Eval env", "foo")
+				assert.EqualCmpAny(t, NewInteger(12), actual, CompareRubyObjectsForTests)
 			}
 			{
 				actual, ok := evalEnv.Get("bar")
-				utils.Assert(t, ok, "Expected function parameter %q to be in Eval env", "bar")
-				utils.AssertEqualCmpAny(t, NewInteger(300), actual, CompareRubyObjectsForTests)
+				assert.That(t, ok, "Expected function parameter %q to be in Eval env", "bar")
+				assert.EqualCmpAny(t, NewInteger(300), actual, CompareRubyObjectsForTests)
 			}
 			{
 				actual, ok := evalEnv.Get("qux")
-				utils.Assert(t, ok, "Expected function parameter %q to be in Eval env", "qux")
-				utils.AssertEqualCmpAny(t, NewSymbol("sym"), actual, CompareRubyObjectsForTests)
+				assert.That(t, ok, "Expected function parameter %q to be in Eval env", "qux")
+				assert.EqualCmpAny(t, NewSymbol("sym"), actual, CompareRubyObjectsForTests)
 			}
 		})
 	})
@@ -162,7 +162,7 @@ func TestFunctionCall(t *testing.T) {
 			function := &Function{}
 
 			result, _ := function.Call(context, nil)
-			utils.AssertEqualCmpAny(t, NewInteger(8), result, CompareRubyObjectsForTests)
+			assert.EqualCmpAny(t, NewInteger(8), result, CompareRubyObjectsForTests)
 		})
 		t.Run("wrapped into a return value", func(t *testing.T) {
 			context := &callContext{
@@ -173,7 +173,7 @@ func TestFunctionCall(t *testing.T) {
 			function := &Function{}
 
 			result, _ := function.Call(context, nil)
-			utils.AssertEqualCmpAny(t, NewInteger(8), result, CompareRubyObjectsForTests)
+			assert.EqualCmpAny(t, NewInteger(8), result, CompareRubyObjectsForTests)
 		})
 	})
 	t.Run("validates that the arguments match the function parameters", func(t *testing.T) {
@@ -188,7 +188,7 @@ func TestFunctionCall(t *testing.T) {
 
 		t.Run("without block argument", func(t *testing.T) {
 			_, err := function.Call(context, nil, NewString("foo"))
-			utils.AssertError(t, err, NewWrongNumberOfArgumentsError(0, 1))
+			assert.Error(t, err, NewWrongNumberOfArgumentsError(0, 1))
 		})
 
 		t.Run("with default arguments", func(t *testing.T) {
@@ -198,7 +198,7 @@ func TestFunctionCall(t *testing.T) {
 			}
 
 			_, err := function.Call(context, nil, NewInteger(8))
-			utils.AssertNoError(t, err)
+			assert.NoError(t, err)
 		})
 	})
 }

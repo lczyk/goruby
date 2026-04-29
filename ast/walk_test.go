@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/MarcinKonowalczyk/goruby/utils"
+	"github.com/lczyk/assert"
 )
 
 func Test_Parent(t *testing.T) {
@@ -26,8 +26,8 @@ func Test_Parent(t *testing.T) {
 
 		p, ok := Parent(root, child)
 
-		utils.Assert(t, ok, "Expected child to be contained within root, was not")
-		utils.Assert(t, reflect.DeepEqual(parent, p), "Expected parent to equal\n%+#v\n\tgot\n%+#v\n", parent, p)
+		assert.That(t, ok, "Expected child to be contained within root, was not")
+		assert.That(t, reflect.DeepEqual(parent, p), "Expected parent to equal\n%+#v\n\tgot\n%+#v\n", parent, p)
 	})
 	t.Run("parent is root", func(t *testing.T) {
 		root := &Program{
@@ -40,7 +40,7 @@ func Test_Parent(t *testing.T) {
 
 		_, ok := Parent(root, root)
 
-		utils.Assert(t, !ok, "Expected bool to return false")
+		assert.That(t, !ok, "Expected bool to return false")
 	})
 	t.Run("child not found", func(t *testing.T) {
 		root := &Program{
@@ -59,7 +59,7 @@ func Test_Parent(t *testing.T) {
 
 		_, ok := Parent(root, &IntegerLiteral{Value: 3})
 
-		utils.Assert(t, !ok, "Expected child not to be contained within root")
+		assert.That(t, !ok, "Expected child not to be contained within root")
 	})
 }
 
@@ -82,14 +82,14 @@ func Test_Path(t *testing.T) {
 
 		path, ok := Path(root, child)
 
-		utils.Assert(t, ok, "Expected child to be contained within root, was not")
+		assert.That(t, ok, "Expected child to be contained within root, was not")
 
 		expected := list.New()
 		expected.PushBack(root)
 		expected.PushBack(root.Statements[1])
 		expected.PushBack(child)
 
-		utils.Assert(t, reflect.DeepEqual(expected, path), "Expected AST path to equal\n%+#v\n\tgot\n%+#v\n", expected, path)
+		assert.That(t, reflect.DeepEqual(expected, path), "Expected AST path to equal\n%+#v\n\tgot\n%+#v\n", expected, path)
 	})
 	t.Run("child not found", func(t *testing.T) {
 		root := &Program{
@@ -108,7 +108,7 @@ func Test_Path(t *testing.T) {
 
 		_, ok := Path(root, &IntegerLiteral{Value: 3})
 
-		utils.Assert(t, !ok, "Expected child not to be contained within root")
+		assert.That(t, !ok, "Expected child not to be contained within root")
 	})
 }
 
@@ -148,7 +148,7 @@ func Test_treeToList(t *testing.T) {
 	expected.PushBack(&Identifier{"x"})
 	expected.PushBack(&IntegerLiteral{Value: 2})
 
-	utils.Assert(t, reflect.DeepEqual(expected, actual), "Expected list to equal\n%+#v\n\tgot\n%+#v\n", expected, actual)
+	assert.That(t, reflect.DeepEqual(expected, actual), "Expected list to equal\n%+#v\n\tgot\n%+#v\n", expected, actual)
 }
 
 func Test_Contains(t *testing.T) {
@@ -160,7 +160,7 @@ func Test_Contains(t *testing.T) {
 
 		ok := Contains(statement, needle)
 
-		utils.Assert(t, ok, "Expected node to be within statement, was not")
+		assert.That(t, ok, "Expected node to be within statement, was not")
 	})
 	t.Run("not the same pointer", func(t *testing.T) {
 		needle := &IntegerLiteral{Value: 1}
@@ -170,7 +170,7 @@ func Test_Contains(t *testing.T) {
 
 		ok := Contains(statement, &IntegerLiteral{Value: 1})
 
-		utils.Assert(t, !ok, "Expected node not to be within statement")
+		assert.That(t, !ok, "Expected node not to be within statement")
 
 	})
 	t.Run("not found", func(t *testing.T) {
@@ -184,6 +184,6 @@ func Test_Contains(t *testing.T) {
 
 		ok := Contains(statement, needle)
 
-		utils.Assert(t, !ok, "Expected node not to be within statement")
+		assert.That(t, !ok, "Expected node not to be within statement")
 	})
 }

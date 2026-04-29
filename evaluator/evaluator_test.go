@@ -8,7 +8,8 @@ import (
 	"github.com/MarcinKonowalczyk/goruby/evaluator"
 	"github.com/MarcinKonowalczyk/goruby/object"
 	"github.com/MarcinKonowalczyk/goruby/parser"
-	"github.com/MarcinKonowalczyk/goruby/utils"
+	"github.com/lczyk/assert"
+	"github.com/lczyk/assert/compare"
 	"github.com/pkg/errors"
 )
 
@@ -16,7 +17,7 @@ func TestEvalComment(t *testing.T) {
 	input := "5 # five"
 
 	evaluated, err := testEval(input)
-	utils.AssertNoError(t, err)
+	assert.NoError(t, err)
 
 	var expected int64 = 5
 	testIntegerObject(t, evaluated, expected)
@@ -47,7 +48,7 @@ func TestEvalIntegerExpression(t *testing.T) {
 
 	for _, tt := range tests {
 		evaluated, err := testEval(tt.input, object.NewMainEnvironment())
-		utils.AssertNoError(t, err)
+		assert.NoError(t, err)
 		testIntegerObject(t, evaluated, tt.expected)
 	}
 }
@@ -84,7 +85,7 @@ func TestEvalBooleanExpression(t *testing.T) {
 
 	for _, tt := range tests {
 		evaluated, err := testEval(tt.input)
-		utils.AssertNoError(t, err)
+		assert.NoError(t, err)
 		testBooleanObject(t, evaluated, tt.expected)
 	}
 }
@@ -104,7 +105,7 @@ func TestBangOperator(t *testing.T) {
 
 	for _, tt := range tests {
 		evaluated, err := testEval(tt.input)
-		utils.AssertNoError(t, err)
+		assert.NoError(t, err)
 		testBooleanObject(t, evaluated, tt.expected)
 	}
 }
@@ -132,7 +133,7 @@ func TestConditionalExpression(t *testing.T) {
 
 	for _, tt := range tests {
 		evaluated, err := testEval(tt.input)
-		utils.AssertNoError(t, err)
+		assert.NoError(t, err)
 		integer, ok := tt.expected.(int)
 		if ok {
 			testIntegerObject(t, evaluated, int64(integer))
@@ -161,7 +162,7 @@ func TestReturnStatements(t *testing.T) {
 
 	for _, tt := range tests {
 		evaluated, err := testEval(tt.input)
-		utils.AssertNoError(t, err)
+		assert.NoError(t, err)
 		testIntegerObject(t, evaluated, tt.expected)
 	}
 }
@@ -240,12 +241,12 @@ end
 	for _, tt := range tests {
 		env := object.NewEnvironment()
 		_, err := testEval(tt.input, env)
-		utils.AssertNotEqual(t, err, nil)
+		assert.NotEqual(t, err, nil)
 
 		actual, ok := errors.Cause(err).(object.RubyObject)
-		utils.Assert(t, ok, "Error is not a RubyObject. got=%T (%+v)", err, err)
-		utils.Assert(t, object.IsError(actual), "Expected error or exception, got %T", actual)
-		utils.AssertEqual(t, actual.Inspect(), tt.expectedMessage)
+		assert.That(t, ok, "Error is not a RubyObject. got=%T (%+v)", err, err)
+		assert.That(t, object.IsError(actual), "Expected error or exception, got %T", actual)
+		assert.Equal(t, actual.Inspect(), tt.expectedMessage)
 	}
 }
 
@@ -275,7 +276,7 @@ func TestAssignment(t *testing.T) {
 
 		for _, tt := range tests {
 			evaluated, err := testEval(tt.input)
-			utils.AssertNoError(t, err)
+			assert.NoError(t, err)
 			testObject(t, evaluated, tt.expected)
 		}
 	})
@@ -300,7 +301,7 @@ func TestAssignment(t *testing.T) {
 
 		for _, tt := range tests {
 			evaluated, err := testEval(tt.input, object.NewMainEnvironment())
-			utils.AssertNoError(t, err)
+			assert.NoError(t, err)
 			testIntegerObject(t, evaluated, tt.expected)
 		}
 	})
@@ -321,7 +322,7 @@ func TestAssignment(t *testing.T) {
 
 		for _, tt := range tests {
 			evaluated, err := testEval(tt.input, object.NewMainEnvironment())
-			utils.AssertNoError(t, err)
+			assert.NoError(t, err)
 			testObject(t, evaluated, tt.expected)
 		}
 	})
@@ -346,12 +347,12 @@ func TestAssignment(t *testing.T) {
 
 		for _, tt := range tests {
 			evaluated, err := testEval(tt.input)
-			utils.AssertNoError(t, err)
+			assert.NoError(t, err)
 
 			array, ok := evaluated.(*object.Array)
-			utils.Assert(t, ok, "object is not Array. got=%T (%+v)", evaluated, evaluated)
-			utils.AssertEqual(t, len(array.Elements), len(tt.elements))
-			utils.AssertEqualCmpAny(t, array.Elements, tt.elements, object.CompareRubyObjectsForTests)
+			assert.That(t, ok, "object is not Array. got=%T (%+v)", evaluated, evaluated)
+			assert.Equal(t, len(array.Elements), len(tt.elements))
+			assert.EqualCmpAny(t, array.Elements, tt.elements, object.CompareRubyObjectsForTests)
 		}
 	})
 	t.Run("assign operator on local variable", func(t *testing.T) {
@@ -371,7 +372,7 @@ func TestAssignment(t *testing.T) {
 
 		for _, tt := range tests {
 			evaluated, err := testEval(tt.input, object.NewMainEnvironment())
-			utils.AssertNoError(t, err)
+			assert.NoError(t, err)
 			testIntegerObject(t, evaluated, tt.expected)
 		}
 	})
@@ -423,8 +424,8 @@ func TestMultiAssignment(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			evaluated, err := testEval(tt.input, object.NewMainEnvironment())
-			utils.AssertNoError(t, err)
-			utils.AssertEqualCmpAny(t, evaluated, tt.output, object.CompareRubyObjectsForTests)
+			assert.NoError(t, err)
+			assert.EqualCmpAny(t, evaluated, tt.output, object.CompareRubyObjectsForTests)
 		})
 	}
 }
@@ -444,7 +445,7 @@ func TestGlobalAssignmentExpression(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.input, func(t *testing.T) {
 				evaluated, err := testEval(tt.input)
-				utils.AssertNoError(t, err)
+				assert.NoError(t, err)
 				testIntegerObject(t, evaluated, tt.expected)
 			})
 		}
@@ -455,13 +456,13 @@ func TestGlobalAssignmentExpression(t *testing.T) {
 		outer := object.NewEnvironment()
 		env := object.NewEnclosedEnvironment(outer)
 		_, err := testEval(input, env)
-		utils.AssertNoError(t, err)
+		assert.NoError(t, err)
 
 		_, ok := outer.Get("$Foo")
-		utils.Assert(t, ok, "Expected $FOO to be set in outer env, was not")
+		assert.That(t, ok, "Expected $FOO to be set in outer env, was not")
 
 		_, ok = env.Clone().Get("$Foo")
-		utils.Assert(t, !ok, "Expected $FOO to not be set in inner env, was")
+		assert.That(t, !ok, "Expected $FOO to not be set in inner env, was")
 	})
 }
 
@@ -503,24 +504,24 @@ func TestFunctionObject(t *testing.T) {
 		for _, tt := range tests {
 			env := object.NewEnvironment()
 			evaluated, err := testEval(tt.input, env)
-			utils.AssertNoError(t, err)
+			assert.NoError(t, err)
 			sym, ok := evaluated.(*object.Symbol)
-			utils.Assert(t, ok, "object is not Symbol. got=%T (%+v)", evaluated, evaluated)
-			utils.AssertEqual(t, sym.Value, "foo")
+			assert.That(t, ok, "object is not Symbol. got=%T (%+v)", evaluated, evaluated)
+			assert.Equal(t, sym.Value, "foo")
 
 			method, ok := object.FUNCS_STORE.Class().Methods().Get("foo")
-			utils.Assert(t, ok, "Expected method to be added to self")
+			assert.That(t, ok, "Expected method to be added to self")
 			fn, ok := method.(*object.Function)
-			utils.Assert(t, ok, "Expected method to be a function. got=%T (%+v)", method, method)
-			utils.AssertEqual(t, len(fn.Parameters), len(tt.expectedParameters))
+			assert.That(t, ok, "Expected method to be a function. got=%T (%+v)", method, method)
+			assert.Equal(t, len(fn.Parameters), len(tt.expectedParameters))
 
 			for i, param := range fn.Parameters {
 				testParam := tt.expectedParameters[i]
-				utils.AssertEqual(t, param.Name, param.Name)
-				utils.AssertEqualCmpAny(t, param.Default, testParam.defaultValue, object.CompareRubyObjectsForTests)
+				assert.Equal(t, param.Name, param.Name)
+				assert.EqualCmpAny(t, param.Default, testParam.defaultValue, object.CompareRubyObjectsForTests)
 			}
 
-			utils.AssertEqual(t, fn.Body.Code(), tt.expectedCode)
+			assert.Equal(t, fn.Body.Code(), tt.expectedCode)
 		}
 	})
 }
@@ -543,7 +544,7 @@ func TestFunctionApplication(t *testing.T) {
 	for _, tt := range tests {
 		env := object.NewEnvironment()
 		evaluated, err := testEval(tt.input, env)
-		utils.AssertNoError(t, err)
+		assert.NoError(t, err)
 		testIntegerObject(t, evaluated, tt.expected)
 	}
 }
@@ -552,57 +553,57 @@ func TestGlobalLiteral(t *testing.T) {
 	input := `$foo = 'bar'; $foo`
 
 	evaluated, err := testEval(input)
-	utils.AssertNoError(t, err)
+	assert.NoError(t, err)
 	str, ok := evaluated.(*object.String)
-	utils.Assert(t, ok, "object is not String. got=%T (%+v)", evaluated, evaluated)
-	utils.AssertEqual(t, str.Value, "bar")
+	assert.That(t, ok, "object is not String. got=%T (%+v)", evaluated, evaluated)
+	assert.Equal(t, str.Value, "bar")
 }
 
 func TestStringLiteral(t *testing.T) {
 	input := `"Hello World!"`
 
 	evaluated, err := testEval(input)
-	utils.AssertNoError(t, err)
+	assert.NoError(t, err)
 	str, ok := evaluated.(*object.String)
-	utils.Assert(t, ok, "object is not String. got=%T (%+v)", evaluated, evaluated)
-	utils.AssertEqual(t, str.Value, "Hello World!")
+	assert.That(t, ok, "object is not String. got=%T (%+v)", evaluated, evaluated)
+	assert.Equal(t, str.Value, "Hello World!")
 }
 
 func TestStringConcatenation(t *testing.T) {
 	input := `"Hello" + " " + "World!"`
 
 	evaluated, err := testEval(input)
-	utils.AssertNoError(t, err)
+	assert.NoError(t, err)
 	str, ok := evaluated.(*object.String)
-	utils.Assert(t, ok, "object is not String. got=%T (%+v)", evaluated, evaluated)
-	utils.AssertEqual(t, str.Value, "Hello World!")
+	assert.That(t, ok, "object is not String. got=%T (%+v)", evaluated, evaluated)
+	assert.Equal(t, str.Value, "Hello World!")
 }
 
 func TestSymbolLiteral(t *testing.T) {
 	input := `:foobar;`
 
 	evaluated, err := testEval(input)
-	utils.AssertNoError(t, err)
+	assert.NoError(t, err)
 	sym, ok := evaluated.(*object.Symbol)
-	utils.Assert(t, ok, "object is not Symbol. got=%T (%+v)", evaluated, evaluated)
-	utils.AssertEqual(t, sym.Value, "foobar")
+	assert.That(t, ok, "object is not Symbol. got=%T (%+v)", evaluated, evaluated)
+	assert.Equal(t, sym.Value, "foobar")
 }
 
 func TestMethodCalls(t *testing.T) {
 	t.Skip("TODO: check we get a correct error")
 	// input := "x = 2; x.foo :bar"
 	// _, _ := testEval(input)
-	// utils.AssertError(t, err, object.NewNoMethodError("undefined method `foo' for 2:Integer"))
+	// assert.Error(t, err, object.NewNoMethodError("undefined method `foo' for 2:Integer"))
 }
 
 func TestArrayLiterals(t *testing.T) {
 	input := "[1, 2 * 2, 3 + 3]"
 	evaluated, err := testEval(input)
-	utils.AssertNoError(t, err)
+	assert.NoError(t, err)
 
 	result, ok := evaluated.(*object.Array)
-	utils.Assert(t, ok, "object is not Array. got=%T (%+v)", evaluated, evaluated)
-	utils.AssertEqual(t, len(result.Elements), 3)
+	assert.That(t, ok, "object is not Array. got=%T (%+v)", evaluated, evaluated)
+	assert.Equal(t, len(result.Elements), 3)
 	testIntegerObject(t, result.Elements[0], 1)
 	testIntegerObject(t, result.Elements[1], 4)
 	testIntegerObject(t, result.Elements[2], 6)
@@ -681,14 +682,14 @@ func TestArrayIndexExpressions(t *testing.T) {
 
 	for _, tt := range tests {
 		evaluated, err := testEval(tt.input)
-		utils.AssertNoError(t, err)
+		assert.NoError(t, err)
 		switch expected := tt.expected.(type) {
 		case int:
 			testIntegerObject(t, evaluated, int64(expected))
 		case []int:
 			array, ok := evaluated.(*object.Array)
-			utils.Assert(t, ok, "object is not Array. got=%T (%+v)", evaluated, evaluated)
-			utils.AssertEqual(t, len(array.Elements), len(expected))
+			assert.That(t, ok, "object is not Array. got=%T (%+v)", evaluated, evaluated)
+			assert.Equal(t, len(array.Elements), len(expected))
 			for i, v := range expected {
 				testIntegerObject(t, array.Elements[i], int64(v))
 			}
@@ -703,7 +704,7 @@ func TestArrayIndexExpressions(t *testing.T) {
 func TestNilExpression(t *testing.T) {
 	input := "nil"
 	evaluated, err := testEval(input)
-	utils.AssertNoError(t, err)
+	assert.NoError(t, err)
 	testNilObject(t, evaluated)
 }
 
@@ -712,10 +713,10 @@ func TestHashLiteral(t *testing.T) {
 
 	env := object.NewMainEnvironment()
 	evaluated, err := testEval(input, env)
-	utils.AssertNoError(t, err)
+	assert.NoError(t, err)
 
 	hash, ok := evaluated.(*object.Hash)
-	utils.Assert(t, ok, "object is not Hash. got=%T (%+v)", evaluated, evaluated)
+	assert.That(t, ok, "object is not Hash. got=%T (%+v)", evaluated, evaluated)
 
 	expected := map[string]object.RubyObject{
 		"foo":   object.NewInteger(42),
@@ -730,11 +731,11 @@ func TestHashLiteral(t *testing.T) {
 		actual[k.Inspect()] = v
 	}
 
-	utils.AssertEqual(t, len(expected), len(actual))
+	assert.Equal(t, len(expected), len(actual))
 	for k, v := range expected {
 		actual_v, ok := actual[k]
-		utils.Assert(t, ok, "Expected key %q to be present in hash", k)
-		utils.AssertEqualCmpAny(t, v, actual_v, object.CompareRubyObjectsForTests)
+		assert.That(t, ok, "Expected key %q to be present in hash", k)
+		assert.EqualCmpAny(t, v, actual_v, object.CompareRubyObjectsForTests)
 	}
 }
 
@@ -799,7 +800,7 @@ func TestHashIndexExpressions(t *testing.T) {
 
 	for _, tt := range tests {
 		evaluated, err := testEval(tt.input)
-		utils.AssertNoError(t, err)
+		assert.NoError(t, err)
 		integer, ok := tt.expected.(int)
 		if ok {
 			testIntegerObject(t, evaluated, int64(integer))
@@ -811,7 +812,7 @@ func TestHashIndexExpressions(t *testing.T) {
 
 func testNilObject(t *testing.T, obj object.RubyObject) bool {
 	t.Helper()
-	utils.AssertEqualCmpAny(t, obj, object.NIL, object.CompareRubyObjectsForTests)
+	assert.EqualCmpAny(t, obj, object.NIL, object.CompareRubyObjectsForTests)
 	return true
 }
 
@@ -855,50 +856,50 @@ func testObject(t *testing.T, exp object.RubyObject, expected interface{}) {
 func testBooleanObject(t *testing.T, obj object.RubyObject, expected bool) bool {
 	t.Helper()
 	result, ok := object.SymbolToBool(obj)
-	utils.Assert(t, ok, "object is not Boolean. got=%T (%+v)", obj, obj)
-	utils.AssertEqual(t, result, expected)
+	assert.That(t, ok, "object is not Boolean. got=%T (%+v)", obj, obj)
+	assert.Equal(t, result, expected)
 	return true
 }
 
 func testIntegerObject(t *testing.T, obj object.RubyObject, expected int64) {
 	t.Helper()
 	result, ok := obj.(*object.Integer)
-	utils.Assert(t, ok, "object is not Integer. got=%T (%+v)", obj, obj)
-	utils.AssertEqual(t, result.Value, expected)
+	assert.That(t, ok, "object is not Integer. got=%T (%+v)", obj, obj)
+	assert.Equal(t, result.Value, expected)
 }
 
 func testSymbolObject(t *testing.T, obj object.RubyObject, expected string) {
 	t.Helper()
 	result, ok := obj.(*object.Symbol)
-	utils.Assert(t, ok, "object is not Symbol. got=%T (%+v)", obj, obj)
-	utils.AssertEqual(t, result.Value, expected)
+	assert.That(t, ok, "object is not Symbol. got=%T (%+v)", obj, obj)
+	assert.Equal(t, result.Value, expected)
 }
 
 func testStringObject(t *testing.T, obj object.RubyObject, expected string) {
 	t.Helper()
 	result, ok := obj.(*object.String)
-	utils.Assert(t, ok, "object is not String. got=%T (%+v)", obj, obj)
-	utils.AssertEqual(t, result.Value, expected)
+	assert.That(t, ok, "object is not String. got=%T (%+v)", obj, obj)
+	assert.Equal(t, result.Value, expected)
 }
 
 func testHashObject(t *testing.T, obj object.RubyObject, expected map[string]string) {
 	t.Helper()
 	result, ok := obj.(*object.Hash)
-	utils.Assert(t, ok, "object is not Hash. got=%T (%+v)", obj, obj)
+	assert.That(t, ok, "object is not Hash. got=%T (%+v)", obj, obj)
 	hashMap := make(map[string]string)
 	for k, v := range result.ObjectMap() {
 		hashMap[k.Inspect()] = v.Inspect()
 	}
-	utils.AssertEqualCmp(t, hashMap, expected, utils.CompareMaps)
+	assert.EqualCmp(t, hashMap, expected, compare.Maps)
 }
 
 func testArrayObject(t *testing.T, obj object.RubyObject, expected []string) {
 	t.Helper()
 	result, ok := obj.(*object.Array)
-	utils.Assert(t, ok, "object is not Array. got=%T (%+v)", obj, obj)
+	assert.That(t, ok, "object is not Array. got=%T (%+v)", obj, obj)
 	array := make([]string, len(result.Elements))
 	for i, v := range result.Elements {
 		array[i] = v.Inspect()
 	}
-	utils.AssertEqualCmp(t, array, expected, utils.CompareArrays)
+	assert.EqualCmp(t, array, expected, compare.Arrays)
 }

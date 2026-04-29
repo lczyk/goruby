@@ -4,7 +4,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/MarcinKonowalczyk/goruby/utils"
+	"github.com/lczyk/assert"
 )
 
 func TestGetMethods(t *testing.T) {
@@ -21,15 +21,15 @@ func TestGetMethods(t *testing.T) {
 		var methods []string
 		for i, elem := range result.Elements {
 			sym, ok := elem.(*Symbol)
-			utils.Assert(t, ok, "Expected all elements to be symbols, got %T at index %d", elem, i)
+			assert.That(t, ok, "Expected all elements to be symbols, got %T at index %d", elem, i)
 			methods = append(methods, sym.Inspect())
 		}
-		utils.AssertEqual(t, len(contextMethods), len(result.Elements))
+		assert.Equal(t, len(contextMethods), len(result.Elements))
 		sort.Strings(methods)
 		expectedMethods := []string{":foo", ":bar"}
 		sort.Strings(expectedMethods)
 		for i := range expectedMethods {
-			utils.AssertEqual(t, expectedMethods[i], methods[i])
+			assert.Equal(t, expectedMethods[i], methods[i])
 		}
 	})
 
@@ -38,7 +38,7 @@ func TestGetMethods(t *testing.T) {
 		var methods []string
 		for i, elem := range result.Elements {
 			sym, ok := elem.(*Symbol)
-			utils.Assert(t, ok, "Expected all elements to be symbols, got %T at index %d", elem, i)
+			assert.That(t, ok, "Expected all elements to be symbols, got %T at index %d", elem, i)
 			methods = append(methods, sym.Inspect())
 		}
 		someExpectedMethods := []string{":foo", ":bar", ":raise", ":==", ":!="}
@@ -51,7 +51,7 @@ func TestGetMethods(t *testing.T) {
 					break
 				}
 			}
-			utils.Assert(t, found, "Expected method %s to be found in %s", method, methods)
+			assert.That(t, found, "Expected method %s to be found in %s", method, methods)
 		}
 	})
 }

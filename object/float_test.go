@@ -3,7 +3,7 @@ package object
 import (
 	"testing"
 
-	"github.com/MarcinKonowalczyk/goruby/utils"
+	"github.com/lczyk/assert"
 )
 
 func TestFloat_hashKey(t *testing.T) {
@@ -11,9 +11,9 @@ func TestFloat_hashKey(t *testing.T) {
 	hello2 := NewFloat(1)
 	diff1 := NewFloat(3)
 	diff2 := NewFloat(3)
-	utils.AssertEqual(t, hello1.HashKey(), hello2.HashKey())
-	utils.AssertEqual(t, diff1.HashKey(), diff2.HashKey())
-	utils.AssertNotEqual(t, hello1.HashKey(), diff1.HashKey())
+	assert.Equal(t, hello1.HashKey(), hello2.HashKey())
+	assert.Equal(t, diff1.HashKey(), diff2.HashKey())
+	assert.NotEqual(t, hello1.HashKey(), diff1.HashKey())
 }
 
 func TestFloatDiv(t *testing.T) {
@@ -44,9 +44,9 @@ func TestFloatDiv(t *testing.T) {
 
 		result, err := floatDiv(context, nil, testCase.arguments...)
 
-		utils.AssertError(t, err, testCase.err)
+		assert.Error(t, err, testCase.err)
 
-		utils.AssertEqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
 	}
 }
 
@@ -73,9 +73,9 @@ func TestFloatMul(t *testing.T) {
 
 		result, err := floatMul(context, nil, testCase.arguments...)
 
-		utils.AssertError(t, err, testCase.err)
+		assert.Error(t, err, testCase.err)
 
-		utils.AssertEqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
 	}
 }
 
@@ -102,9 +102,9 @@ func TestFloatAdd(t *testing.T) {
 
 		result, err := floatAdd(context, nil, testCase.arguments...)
 
-		utils.AssertError(t, err, testCase.err)
+		assert.Error(t, err, testCase.err)
 
-		utils.AssertEqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
 	}
 }
 
@@ -131,9 +131,9 @@ func TestFloatSub(t *testing.T) {
 
 		result, err := floatSub(context, nil, testCase.arguments...)
 
-		utils.AssertError(t, err, testCase.err)
+		assert.Error(t, err, testCase.err)
 
-		utils.AssertEqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
 	}
 }
 
@@ -160,9 +160,9 @@ func TestFloatSub(t *testing.T) {
 
 // 		result, err := floatModulo(context, testCase.arguments...)
 
-// 		utils.AssertError(t, err, testCase.err)
+// 		assert.Error(t, err, testCase.err)
 
-// 		utils.AssertEqualCmpAny(t, result, testCase.result, CompareRubyObjects)
+// 		assert.EqualCmpAny(t, result, testCase.result, CompareRubyObjects)
 // 	}
 // }
 
@@ -194,9 +194,9 @@ func TestFloatLt(t *testing.T) {
 
 		result, _ := floatLt(context, nil, testCase.arguments...)
 
-		// utils.AssertError(t, err, testCase.err)
+		// assert.Error(t, err, testCase.err)
 
-		utils.AssertEqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
 	}
 }
 
@@ -228,9 +228,9 @@ func TestFloatGt(t *testing.T) {
 
 		result, _ := floatGt(context, nil, testCase.arguments...)
 
-		// utils.AssertError(t, err, testCase.err)
+		// assert.Error(t, err, testCase.err)
 
-		utils.AssertEqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
 	}
 }
 
@@ -262,9 +262,9 @@ func TestFloatGt(t *testing.T) {
 
 // 		result, err := floatEq(context, testCase.arguments...)
 
-// 		utils.AssertError(t, err, testCase.err)
+// 		assert.Error(t, err, testCase.err)
 
-// 		utils.AssertEqualCmpAny(t, result, testCase.result, CompareRubyObjects)
+// 		assert.EqualCmpAny(t, result, testCase.result, CompareRubyObjects)
 // 	}
 // }
 
@@ -296,9 +296,9 @@ func TestFloatGt(t *testing.T) {
 
 // 		result, err := floatNeq(context, testCase.arguments...)
 
-// 		utils.AssertError(t, err, testCase.err)
+// 		assert.Error(t, err, testCase.err)
 
-// 		utils.AssertEqualCmpAny(t, result, testCase.result, CompareRubyObjects)
+// 		assert.EqualCmpAny(t, result, testCase.result, CompareRubyObjects)
 // 	}
 // }
 
@@ -335,9 +335,9 @@ func TestFloatGte(t *testing.T) {
 
 		result, _ := floatGte(context, nil, testCase.arguments...)
 
-		// utils.AssertError(t, err, testCase.err)
+		// assert.Error(t, err, testCase.err)
 
-		utils.AssertEqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
 	}
 }
 
@@ -374,9 +374,9 @@ func TestFloatLte(t *testing.T) {
 
 		result, _ := floatLte(context, nil, testCase.arguments...)
 
-		// utils.AssertError(t, err, testCase.err)
+		// assert.Error(t, err, testCase.err)
 
-		utils.AssertEqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
 	}
 }
 
@@ -413,8 +413,8 @@ func TestFloatSpaceship(t *testing.T) {
 
 		result, _ := floatSpaceship(context, nil, testCase.arguments...)
 
-		// utils.AssertError(t, err, testCase.err)
+		// assert.Error(t, err, testCase.err)
 
-		utils.AssertEqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
 	}
 }

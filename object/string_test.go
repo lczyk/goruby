@@ -3,7 +3,7 @@ package object
 import (
 	"testing"
 
-	"github.com/MarcinKonowalczyk/goruby/utils"
+	"github.com/lczyk/assert"
 )
 
 func TestString_hashKey(t *testing.T) {
@@ -12,21 +12,21 @@ func TestString_hashKey(t *testing.T) {
 	diff1 := NewString("My name is johnny")
 	diff2 := NewString("My name is johnny")
 
-	utils.AssertEqual(t, hello1.HashKey(), hello2.HashKey())
-	utils.AssertEqual(t, diff1.HashKey(), diff2.HashKey())
-	utils.AssertNotEqual(t, hello1.HashKey(), diff1.HashKey())
+	assert.Equal(t, hello1.HashKey(), hello2.HashKey())
+	assert.Equal(t, diff1.HashKey(), diff2.HashKey())
+	assert.NotEqual(t, hello1.HashKey(), diff1.HashKey())
 }
 
 func Test_stringify(t *testing.T) {
 	t.Run("object with regular `to_s`", func(t *testing.T) {
 		res, err := stringify(NewSymbol("sym"))
-		utils.AssertNoError(t, err)
-		utils.AssertEqual(t, res, "sym")
+		assert.NoError(t, err)
+		assert.Equal(t, res, "sym")
 	})
 	t.Run("object without `to_s`", func(t *testing.T) {
 		_, err := stringify(nil)
 
-		utils.AssertError(t, err, NewTypeError("can't convert nil into String"))
+		assert.Error(t, err, NewTypeError("can't convert nil into String"))
 	})
 }
 
@@ -53,8 +53,8 @@ func TestStringAdd(t *testing.T) {
 
 		result, err := stringAdd(context, nil, testCase.arguments...)
 
-		utils.AssertError(t, err, testCase.err)
-		utils.AssertEqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
+		assert.Error(t, err, testCase.err)
+		assert.EqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
 	}
 }
 
@@ -76,8 +76,8 @@ func Test_StringGsub(t *testing.T) {
 
 		result, err := stringGsub(context, nil, testCase.arguments...)
 
-		utils.AssertError(t, err, testCase.err)
+		assert.Error(t, err, testCase.err)
 
-		utils.AssertEqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, result, testCase.result, CompareRubyObjectsForTests)
 	}
 }

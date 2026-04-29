@@ -3,7 +3,7 @@ package object
 import (
 	"testing"
 
-	"github.com/MarcinKonowalczyk/goruby/utils"
+	"github.com/lczyk/assert"
 )
 
 func TestArrayPush(t *testing.T) {
@@ -17,8 +17,8 @@ func TestArrayPush(t *testing.T) {
 
 		result, err := arrayPush(context, nil, NewInteger(17))
 
-		utils.AssertNoError(t, err)
-		utils.AssertEqualCmpAny(t, result, NewArray(NewInteger(17)), CompareRubyObjectsForTests)
+		assert.NoError(t, err)
+		assert.EqualCmpAny(t, result, NewArray(NewInteger(17)), CompareRubyObjectsForTests)
 	})
 
 	t.Run("more than one argument", func(t *testing.T) {
@@ -31,8 +31,8 @@ func TestArrayPush(t *testing.T) {
 
 		result, err := arrayPush(context, nil, NewInteger(17), NIL, TRUE, FALSE)
 
-		utils.AssertNoError(t, err)
-		utils.AssertEqualCmpAny(t, result, NewArray(NewInteger(17), NIL, TRUE, FALSE), CompareRubyObjectsForTests)
+		assert.NoError(t, err)
+		assert.EqualCmpAny(t, result, NewArray(NewInteger(17), NIL, TRUE, FALSE), CompareRubyObjectsForTests)
 	})
 }
 
@@ -47,8 +47,8 @@ func TestArrayUnshift(t *testing.T) {
 
 		result, err := arrayUnshift(context, nil, NewInteger(17))
 
-		utils.AssertNoError(t, err)
-		utils.AssertEqualCmpAny(t, result, NewArray(NewInteger(17), NewString("first element")), CompareRubyObjectsForTests)
+		assert.NoError(t, err)
+		assert.EqualCmpAny(t, result, NewArray(NewInteger(17), NewString("first element")), CompareRubyObjectsForTests)
 	})
 	t.Run("more than one argument", func(t *testing.T) {
 		array := NewArray(NewString("first element"))
@@ -60,7 +60,7 @@ func TestArrayUnshift(t *testing.T) {
 
 		result, err := arrayUnshift(context, nil, NewInteger(17), NIL, TRUE, FALSE)
 
-		utils.AssertNoError(t, err)
-		utils.AssertEqualCmpAny(t, result, NewArray(NewInteger(17), NIL, TRUE, FALSE, NewString("first element")), CompareRubyObjectsForTests)
+		assert.NoError(t, err)
+		assert.EqualCmpAny(t, result, NewArray(NewInteger(17), NIL, TRUE, FALSE, NewString("first element")), CompareRubyObjectsForTests)
 	})
 }

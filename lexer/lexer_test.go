@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/MarcinKonowalczyk/goruby/token"
-	"github.com/MarcinKonowalczyk/goruby/utils"
+	"github.com/lczyk/assert"
 )
 
 // raise "foo" unless x < 10
@@ -579,10 +579,10 @@ func TestLex(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			lexer := New(preprocessLines(test.lines))
 			tokens := allTokens(lexer)
-			utils.AssertEqual(t, len(tokens), len(test.exp))
+			assert.Equal(t, len(tokens), len(test.exp))
 			for i, exp := range test.exp {
-				utils.AssertEqual(t, tokens[i].Type, exp.typ)
-				utils.AssertEqual(t, tokens[i].Literal, exp.lit)
+				assert.Equal(t, tokens[i].Type, exp.typ)
+				assert.Equal(t, tokens[i].Literal, exp.lit)
 			}
 		})
 	}

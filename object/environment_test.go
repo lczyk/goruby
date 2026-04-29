@@ -3,7 +3,7 @@ package object
 import (
 	"testing"
 
-	"github.com/MarcinKonowalczyk/goruby/utils"
+	"github.com/lczyk/assert"
 )
 
 func TestEnvironmentSet(t *testing.T) {
@@ -12,8 +12,8 @@ func TestEnvironmentSet(t *testing.T) {
 	env.Set("foo", NIL)
 
 	val, ok := env.store["foo"]
-	utils.Assert(t, ok, "Expected store to contain 'foo'")
-	utils.AssertEqualCmpAny(t, val, NIL, CompareRubyObjectsForTests)
+	assert.That(t, ok, "Expected store to contain 'foo'")
+	assert.EqualCmpAny(t, val, NIL, CompareRubyObjectsForTests)
 }
 
 func TestEnvironmentSetGlobal(t *testing.T) {
@@ -23,8 +23,8 @@ func TestEnvironmentSetGlobal(t *testing.T) {
 		env.SetGlobal("$foo", NIL)
 
 		val, ok := env.store["$foo"]
-		utils.Assert(t, ok, "Expected store to contain '$foo'")
-		utils.AssertEqualCmpAny(t, val, NIL, CompareRubyObjectsForTests)
+		assert.That(t, ok, "Expected store to contain '$foo'")
+		assert.EqualCmpAny(t, val, NIL, CompareRubyObjectsForTests)
 	})
 	t.Run("inner env one level", func(t *testing.T) {
 		outer := &environment{store: make(map[string]RubyObject)}
@@ -33,12 +33,12 @@ func TestEnvironmentSetGlobal(t *testing.T) {
 		env.SetGlobal("$foo", NIL)
 
 		_, ok := env.store["$foo"]
-		utils.Assert(t, !ok, "Expected env store to not contain '$foo'")
+		assert.That(t, !ok, "Expected env store to not contain '$foo'")
 
 		val, ok := outer.store["$foo"]
 
-		utils.Assert(t, ok, "Expected outer store to contain '$foo'")
-		utils.AssertEqualCmpAny(t, val, NIL, CompareRubyObjectsForTests)
+		assert.That(t, ok, "Expected outer store to contain '$foo'")
+		assert.EqualCmpAny(t, val, NIL, CompareRubyObjectsForTests)
 	})
 	t.Run("inner env two level", func(t *testing.T) {
 		root := &environment{store: make(map[string]RubyObject)}
@@ -48,14 +48,14 @@ func TestEnvironmentSetGlobal(t *testing.T) {
 		env.SetGlobal("$foo", NIL)
 
 		_, ok := env.store["$foo"]
-		utils.Assert(t, !ok, "Expected env store to not contain '$foo'")
+		assert.That(t, !ok, "Expected env store to not contain '$foo'")
 
 		_, ok = outer.store["$foo"]
-		utils.Assert(t, !ok, "Expected outer store to not contain '$foo'")
+		assert.That(t, !ok, "Expected outer store to not contain '$foo'")
 
 		val, ok := root.store["$foo"]
-		utils.Assert(t, ok, "Expected root store to contain '$foo'")
-		utils.AssertEqualCmpAny(t, val, NIL, CompareRubyObjectsForTests)
+		assert.That(t, ok, "Expected root store to contain '$foo'")
+		assert.EqualCmpAny(t, val, NIL, CompareRubyObjectsForTests)
 	})
 }
 
@@ -64,16 +64,16 @@ func TestEnvironmentGet(t *testing.T) {
 		env := &environment{store: map[string]RubyObject{"foo": TRUE}}
 
 		val, ok := env.Get("foo")
-		utils.Assert(t, ok, "Expected store to contain 'foo'")
-		utils.AssertEqualCmpAny(t, val, TRUE, CompareRubyObjectsForTests)
+		assert.That(t, ok, "Expected store to contain 'foo'")
+		assert.EqualCmpAny(t, val, TRUE, CompareRubyObjectsForTests)
 	})
 	t.Run("inner env one level", func(t *testing.T) {
 		outer := &environment{store: map[string]RubyObject{"foo": TRUE}}
 		env := &environment{store: make(map[string]RubyObject), outer: outer}
 
 		val, ok := env.Get("foo")
-		utils.Assert(t, ok, "Expected store to contain 'foo'")
-		utils.AssertEqualCmpAny(t, val, TRUE, CompareRubyObjectsForTests)
+		assert.That(t, ok, "Expected store to contain 'foo'")
+		assert.EqualCmpAny(t, val, TRUE, CompareRubyObjectsForTests)
 	})
 	t.Run("inner env two level", func(t *testing.T) {
 		root := &environment{store: map[string]RubyObject{"foo": TRUE}}
@@ -81,8 +81,8 @@ func TestEnvironmentGet(t *testing.T) {
 		env := &environment{store: make(map[string]RubyObject), outer: outer}
 
 		val, ok := env.Get("foo")
-		utils.Assert(t, ok, "Expected store to contain 'foo'")
-		utils.AssertEqualCmpAny(t, val, TRUE, CompareRubyObjectsForTests)
+		assert.That(t, ok, "Expected store to contain 'foo'")
+		assert.EqualCmpAny(t, val, TRUE, CompareRubyObjectsForTests)
 	})
 	t.Run("inner env two level overridden key", func(t *testing.T) {
 		root := &environment{store: map[string]RubyObject{"foo": FALSE}}
@@ -90,7 +90,7 @@ func TestEnvironmentGet(t *testing.T) {
 		env := &environment{store: make(map[string]RubyObject), outer: outer}
 
 		val, ok := env.Get("foo")
-		utils.Assert(t, ok, "Expected store to contain 'foo'")
-		utils.AssertEqualCmpAny(t, val, TRUE, CompareRubyObjectsForTests)
+		assert.That(t, ok, "Expected store to contain 'foo'")
+		assert.EqualCmpAny(t, val, TRUE, CompareRubyObjectsForTests)
 	})
 }

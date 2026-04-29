@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/MarcinKonowalczyk/goruby/utils"
+	"github.com/lczyk/assert"
 )
 
 func TestHashSet(t *testing.T) {
@@ -15,16 +15,16 @@ func TestHashSet(t *testing.T) {
 		value := NewInteger(42)
 
 		result := hash.Set(key, value)
-		utils.AssertEqual(t, len(hash.Map), 1)
+		assert.Equal(t, len(hash.Map), 1)
 
 		var values []hashPair
 		for _, v := range hash.Map {
 			values = append(values, v)
 		}
 
-		utils.AssertEqualCmpAny(t, values[0].Key, key, CompareRubyObjectsForTests)
-		utils.AssertEqualCmpAny(t, values[0].Value, value, CompareRubyObjectsForTests)
-		utils.AssertEqualCmpAny(t, result, value, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, values[0].Key, key, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, values[0].Value, value, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, result, value, CompareRubyObjectsForTests)
 	})
 	t.Run("Set on uninitialized hash", func(t *testing.T) {
 		var hash Hash
@@ -33,16 +33,16 @@ func TestHashSet(t *testing.T) {
 		value := NewInteger(42)
 
 		result := hash.Set(key, value)
-		utils.AssertEqual(t, len(hash.Map), 1)
+		assert.Equal(t, len(hash.Map), 1)
 
 		var values []hashPair
 		for _, v := range hash.Map {
 			values = append(values, v)
 		}
 
-		utils.AssertEqualCmpAny(t, values[0].Key, key, CompareRubyObjectsForTests)
-		utils.AssertEqualCmpAny(t, values[0].Value, value, CompareRubyObjectsForTests)
-		utils.AssertEqualCmpAny(t, result, value, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, values[0].Key, key, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, values[0].Value, value, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, result, value, CompareRubyObjectsForTests)
 	})
 }
 
@@ -57,8 +57,8 @@ func TestHashGet(t *testing.T) {
 
 		result, ok := hash.Get(key)
 
-		utils.Assert(t, ok, "Expected returned bool to be true, got false")
-		utils.AssertEqualCmpAny(t, result, value, CompareRubyObjectsForTests)
+		assert.That(t, ok, "Expected returned bool to be true, got false")
+		assert.EqualCmpAny(t, result, value, CompareRubyObjectsForTests)
 	})
 	t.Run("value not found", func(t *testing.T) {
 		key := NewString("foo")
@@ -67,8 +67,8 @@ func TestHashGet(t *testing.T) {
 
 		result, ok := hash.Get(key)
 
-		utils.Assert(t, !ok, "Expected returned bool to be false, got true")
-		utils.AssertEqual(t, result, nil)
+		assert.That(t, !ok, "Expected returned bool to be false, got true")
+		assert.Equal(t, result, nil)
 	})
 	t.Run("on uninitalized hash", func(t *testing.T) {
 		key := NewString("foo")
@@ -77,8 +77,8 @@ func TestHashGet(t *testing.T) {
 
 		result, ok := hash.Get(key)
 
-		utils.Assert(t, !ok, "Expected returned bool to be false, got true")
-		utils.AssertEqual(t, result, nil)
+		assert.That(t, !ok, "Expected returned bool to be false, got true")
+		assert.Equal(t, result, nil)
 	})
 }
 
@@ -101,7 +101,7 @@ func TestHashMap(t *testing.T) {
 			actual[k.Inspect()] = v
 		}
 
-		utils.Assert(t, reflect.DeepEqual(expected, actual), "Expected hash to equal\n%s\n\tgot\n%s\n", expected, actual)
+		assert.That(t, reflect.DeepEqual(expected, actual), "Expected hash to equal\n%s\n\tgot\n%s\n", expected, actual)
 	})
 	t.Run("on uninitialized hash", func(t *testing.T) {
 		var hash Hash
@@ -114,6 +114,6 @@ func TestHashMap(t *testing.T) {
 			actual[k.Inspect()] = v
 		}
 
-		utils.Assert(t, reflect.DeepEqual(expected, actual), "Expected hash to equal\n%s\n\tgot\n%s\n", expected, actual)
+		assert.That(t, reflect.DeepEqual(expected, actual), "Expected hash to equal\n%s\n\tgot\n%s\n", expected, actual)
 	})
 }

@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/MarcinKonowalczyk/goruby/utils"
+	"github.com/lczyk/assert"
 )
 
 func TestFileExpandPath(t *testing.T) {
@@ -18,7 +18,7 @@ func TestFileExpandPath(t *testing.T) {
 
 		result, err := fileExpandPath(context, nil, filename)
 
-		utils.AssertNoError(t, err)
+		assert.NoError(t, err)
 
 		cwd, err := os.Getwd()
 		if err != nil {
@@ -26,7 +26,7 @@ func TestFileExpandPath(t *testing.T) {
 		}
 		expected := NewString(cwd + "/fixtures/testfile.rb")
 
-		utils.AssertEqualCmpAny(t, result, expected, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, result, expected, CompareRubyObjectsForTests)
 	})
 	t.Run("two arg flavour", func(t *testing.T) {
 		env := NewEnvironment()
@@ -39,7 +39,7 @@ func TestFileExpandPath(t *testing.T) {
 
 		result, err := fileExpandPath(context, nil, filename, dirname)
 
-		utils.AssertNoError(t, err)
+		assert.NoError(t, err)
 
 		cwd, err := os.Getwd()
 		if err != nil {
@@ -47,7 +47,7 @@ func TestFileExpandPath(t *testing.T) {
 		}
 		expected := NewString(cwd + "/main.go")
 
-		utils.AssertEqualCmpAny(t, result, expected, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, result, expected, CompareRubyObjectsForTests)
 	})
 }
 
@@ -60,9 +60,9 @@ func TestFileDirname(t *testing.T) {
 
 	result, err := fileDirname(context, nil, filename)
 
-	utils.AssertNoError(t, err)
+	assert.NoError(t, err)
 
 	expected := NewString("/var/log")
 
-	utils.AssertEqualCmpAny(t, result, expected, CompareRubyObjectsForTests)
+	assert.EqualCmpAny(t, result, expected, CompareRubyObjectsForTests)
 }

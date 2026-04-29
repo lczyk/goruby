@@ -6,12 +6,12 @@ import (
 
 	"github.com/MarcinKonowalczyk/goruby/trace"
 	"github.com/MarcinKonowalczyk/goruby/trace/printer"
-	"github.com/MarcinKonowalczyk/goruby/utils"
+	"github.com/lczyk/assert"
 )
 
 func TestNewTracer(t *testing.T) {
 	tracer := trace.NewTracer()
-	utils.AssertEqual(t, len(tracer.Messages()), 0)
+	assert.Equal(t, len(tracer.Messages()), 0)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -41,7 +41,7 @@ func TestTraceNormal(t *testing.T) {
 	first(tracer)
 	tracer.Done()
 	messages := tracer.Messages()
-	utils.AssertEqual(t, len(messages), 3)
+	assert.Equal(t, len(messages), 3)
 	for _, message := range messages {
 		printer.PrettyPrint(message, printer.MULTILINE)
 	}
@@ -73,7 +73,7 @@ func TestTraceGap(t *testing.T) {
 	first_gap(tracer)
 	tracer.Done()
 	messages := tracer.Messages()
-	utils.AssertEqual(t, len(messages), 3)
+	assert.Equal(t, len(messages), 3)
 	for _, message := range messages {
 		fmt.Printf("%s\n", message)
 		// printer.PrettyPrint(message, printer.MULTILINE)
@@ -87,7 +87,7 @@ func TestTraceWithout(t *testing.T) {
 	tracer.Message("First")
 	tracer.Done()
 	messages := tracer.Messages()
-	utils.AssertEqual(t, len(messages), 1)
+	assert.Equal(t, len(messages), 1)
 	for _, message := range messages {
 		// fmt.Printf("%s\n", message)
 		printer.PrettyPrint(message, printer.MULTILINE)
@@ -100,10 +100,10 @@ func TestTraceToWalkable(t *testing.T) {
 	tracer := trace.NewTracer()
 	first(tracer)
 	_, err := tracer.ToWalkable()
-	utils.AssertError(t, err, "not walkable")
+	assert.Error(t, err, "not walkable")
 	tracer.Done()
 	walkable, err := tracer.ToWalkable()
-	utils.AssertNoError(t, err)
+	assert.NoError(t, err)
 	fmt.Println("Walkable:")
 	walkable.Walk(func(node trace.Node) error {
 		// fmt.Println(node, "prev:", node.Prev(), "next:", node.Next())

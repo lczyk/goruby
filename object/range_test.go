@@ -3,7 +3,7 @@ package object
 import (
 	"testing"
 
-	"github.com/MarcinKonowalczyk/goruby/utils"
+	"github.com/lczyk/assert"
 )
 
 func TestRangeEvalToArray(t *testing.T) {
@@ -14,7 +14,7 @@ func TestRangeEvalToArray(t *testing.T) {
 			Inclusive: false,
 		}
 		arr := rng.ToArray()
-		utils.AssertEqualCmpAny(t, arr, NewArray(), CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, arr, NewArray(), CompareRubyObjectsForTests)
 	})
 	t.Run("inclusive range", func(t *testing.T) {
 		rng := &Range{
@@ -28,7 +28,7 @@ func TestRangeEvalToArray(t *testing.T) {
 			NewInteger(2),
 			NewInteger(3),
 		)
-		utils.AssertEqualCmpAny(t, arr, expected, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, arr, expected, CompareRubyObjectsForTests)
 	})
 	t.Run("exclusive range", func(t *testing.T) {
 		rng := &Range{
@@ -41,6 +41,6 @@ func TestRangeEvalToArray(t *testing.T) {
 			NewInteger(1),
 			NewInteger(2),
 		)
-		utils.AssertEqualCmpAny(t, arr, expected, CompareRubyObjectsForTests)
+		assert.EqualCmpAny(t, arr, expected, CompareRubyObjectsForTests)
 	})
 }

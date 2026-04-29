@@ -3,7 +3,7 @@ package token
 import (
 	"testing"
 
-	"github.com/MarcinKonowalczyk/goruby/utils"
+	"github.com/lczyk/assert"
 )
 
 func filterEmpty(arr []string) []string {
@@ -115,13 +115,13 @@ func TestTypeSting(t *testing.T) {
 	seen := make(map[Type]bool)
 
 	for _, test := range tests {
-		utils.Assert(t, !seen[test.tk], "Duplicate token %s in tests!", test.tk)
+		assert.That(t, !seen[test.tk], "Duplicate token %s in tests!", test.tk)
 		seen[test.tk] = true
 
-		utils.AssertEqual(t, test.tk.String(), test.str)
-		utils.AssertEqual(t, ToType(test.str), test.tk)
-		utils.AssertNotEqual(t, test.repr, "")
-		utils.AssertEqual(t, type_reprs[test.tk], test.repr)
+		assert.Equal(t, test.tk.String(), test.str)
+		assert.Equal(t, ToType(test.str), test.tk)
+		assert.NotEqual(t, test.repr, "")
+		assert.Equal(t, type_reprs[test.tk], test.repr)
 	}
 
 	test_strings := make([]string, 0)
@@ -132,21 +132,21 @@ func TestTypeSting(t *testing.T) {
 	}
 
 	missing := findMissingSkipEmpty(test_reprs, filterEmpty(type_reprs[:]))
-	utils.AssertEqual(t, len(missing), 0)
+	assert.Equal(t, len(missing), 0)
 
 	missing = findMissingSkipEmpty(test_strings, filterEmpty(type_strings[:]))
-	utils.AssertEqual(t, len(missing), 0)
+	assert.Equal(t, len(missing), 0)
 
 }
 
 func TestIllegalTypeIsZero(t *testing.T) {
-	utils.AssertEqual(t, ILLEGAL, 0)
+	assert.Equal(t, ILLEGAL, 0)
 }
 
 func TestTypeCount(t *testing.T) {
 
 	n_type_reprs := len(filterEmpty(type_reprs[:]))
 	n_type_strings := len(filterEmpty(type_strings[:]))
-	utils.AssertEqual(t, type_count, n_type_reprs)
-	utils.AssertEqual(t, type_count, n_type_strings)
+	assert.Equal(t, type_count, n_type_reprs)
+	assert.Equal(t, type_count, n_type_strings)
 }
