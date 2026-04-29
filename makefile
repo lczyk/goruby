@@ -9,21 +9,21 @@ help:  ## Show this help
 .PHONY: build
 build: ./bin/goruby ./bin/girb ./bin/grgr  ## Build all binaries (compressed with upx if available)
 
-./bin/goruby: $(SRCS) generate-version Makefile go.mod go.sum
+./bin/goruby: $(SRCS) generate-version makefile go.mod go.sum
 	mkdir -p ./bin
 	go build -o ./bin/goruby ./cmd/goruby
 	@if command -v upx >/dev/null 2>&1; then \
 		upx ./bin/goruby || echo "upx failed, skipping compression"; \
 	fi
 
-./bin/girb: $(SRCS) generate-version Makefile go.mod go.sum
+./bin/girb: $(SRCS) generate-version makefile go.mod go.sum
 	mkdir -p ./bin
 	go build -o ./bin/girb ./cmd/girb
 	@if command -v upx >/dev/null 2>&1; then \
 		upx ./bin/girb || echo "upx failed, skipping compression"; \
 	fi
 
-./bin/grgr: $(SRCS) generate-version Makefile go.mod go.sum
+./bin/grgr: $(SRCS) generate-version makefile go.mod go.sum
 	mkdir -p ./bin
 	go build -o ./bin/grgr ./cmd/grgr
 	@if command -v upx >/dev/null 2>&1; then \
@@ -60,7 +60,7 @@ format:  ## gofmt the tree in place
 
 .PHONY: spellcheck
 spellcheck:  ## Spellcheck sources and docs with cspell (via npx)
-	npx --yes cspell --no-progress --gitignore "**/*.go" "**/*.md" "Makefile"
+	npx --yes cspell --no-progress --gitignore "**/*.go" "**/*.md" "makefile"
 
 .PHONY: bench
 bench:  ## Run benchmarks (override scope/duration: PKG=... BENCH=... BENCHTIME=...)
