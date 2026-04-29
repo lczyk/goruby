@@ -13,3 +13,6 @@ To run it ad hoc run `go run cmd/girb/main.go` and exit the REPL with CTRL-D.
 
 ## Command
 To run the command as one off run `go run cmd/goruby/main.go`.
+
+## Licence
+MIT — see [LICENSE](LICENSE). This project began as a fork of [goruby/goruby](https://github.com/goruby/goruby); upstream copyright is preserved in [LICENSE-goruby](LICENSE-goruby).
