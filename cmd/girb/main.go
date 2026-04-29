@@ -1,31 +1,48 @@
 package main
 
 import (
-	"flag"
+	"errors"
+	"fmt"
 	"io"
 	"log"
 	"os"
 
 	"github.com/goruby/readline"
+	flags "github.com/jessevdk/go-flags"
+	vinfo "github.com/lczyk/goruby/internal/version"
 	"github.com/lczyk/goruby/repl"
+	ver "github.com/lczyk/version/go"
 )
 
-var (
-	noecho   bool
-	noprompt bool
-)
-
-func main() {
-	flag.BoolVar(&noecho, "noecho", false, "--noecho")
-	flag.BoolVar(&noprompt, "noprompt", false, "--noprompt")
-	flag.Parse()
-	exit := startRepl()
-	os.Exit(exit)
+type Options struct {
+	NoEcho   bool `long:"noecho" description:"suppress echo of evaluated output"`
+	NoPrompt bool `long:"noprompt" description:"suppress prompt"`
 }
 
-// Readline returns a readline enabled REPL
+var opts Options
+
+func main() {
+	for _, arg := range os.Args[1:] {
+		if arg == "--version" || arg == "-v" {
+			fmt.Println(ver.FormatVersion(vinfo.Version, vinfo.CommitSHA, vinfo.BuildDate, vinfo.BuildInfo))
+			os.Exit(0)
+		}
+	}
+
+	parser := flags.NewParser(&opts, flags.Default)
+	parser.Name = "girb"
+	parser.Usage = "[OPTIONS]"
+	if _, err := parser.Parse(); err != nil {
+		var flagsErr *flags.Error
+		if errors.As(err, &flagsErr) && flagsErr.Type == flags.ErrHelp {
+			os.Exit(0)
+		}
+		os.Exit(1)
+	}
+	os.Exit(startRepl())
+}
+
 func startRepl() int {
-	// Configure input
 	rm := rawMode{StdinFd: int(os.Stdin.Fd())}
 	config := &readline.Config{
 		InterruptPrompt:   "^C",
@@ -43,21 +60,19 @@ func startRepl() int {
 	lNoInterrupt := &ignoreInterrupt{l}
 
 	var out io.Writer = lNoInterrupt
-	if noecho {
+	if opts.NoEcho {
 		out = io.Discard
 	}
 	var prompt repl.Prompt = lNoInterrupt
-	if noprompt {
+	if opts.NoPrompt {
 		prompt = repl.PromptFunc(discardPrompt)
 	}
 
 	r := repl.New(lNoInterrupt, out, prompt)
-	err = r.Start()
-	if err != nil {
+	if err := r.Start(); err != nil {
 		log.Printf("Error within repl: %v\n", err)
 		return 1
 	}
-
 	return 0
 }
 
@@ -75,24 +90,19 @@ func (i *ignoreInterrupt) Readline() (string, error) {
 	return line, err
 }
 
-// rawMode is a helper for entering and exiting raw mode.
 type rawMode struct {
 	StdinFd int
-
-	state *readline.State
+	state   *readline.State
 }
 
-// enter is used to put the terminal in raw mode
 func (r *rawMode) enter() (err error) {
 	r.state, err = readline.MakeRaw(r.StdinFd)
 	return err
 }
 
-// exit restores the terminal's previous state
 func (r *rawMode) exit() error {
 	if r.state == nil {
 		return nil
 	}
-
 	return readline.Restore(r.StdinFd, r.state)
 }

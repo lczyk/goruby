@@ -9,26 +9,30 @@ help:  ## Show this help
 .PHONY: build
 build: ./bin/goruby ./bin/girb ./bin/grgr  ## Build all binaries (compressed with upx if available)
 
-./bin/goruby: $(SRCS) Makefile go.mod go.sum
+./bin/goruby: $(SRCS) generate-version Makefile go.mod go.sum
 	mkdir -p ./bin
 	go build -o ./bin/goruby ./cmd/goruby
 	@if command -v upx >/dev/null 2>&1; then \
 		upx ./bin/goruby || echo "upx failed, skipping compression"; \
 	fi
 
-./bin/girb: $(SRCS) Makefile go.mod go.sum
+./bin/girb: $(SRCS) generate-version Makefile go.mod go.sum
 	mkdir -p ./bin
 	go build -o ./bin/girb ./cmd/girb
 	@if command -v upx >/dev/null 2>&1; then \
 		upx ./bin/girb || echo "upx failed, skipping compression"; \
 	fi
 
-./bin/grgr: $(SRCS) Makefile go.mod go.sum
+./bin/grgr: $(SRCS) generate-version Makefile go.mod go.sum
 	mkdir -p ./bin
 	go build -o ./bin/grgr ./cmd/grgr
 	@if command -v upx >/dev/null 2>&1; then \
 		upx ./bin/grgr || echo "upx failed, skipping compression"; \
 	fi
+
+.PHONY: generate-version
+generate-version:
+	go run github.com/lczyk/version/go/cmd/generate-version -out ./internal/version/version.go -pkg version
 
 .PHONY: du
 du: build  ## Show binary sizes
@@ -42,7 +46,7 @@ install: build  ## Symlink binaries into ~/.local/bin
 	ln -sf "$(PWD)/bin/grgr" "$(HOME)/.local/bin/grgr"
 
 .PHONY: test
-test:  ## Run the test suite with race detector
+test: generate-version  ## Run the test suite with race detector
 	@if command -v gotest >/dev/null 2>&1; then \
 		gotest -race ./...; \
 	else \
@@ -84,6 +88,7 @@ verify: lint test spellcheck  ## Pre-commit gate: lint, test, spellcheck
 	@echo "All checks passed."
 
 .PHONY: clean
-clean:  ## Remove build artifacts
+clean:  ## Remove build artifacts and generated files
 	rm -rf ./bin
 	rm -f cover.out cover.html
+	rm -f ./internal/version/version.go
