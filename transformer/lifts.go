@@ -3,9 +3,9 @@ package transformer
 import (
 	"go/token"
 
-	"github.com/MarcinKonowalczyk/goruby/ast"
-	"github.com/MarcinKonowalczyk/goruby/parser"
-	"github.com/MarcinKonowalczyk/goruby/trace/printer"
+	"github.com/lczyk/goruby/ast"
+	"github.com/lczyk/goruby/parser"
+	"github.com/lczyk/goruby/trace/printer"
 )
 
 type context_spec string

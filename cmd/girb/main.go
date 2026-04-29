@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/MarcinKonowalczyk/goruby/repl"
 	"github.com/goruby/readline"
+	"github.com/lczyk/goruby/repl"
 )
 
 var (

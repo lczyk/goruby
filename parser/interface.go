@@ -7,8 +7,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/MarcinKonowalczyk/goruby/ast"
-	"github.com/MarcinKonowalczyk/goruby/trace"
+	"github.com/lczyk/goruby/ast"
+	"github.com/lczyk/goruby/trace"
 	"github.com/pkg/errors"
 )
 

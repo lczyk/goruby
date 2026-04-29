@@ -3,8 +3,8 @@ package transformer
 import (
 	"fmt"
 
-	"github.com/MarcinKonowalczyk/goruby/ast"
-	"github.com/MarcinKonowalczyk/goruby/trace"
+	"github.com/lczyk/goruby/ast"
+	"github.com/lczyk/goruby/trace"
 )
 
 func Transform(node *ast.Program, trace_transform bool) (*ast.Program, error) {

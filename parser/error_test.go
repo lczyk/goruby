@@ -3,8 +3,8 @@ package parser
 import (
 	"testing"
 
-	"github.com/MarcinKonowalczyk/goruby/token"
 	"github.com/lczyk/assert"
+	"github.com/lczyk/goruby/token"
 	"github.com/pkg/errors"
 )
 

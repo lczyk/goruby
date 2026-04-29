@@ -1,6 +1,6 @@
 package object
 
-import "github.com/MarcinKonowalczyk/goruby/trace"
+import "github.com/lczyk/goruby/trace"
 
 type RubyMethod interface {
 	Call(context CallContext, tracer trace.Tracer, args ...RubyObject) (RubyObject, error)

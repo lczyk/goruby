@@ -8,11 +8,11 @@ import (
 
 	"math/rand"
 
-	"github.com/MarcinKonowalczyk/goruby/ast"
-	"github.com/MarcinKonowalczyk/goruby/ast/infix"
-	"github.com/MarcinKonowalczyk/goruby/lexer"
-	"github.com/MarcinKonowalczyk/goruby/token"
-	"github.com/MarcinKonowalczyk/goruby/trace"
+	"github.com/lczyk/goruby/ast"
+	"github.com/lczyk/goruby/ast/infix"
+	"github.com/lczyk/goruby/lexer"
+	"github.com/lczyk/goruby/token"
+	"github.com/lczyk/goruby/trace"
 	"github.com/pkg/errors"
 )
 

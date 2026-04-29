@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/MarcinKonowalczyk/goruby/trace"
-	"github.com/MarcinKonowalczyk/goruby/trace/printer"
 	"github.com/lczyk/assert"
+	"github.com/lczyk/goruby/trace"
+	"github.com/lczyk/goruby/trace/printer"
 )
 
 func TestNewTracer(t *testing.T) {

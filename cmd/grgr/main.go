@@ -8,10 +8,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/MarcinKonowalczyk/goruby/ast"
-	"github.com/MarcinKonowalczyk/goruby/interpreter"
-	"github.com/MarcinKonowalczyk/goruby/parser"
-	"github.com/MarcinKonowalczyk/goruby/transformer"
+	"github.com/lczyk/goruby/ast"
+	"github.com/lczyk/goruby/interpreter"
+	"github.com/lczyk/goruby/parser"
+	"github.com/lczyk/goruby/transformer"
 )
 
 var (

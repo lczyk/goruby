@@ -1,4 +1,4 @@
-module github.com/MarcinKonowalczyk/goruby
+module github.com/lczyk/goruby
 
 go 1.24.2
 

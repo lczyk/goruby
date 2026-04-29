@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/MarcinKonowalczyk/goruby/ast"
 	"github.com/lczyk/assert"
+	"github.com/lczyk/goruby/ast"
 )
 
 func TestFunctionCall(t *testing.T) {

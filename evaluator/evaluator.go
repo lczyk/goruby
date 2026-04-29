@@ -5,10 +5,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/MarcinKonowalczyk/goruby/ast"
-	"github.com/MarcinKonowalczyk/goruby/ast/infix"
-	"github.com/MarcinKonowalczyk/goruby/object"
-	"github.com/MarcinKonowalczyk/goruby/trace"
+	"github.com/lczyk/goruby/ast"
+	"github.com/lczyk/goruby/ast/infix"
+	"github.com/lczyk/goruby/object"
+	"github.com/lczyk/goruby/trace"
 	"github.com/pkg/errors"
 )
 

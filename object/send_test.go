@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/MarcinKonowalczyk/goruby/trace"
 	"github.com/lczyk/assert"
+	"github.com/lczyk/goruby/trace"
 	"github.com/pkg/errors"
 )
 

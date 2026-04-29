@@ -4,7 +4,7 @@ import (
 	"hash/fnv"
 	"strings"
 
-	"github.com/MarcinKonowalczyk/goruby/trace"
+	"github.com/lczyk/goruby/trace"
 )
 
 var arrayClass RubyClassObject = newClass(

@@ -3,8 +3,8 @@ package object
 import (
 	"testing"
 
-	"github.com/MarcinKonowalczyk/goruby/trace"
 	"github.com/lczyk/assert"
+	"github.com/lczyk/goruby/trace"
 )
 
 func TestWithArity(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/MarcinKonowalczyk/goruby/trace"
+	"github.com/lczyk/goruby/trace"
 )
 
 // for j := len(message.Stack) - 1; j >= 0; j-- {

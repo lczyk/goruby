@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/MarcinKonowalczyk/goruby/trace"
+	"github.com/lczyk/goruby/trace"
 )
 
 var fileClass RubyClassObject = newClass(

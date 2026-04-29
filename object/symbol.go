@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"hash/fnv"
 
-	"github.com/MarcinKonowalczyk/goruby/trace"
+	"github.com/lczyk/goruby/trace"
 )
 
 var (

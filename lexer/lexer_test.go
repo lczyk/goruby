@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MarcinKonowalczyk/goruby/token"
 	"github.com/lczyk/assert"
+	"github.com/lczyk/goruby/token"
 )
 
 // raise "foo" unless x < 10

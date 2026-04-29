@@ -3,9 +3,9 @@ package interpreter_test
 import (
 	"testing"
 
-	"github.com/MarcinKonowalczyk/goruby/interpreter"
-	"github.com/MarcinKonowalczyk/goruby/object"
 	"github.com/lczyk/assert"
+	"github.com/lczyk/goruby/interpreter"
+	"github.com/lczyk/goruby/object"
 )
 
 func TestInterpreterInterpret(t *testing.T) {

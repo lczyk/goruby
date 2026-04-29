@@ -1,7 +1,7 @@
 goruby
 ======
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/MarcinKonowalczyk/goruby)](https://goreportcard.com/report/github.com/MarcinKonowalczyk/goruby)
+[![Go Report Card](https://goreportcard.com/badge/github.com/lczyk/goruby)](https://goreportcard.com/report/github.com/lczyk/goruby)
 
 An implementation of *A SUBSET* of Ruby in Go. The goal of this implementation is to be able to run [Pyramid-Scheme](https://github.com/ConorOBrien-Foxx/Pyramid-Scheme).
 

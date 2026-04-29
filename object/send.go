@@ -3,7 +3,7 @@ package object
 import (
 	"hash/fnv"
 
-	"github.com/MarcinKonowalczyk/goruby/trace"
+	"github.com/lczyk/goruby/trace"
 )
 
 // Send sends message method with args to context and returns its result

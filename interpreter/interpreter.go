@@ -4,11 +4,11 @@ import (
 	"go/token"
 	"os"
 
-	"github.com/MarcinKonowalczyk/goruby/evaluator"
-	"github.com/MarcinKonowalczyk/goruby/object"
-	"github.com/MarcinKonowalczyk/goruby/parser"
-	"github.com/MarcinKonowalczyk/goruby/trace/printer"
-	"github.com/MarcinKonowalczyk/goruby/transformer"
+	"github.com/lczyk/goruby/evaluator"
+	"github.com/lczyk/goruby/object"
+	"github.com/lczyk/goruby/parser"
+	"github.com/lczyk/goruby/trace/printer"
+	"github.com/lczyk/goruby/transformer"
 )
 
 // // Interpreter defines the methods of an interpreter

@@ -1,6 +1,6 @@
 package infix
 
-import "github.com/MarcinKonowalczyk/goruby/token"
+import "github.com/lczyk/goruby/token"
 
 type Infix int
 

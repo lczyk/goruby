@@ -3,7 +3,7 @@ package parser_test
 import (
 	"fmt"
 
-	"github.com/MarcinKonowalczyk/goruby/parser"
+	"github.com/lczyk/goruby/parser"
 )
 
 func ExampleParseExpr() {

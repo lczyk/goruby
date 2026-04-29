@@ -6,7 +6,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/MarcinKonowalczyk/goruby/token"
+	"github.com/lczyk/goruby/token"
 )
 
 const eof = -1

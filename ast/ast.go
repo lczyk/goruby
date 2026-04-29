@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/MarcinKonowalczyk/goruby/ast/infix"
+	"github.com/lczyk/goruby/ast/infix"
 )
 
 // Node represents a node within the AST

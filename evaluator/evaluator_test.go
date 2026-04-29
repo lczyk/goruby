@@ -5,11 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MarcinKonowalczyk/goruby/evaluator"
-	"github.com/MarcinKonowalczyk/goruby/object"
-	"github.com/MarcinKonowalczyk/goruby/parser"
 	"github.com/lczyk/assert"
 	"github.com/lczyk/assert/compare"
+	"github.com/lczyk/goruby/evaluator"
+	"github.com/lczyk/goruby/object"
+	"github.com/lczyk/goruby/parser"
 	"github.com/pkg/errors"
 )
 
