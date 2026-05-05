@@ -34,6 +34,7 @@
     "testdata",
     "ADDASSIGN",
     "ANDASSIGN",
+    "ANDASSIGN_BITWISE",
     "arithmetics",
     "barfoo",
     "DDDOT",
@@ -61,6 +62,7 @@
     "LOGICALAND",
     "LOGICALOR",
     "LSHIFT",
+    "LSHIFTASSIGN",
     "metaclass",
     "MODASSIGN",
     "MULASSIGN",
@@ -71,6 +73,7 @@
     "oneline",
     "Oneline",
     "ORASSIGN",
+    "ORASSIGN_BITWISE",
     "ONELINE",
     "POWERASSIGN",
     "procs",
@@ -80,6 +83,8 @@
     "RANGEEX",
     "readlines",
     "repr",
+    "RSHIFT",
+    "RSHIFTASSIGN",
     "reprs",
     "stmts",
     "Stringf",
@@ -102,6 +107,7 @@
     "BENCHTIME",
     "benchtime",
     "catched",
+    "CASEEQ",
     "chzyer",
     "clazz",
     "COMPSTMT",
@@ -139,6 +145,7 @@
     "varibale",
     "Whens",
     "XSTR",
+    "XORASSIGN",
     "Yukihiro"
   ]
 }

@@ -29,15 +29,20 @@ const (
 	// Operators
 	operator_beg
 	operator_assign_beg
-	ASSIGN      // =
-	ADDASSIGN   // +=
-	SUBASSIGN   // -=
-	MULASSIGN   // *=
-	DIVASSIGN   // /=
-	MODASSIGN   // %=
-	POWERASSIGN // **=
-	ORASSIGN    // ||=
-	ANDASSIGN   // &&=
+	ASSIGN            // =
+	ADDASSIGN         // +=
+	SUBASSIGN         // -=
+	MULASSIGN         // *=
+	DIVASSIGN         // /=
+	MODASSIGN         // %=
+	POWERASSIGN       // **=
+	ORASSIGN          // ||=
+	ANDASSIGN         // &&=
+	LSHIFTASSIGN      // <<=
+	RSHIFTASSIGN      // >>=
+	ANDASSIGN_BITWISE // &=
+	ORASSIGN_BITWISE  // |=
+	XORASSIGN         // ^=
 	operator_assign_end
 
 	PLUS       // +
@@ -69,6 +74,8 @@ const (
 	TILDE  // ~
 	MATCH  // =~
 	NMATCH // !~
+	RSHIFT // >>
+	CASEEQ // ===
 	operator_end
 
 	HASHROCKET // =>
@@ -154,15 +161,20 @@ var tokens = [...]string{
 	REGEX:     "REGEX",
 	XSTR:      "XSTR",
 
-	ASSIGN:      "=",
-	ADDASSIGN:   "+=",
-	SUBASSIGN:   "-=",
-	MULASSIGN:   "*=",
-	DIVASSIGN:   "/=",
-	MODASSIGN:   "%=",
-	POWERASSIGN: "**=",
-	ORASSIGN:    "||=",
-	ANDASSIGN:   "&&=",
+	ASSIGN:            "=",
+	ADDASSIGN:         "+=",
+	SUBASSIGN:         "-=",
+	MULASSIGN:         "*=",
+	DIVASSIGN:         "/=",
+	MODASSIGN:         "%=",
+	POWERASSIGN:       "**=",
+	ORASSIGN:          "||=",
+	ANDASSIGN:         "&&=",
+	LSHIFTASSIGN:      "<<=",
+	RSHIFTASSIGN:      ">>=",
+	ANDASSIGN_BITWISE: "&=",
+	ORASSIGN_BITWISE:  "|=",
+	XORASSIGN:         "^=",
 
 	PLUS:       "+",
 	MINUS:      "-",
@@ -192,6 +204,8 @@ var tokens = [...]string{
 	TILDE:     "~",
 	MATCH:     "=~",
 	NMATCH:    "!~",
+	RSHIFT:    ">>",
+	CASEEQ:    "===",
 
 	NEWLINE:   "NEWLINE",
 	COMMA:     ",",

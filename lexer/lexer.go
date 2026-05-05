@@ -197,7 +197,12 @@ func startLexer(l *Lexer) StateFn {
 	case '=':
 		if l.peek() == '=' {
 			l.next()
-			l.emit(token.EQ)
+			if l.peek() == '=' {
+				l.next()
+				l.emit(token.CASEEQ)
+			} else {
+				l.emit(token.EQ)
+			}
 		} else if l.peek() == '>' {
 			l.next()
 			l.emit(token.HASHROCKET)
@@ -319,6 +324,11 @@ func startLexer(l *Lexer) StateFn {
 			l.emit(token.LONELY)
 			return startLexer
 		}
+		if l.peek() == '=' {
+			l.next()
+			l.emit(token.ANDASSIGN_BITWISE)
+			return startLexer
+		}
 		if p := l.peek(); isLetter(p) {
 			l.emit(token.CAPTURE)
 			return startLexer
@@ -338,6 +348,11 @@ func startLexer(l *Lexer) StateFn {
 		}
 		if l.peek() == '<' {
 			l.next()
+			if l.peek() == '=' {
+				l.next()
+				l.emit(token.LSHIFTASSIGN)
+				return startLexer
+			}
 			// Check for heredoc: <<, <<-, <<~
 			p := l.peek()
 			if p == '-' || p == '~' {
@@ -359,6 +374,16 @@ func startLexer(l *Lexer) StateFn {
 		l.emit(token.LT)
 		return startLexer
 	case '>':
+		if l.peek() == '>' {
+			l.next()
+			if l.peek() == '=' {
+				l.next()
+				l.emit(token.RSHIFTASSIGN)
+			} else {
+				l.emit(token.RSHIFT)
+			}
+			return startLexer
+		}
 		if l.peek() == '=' {
 			l.next()
 			l.emit(token.GTE)
@@ -385,6 +410,11 @@ func startLexer(l *Lexer) StateFn {
 		l.emit(token.RBRACKET)
 		return startLexer
 	case '^':
+		if l.peek() == '=' {
+			l.next()
+			l.emit(token.XORASSIGN)
+			return startLexer
+		}
 		l.emit(token.XOR)
 		return startLexer
 	case '`':
@@ -403,6 +433,11 @@ func startLexer(l *Lexer) StateFn {
 	case '|':
 		if l.lastToken.Type == token.DO || l.lastToken.Type == token.LBRACE {
 			l.emit(token.PIPE)
+			return startLexer
+		}
+		if l.peek() == '=' {
+			l.next()
+			l.emit(token.ORASSIGN_BITWISE)
 			return startLexer
 		}
 		if p := l.peek(); p == '|' {

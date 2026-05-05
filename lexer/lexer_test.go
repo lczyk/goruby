@@ -46,6 +46,13 @@ end
 10 >= 9
 10 <=> 9
 10 << 9
+	10 >> 9
+	5 === 5
+	x <<= 2
+	x >>= 2
+	x &= 2
+	x |= 2
+	x ^= 2
 ""
 "foobar"
 'foobar'
@@ -230,6 +237,34 @@ $a
 		{token.INT, "10"},
 		{token.LSHIFT, "<<"},
 		{token.INT, "9"},
+		{token.NEWLINE, "\n"},
+		{token.INT, "10"},
+		{token.RSHIFT, ">>"},
+		{token.INT, "9"},
+		{token.NEWLINE, "\n"},
+		{token.INT, "5"},
+		{token.CASEEQ, "==="},
+		{token.INT, "5"},
+		{token.NEWLINE, "\n"},
+		{token.IDENT, "x"},
+		{token.LSHIFTASSIGN, "<<="},
+		{token.INT, "2"},
+		{token.NEWLINE, "\n"},
+		{token.IDENT, "x"},
+		{token.RSHIFTASSIGN, ">>="},
+		{token.INT, "2"},
+		{token.NEWLINE, "\n"},
+		{token.IDENT, "x"},
+		{token.ANDASSIGN_BITWISE, "&="},
+		{token.INT, "2"},
+		{token.NEWLINE, "\n"},
+		{token.IDENT, "x"},
+		{token.ORASSIGN_BITWISE, "|="},
+		{token.INT, "2"},
+		{token.NEWLINE, "\n"},
+		{token.IDENT, "x"},
+		{token.XORASSIGN, "^="},
+		{token.INT, "2"},
 		{token.NEWLINE, "\n"},
 		{token.STRING, ""},
 		{token.NEWLINE, "\n"},
