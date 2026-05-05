@@ -12,46 +12,21 @@
 # example:
 #   parse minitest/lib/minitest/spec.rb: heredoc not supported
 #   parse minitest/test/*: rspec-style metaprogramming
-lex minitest/lib/minitest.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex minitest/lib/minitest/assertions.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex minitest/lib/minitest/benchmark.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex minitest/lib/minitest/mock.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex minitest/lib/minitest/pride_plugin.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex minitest/lib/minitest/spec.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex minitest/lib/minitest/test_task.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex minitest/lib/minitest/test.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex minitest/lib/minitest/unit.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex minitest/test/minitest/metametameta.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex minitest/test/minitest/test_minitest_assertions.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex minitest/test/minitest/test_minitest_mock.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex minitest/test/minitest/test_minitest_reporter.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex minitest/test/minitest/test_minitest_spec.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex minitest/test/minitest/test_minitest_test.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/doc/jamis.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/lib/rake/application.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/lib/rake/backtrace.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/lib/rake/ext/string.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/lib/rake/file_list.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/lib/rake/file_utils.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/lib/rake/loaders/makefile.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/lib/rake/rake_test_loader.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/lib/rake/task_manager.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/lib/rake/task.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/lib/rake/testtask.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/lib/rake/win32.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/test/test_rake_application_options.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/test/test_rake_application.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/test/test_rake_backtrace.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/test/test_rake_file_list.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/test/test_rake_functional.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/test/test_rake_makefile_loader.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/test/test_rake_package_task.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/test/test_rake_rake_test_loader.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/test/test_rake_require.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/test/test_rake_rules.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/test/test_rake_task.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-lex rake/test/test_thread_history_display.rb: lexer: illegal char (e.g. regex literal, char escape, ~, ?)
-parse minitest/design_rationale.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 parse minitest/lib/hoe/minitest.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse minitest/lib/minitest.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse minitest/lib/minitest/assertions.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
@@ -66,7 +41,7 @@ parse minitest/lib/minitest/pride_plugin.rb: parser: unsupported syntax (heredoc
 parse minitest/lib/minitest/spec.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse minitest/lib/minitest/test_task.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse minitest/lib/minitest/test.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse minitest/lib/minitest/unit.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
+
 parse minitest/test/minitest/metametameta.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse minitest/test/minitest/test_minitest_assertions.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse minitest/test/minitest/test_minitest_benchmark.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
@@ -82,21 +57,19 @@ parse rake/lib/rake/clean.rb: parser: unsupported syntax (heredoc, key:, %w, spl
 parse rake/lib/rake/cloneable.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/cpu_counter.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/dsl_definition.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse rake/lib/rake/early_time.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
+
 parse rake/lib/rake/ext/core.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/ext/string.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/file_list.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/file_task.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/file_utils_ext.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/file_utils.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse rake/lib/rake/invocation_chain.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
+
 parse rake/lib/rake/invocation_exception_mixin.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/linked_list.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/loaders/makefile.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse rake/lib/rake/multi_task.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/name_space.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/packagetask.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse rake/lib/rake/phony.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/private_reader.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/promise.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/pseudo_status.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
@@ -125,30 +98,22 @@ parse rake/test/test_rake_cpu_counter.rb: parser: unsupported syntax (heredoc, k
 parse rake/test/test_rake_definitions.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_directory_task.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_dsl.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse rake/test/test_rake_early_time.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_extension.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_file_creation_task.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse rake/test/test_rake_file_list_path_map.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_file_list.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_file_task.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_file_utils.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_functional.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_invocation_chain.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse rake/test/test_rake_late_time.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse rake/test/test_rake_linked_list.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_makefile_loader.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_multi_task.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_name_space.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse rake/test/test_rake_package_task.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse rake/test/test_rake_path_map_explode.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_path_map_partial.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_path_map.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_pseudo_status.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_rake_test_loader.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse rake/test/test_rake_reduce_compat.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_require.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_rules.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse rake/test/test_rake_scope.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_task_argument_parsing.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_task_arguments.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_task_manager_argument_resolution.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
@@ -159,10 +124,8 @@ parse rake/test/test_rake_test_task.rb: parser: unsupported syntax (heredoc, key
 parse rake/test/test_rake_thread_pool.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_top_level_functions.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_win32.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse rake/test/test_rake.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_thread_history_display.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse rake/test/test_trace_output.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-walk minitest/design_rationale.rb: parse failed; walk skipped
+
 walk minitest/lib/hoe/minitest.rb: parse failed; walk skipped
 walk minitest/lib/minitest.rb: parse failed; walk skipped
 walk minitest/lib/minitest/assertions.rb: parse failed; walk skipped
@@ -177,7 +140,7 @@ walk minitest/lib/minitest/pride_plugin.rb: parse failed; walk skipped
 walk minitest/lib/minitest/spec.rb: parse failed; walk skipped
 walk minitest/lib/minitest/test_task.rb: parse failed; walk skipped
 walk minitest/lib/minitest/test.rb: parse failed; walk skipped
-walk minitest/lib/minitest/unit.rb: parse failed; walk skipped
+
 walk minitest/test/minitest/metametameta.rb: parse failed; walk skipped
 walk minitest/test/minitest/test_minitest_assertions.rb: parse failed; walk skipped
 walk minitest/test/minitest/test_minitest_benchmark.rb: parse failed; walk skipped
@@ -193,21 +156,18 @@ walk rake/lib/rake/clean.rb: parse failed; walk skipped
 walk rake/lib/rake/cloneable.rb: parse failed; walk skipped
 walk rake/lib/rake/cpu_counter.rb: parse failed; walk skipped
 walk rake/lib/rake/dsl_definition.rb: parse failed; walk skipped
-walk rake/lib/rake/early_time.rb: parse failed; walk skipped
 walk rake/lib/rake/ext/core.rb: parse failed; walk skipped
 walk rake/lib/rake/ext/string.rb: parse failed; walk skipped
 walk rake/lib/rake/file_list.rb: parse failed; walk skipped
 walk rake/lib/rake/file_task.rb: parse failed; walk skipped
 walk rake/lib/rake/file_utils_ext.rb: parse failed; walk skipped
 walk rake/lib/rake/file_utils.rb: parse failed; walk skipped
-walk rake/lib/rake/invocation_chain.rb: parse failed; walk skipped
+
 walk rake/lib/rake/invocation_exception_mixin.rb: parse failed; walk skipped
 walk rake/lib/rake/linked_list.rb: parse failed; walk skipped
 walk rake/lib/rake/loaders/makefile.rb: parse failed; walk skipped
-walk rake/lib/rake/multi_task.rb: parse failed; walk skipped
 walk rake/lib/rake/name_space.rb: parse failed; walk skipped
 walk rake/lib/rake/packagetask.rb: parse failed; walk skipped
-walk rake/lib/rake/phony.rb: parse failed; walk skipped
 walk rake/lib/rake/private_reader.rb: parse failed; walk skipped
 walk rake/lib/rake/promise.rb: parse failed; walk skipped
 walk rake/lib/rake/pseudo_status.rb: parse failed; walk skipped
@@ -236,30 +196,22 @@ walk rake/test/test_rake_cpu_counter.rb: parse failed; walk skipped
 walk rake/test/test_rake_definitions.rb: parse failed; walk skipped
 walk rake/test/test_rake_directory_task.rb: parse failed; walk skipped
 walk rake/test/test_rake_dsl.rb: parse failed; walk skipped
-walk rake/test/test_rake_early_time.rb: parse failed; walk skipped
 walk rake/test/test_rake_extension.rb: parse failed; walk skipped
 walk rake/test/test_rake_file_creation_task.rb: parse failed; walk skipped
-walk rake/test/test_rake_file_list_path_map.rb: parse failed; walk skipped
 walk rake/test/test_rake_file_list.rb: parse failed; walk skipped
 walk rake/test/test_rake_file_task.rb: parse failed; walk skipped
 walk rake/test/test_rake_file_utils.rb: parse failed; walk skipped
 walk rake/test/test_rake_functional.rb: parse failed; walk skipped
 walk rake/test/test_rake_invocation_chain.rb: parse failed; walk skipped
-walk rake/test/test_rake_late_time.rb: parse failed; walk skipped
-walk rake/test/test_rake_linked_list.rb: parse failed; walk skipped
 walk rake/test/test_rake_makefile_loader.rb: parse failed; walk skipped
 walk rake/test/test_rake_multi_task.rb: parse failed; walk skipped
 walk rake/test/test_rake_name_space.rb: parse failed; walk skipped
-walk rake/test/test_rake_package_task.rb: parse failed; walk skipped
-walk rake/test/test_rake_path_map_explode.rb: parse failed; walk skipped
 walk rake/test/test_rake_path_map_partial.rb: parse failed; walk skipped
 walk rake/test/test_rake_path_map.rb: parse failed; walk skipped
 walk rake/test/test_rake_pseudo_status.rb: parse failed; walk skipped
 walk rake/test/test_rake_rake_test_loader.rb: parse failed; walk skipped
-walk rake/test/test_rake_reduce_compat.rb: parse failed; walk skipped
 walk rake/test/test_rake_require.rb: parse failed; walk skipped
 walk rake/test/test_rake_rules.rb: parse failed; walk skipped
-walk rake/test/test_rake_scope.rb: parse failed; walk skipped
 walk rake/test/test_rake_task_argument_parsing.rb: parse failed; walk skipped
 walk rake/test/test_rake_task_arguments.rb: parse failed; walk skipped
 walk rake/test/test_rake_task_manager_argument_resolution.rb: parse failed; walk skipped
@@ -270,6 +222,384 @@ walk rake/test/test_rake_test_task.rb: parse failed; walk skipped
 walk rake/test/test_rake_thread_pool.rb: parse failed; walk skipped
 walk rake/test/test_rake_top_level_functions.rb: parse failed; walk skipped
 walk rake/test/test_rake_win32.rb: parse failed; walk skipped
-walk rake/test/test_rake.rb: parse failed; walk skipped
 walk rake/test/test_thread_history_display.rb: parse failed; walk skipped
-walk rake/test/test_trace_output.rb: parse failed; walk skipped
+
+# Ruby language tests from MRI test/ruby
+
+# lex phase failures
+lex ruby/test_syntax.rb: MRI language test - lexer failure
+lex ruby/test_file.rb: MRI language test - lexer failure
+lex ruby/test_file_exhaustive.rb: MRI language test - lexer failure
+lex ruby/test_exception.rb: MRI language test - lexer failure
+lex ruby/test_dir_m17n.rb: MRI language test - lexer failure
+lex ruby/test_ast.rb: MRI language test - lexer failure
+lex ruby/test_stringchar.rb: MRI language test - lexer failure
+lex ruby/test_allocation.rb: MRI language test - lexer failure
+lex ruby/test_parse.rb: MRI language test - lexer failure
+lex ruby/test_assignment.rb: MRI language test - lexer failure
+lex ruby/test_object.rb: MRI language test - lexer failure
+lex ruby/test_marshal.rb: MRI language test - lexer failure
+lex ruby/test_m17n_comb.rb: MRI language test - lexer failure
+lex ruby/test_io.rb: MRI language test - lexer failure
+lex ruby/test_sprintf.rb: MRI language test - lexer failure
+lex ruby/test_io_m17n.rb: MRI language test - lexer failure
+lex ruby/test_string.rb: MRI language test - lexer failure
+lex ruby/test_regexp.rb: MRI language test - lexer failure
+lex ruby/test_require.rb: MRI language test - lexer failure
+lex ruby/test_whileuntil.rb: MRI language test - lexer failure
+lex ruby/test_argf.rb: MRI language test - lexer failure
+lex ruby/enc/test_grapheme_breaks.rb: MRI language test - lexer failure
+lex ruby/enc/test_emoji_breaks.rb: MRI language test - lexer failure
+lex ruby/enc/test_case_comprehensive.rb: MRI language test - lexer failure
+lex ruby/test_lazy_enumerator.rb: MRI language test - lexer failure
+lex ruby/test_unicode_escape.rb: MRI language test - lexer failure
+lex ruby/test_yield.rb: MRI language test - lexer failure
+lex ruby/test_iseq.rb: MRI language test - lexer failure
+lex ruby/test_thread_queue.rb: MRI language test - lexer failure
+lex ruby/test_time_tz.rb: MRI language test - lexer failure
+
+# parse phase failures (lex passes)
+parse ruby/allpairs.rb: MRI language test - parser failure
+parse ruby/beginmainend.rb: MRI language test - parser failure
+parse ruby/box/autoloading.rb: MRI language test - parser failure
+parse ruby/box/consts.rb: MRI language test - parser failure
+parse ruby/box/global_vars.rb: MRI language test - parser failure
+parse ruby/box/instance_variables.rb: MRI language test - parser failure
+parse ruby/box/procs.rb: MRI language test - parser failure
+parse ruby/box/singleton_methods.rb: MRI language test - parser failure
+parse ruby/bug-11928.rb: MRI language test - parser failure
+parse ruby/bug-13526.rb: MRI language test - parser failure
+parse ruby/enc/test_big5.rb: MRI language test - parser failure
+parse ruby/enc/test_case_mapping.rb: MRI language test - parser failure
+parse ruby/enc/test_case_options.rb: MRI language test - parser failure
+parse ruby/enc/test_cesu8.rb: MRI language test - parser failure
+parse ruby/enc/test_cp949.rb: MRI language test - parser failure
+parse ruby/enc/test_emoji.rb: MRI language test - parser failure
+parse ruby/enc/test_euc_kr.rb: MRI language test - parser failure
+parse ruby/enc/test_euc_tw.rb: MRI language test - parser failure
+parse ruby/enc/test_gb18030.rb: MRI language test - parser failure
+parse ruby/enc/test_gbk.rb: MRI language test - parser failure
+parse ruby/enc/test_regex_casefold.rb: MRI language test - parser failure
+parse ruby/enc/test_utf16.rb: MRI language test - parser failure
+parse ruby/enc/test_utf32.rb: MRI language test - parser failure
+parse ruby/enc/test_windows_1251.rb: MRI language test - parser failure
+parse ruby/enc/test_windows_1252.rb: MRI language test - parser failure
+parse ruby/lbtest.rb: MRI language test - parser failure
+parse ruby/marshaltestlib.rb: MRI language test - parser failure
+parse ruby/sentence.rb: MRI language test - parser failure
+parse ruby/test_alias.rb: MRI language test - parser failure
+parse ruby/test_arithmetic_sequence.rb: MRI language test - parser failure
+parse ruby/test_arity.rb: MRI language test - parser failure
+parse ruby/test_array.rb: MRI language test - parser failure
+parse ruby/test_autoload.rb: MRI language test - parser failure
+parse ruby/test_backtrace.rb: MRI language test - parser failure
+parse ruby/test_basicinstructions.rb: MRI language test - parser failure
+parse ruby/test_beginendblock.rb: MRI language test - parser failure
+parse ruby/test_bignum.rb: MRI language test - parser failure
+parse ruby/test_box.rb: MRI language test - parser failure
+parse ruby/test_call.rb: MRI language test - parser failure
+parse ruby/test_case.rb: MRI language test - parser failure
+parse ruby/test_class.rb: MRI language test - parser failure
+parse ruby/test_clone.rb: MRI language test - parser failure
+parse ruby/test_comparable.rb: MRI language test - parser failure
+parse ruby/test_compile_prism.rb: MRI language test - parser failure
+parse ruby/test_complex.rb: MRI language test - parser failure
+parse ruby/test_complex2.rb: MRI language test - parser failure
+parse ruby/test_complexrational.rb: MRI language test - parser failure
+parse ruby/test_const.rb: MRI language test - parser failure
+parse ruby/test_continuation.rb: MRI language test - parser failure
+parse ruby/test_data.rb: MRI language test - parser failure
+parse ruby/test_default_gems.rb: MRI language test - parser failure
+parse ruby/test_defined.rb: MRI language test - parser failure
+parse ruby/test_dir.rb: MRI language test - parser failure
+parse ruby/test_dup.rb: MRI language test - parser failure
+parse ruby/test_econv.rb: MRI language test - parser failure
+parse ruby/test_encoding.rb: MRI language test - parser failure
+parse ruby/test_enum.rb: MRI language test - parser failure
+parse ruby/test_enumerator.rb: MRI language test - parser failure
+parse ruby/test_env.rb: MRI language test - parser failure
+parse ruby/test_eval.rb: MRI language test - parser failure
+parse ruby/test_fiber.rb: MRI language test - parser failure
+parse ruby/test_fixnum.rb: MRI language test - parser failure
+parse ruby/test_flip.rb: MRI language test - parser failure
+parse ruby/test_float.rb: MRI language test - parser failure
+parse ruby/test_fnmatch.rb: MRI language test - parser failure
+parse ruby/test_frozen_error.rb: MRI language test - parser failure
+parse ruby/test_frozen.rb: MRI language test - parser failure
+parse ruby/test_gc_compact.rb: MRI language test - parser failure
+parse ruby/test_gc.rb: MRI language test - parser failure
+parse ruby/test_hash.rb: MRI language test - parser failure
+parse ruby/test_ifunless.rb: MRI language test - parser failure
+parse ruby/test_inlinecache.rb: MRI language test - parser failure
+parse ruby/test_insns_leaf.rb: MRI language test - parser failure
+parse ruby/test_integer_comb.rb: MRI language test - parser failure
+parse ruby/test_integer.rb: MRI language test - parser failure
+parse ruby/test_io_buffer.rb: MRI language test - parser failure
+parse ruby/test_io_timeout.rb: MRI language test - parser failure
+parse ruby/test_iterator.rb: MRI language test - parser failure
+parse ruby/test_key_error.rb: MRI language test - parser failure
+parse ruby/test_keyword.rb: MRI language test - parser failure
+parse ruby/test_lambda.rb: MRI language test - parser failure
+parse ruby/test_literal.rb: MRI language test - parser failure
+parse ruby/test_m17n.rb: MRI language test - parser failure
+parse ruby/test_math.rb: MRI language test - parser failure
+parse ruby/test_memory_view.rb: MRI language test - parser failure
+parse ruby/test_metaclass.rb: MRI language test - parser failure
+parse ruby/test_method_cache.rb: MRI language test - parser failure
+parse ruby/test_method.rb: MRI language test - parser failure
+parse ruby/test_module.rb: MRI language test - parser failure
+parse ruby/test_name_error.rb: MRI language test - parser failure
+parse ruby/test_nomethod_error.rb: MRI language test - parser failure
+parse ruby/test_numeric.rb: MRI language test - parser failure
+parse ruby/test_object_id.rb: MRI language test - parser failure
+parse ruby/test_objectspace.rb: MRI language test - parser failure
+parse ruby/test_optimization.rb: MRI language test - parser failure
+parse ruby/test_pack.rb: MRI language test - parser failure
+parse ruby/test_path.rb: MRI language test - parser failure
+parse ruby/test_pattern_matching.rb: MRI language test - parser failure
+parse ruby/test_pipe.rb: MRI language test - parser failure
+parse ruby/test_primitive.rb: MRI language test - parser failure
+parse ruby/test_proc.rb: MRI language test - parser failure
+parse ruby/test_process.rb: MRI language test - parser failure
+parse ruby/test_ractor.rb: MRI language test - parser failure
+parse ruby/test_rand.rb: MRI language test - parser failure
+parse ruby/test_random_formatter.rb: MRI language test - parser failure
+parse ruby/test_range.rb: MRI language test - parser failure
+parse ruby/test_rational.rb: MRI language test - parser failure
+parse ruby/test_rational2.rb: MRI language test - parser failure
+parse ruby/test_readpartial.rb: MRI language test - parser failure
+parse ruby/test_refinement.rb: MRI language test - parser failure
+parse ruby/test_require_lib.rb: MRI language test - parser failure
+parse ruby/test_rubyoptions.rb: MRI language test - parser failure
+parse ruby/test_rubyvm.rb: MRI language test - parser failure
+parse ruby/test_set.rb: MRI language test - parser failure
+parse ruby/test_settracefunc.rb: MRI language test - parser failure
+parse ruby/test_shapes.rb: MRI language test - parser failure
+parse ruby/test_signal.rb: MRI language test - parser failure
+parse ruby/test_sleep.rb: MRI language test - parser failure
+parse ruby/test_sprintf_comb.rb: MRI language test - parser failure
+parse ruby/test_stack.rb: MRI language test - parser failure
+parse ruby/test_string_memory.rb: MRI language test - parser failure
+parse ruby/test_struct.rb: MRI language test - parser failure
+parse ruby/test_super.rb: MRI language test - parser failure
+parse ruby/test_symbol.rb: MRI language test - parser failure
+parse ruby/test_system.rb: MRI language test - parser failure
+parse ruby/test_thread_cv.rb: MRI language test - parser failure
+parse ruby/test_thread.rb: MRI language test - parser failure
+parse ruby/test_threadgroup.rb: MRI language test - parser failure
+parse ruby/test_time.rb: MRI language test - parser failure
+parse ruby/test_trace.rb: MRI language test - parser failure
+parse ruby/test_transcode.rb: MRI language test - parser failure
+parse ruby/test_variable.rb: MRI language test - parser failure
+parse ruby/test_vm_dump.rb: MRI language test - parser failure
+parse ruby/test_warning.rb: MRI language test - parser failure
+parse ruby/test_weakkeymap.rb: MRI language test - parser failure
+parse ruby/test_weakmap.rb: MRI language test - parser failure
+parse ruby/test_yjit_exit_locations.rb: MRI language test - parser failure
+parse ruby/test_yjit.rb: MRI language test - parser failure
+parse ruby/test_zjit.rb: MRI language test - parser failure
+parse ruby/ut_eof.rb: MRI language test - parser failure
+
+# walk phase (parse fails)
+walk ruby/allpairs.rb: parse failed; walk skipped
+walk ruby/beginmainend.rb: parse failed; walk skipped
+walk ruby/box/autoloading.rb: parse failed; walk skipped
+walk ruby/box/consts.rb: parse failed; walk skipped
+walk ruby/box/global_vars.rb: parse failed; walk skipped
+walk ruby/box/instance_variables.rb: parse failed; walk skipped
+walk ruby/box/procs.rb: parse failed; walk skipped
+walk ruby/box/singleton_methods.rb: parse failed; walk skipped
+walk ruby/bug-11928.rb: parse failed; walk skipped
+walk ruby/bug-13526.rb: parse failed; walk skipped
+walk ruby/enc/test_big5.rb: parse failed; walk skipped
+walk ruby/enc/test_case_comprehensive.rb: parse failed; walk skipped
+walk ruby/enc/test_case_mapping.rb: parse failed; walk skipped
+walk ruby/enc/test_case_options.rb: parse failed; walk skipped
+walk ruby/enc/test_cesu8.rb: parse failed; walk skipped
+walk ruby/enc/test_cp949.rb: parse failed; walk skipped
+walk ruby/enc/test_emoji_breaks.rb: parse failed; walk skipped
+walk ruby/enc/test_emoji.rb: parse failed; walk skipped
+walk ruby/enc/test_euc_kr.rb: parse failed; walk skipped
+walk ruby/enc/test_euc_tw.rb: parse failed; walk skipped
+walk ruby/enc/test_gb18030.rb: parse failed; walk skipped
+walk ruby/enc/test_gbk.rb: parse failed; walk skipped
+walk ruby/enc/test_grapheme_breaks.rb: parse failed; walk skipped
+walk ruby/enc/test_regex_casefold.rb: parse failed; walk skipped
+walk ruby/enc/test_utf16.rb: parse failed; walk skipped
+walk ruby/enc/test_utf32.rb: parse failed; walk skipped
+walk ruby/enc/test_windows_1251.rb: parse failed; walk skipped
+walk ruby/enc/test_windows_1252.rb: parse failed; walk skipped
+walk ruby/lbtest.rb: parse failed; walk skipped
+walk ruby/marshaltestlib.rb: parse failed; walk skipped
+walk ruby/sentence.rb: parse failed; walk skipped
+walk ruby/test_alias.rb: parse failed; walk skipped
+walk ruby/test_allocation.rb: parse failed; walk skipped
+walk ruby/test_argf.rb: parse failed; walk skipped
+walk ruby/test_arithmetic_sequence.rb: parse failed; walk skipped
+walk ruby/test_arity.rb: parse failed; walk skipped
+walk ruby/test_array.rb: parse failed; walk skipped
+walk ruby/test_assignment.rb: parse failed; walk skipped
+walk ruby/test_ast.rb: parse failed; walk skipped
+walk ruby/test_autoload.rb: parse failed; walk skipped
+walk ruby/test_backtrace.rb: parse failed; walk skipped
+walk ruby/test_basicinstructions.rb: parse failed; walk skipped
+walk ruby/test_beginendblock.rb: parse failed; walk skipped
+walk ruby/test_bignum.rb: parse failed; walk skipped
+walk ruby/test_box.rb: parse failed; walk skipped
+walk ruby/test_call.rb: parse failed; walk skipped
+walk ruby/test_case.rb: parse failed; walk skipped
+walk ruby/test_class.rb: parse failed; walk skipped
+walk ruby/test_clone.rb: parse failed; walk skipped
+walk ruby/test_comparable.rb: parse failed; walk skipped
+walk ruby/test_compile_prism.rb: parse failed; walk skipped
+walk ruby/test_complex.rb: parse failed; walk skipped
+walk ruby/test_complex2.rb: parse failed; walk skipped
+walk ruby/test_complexrational.rb: parse failed; walk skipped
+walk ruby/test_const.rb: parse failed; walk skipped
+walk ruby/test_continuation.rb: parse failed; walk skipped
+walk ruby/test_data.rb: parse failed; walk skipped
+walk ruby/test_default_gems.rb: parse failed; walk skipped
+walk ruby/test_defined.rb: parse failed; walk skipped
+walk ruby/test_dir_m17n.rb: parse failed; walk skipped
+walk ruby/test_dir.rb: parse failed; walk skipped
+walk ruby/test_dup.rb: parse failed; walk skipped
+walk ruby/test_econv.rb: parse failed; walk skipped
+walk ruby/test_encoding.rb: parse failed; walk skipped
+walk ruby/test_enum.rb: parse failed; walk skipped
+walk ruby/test_enumerator.rb: parse failed; walk skipped
+walk ruby/test_env.rb: parse failed; walk skipped
+walk ruby/test_eval.rb: parse failed; walk skipped
+walk ruby/test_exception.rb: parse failed; walk skipped
+walk ruby/test_fiber.rb: parse failed; walk skipped
+walk ruby/test_file_exhaustive.rb: parse failed; walk skipped
+walk ruby/test_file.rb: parse failed; walk skipped
+walk ruby/test_fixnum.rb: parse failed; walk skipped
+walk ruby/test_flip.rb: parse failed; walk skipped
+walk ruby/test_float.rb: parse failed; walk skipped
+walk ruby/test_fnmatch.rb: parse failed; walk skipped
+walk ruby/test_frozen_error.rb: parse failed; walk skipped
+walk ruby/test_frozen.rb: parse failed; walk skipped
+walk ruby/test_gc_compact.rb: parse failed; walk skipped
+walk ruby/test_gc.rb: parse failed; walk skipped
+walk ruby/test_hash.rb: parse failed; walk skipped
+walk ruby/test_ifunless.rb: parse failed; walk skipped
+walk ruby/test_inlinecache.rb: parse failed; walk skipped
+walk ruby/test_insns_leaf.rb: parse failed; walk skipped
+walk ruby/test_integer_comb.rb: parse failed; walk skipped
+walk ruby/test_integer.rb: parse failed; walk skipped
+walk ruby/test_io_buffer.rb: parse failed; walk skipped
+walk ruby/test_io_m17n.rb: parse failed; walk skipped
+walk ruby/test_io_timeout.rb: parse failed; walk skipped
+walk ruby/test_io.rb: parse failed; walk skipped
+walk ruby/test_iseq.rb: parse failed; walk skipped
+walk ruby/test_iterator.rb: parse failed; walk skipped
+walk ruby/test_key_error.rb: parse failed; walk skipped
+walk ruby/test_keyword.rb: parse failed; walk skipped
+walk ruby/test_lambda.rb: parse failed; walk skipped
+walk ruby/test_lazy_enumerator.rb: parse failed; walk skipped
+walk ruby/test_literal.rb: parse failed; walk skipped
+walk ruby/test_m17n_comb.rb: parse failed; walk skipped
+walk ruby/test_m17n.rb: parse failed; walk skipped
+walk ruby/test_marshal.rb: parse failed; walk skipped
+walk ruby/test_math.rb: parse failed; walk skipped
+walk ruby/test_memory_view.rb: parse failed; walk skipped
+walk ruby/test_metaclass.rb: parse failed; walk skipped
+walk ruby/test_method_cache.rb: parse failed; walk skipped
+walk ruby/test_method.rb: parse failed; walk skipped
+walk ruby/test_module.rb: parse failed; walk skipped
+walk ruby/test_name_error.rb: parse failed; walk skipped
+walk ruby/test_nomethod_error.rb: parse failed; walk skipped
+walk ruby/test_numeric.rb: parse failed; walk skipped
+walk ruby/test_object_id.rb: parse failed; walk skipped
+walk ruby/test_object.rb: parse failed; walk skipped
+walk ruby/test_objectspace.rb: parse failed; walk skipped
+walk ruby/test_optimization.rb: parse failed; walk skipped
+walk ruby/test_pack.rb: parse failed; walk skipped
+walk ruby/test_parse.rb: parse failed; walk skipped
+walk ruby/test_path.rb: parse failed; walk skipped
+walk ruby/test_pattern_matching.rb: parse failed; walk skipped
+walk ruby/test_pipe.rb: parse failed; walk skipped
+walk ruby/test_primitive.rb: parse failed; walk skipped
+walk ruby/test_proc.rb: parse failed; walk skipped
+walk ruby/test_process.rb: parse failed; walk skipped
+walk ruby/test_ractor.rb: parse failed; walk skipped
+walk ruby/test_rand.rb: parse failed; walk skipped
+walk ruby/test_random_formatter.rb: parse failed; walk skipped
+walk ruby/test_range.rb: parse failed; walk skipped
+walk ruby/test_rational.rb: parse failed; walk skipped
+walk ruby/test_rational2.rb: parse failed; walk skipped
+walk ruby/test_readpartial.rb: parse failed; walk skipped
+walk ruby/test_refinement.rb: parse failed; walk skipped
+walk ruby/test_regexp.rb: parse failed; walk skipped
+walk ruby/test_require_lib.rb: parse failed; walk skipped
+walk ruby/test_require.rb: parse failed; walk skipped
+walk ruby/test_rubyoptions.rb: parse failed; walk skipped
+walk ruby/test_rubyvm.rb: parse failed; walk skipped
+walk ruby/test_set.rb: parse failed; walk skipped
+walk ruby/test_settracefunc.rb: parse failed; walk skipped
+walk ruby/test_shapes.rb: parse failed; walk skipped
+walk ruby/test_signal.rb: parse failed; walk skipped
+walk ruby/test_sleep.rb: parse failed; walk skipped
+walk ruby/test_sprintf_comb.rb: parse failed; walk skipped
+walk ruby/test_sprintf.rb: parse failed; walk skipped
+walk ruby/test_stack.rb: parse failed; walk skipped
+walk ruby/test_string_memory.rb: parse failed; walk skipped
+walk ruby/test_string.rb: parse failed; walk skipped
+walk ruby/test_stringchar.rb: parse failed; walk skipped
+walk ruby/test_struct.rb: parse failed; walk skipped
+walk ruby/test_super.rb: parse failed; walk skipped
+walk ruby/test_symbol.rb: parse failed; walk skipped
+walk ruby/test_syntax.rb: parse failed; walk skipped
+walk ruby/test_system.rb: parse failed; walk skipped
+walk ruby/test_thread_cv.rb: parse failed; walk skipped
+walk ruby/test_thread_queue.rb: parse failed; walk skipped
+walk ruby/test_thread.rb: parse failed; walk skipped
+walk ruby/test_threadgroup.rb: parse failed; walk skipped
+walk ruby/test_time_tz.rb: parse failed; walk skipped
+walk ruby/test_time.rb: parse failed; walk skipped
+walk ruby/test_trace.rb: parse failed; walk skipped
+walk ruby/test_transcode.rb: parse failed; walk skipped
+walk ruby/test_unicode_escape.rb: parse failed; walk skipped
+walk ruby/test_variable.rb: parse failed; walk skipped
+walk ruby/test_vm_dump.rb: parse failed; walk skipped
+walk ruby/test_warning.rb: parse failed; walk skipped
+walk ruby/test_weakkeymap.rb: parse failed; walk skipped
+walk ruby/test_weakmap.rb: parse failed; walk skipped
+walk ruby/test_whileuntil.rb: parse failed; walk skipped
+walk ruby/test_yield.rb: parse failed; walk skipped
+walk ruby/test_yjit_exit_locations.rb: parse failed; walk skipped
+walk ruby/test_yjit.rb: parse failed; walk skipped
+walk ruby/test_zjit.rb: parse failed; walk skipped
+walk ruby/ut_eof.rb: parse failed; walk skipped
+
+# parse phase failures (lex fails)
+parse ruby/enc/test_emoji_breaks.rb: MRI language test - lexer failure
+parse ruby/test_allocation.rb: MRI language test - lexer failure
+parse ruby/test_object.rb: MRI language test - lexer failure
+parse ruby/test_parse.rb: MRI language test - lexer failure
+parse ruby/test_iseq.rb: MRI language test - lexer failure
+parse ruby/test_lazy_enumerator.rb: MRI language test - lexer failure
+parse ruby/test_ast.rb: MRI language test - lexer failure
+parse ruby/test_file.rb: MRI language test - lexer failure
+parse ruby/test_dir_m17n.rb: MRI language test - lexer failure
+parse ruby/enc/test_grapheme_breaks.rb: MRI language test - lexer failure
+parse ruby/test_io.rb: MRI language test - lexer failure
+parse ruby/test_marshal.rb: MRI language test - lexer failure
+parse ruby/test_argf.rb: MRI language test - lexer failure
+parse ruby/test_m17n_comb.rb: MRI language test - lexer failure
+parse ruby/test_assignment.rb: MRI language test - lexer failure
+parse ruby/test_exception.rb: MRI language test - lexer failure
+parse ruby/test_sprintf.rb: MRI language test - lexer failure
+parse ruby/test_io_m17n.rb: MRI language test - lexer failure
+parse ruby/test_string.rb: MRI language test - lexer failure
+parse ruby/test_yield.rb: MRI language test - lexer failure
+parse ruby/test_require.rb: MRI language test - lexer failure
+parse ruby/test_unicode_escape.rb: MRI language test - lexer failure
+parse ruby/test_time_tz.rb: MRI language test - lexer failure
+parse ruby/test_stringchar.rb: MRI language test - lexer failure
+parse ruby/test_regexp.rb: MRI language test - lexer failure
+parse ruby/test_file_exhaustive.rb: MRI language test - lexer failure
+parse ruby/enc/test_case_comprehensive.rb: MRI language test - lexer failure
+parse ruby/test_whileuntil.rb: MRI language test - lexer failure
+parse ruby/test_thread_queue.rb: MRI language test - lexer failure
+parse ruby/test_syntax.rb: MRI language test - lexer failure

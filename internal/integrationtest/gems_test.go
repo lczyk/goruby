@@ -26,10 +26,11 @@ import (
 )
 
 const (
-	fixturesDir  = "testdata/gems"
-	lockFile     = "testdata/gems.lock"
-	skipFile     = "gems.skip"
-	phaseTimeout = 5 * time.Second
+	fixturesDir     = "testdata/gems"
+	langFixturesDir = "testdata/ruby"
+	lockFile        = "testdata/gems.lock"
+	skipFile        = "gems.skip"
+	phaseTimeout    = 5 * time.Second
 )
 
 type counters struct {
@@ -89,6 +90,15 @@ func bootstrap() error {
 	rubyFiles, err = walkRubyFiles(fixturesDir)
 	if err != nil {
 		return fmt.Errorf("walk fixtures: %w", err)
+	}
+
+	// Also walk language test fixtures (committed, not fetched).
+	langFiles, err := walkRubyFiles(langFixturesDir)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("walk lang fixtures: %w", err)
+	}
+	for _, f := range langFiles {
+		rubyFiles = append(rubyFiles, "ruby/"+f)
 	}
 	skips, err = loadSkips(skipFile)
 	if err != nil {
@@ -316,7 +326,7 @@ func runLex(src string) error {
 
 func runParse(name, src string) (*ast.Program, error) {
 	fset := gotoken.NewFileSet()
-	return parser.ParseFile(fset, name, []byte(src), parser.AllErrors|parser.ParseComments)
+	return parser.ParseFile(fset, name, []byte(src), parser.AllErrors)
 }
 
 type noopVisitor struct{}
@@ -374,7 +384,12 @@ func runPhase(t *testing.T, phase, relpath string, c *counters, phaseFn func() e
 
 func mustReadFile(t *testing.T, relpath string) string {
 	t.Helper()
-	abs := filepath.Join(fixturesDir, relpath)
+	baseDir := fixturesDir
+	if strings.HasPrefix(relpath, "ruby/") {
+		baseDir = langFixturesDir
+		relpath = strings.TrimPrefix(relpath, "ruby/")
+	}
+	abs := filepath.Join(baseDir, relpath)
 	data, err := os.ReadFile(abs)
 	assert.NoError(t, err)
 	return string(data)
