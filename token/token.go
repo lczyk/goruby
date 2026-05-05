@@ -18,6 +18,7 @@ const (
 	IDENT
 	CONST
 	GLOBAL
+	CLASS_VAR // @@variable
 	INT
 	STRING
 	literal_end
@@ -107,11 +108,12 @@ var tokens = [...]string{
 	ILLEGAL: "ILLEGAL",
 	EOF:     "EOF",
 
-	IDENT:  "IDENT",
-	CONST:  "CONST",
-	GLOBAL: "GLOBAL",
-	INT:    "INT",
-	STRING: "STRING",
+	IDENT:     "IDENT",
+	CONST:     "CONST",
+	GLOBAL:    "GLOBAL",
+	CLASS_VAR: "CLASS_VAR",
+	INT:       "INT",
+	STRING:    "STRING",
 
 	ASSIGN:    "=",
 	ADDASSIGN: "+=",
@@ -188,7 +190,6 @@ var tokens = [...]string{
 // token character sequence (e.g., for the token ADD, the string is
 // "+"). For all other tokens the string corresponds to the token
 // constant name (e.g. for the token IDENT, the string is "IDENT").
-//
 func (tok Type) String() string {
 	s := ""
 	if 0 <= tok && tok < Type(len(tokens)) {
@@ -239,28 +240,24 @@ type Token struct {
 
 // IsLiteral returns true for tokens corresponding to identifiers
 // and basic type literals; it returns false otherwise.
-//
 func (t Token) IsLiteral() bool {
 	return t.Type.IsLiteral()
 }
 
 // IsOperator returns true for tokens corresponding to operators and
 // delimiters; it returns false otherwise.
-//
 func (t Token) IsOperator() bool {
 	return t.Type.IsOperator()
 }
 
 // IsAssignOperator returns true for tokens corresponding to assignment
 // operators and delimiters; it returns false otherwise.
-//
 func (t Token) IsAssignOperator() bool {
 	return t.Type.IsAssignOperator()
 }
 
 // IsKeyword returns true for tokens corresponding to keywords;
 // it returns false otherwise.
-//
 func (t Token) IsKeyword() bool {
 	return t.Type.IsKeyword()
 }
@@ -269,20 +266,18 @@ func (t Token) IsKeyword() bool {
 
 // IsLiteral returns true for tokens corresponding to identifiers
 // and basic type literals; it returns false otherwise.
-//
 func (tok Type) IsLiteral() bool { return literal_beg < tok && tok < literal_end }
 
 // IsOperator returns true for tokens corresponding to operators and
 // delimiters; it returns false otherwise.
-//
 func (tok Type) IsOperator() bool { return operator_beg < tok && tok < operator_end }
 
 // IsAssignOperator returns true for tokens corresponding to assignment
 // operators and delimiters; it returns false otherwise.
-//
-func (tok Type) IsAssignOperator() bool { return operator_assign_beg < tok && tok < operator_assign_end }
+func (tok Type) IsAssignOperator() bool {
+	return operator_assign_beg < tok && tok < operator_assign_end
+}
 
 // IsKeyword returns true for tokens corresponding to keywords;
 // it returns false otherwise.
-//
 func (tok Type) IsKeyword() bool { return keyword_beg < tok && tok < keyword_end }

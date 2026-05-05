@@ -87,7 +87,9 @@ $foo;
 $Foo
 $dotAfter.
 $@
-$a`
+$a
+	@@foo
+`
 
 	tests := []struct {
 		expectedType    token.Type
@@ -341,6 +343,10 @@ $a`
 		{token.GLOBAL, "$@"},
 		{token.NEWLINE, "\n"},
 		{token.GLOBAL, "$a"},
+		{token.NEWLINE, "\n"},
+		{token.CLASS_VAR, "@@"},
+		{token.IDENT, "foo"},
+		{token.NEWLINE, "\n"},
 		{token.EOF, ""},
 	}
 

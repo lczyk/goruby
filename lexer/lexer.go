@@ -304,6 +304,11 @@ func startLexer(l *Lexer) StateFn {
 		l.emit(token.PIPE)
 		return startLexer
 	case '@':
+		if l.peek() == '@' {
+			l.next()
+			l.emit(token.CLASS_VAR)
+			return startLexer
+		}
 		l.emit(token.AT)
 		return startLexer
 
