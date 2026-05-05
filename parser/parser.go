@@ -72,6 +72,7 @@ var precedences = map[token.Type]int{
 	token.CONST:      precCallArg,
 	token.GLOBAL:     precCallArg,
 	token.INT:        precCallArg,
+	token.FLOAT:      precCallArg,
 	token.STRING:     precCallArg,
 	token.REGEX:      precCallArg,
 	token.XSTR:       precCallArg,
@@ -155,6 +156,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.CONST, p.parseIdentifier)
 	p.registerPrefix(token.AT, p.parseInstanceVariable)
 	p.registerPrefix(token.INT, p.parseIntegerLiteral)
+	p.registerPrefix(token.FLOAT, p.parseFloatLiteral)
 	p.registerPrefix(token.STRING, p.parseStringLiteral)
 	p.registerPrefix(token.REGEX, p.parseStringLiteral)
 	p.registerPrefix(token.XSTR, p.parseStringLiteral)
@@ -216,6 +218,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerInfix(token.CONST, p.parseCallArgument)
 	p.registerInfix(token.GLOBAL, p.parseCallArgument)
 	p.registerInfix(token.INT, p.parseCallArgument)
+	p.registerInfix(token.FLOAT, p.parseCallArgument)
 	p.registerInfix(token.STRING, p.parseCallArgument)
 	p.registerInfix(token.REGEX, p.parseCallArgument)
 	p.registerInfix(token.XSTR, p.parseCallArgument)
@@ -763,6 +766,21 @@ func (p *parser) parseIntegerLiteral() ast.Expression {
 	value, err := strconv.ParseInt(integerLiteralReplacer.Replace(p.curToken.Literal), 0, 64)
 	if err != nil {
 		msg := fmt.Errorf("could not parse %q as integer", p.curToken.Literal)
+		p.errors = append(p.errors, msg)
+		return nil
+	}
+	lit.Value = value
+	return lit
+}
+
+func (p *parser) parseFloatLiteral() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseFloatLiteral"))
+	}
+	lit := &ast.FloatLiteral{Token: p.curToken}
+	value, err := strconv.ParseFloat(integerLiteralReplacer.Replace(p.curToken.Literal), 64)
+	if err != nil {
+		msg := fmt.Errorf("could not parse %q as float", p.curToken.Literal)
 		p.errors = append(p.errors, msg)
 		return nil
 	}

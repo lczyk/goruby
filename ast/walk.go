@@ -163,6 +163,7 @@ func Walk(v Visitor, node Node) {
 	case *Identifier,
 		*Global,
 		*IntegerLiteral,
+		*FloatLiteral,
 		*StringLiteral,
 		*SymbolLiteral,
 		*Boolean,
