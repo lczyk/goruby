@@ -14,6 +14,14 @@
     "*.html"
   ],
   "words": [
+    "Errorf",
+    "Fatalf",
+    "funcs",
+    "integrationtest",
+    "metaprogramming",
+    "relpath",
+    "stdlib",
+    "testdata",
     "ADDASSIGN",
     "arithmetics",
     "barfoo",
