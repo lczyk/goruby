@@ -48,6 +48,12 @@ type Lexer struct {
 	tokens       chan token.Token // channel of scanned tokens.
 	lastToken    token.Token      // lastToken stores the last token emitted by the lexer
 	hadWhitespace bool            // true if whitespace was skipped before current token
+
+	// Heredoc state.
+	heredocDelim  string
+	heredocIndent bool // <<-
+	heredocSquig  bool // <<~
+	heredocQuote  rune
 }
 
 // NextToken will return the next token processed from the lexer.
@@ -293,6 +299,21 @@ func startLexer(l *Lexer) StateFn {
 		}
 		if l.peek() == '<' {
 			l.next()
+			// Check for heredoc: <<, <<-, <<~
+			p := l.peek()
+			if p == '-' || p == '~' {
+				l.next()
+				p2 := l.peek()
+				if isLetter(p2) || p2 == '_' || p2 == '"' || p2 == '\'' || p2 == '`' {
+					return lexHeredocStart(l, p == '-', p == '~')
+				}
+				l.backup()
+				l.emit(token.LSHIFT)
+				return startLexer
+			}
+			if isLetter(p) || p == '_' || p == '"' || p == '\'' || p == '`' {
+				return lexHeredocStart(l, false, false)
+			}
 			l.emit(token.LSHIFT)
 			return startLexer
 		}
@@ -557,17 +578,85 @@ func lexSingleQuoteString(l *Lexer) StateFn {
 }
 
 func lexCharacterLiteral(l *Lexer) StateFn {
-	l.ignore()
+	l.ignore() // skip ?
 	r := l.next()
 	if isWhitespace(r) && r != '\t' && r != '\v' && r != '\f' && r != '\r' {
 		return l.errorf("invalid character syntax; use ?\\s")
 	}
 	if r == '\\' {
+		// Read the full escape sequence.
 		r = l.next()
+		switch r {
+		case 'u':
+			if l.peek() == '{' {
+				l.next() // consume {
+				for {
+					c := l.next()
+					if c == eof || c == '\n' {
+						return l.errorf("unterminated Unicode escape")
+					}
+					if c == '}' {
+						break
+					}
+				}
+			}
+			// else: \u without {} is invalid; already consumed u
+		case 'x':
+			// \xNN — one or two hex digits
+			for i := 0; i < 2; i++ {
+				if isHexDigit(l.peek()) {
+					l.next()
+				}
+			}
+		case 'C':
+			// \C-x or \C-\M-x
+			if l.peek() == '-' {
+				l.next() // consume -
+				r = l.next()
+				if r == 'M' && l.peek() == '-' {
+					l.next() // consume -
+					l.next() // consume the final char
+				}
+				// else: \C-x — already consumed the char after -
+			}
+		case 'M':
+			// \M-x or \M-\C-x
+			if l.peek() == '-' {
+				l.next() // consume -
+				r = l.next()
+				if r == 'C' && l.peek() == '-' {
+					l.next() // consume -
+					l.next() // consume the final char
+				}
+				// else: \M-x — already consumed the char after -
+			}
+		case 'c':
+			// \cx — control char (lowercase c variant)
+			l.next() // consume the character after \c
+		case 'o':
+			// \o{NNN} or \oNNN
+			if l.peek() == '{' {
+				l.next()
+				for {
+					c := l.next()
+					if c == eof || c == '\n' {
+						return l.errorf("unterminated octal escape")
+					}
+					if c == '}' {
+						break
+					}
+				}
+			} else {
+				for i := 0; i < 3; i++ {
+					if isOctDigit(l.peek()) {
+						l.next()
+					}
+				}
+			}
+		}
+		// Simple escapes (\n, \t, etc.) are already consumed (single char after \).
 	}
-	if p := l.peek(); !isWhitespace(p) && !isExpressionDelimiter(p) {
-		return l.errorf("unexpected '?'")
-	}
+	// After the char/escape, emit the character as a string.
 	l.emit(token.STRING)
 	return startLexer
 }
@@ -791,6 +880,113 @@ func lexBacktick(l *Lexer) StateFn {
 	l.next()
 	l.ignore()
 	return startLexer
+}
+
+// lexHeredocStart reads the heredoc delimiter and transitions to body lexing.
+func lexHeredocStart(l *Lexer, indent, squig bool) StateFn {
+	l.heredocIndent = indent
+	l.heredocSquig = squig
+	l.heredocQuote = 0
+	l.ignore() // consume the << or <<- or <<~
+
+	// Check for quoted delimiter: <<"EOS", <<'EOS', <<`EOS`
+	p := l.peek()
+	if p == '"' || p == '\'' || p == '`' {
+		l.heredocQuote = p
+		l.next()
+	}
+
+	// Read delimiter word.
+	l.heredocDelim = ""
+	for {
+		r := l.peek()
+		if r == eof || r == '\n' {
+			break
+		}
+		if l.heredocQuote != 0 && r == l.heredocQuote {
+			l.next()
+			break
+		}
+		if l.heredocQuote == 0 && !isLetter(r) && !isDigit(r) && r != '_' {
+			break
+		}
+		l.next()
+		l.heredocDelim += string(r)
+	}
+
+	// Skip to end of line.
+	for {
+		r := l.next()
+		if r == eof || r == '\n' {
+			break
+		}
+	}
+	l.ignore()
+	return lexHeredocBody
+}
+
+// lexHeredocBody reads the heredoc content until the delimiter appears at line start.
+func lexHeredocBody(l *Lexer) StateFn {
+	delim := l.heredocDelim
+	for {
+		r := l.next()
+		if r == eof {
+			return l.errorf("unterminated heredoc")
+		}
+		if r == '\n' {
+			contentEnd := l.pos
+
+			r2 := l.next()
+			if r2 == eof {
+				return l.errorf("unterminated heredoc")
+			}
+			if l.heredocIndent {
+				for r2 == ' ' || r2 == '\t' {
+					r2 = l.next()
+					if r2 == eof {
+						return l.errorf("unterminated heredoc")
+					}
+				}
+			}
+
+			matched := true
+			for i := 0; i < len(delim); i++ {
+				if r2 != rune(delim[i]) {
+					matched = false
+					break
+				}
+				if i < len(delim)-1 {
+					r2 = l.next()
+					if r2 == eof {
+						return l.errorf("unterminated heredoc")
+					}
+				}
+			}
+
+			if matched {
+				r2 = l.next()
+				if r2 == eof || r2 == '\n' || r2 == ';' {
+					if r2 == ';' {
+						for {
+							r3 := l.next()
+							if r3 == eof || r3 == '\n' {
+								break
+							}
+						}
+					}
+					after := l.pos
+					l.pos = contentEnd
+					l.emit(token.STRING)
+					l.pos = after
+					l.ignore()
+					l.heredocDelim = ""
+					return startLexer
+				}
+			}
+
+			l.pos = contentEnd
+		}
+	}
 }
 
 func isExpressionEnd(tok token.Type) bool {
