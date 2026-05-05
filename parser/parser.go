@@ -77,6 +77,7 @@ var precedences = map[token.Type]int{
 	token.REGEX:      precCallArg,
 	token.XSTR:       precCallArg,
 	token.SELF:       precCallArg,
+	token.LAMBDA:     precCallArg,
 	token.LBRACKET:   precIndex,
 	token.LBRACE:     precBlockBraces,
 	token.DO:         precBlockDo,
@@ -90,6 +91,15 @@ var precedences = map[token.Type]int{
 	token.LOGICALOR:  precLogicalOr,
 	token.LOGICALAND: precLogicalAnd,
 	token.CAPTURE:    precCapture,
+	token.POWER:      precProduct,
+	token.RANGE:      precLessGreater,
+	token.RANGEEX:    precLessGreater,
+	token.LONELY:     precCall,
+	token.KW_AND:     precLogicalAnd,
+	token.KW_OR:      precLogicalOr,
+	token.POWERASSIGN: precAssignment,
+	token.ORASSIGN:   precAssignment,
+	token.ANDASSIGN:  precAssignment,
 }
 
 var tokensNotPossibleInCallArgs = []token.Type{
@@ -161,6 +171,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.REGEX, p.parseStringLiteral)
 	p.registerPrefix(token.XSTR, p.parseStringLiteral)
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
+	p.registerPrefix(token.PLUS, p.parsePrefixExpression)
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
 	p.registerPrefix(token.TILDE, p.parsePrefixExpression)
 	p.registerPrefix(token.TRUE, p.parseBoolean)
@@ -183,6 +194,15 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.KEYWORD__FILE__, p.parseKeyword__FILE__)
 	p.registerPrefix(token.BEGIN, p.parseExceptionHandlingBlock)
 	p.registerPrefix(token.CAPTURE, p.parseBlockCapture)
+	p.registerPrefix(token.KW_SUPER, p.parseSelf)
+	p.registerPrefix(token.KW_UNDEF, p.parseSelf)
+	p.registerPrefix(token.KW_NOT, p.parsePrefixExpression)
+	p.registerPrefix(token.KW_DEFINED, p.parseSelf)
+	p.registerPrefix(token.KW_ALIAS, p.parseSelf)
+	p.registerPrefix(token.KW_REDO, p.parseSelf)
+	p.registerPrefix(token.KW_RETRY, p.parseSelf)
+	p.registerPrefix(token.KW_ENSURE, p.parseSelf)
+	p.registerPrefix(token.LAMBDA, p.parseSelf)
 
 	p.infixParseFns = make(map[token.Type]infixParseFn)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
@@ -225,11 +245,21 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerInfix(token.SYMBEG, p.parseCallArgument)
 	p.registerInfix(token.CAPTURE, p.parseCallArgument)
 	p.registerInfix(token.SELF, p.parseCallArgument)
+	p.registerInfix(token.LAMBDA, p.parseCallArgument)
 	p.registerInfix(token.LBRACE, p.parseCallBlock)
 	p.registerInfix(token.DO, p.parseCallBlock)
 	p.registerInfix(token.DOT, p.parseMethodCall)
 	p.registerInfix(token.COMMA, p.parseExpressions)
 	p.registerInfix(token.LBRACKET, p.parseIndexExpression)
+	p.registerInfix(token.POWER, p.parseInfixExpression)
+	p.registerInfix(token.RANGE, p.parseInfixExpression)
+	p.registerInfix(token.RANGEEX, p.parseInfixExpression)
+	p.registerInfix(token.LONELY, p.parseMethodCall)
+	p.registerInfix(token.KW_AND, p.parseInfixExpression)
+	p.registerInfix(token.KW_OR, p.parseInfixExpression)
+	p.registerInfix(token.POWERASSIGN, p.parseAssignmentOperator)
+	p.registerInfix(token.ORASSIGN, p.parseAssignmentOperator)
+	p.registerInfix(token.ANDASSIGN, p.parseAssignmentOperator)
 	p.registerInfix(token.SCOPE, p.parseScopedIdentifierExpression)
 
 	// Read two tokens, so curToken and peekToken are both set
