@@ -63,6 +63,11 @@ starter set is small; add gems by appending to
 `internal/integrationtest/testdata/gems.lock`. see `plan.md` for design
 notes on the suite.
 
+## supported syntax
+
+see `features.md` for the running checklist of ruby syntax recognised by
+the parser, and what's still outstanding.
+
 ## license
 
 MIT, see `LICENSE`.

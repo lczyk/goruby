@@ -14,9 +14,11 @@
     "*.html"
   ],
   "words": [
+    "elif",
     "Errorf",
     "Fatalf",
     "funcs",
+    "idents",
     "integrationtest",
     "metaprogramming",
     "relpath",
