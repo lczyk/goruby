@@ -1,46 +1,59 @@
-# Run tests with race detection
-test:
+.SUFFIXES:
+
+GO_DIRS := ./ast ./lexer ./parser ./token ./internal
+
+help:  ## Show this help
+	@echo "Available targets:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+.PHONY: test
+test:  ## Run unit tests with race detection
 	go test -race ./...
 
-# Run static analysis
-lint:
+.PHONY: lint
+lint:  ## go vet + gofmt check (no writes)
 	go vet ./...
-	gofmt -s -d . | { ! grep .; }
+	@out=$$(gofmt -s -l $(GO_DIRS)); \
+	if [ -n "$$out" ]; then echo "Unformatted files:"; echo "$$out"; exit 1; fi
 
-# Format Go source files
-fmt:
-	gofmt -s -w .
+.PHONY: fmt
+fmt:  ## gofmt the tree in place
+	gofmt -s -w $(GO_DIRS)
 
-# Spellcheck
-spellcheck:
-	npx cspell --no-progress "**" 2>/dev/null || echo "  (cspell not found, skipping)"
+.PHONY: spellcheck
+spellcheck:  ## Spellcheck sources and docs with cspell (via npx)
+	npx --yes cspell --no-progress --gitignore "**/*.go" "**/*.md" "makefile"
 
-# Benchmark; override PKG BENCH BENCHTIME to customise
-bench:
-	go test -bench=$(or $(BENCH),.) -benchtime=$(or $(BENCHTIME),1s) -run='^$$' ./$(or $(PKG),...)
+.PHONY: bench
+bench:  ## Run benchmarks (override scope/duration: PKG=... BENCH=... BENCHTIME=...)
+	go test -run '^$$' -bench '$(or $(BENCH),.)' -benchmem -benchtime '$(or $(BENCHTIME),1s)' $(or $(PKG),./...)
 
-# Coverage profile and HTML report
-cover:
-	go test -coverprofile=coverage.out ./...
-	go tool cover -func=coverage.out
-	go tool cover -html=coverage.out -o coverage.html
+.PHONY: cover
+cover:  ## Coverage profile + HTML report (cover.out, cover.html)
+	go test -coverpkg=./... -coverprofile=cover.out -race ./...
+	go tool cover -func=cover.out
+	go tool cover -html=cover.out -o cover.html
 
-# Pre-commit gate: lint + test + spellcheck
-verify: lint test spellcheck
+.PHONY: cover-open
+cover-open: cover  ## Run coverage and open the HTML report in a browser
+	go tool cover -html=cover.out
 
-# Fetch ruby gems listed in internal/integrationtest/testdata/gems.lock.
-# Used by integration tests; never invoked by `go test` (see `integration`).
-gems:
+.PHONY: verify
+verify: lint test spellcheck  ## Pre-commit gate: lint + test + spellcheck
+	@echo "All checks passed."
+
+.PHONY: gems
+gems:  ## Fetch ruby gem fixtures for the integration suite
 	@bash internal/integrationtest/testdata/fetch_gems.sh
 
-# Remove fetched gem fixtures
-gems-clean:
+.PHONY: gems-clean
+gems-clean:  ## Remove fetched gem fixtures
 	rm -rf internal/integrationtest/testdata/gems/
 
-# Run integration tests (requires fetched fixtures)
-integration: gems
+.PHONY: integration
+integration: gems  ## Run integration smoke suite (requires fetched fixtures)
 	go test -tags=integration -race -timeout 10m ./internal/integrationtest/...
 
-# Remove generated files
-clean:
-	rm -f coverage.out coverage.html
+.PHONY: clean
+clean:  ## Remove generated files
+	rm -f cover.out cover.html

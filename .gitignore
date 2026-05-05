@@ -23,8 +23,8 @@ _testmain.go
 *.test
 
 bin/
-coverage.out
-coverage.html
+cover.out
+cover.html
 .trace
 
 # Integration-test fixtures fetched by `make gems`
