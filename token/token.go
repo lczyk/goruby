@@ -29,12 +29,12 @@ const (
 	// Operators
 	operator_beg
 	operator_assign_beg
-	ASSIGN    // =
-	ADDASSIGN // +=
-	SUBASSIGN // -=
-	MULASSIGN // *=
-	DIVASSIGN // /=
-	MODASSIGN // %=
+	ASSIGN      // =
+	ADDASSIGN   // +=
+	SUBASSIGN   // -=
+	MULASSIGN   // *=
+	DIVASSIGN   // /=
+	MODASSIGN   // %=
 	POWERASSIGN // **=
 	ORASSIGN    // ||=
 	ANDASSIGN   // &&=
@@ -47,11 +47,11 @@ const (
 	SLASH      // /
 	MODULO     // %
 	XOR        // ^
-	POWER   // **
-	LONELY  // &.
-	RANGE   // ..
-	RANGEEX // ...
-	LAMBDA  // ->
+	POWER      // **
+	LONELY     // &.
+	RANGE      // ..
+	RANGEEX    // ...
+	LAMBDA     // ->
 	AND        // &
 	LOGICALAND // &&
 	PIPE       // |
@@ -64,11 +64,11 @@ const (
 	EQ        // ==
 	NOTEQ     // !=
 	SPACESHIP // <=>
-	LSHIFT // <<
+	LSHIFT    // <<
 
-	TILDE   // ~
-	MATCH   // =~
-	NMATCH  // !~
+	TILDE  // ~
+	MATCH  // =~
+	NMATCH // !~
 	operator_end
 
 	HASHROCKET // =>
@@ -154,12 +154,12 @@ var tokens = [...]string{
 	REGEX:     "REGEX",
 	XSTR:      "XSTR",
 
-	ASSIGN:    "=",
-	ADDASSIGN: "+=",
-	SUBASSIGN: "-=",
-	MULASSIGN: "*=",
-	DIVASSIGN: "/=",
-	MODASSIGN: "%=",
+	ASSIGN:      "=",
+	ADDASSIGN:   "+=",
+	SUBASSIGN:   "-=",
+	MULASSIGN:   "*=",
+	DIVASSIGN:   "/=",
+	MODASSIGN:   "%=",
 	POWERASSIGN: "**=",
 	ORASSIGN:    "||=",
 	ANDASSIGN:   "&&=",
@@ -171,11 +171,11 @@ var tokens = [...]string{
 	SLASH:      "/",
 	MODULO:     "%",
 	XOR:        "^",
-	POWER:   "**",
-	LONELY:  "&.",
-	RANGE:   "..",
-	RANGEEX: "...",
-	LAMBDA:  "->",
+	POWER:      "**",
+	LONELY:     "&.",
+	RANGE:      "..",
+	RANGEEX:    "...",
+	LAMBDA:     "->",
 	AND:        "&",
 	CAPTURE:    "&",
 	LOGICALAND: "&&",
@@ -191,7 +191,7 @@ var tokens = [...]string{
 	LSHIFT:    "<<",
 	TILDE:     "~",
 	MATCH:     "=~",
-	NMATCH:     "!~",
+	NMATCH:    "!~",
 
 	NEWLINE:   "NEWLINE",
 	COMMA:     ",",
@@ -215,45 +215,45 @@ var tokens = [...]string{
 	QMARK:  "?",
 	SYMBEG: ":",
 
-	DEF:             "def",
-	SELF:            "self",
-	END:             "end",
-	UNLESS:          "unless",
-	IF:              "if",
-	THEN:            "then",
-	ELSE:            "else",
-	TRUE:            "true",
-	FALSE:           "false",
-	RETURN:          "return",
-	NIL:             "nil",
-	MODULE:          "module",
-	CLASS:           "class",
-	DO:              "do",
-	YIELD:           "yield",
-	BEGIN:           "begin",
-	RESCUE:          "rescue",
-	WHILE:           "while",
-	UNTIL:           "until",
-	CASE:            "case",
-	WHEN:            "when",
-	BREAK:           "break",
-	NEXT:            "next",
-	KEYWORD__FILE__: "__FILE__",
-	KEYWORD__LINE__:    "__LINE__",
+	DEF:                 "def",
+	SELF:                "self",
+	END:                 "end",
+	UNLESS:              "unless",
+	IF:                  "if",
+	THEN:                "then",
+	ELSE:                "else",
+	TRUE:                "true",
+	FALSE:               "false",
+	RETURN:              "return",
+	NIL:                 "nil",
+	MODULE:              "module",
+	CLASS:               "class",
+	DO:                  "do",
+	YIELD:               "yield",
+	BEGIN:               "begin",
+	RESCUE:              "rescue",
+	WHILE:               "while",
+	UNTIL:               "until",
+	CASE:                "case",
+	WHEN:                "when",
+	BREAK:               "break",
+	NEXT:                "next",
+	KEYWORD__FILE__:     "__FILE__",
+	KEYWORD__LINE__:     "__LINE__",
 	KEYWORD__ENCODING__: "__ENCODING__",
-	KW_ALIAS:           "alias",
-	KW_AND:             "and",
-	KW_DEFINED:         "defined?",
-	KW_ELSIF:           "elsif",
-	KW_ENSURE:          "ensure",
-	KW_FOR:             "for",
-	KW_IN:              "in",
-	KW_NOT:             "not",
-	KW_OR:              "or",
-	KW_REDO:            "redo",
-	KW_RETRY:           "retry",
-	KW_SUPER:           "super",
-	KW_UNDEF:           "undef",
+	KW_ALIAS:            "alias",
+	KW_AND:              "and",
+	KW_DEFINED:          "defined?",
+	KW_ELSIF:            "elsif",
+	KW_ENSURE:           "ensure",
+	KW_FOR:              "for",
+	KW_IN:               "in",
+	KW_NOT:              "not",
+	KW_OR:               "or",
+	KW_REDO:             "redo",
+	KW_RETRY:            "retry",
+	KW_SUPER:            "super",
+	KW_UNDEF:            "undef",
 }
 
 // String returns the string corresponding to the token tok.

@@ -1034,7 +1034,7 @@ type ClassExpression struct {
 	Token      token.Token // The class keyword
 	EndToken   token.Token // The end token
 	Name       *Identifier // The class name, will always be a const
-	SuperClass Expression // The superclass, if any
+	SuperClass Expression  // The superclass, if any
 	Body       *BlockStatement
 }
 

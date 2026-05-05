@@ -40,14 +40,14 @@ func New(input string) *Lexer {
 
 // Lexer is the engine to process input and emit Tokens
 type Lexer struct {
-	input        string           // the string being scanned.
-	state        StateFn          // the next lexing function to enter
-	pos          int              // current position in the input.
-	start        int              // start position of this item.
-	width        int              // width of last rune read from input.
-	tokens       chan token.Token // channel of scanned tokens.
-	lastToken    token.Token      // lastToken stores the last token emitted by the lexer
-	hadWhitespace bool            // true if whitespace was skipped before current token
+	input         string           // the string being scanned.
+	state         StateFn          // the next lexing function to enter
+	pos           int              // current position in the input.
+	start         int              // start position of this item.
+	width         int              // width of last rune read from input.
+	tokens        chan token.Token // channel of scanned tokens.
+	lastToken     token.Token      // lastToken stores the last token emitted by the lexer
+	hadWhitespace bool             // true if whitespace was skipped before current token
 
 	// Heredoc state.
 	heredocDelim  string
