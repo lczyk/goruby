@@ -33,6 +33,19 @@ cover:
 # Pre-commit gate: lint + test + spellcheck
 verify: lint test spellcheck
 
+# Fetch ruby gems listed in internal/integrationtest/testdata/gems.lock.
+# Used by integration tests; never invoked by `go test` (see `integration`).
+gems:
+	@bash internal/integrationtest/testdata/fetch_gems.sh
+
+# Remove fetched gem fixtures
+gems-clean:
+	rm -rf internal/integrationtest/testdata/gems/
+
+# Run integration tests (requires fetched fixtures)
+integration: gems
+	go test -tags=integration -race -timeout 10m ./internal/integrationtest/...
+
 # Remove generated files
 clean:
 	rm -f coverage.out coverage.html

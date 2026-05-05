@@ -9,5 +9,6 @@ require (
 
 require (
 	github.com/chzyer/test v1.0.0 // indirect
+	github.com/lczyk/assert v0.6.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 )

@@ -1,0 +1,14 @@
+# Skip list for ruby gem integration tests. Format:
+#
+#   <phase> <path-or-glob>[: reason]
+#
+# - <phase>: lex, parse, or walk
+# - path or single-* glob, relative to internal/integrationtest/testdata/gems/
+# - lines starting with # and blank lines are ignored
+#
+# Each entry is asserted to still fail; if the underlying phase now passes,
+# the test reports `stale skip-list entry` and the line should be removed.
+#
+# example:
+#   parse minitest/lib/minitest/spec.rb: heredoc not supported
+#   parse minitest/test/*: rspec-style metaprogramming

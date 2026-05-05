@@ -26,3 +26,8 @@ bin/
 coverage.out
 coverage.html
 .trace
+
+# Integration-test fixtures fetched by `make gems`
+internal/integrationtest/testdata/gems/
+
+goruby/
