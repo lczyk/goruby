@@ -1023,6 +1023,9 @@ func (p *parser) parseClass() ast.Expression {
 	if p.trace {
 		defer un(trace(p, "parseClass"))
 	}
+	if p.peekTokenIs(token.LSHIFT) {
+		return p.parseSingletonClass()
+	}
 	expr := &ast.ClassExpression{Token: p.curToken}
 	if !p.accept(token.CONST) {
 		return nil
@@ -1033,6 +1036,31 @@ func (p *parser) parseClass() ast.Expression {
 		p.consume(token.LT)
 		expr.SuperClass = p.parseIdentifier().(*ast.Identifier)
 	}
+
+	if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
+		return nil
+	}
+
+	expr.Body = p.parseBlockStatement()
+
+	if !p.accept(token.END) {
+		return nil
+	}
+	expr.EndToken = p.curToken
+	return expr
+}
+
+func (p *parser) parseSingletonClass() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseSingletonClass"))
+	}
+	expr := &ast.SingletonClassExpression{Token: p.curToken}
+
+	if !p.consume(token.LSHIFT) {
+		return nil
+	}
+
+	expr.Expr = p.parseExpression(precLowest)
 
 	if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
 		return nil

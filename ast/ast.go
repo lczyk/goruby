@@ -1047,6 +1047,35 @@ func (m *ClassExpression) String() string {
 	return out.String()
 }
 
+// SingletonClassExpression represents a singleton class definition: class << self; ...; end
+type SingletonClassExpression struct {
+	Token    token.Token // the 'class' token
+	EndToken token.Token // the 'end' token
+	Expr     Expression  // the expression after << (e.g. self)
+	Body     *BlockStatement
+}
+
+func (s *SingletonClassExpression) expressionNode() {}
+
+// Pos returns the position of first character belonging to the node
+func (s *SingletonClassExpression) Pos() int { return s.Token.Pos }
+
+// End returns the position of the 'end' token
+func (s *SingletonClassExpression) End() int { return s.EndToken.Pos }
+
+// TokenLiteral returns the literal from token.CLASS
+func (s *SingletonClassExpression) TokenLiteral() string { return s.Token.Literal }
+func (s *SingletonClassExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	out.WriteString(" << ")
+	out.WriteString(s.Expr.String())
+	out.WriteString("\n")
+	out.WriteString(s.Body.String())
+	out.WriteString("\nend")
+	return out.String()
+}
+
 // PrefixExpression represents a prefix operator
 type PrefixExpression struct {
 	Token    token.Token // The prefix token, e.g. !

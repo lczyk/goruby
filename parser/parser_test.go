@@ -52,8 +52,8 @@ func TestBlockCapture(t *testing.T) {
 			result: &ast.FunctionLiteral{
 				Name: &ast.Identifier{Value: "foo"},
 				Parameters: []*ast.FunctionParameter{
-					&ast.FunctionParameter{Name: &ast.Identifier{Value: "x"}},
-					&ast.FunctionParameter{Name: &ast.Identifier{Value: "y"}},
+					{Name: &ast.Identifier{Value: "x"}},
+					{Name: &ast.Identifier{Value: "y"}},
 				},
 				CapturedBlock: &ast.BlockCapture{
 					Name: &ast.Identifier{Value: "block"},
@@ -1614,7 +1614,7 @@ func TestBlockExpression(t *testing.T) {
 		},
 		{
 			"method { |x| x }",
-			[]*ast.Identifier{&ast.Identifier{Value: "x"}},
+			[]*ast.Identifier{{Value: "x"}},
 			"x",
 		},
 		{
@@ -1632,14 +1632,14 @@ func TestBlockExpression(t *testing.T) {
 		},
 		{
 			"method do |x| x; end",
-			[]*ast.Identifier{&ast.Identifier{Value: "x"}},
+			[]*ast.Identifier{{Value: "x"}},
 			"x",
 		},
 		{
 			`method do |x|
 				x
 			end`,
-			[]*ast.Identifier{&ast.Identifier{Value: "x"}},
+			[]*ast.Identifier{{Value: "x"}},
 			"x",
 		},
 	}
@@ -4056,6 +4056,49 @@ func TestParsingClassExpressions(t *testing.T) {
 
 		_, err := parseSource(input)
 		checkParserErrors(t, err)
+	})
+}
+
+func TestParsingSingletonClassExpressions(t *testing.T) {
+	t.Run("class << self", func(t *testing.T) {
+		input := "class << self\n3\nend\n"
+
+		program, err := parseSource(input)
+		checkParserErrors(t, err)
+
+		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+		sc, ok := stmt.Expression.(*ast.SingletonClassExpression)
+		if !ok {
+			t.Fatalf("exp not *ast.SingletonClassExpression. got=%T", stmt.Expression)
+		}
+
+		selfExpr, ok := sc.Expr.(*ast.Self)
+		if !ok {
+			t.Fatalf("exp not *ast.Self. got=%T", sc.Expr)
+		}
+		_ = selfExpr
+	})
+
+	t.Run("class << other_expr", func(t *testing.T) {
+		input := "class << some_var\n3\nend\n"
+
+		program, err := parseSource(input)
+		checkParserErrors(t, err)
+
+		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+		sc, ok := stmt.Expression.(*ast.SingletonClassExpression)
+		if !ok {
+			t.Fatalf("exp not *ast.SingletonClassExpression. got=%T", stmt.Expression)
+		}
+
+		ident, ok := sc.Expr.(*ast.Identifier)
+		if !ok {
+			t.Fatalf("exp not *ast.Identifier. got=%T", sc.Expr)
+		}
+		if ident.Value != "some_var" {
+			t.Logf("Expected expr 'some_var', got %q", ident.Value)
+			t.Fail()
+		}
 	})
 }
 
