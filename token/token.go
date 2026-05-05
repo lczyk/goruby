@@ -20,6 +20,7 @@ const (
 	GLOBAL
 	CLASS_VAR // @@variable
 	INT
+	FLOAT
 	STRING
 	REGEX // /pattern/
 	XSTR  // `command`
@@ -125,6 +126,7 @@ var tokens = [...]string{
 	GLOBAL:    "GLOBAL",
 	CLASS_VAR: "CLASS_VAR",
 	INT:       "INT",
+	FLOAT:     "FLOAT",
 	STRING:    "STRING",
 	REGEX:     "REGEX",
 	XSTR:      "XSTR",

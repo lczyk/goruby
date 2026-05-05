@@ -115,6 +115,15 @@ func (l *Lexer) peek() rune {
 	return r
 }
 
+// peekSecond returns the rune after the next rune, without consuming.
+func (l *Lexer) peekSecond() rune {
+	l.next()
+	r := l.next()
+	l.backup()
+	l.backup()
+	return r
+}
+
 // error returns an error token and terminates the scan by passing
 // back a nil pointer that will be the next state, terminating l.run.
 func (l *Lexer) errorf(format string, args ...interface{}) StateFn {
@@ -164,6 +173,9 @@ func startLexer(l *Lexer) StateFn {
 		l.emit(token.SYMBEG)
 		return startLexer
 	case '.':
+		if isDigit(l.peek()) {
+			return lexFloat(l)
+		}
 		l.emit(token.DOT)
 		return startLexer
 	case '=':
@@ -381,6 +393,147 @@ func lexIdentifier(l *Lexer) StateFn {
 
 func lexDigit(l *Lexer) StateFn {
 	r := l.next()
+
+	// Leading zero: check for hex, octal, binary, decimal prefixes.
+	if r == '0' {
+		p := l.peek()
+		switch p {
+		case 'x', 'X':
+			l.next() // consume x
+			return lexHexDigits(l)
+		case 'o', 'O':
+			l.next() // consume o
+			return lexOctDigits(l)
+		case 'b', 'B':
+			l.next() // consume b
+			return lexBinDigits(l)
+		case 'd', 'D':
+			l.next() // consume d
+			return lexDecimalDigits(l)
+		case '.': // 0.5
+			l.next() // consume .
+			return lexFloatFraction(l)
+		}
+		// If followed by digit, continue reading as octal/decimal int.
+		if isDigitOrUnderscore(p) {
+			r = l.next()
+		}
+	}
+
+	// Integer part.
+	for isDigitOrUnderscore(r) {
+		r = l.next()
+	}
+
+	// Check what follows the integer part.
+	if r == '.' && isDigit(l.peek()) {
+		return lexFloatFraction(l)
+	}
+	if r == 'e' || r == 'E' {
+		p := l.peek()
+		if p == '+' || p == '-' {
+			if isDigit(l.peekSecond()) {
+				l.next() // consume e/E
+				l.next() // consume +/-
+				return lexFloatExponent(l)
+			}
+		} else if isDigit(p) {
+			l.next() // consume e/E
+			return lexFloatExponent(l)
+		}
+	}
+	// Rational or complex suffix.
+	if r == 'r' || r == 'i' {
+		l.next() // consume suffix
+		l.emit(token.INT)
+		return startLexer
+	}
+
+	l.backup()
+	l.emit(token.INT)
+	return startLexer
+}
+
+func lexFloat(l *Lexer) StateFn {
+	// Leading-dot float: .5 — the dot was already consumed by startLexer.
+	return lexFloatFraction(l)
+}
+
+func lexFloatFraction(l *Lexer) StateFn {
+	// Fractional part: already consumed the dot, read digits.
+	r := l.next()
+	for isDigitOrUnderscore(r) {
+		r = l.next()
+	}
+	// Optional exponent.
+	if r == 'e' || r == 'E' {
+		p := l.peek()
+		if p == '+' || p == '-' {
+			if isDigit(l.peekSecond()) || p == '-' {
+				l.next()
+				l.next()
+				return lexFloatExponent(l)
+			}
+		} else if isDigit(p) {
+			l.next()
+			return lexFloatExponent(l)
+		}
+	}
+	// Optional rational/complex suffix.
+	if r == 'r' || r == 'i' {
+		l.next()
+	}
+	l.backup()
+	l.emit(token.FLOAT)
+	return startLexer
+}
+
+func lexFloatExponent(l *Lexer) StateFn {
+	r := l.next()
+	for isDigitOrUnderscore(r) {
+		r = l.next()
+	}
+	// Optional rational/complex suffix after exponent.
+	if r == 'r' || r == 'i' {
+		l.next()
+	}
+	l.backup()
+	l.emit(token.FLOAT)
+	return startLexer
+}
+
+func lexHexDigits(l *Lexer) StateFn {
+	r := l.next()
+	for isHexDigit(r) {
+		r = l.next()
+	}
+	l.backup()
+	l.emit(token.INT)
+	return startLexer
+}
+
+func lexOctDigits(l *Lexer) StateFn {
+	r := l.next()
+	for isOctDigit(r) {
+		r = l.next()
+	}
+	l.backup()
+	l.emit(token.INT)
+	return startLexer
+}
+
+func lexBinDigits(l *Lexer) StateFn {
+	r := l.next()
+	for isBinDigit(r) {
+		r = l.next()
+	}
+	l.backup()
+	l.emit(token.INT)
+	return startLexer
+}
+
+func lexDecimalDigits(l *Lexer) StateFn {
+	r := l.next()
 	for isDigitOrUnderscore(r) {
 		r = l.next()
 	}
@@ -509,7 +662,7 @@ func skipInterpolation(l *Lexer) {
 func lexGlobal(l *Lexer) StateFn {
 	r := l.next()
 
-	if r == '.' {
+	if isWhitespace(r) {
 		return l.errorf("Illegal character: '%c'", r)
 	}
 
@@ -517,16 +670,31 @@ func lexGlobal(l *Lexer) StateFn {
 		return l.errorf("Illegal character: '%c'", r)
 	}
 
-	if isWhitespace(r) {
-		return l.errorf("Illegal character: '%c'", r)
+	// Single-character punctuation or digit globals: $., $?, $!, $~, $0, etc.
+	if isGlobalPunct(r) || isDigit(r) {
+		l.emit(token.GLOBAL)
+		return startLexer
 	}
 
-	for !isWhitespace(r) && !isExpressionDelimiter(r) && r != '.' && r != ',' {
+	for !isWhitespace(r) && !isExpressionDelimiter(r) && !isGlobalDelim(r) {
 		r = l.next()
 	}
 	l.backup()
 	l.emit(token.GLOBAL)
 	return startLexer
+}
+
+func isGlobalPunct(r rune) bool {
+	switch r {
+	case '.', '?', '!', '~', '@', ';', ':', '"', '<', '>', '\\', '/',
+		'&', '*', '\'', '+', '-', '=', '$', '`', ',':
+		return true
+	}
+	return false
+}
+
+func isGlobalDelim(r rune) bool {
+	return isGlobalPunct(r) || r == '.' || r == ','
 }
 
 func commentLexer(l *Lexer) StateFn {
@@ -704,6 +872,18 @@ func isDigit(r rune) bool {
 
 func isDigitOrUnderscore(r rune) bool {
 	return isDigit(r) || r == '_'
+}
+
+func isHexDigit(r rune) bool {
+	return isDigit(r) || ('a' <= r && r <= 'f') || ('A' <= r && r <= 'F') || r == '_'
+}
+
+func isOctDigit(r rune) bool {
+	return ('0' <= r && r <= '7') || r == '_'
+}
+
+func isBinDigit(r rune) bool {
+	return r == '0' || r == '1' || r == '_'
 }
 
 func isExpressionDelimiter(r rune) bool {
