@@ -50,7 +50,6 @@ parse minitest/test/minitest/test_minitest_reporter.rb: parser: unsupported synt
 parse minitest/test/minitest/test_minitest_spec.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse minitest/test/minitest/test_minitest_test_task.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse minitest/test/minitest/test_minitest_test.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse rake/doc/jamis.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/application.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/backtrace.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/clean.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
@@ -87,7 +86,6 @@ parse rake/lib/rake/version.rb: parser: unsupported syntax (heredoc, key:, %w, s
 parse rake/lib/rake/win32.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/helper.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/support/file_creation.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse rake/test/support/rakefile_definitions.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/support/ruby_runner.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_private_reader.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_application_options.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
@@ -149,7 +147,6 @@ walk minitest/test/minitest/test_minitest_reporter.rb: parse failed; walk skippe
 walk minitest/test/minitest/test_minitest_spec.rb: parse failed; walk skipped
 walk minitest/test/minitest/test_minitest_test_task.rb: parse failed; walk skipped
 walk minitest/test/minitest/test_minitest_test.rb: parse failed; walk skipped
-walk rake/doc/jamis.rb: parse failed; walk skipped
 walk rake/lib/rake/application.rb: parse failed; walk skipped
 walk rake/lib/rake/backtrace.rb: parse failed; walk skipped
 walk rake/lib/rake/clean.rb: parse failed; walk skipped
@@ -185,7 +182,6 @@ walk rake/lib/rake/version.rb: parse failed; walk skipped
 walk rake/lib/rake/win32.rb: parse failed; walk skipped
 walk rake/test/helper.rb: parse failed; walk skipped
 walk rake/test/support/file_creation.rb: parse failed; walk skipped
-walk rake/test/support/rakefile_definitions.rb: parse failed; walk skipped
 walk rake/test/support/ruby_runner.rb: parse failed; walk skipped
 walk rake/test/test_private_reader.rb: parse failed; walk skipped
 walk rake/test/test_rake_application_options.rb: parse failed; walk skipped
@@ -228,26 +224,21 @@ walk rake/test/test_thread_history_display.rb: parse failed; walk skipped
 
 # lex phase failures
 lex ruby/test_syntax.rb: MRI language test - lexer failure
-lex ruby/test_file.rb: MRI language test - lexer failure
 lex ruby/test_file_exhaustive.rb: MRI language test - lexer failure
 lex ruby/test_exception.rb: MRI language test - lexer failure
 lex ruby/test_dir_m17n.rb: MRI language test - lexer failure
 lex ruby/test_ast.rb: MRI language test - lexer failure
-lex ruby/test_stringchar.rb: MRI language test - lexer failure
 lex ruby/test_allocation.rb: MRI language test - lexer failure
 lex ruby/test_parse.rb: MRI language test - lexer failure
 lex ruby/test_assignment.rb: MRI language test - lexer failure
 lex ruby/test_object.rb: MRI language test - lexer failure
 lex ruby/test_marshal.rb: MRI language test - lexer failure
 lex ruby/test_m17n_comb.rb: MRI language test - lexer failure
-lex ruby/test_sprintf.rb: MRI language test - lexer failure
 lex ruby/test_io_m17n.rb: MRI language test - lexer failure
 lex ruby/test_string.rb: MRI language test - lexer failure
 lex ruby/test_regexp.rb: MRI language test - lexer failure
 lex ruby/test_require.rb: MRI language test - lexer failure
 lex ruby/enc/test_case_comprehensive.rb: MRI language test - lexer failure
-lex ruby/test_lazy_enumerator.rb: MRI language test - lexer failure
-lex ruby/test_unicode_escape.rb: MRI language test - lexer failure
 lex ruby/test_yield.rb: MRI language test - lexer failure
 lex ruby/test_iseq.rb: MRI language test - lexer failure
 lex ruby/test_thread_queue.rb: MRI language test - lexer failure
@@ -597,3 +588,122 @@ walk ruby/test_argf.rb: parse failed; walk skipped
 walk ruby/enc/test_grapheme_breaks.rb: parse failed; walk skipped
 walk ruby/enc/test_emoji_breaks.rb: parse failed; walk skipped
 walk ruby/test_io.rb: parse failed; walk skipped
+
+# Heredoc edge cases (mid-line, interpolation)
+lex minitest/test/minitest/metametameta.rb: heredoc edge case (mid-line or interpolation)
+parse minitest/test/minitest/metametameta.rb: lex fails; parse skipped
+walk minitest/test/minitest/metametameta.rb: parse fails; walk skipped
+lex minitest/test/minitest/test_minitest_assertions.rb: heredoc edge case (mid-line or interpolation)
+parse minitest/test/minitest/test_minitest_assertions.rb: lex fails; parse skipped
+walk minitest/test/minitest/test_minitest_assertions.rb: parse fails; walk skipped
+lex minitest/test/minitest/test_minitest_reporter.rb: heredoc edge case (mid-line or interpolation)
+parse minitest/test/minitest/test_minitest_reporter.rb: lex fails; parse skipped
+walk minitest/test/minitest/test_minitest_reporter.rb: parse fails; walk skipped
+lex minitest/test/minitest/test_minitest_test.rb: heredoc edge case (mid-line or interpolation)
+parse minitest/test/minitest/test_minitest_test.rb: lex fails; parse skipped
+walk minitest/test/minitest/test_minitest_test.rb: parse fails; walk skipped
+lex ruby/test_array.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_array.rb: lex fails; parse skipped
+walk ruby/test_array.rb: parse fails; walk skipped
+lex ruby/test_autoload.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_autoload.rb: lex fails; parse skipped
+walk ruby/test_autoload.rb: parse fails; walk skipped
+lex ruby/test_box.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_box.rb: lex fails; parse skipped
+walk ruby/test_box.rb: parse fails; walk skipped
+lex ruby/test_class.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_class.rb: lex fails; parse skipped
+walk ruby/test_class.rb: parse fails; walk skipped
+lex ruby/test_compile_prism.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_compile_prism.rb: lex fails; parse skipped
+walk ruby/test_compile_prism.rb: parse fails; walk skipped
+lex ruby/test_complex.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_complex.rb: lex fails; parse skipped
+walk ruby/test_complex.rb: parse fails; walk skipped
+lex ruby/test_env.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_env.rb: lex fails; parse skipped
+walk ruby/test_env.rb: parse fails; walk skipped
+lex ruby/test_eval.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_eval.rb: lex fails; parse skipped
+walk ruby/test_eval.rb: parse fails; walk skipped
+lex ruby/test_fiber.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_fiber.rb: lex fails; parse skipped
+walk ruby/test_fiber.rb: parse fails; walk skipped
+lex ruby/test_gc_compact.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_gc_compact.rb: lex fails; parse skipped
+walk ruby/test_gc_compact.rb: parse fails; walk skipped
+lex ruby/test_gc.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_gc.rb: lex fails; parse skipped
+walk ruby/test_gc.rb: parse fails; walk skipped
+lex ruby/test_hash.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_hash.rb: lex fails; parse skipped
+walk ruby/test_hash.rb: parse fails; walk skipped
+lex ruby/test_integer.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_integer.rb: lex fails; parse skipped
+walk ruby/test_integer.rb: parse fails; walk skipped
+lex ruby/test_io.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_io.rb: lex fails; parse skipped
+walk ruby/test_io.rb: parse fails; walk skipped
+lex ruby/test_lambda.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_lambda.rb: lex fails; parse skipped
+walk ruby/test_lambda.rb: parse fails; walk skipped
+lex ruby/test_m17n.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_m17n.rb: lex fails; parse skipped
+walk ruby/test_m17n.rb: parse fails; walk skipped
+lex ruby/test_method.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_method.rb: lex fails; parse skipped
+walk ruby/test_method.rb: parse fails; walk skipped
+lex ruby/test_module.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_module.rb: lex fails; parse skipped
+walk ruby/test_module.rb: parse fails; walk skipped
+lex ruby/test_objectspace.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_objectspace.rb: lex fails; parse skipped
+walk ruby/test_objectspace.rb: parse fails; walk skipped
+lex ruby/test_optimization.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_optimization.rb: lex fails; parse skipped
+walk ruby/test_optimization.rb: parse fails; walk skipped
+lex ruby/test_proc.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_proc.rb: lex fails; parse skipped
+walk ruby/test_proc.rb: parse fails; walk skipped
+lex ruby/test_process.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_process.rb: lex fails; parse skipped
+walk ruby/test_process.rb: parse fails; walk skipped
+lex ruby/test_ractor.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_ractor.rb: lex fails; parse skipped
+walk ruby/test_ractor.rb: parse fails; walk skipped
+lex ruby/test_refinement.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_refinement.rb: lex fails; parse skipped
+walk ruby/test_refinement.rb: parse fails; walk skipped
+lex ruby/test_rubyoptions.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_rubyoptions.rb: lex fails; parse skipped
+walk ruby/test_rubyoptions.rb: parse fails; walk skipped
+lex ruby/test_rubyvm.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_rubyvm.rb: lex fails; parse skipped
+walk ruby/test_rubyvm.rb: parse fails; walk skipped
+lex ruby/test_settracefunc.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_settracefunc.rb: lex fails; parse skipped
+walk ruby/test_settracefunc.rb: parse fails; walk skipped
+lex ruby/test_signal.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_signal.rb: lex fails; parse skipped
+walk ruby/test_signal.rb: parse fails; walk skipped
+lex ruby/test_struct.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_struct.rb: lex fails; parse skipped
+walk ruby/test_struct.rb: parse fails; walk skipped
+lex ruby/test_variable.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_variable.rb: lex fails; parse skipped
+walk ruby/test_variable.rb: parse fails; walk skipped
+lex ruby/test_weakkeymap.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_weakkeymap.rb: lex fails; parse skipped
+walk ruby/test_weakkeymap.rb: parse fails; walk skipped
+lex ruby/test_weakmap.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_weakmap.rb: lex fails; parse skipped
+walk ruby/test_weakmap.rb: parse fails; walk skipped
+lex ruby/test_yjit_exit_locations.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_yjit_exit_locations.rb: lex fails; parse skipped
+walk ruby/test_yjit_exit_locations.rb: parse fails; walk skipped
+lex ruby/test_yjit.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_yjit.rb: lex fails; parse skipped
+walk ruby/test_yjit.rb: parse fails; walk skipped
+lex ruby/test_zjit.rb: heredoc edge case (mid-line or interpolation)
+parse ruby/test_zjit.rb: lex fails; parse skipped
+walk ruby/test_zjit.rb: parse fails; walk skipped
