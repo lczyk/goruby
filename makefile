@@ -1,8 +1,3 @@
-# Build all binaries
-build:
-	go build -o bin/goruby .
-	go build -o bin/girb ./cmd/girb
-
 # Run tests with race detection
 test:
 	go test -race ./...
@@ -49,4 +44,3 @@ integration: gems
 # Remove generated files
 clean:
 	rm -f coverage.out coverage.html
-	rm -rf bin/
