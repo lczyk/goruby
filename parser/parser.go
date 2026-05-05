@@ -45,6 +45,8 @@ var precedences = map[token.Type]int{
 	token.UNLESS:     precIfUnless,
 	token.EQ:         precEquals,
 	token.NOTEQ:      precEquals,
+	token.MATCH:      precEquals,
+	token.NMATCH:     precEquals,
 	token.SPACESHIP:  precEquals,
 	token.LSHIFT:     precShift,
 	token.QMARK:      precTenary,
@@ -71,6 +73,8 @@ var precedences = map[token.Type]int{
 	token.GLOBAL:     precCallArg,
 	token.INT:        precCallArg,
 	token.STRING:     precCallArg,
+	token.REGEX:      precCallArg,
+	token.XSTR:       precCallArg,
 	token.SELF:       precCallArg,
 	token.LBRACKET:   precIndex,
 	token.LBRACE:     precBlockBraces,
@@ -97,6 +101,8 @@ var tokensNotPossibleInCallArgs = []token.Type{
 	token.LSHIFT,
 	token.EQ,
 	token.NOTEQ,
+	token.MATCH,
+	token.NMATCH,
 	token.IF,
 	token.UNLESS,
 	token.COLON,
@@ -150,8 +156,11 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.AT, p.parseInstanceVariable)
 	p.registerPrefix(token.INT, p.parseIntegerLiteral)
 	p.registerPrefix(token.STRING, p.parseStringLiteral)
+	p.registerPrefix(token.REGEX, p.parseStringLiteral)
+	p.registerPrefix(token.XSTR, p.parseStringLiteral)
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
+	p.registerPrefix(token.TILDE, p.parsePrefixExpression)
 	p.registerPrefix(token.TRUE, p.parseBoolean)
 	p.registerPrefix(token.FALSE, p.parseBoolean)
 	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
@@ -189,6 +198,8 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerInfix(token.GTE, p.parseInfixExpression)
 	p.registerInfix(token.LOGICALOR, p.parseInfixExpression)
 	p.registerInfix(token.LOGICALAND, p.parseInfixExpression)
+	p.registerInfix(token.MATCH, p.parseInfixExpression)
+	p.registerInfix(token.NMATCH, p.parseInfixExpression)
 	p.registerInfix(token.SPACESHIP, p.parseInfixExpression)
 	p.registerInfix(token.LSHIFT, p.parseInfixExpression)
 	p.registerInfix(token.ASSIGN, p.parseAssignment)
@@ -206,6 +217,8 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerInfix(token.GLOBAL, p.parseCallArgument)
 	p.registerInfix(token.INT, p.parseCallArgument)
 	p.registerInfix(token.STRING, p.parseCallArgument)
+	p.registerInfix(token.REGEX, p.parseCallArgument)
+	p.registerInfix(token.XSTR, p.parseCallArgument)
 	p.registerInfix(token.SYMBEG, p.parseCallArgument)
 	p.registerInfix(token.CAPTURE, p.parseCallArgument)
 	p.registerInfix(token.SELF, p.parseCallArgument)
@@ -281,6 +294,20 @@ func (p *parser) nextToken() {
 	}
 	if p.l.HasNext() {
 		p.peekToken = p.l.NextToken()
+		// Skip comment tokens when not in ParseComments mode.
+		if p.mode&ParseComments == 0 {
+			for p.peekToken.Type == token.HASH {
+				if p.l.HasNext() {
+					p.l.NextToken() // consume STRING content
+				}
+				if p.l.HasNext() {
+					p.peekToken = p.l.NextToken()
+				} else {
+					p.peekToken = token.NewToken(token.EOF, "", -1)
+					break
+				}
+			}
+		}
 	} else {
 		p.peekToken = token.NewToken(token.EOF, "", -1)
 	}
@@ -582,7 +609,7 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 		defer un(trace(p, "parseAssignment"))
 	}
 
-	switch left.(type) {
+	switch leftNode := left.(type) {
 	case *ast.Identifier:
 	case *ast.Global:
 	case *ast.IndexExpression:
@@ -593,6 +620,14 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 		msg := fmt.Errorf("%s: Can't assign to __FILE__", epos.String())
 		p.errors = append(p.errors, msg)
 		return nil
+	case *ast.ContextCallExpression:
+		// obj.method = value => obj.method=(value)
+		leftNode.Function.Value += "="
+		leftNode.Function.Token.Literal += "="
+		p.nextToken()
+		right := p.parseExpression(precLowest)
+		leftNode.Arguments = []ast.Expression{right}
+		return leftNode
 	default:
 		p.expectError(token.EOF)
 		return nil
@@ -1034,7 +1069,7 @@ func (p *parser) parseClass() ast.Expression {
 
 	if p.peekTokenIs(token.LT) {
 		p.consume(token.LT)
-		expr.SuperClass = p.parseIdentifier().(*ast.Identifier)
+		expr.SuperClass = p.parseExpression(precLowest)
 	}
 
 	if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {

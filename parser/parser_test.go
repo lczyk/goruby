@@ -4045,8 +4045,9 @@ func TestParsingClassExpressions(t *testing.T) {
 		}
 
 		superclassName := "B"
-		if superclassName != class.SuperClass.Value {
-			t.Logf("Expected superclass name to equal %q, got %q\n", superclassName, class.SuperClass.Value)
+		superIdent, ok := class.SuperClass.(*ast.Identifier)
+		if !ok || superclassName != superIdent.Value {
+			t.Logf("Expected superclass name to equal %q, got %v\n", superclassName, class.SuperClass)
 			t.Fail()
 		}
 	})
