@@ -11,14 +11,20 @@
     "bnf_2.1.0.html",
     "goruby.bnf",
     "*.bnf",
-    "*.html"
+    "*.html",
+    "internal/integrationtest/testdata/gems/**"
   ],
   "words": [
     "elif",
+    "elist",
     "Errorf",
     "Fatalf",
+    "fieldvalue",
     "funcs",
     "idents",
+    "Segs",
+    "vars",
+    "Vars",
     "integrationtest",
     "metaprogramming",
     "relpath",
