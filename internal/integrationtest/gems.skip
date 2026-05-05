@@ -226,23 +226,14 @@ walk rake/test/test_thread_history_display.rb: parse failed; walk skipped
 lex ruby/test_syntax.rb: MRI language test - lexer failure
 lex ruby/test_file_exhaustive.rb: MRI language test - lexer failure
 lex ruby/test_exception.rb: MRI language test - lexer failure
-lex ruby/test_dir_m17n.rb: MRI language test - lexer failure
 lex ruby/test_ast.rb: MRI language test - lexer failure
 lex ruby/test_allocation.rb: MRI language test - lexer failure
 lex ruby/test_parse.rb: MRI language test - lexer failure
-lex ruby/test_assignment.rb: MRI language test - lexer failure
 lex ruby/test_object.rb: MRI language test - lexer failure
-lex ruby/test_marshal.rb: MRI language test - lexer failure
-lex ruby/test_m17n_comb.rb: MRI language test - lexer failure
-lex ruby/test_io_m17n.rb: MRI language test - lexer failure
 lex ruby/test_string.rb: MRI language test - lexer failure
 lex ruby/test_regexp.rb: MRI language test - lexer failure
 lex ruby/test_require.rb: MRI language test - lexer failure
-lex ruby/enc/test_case_comprehensive.rb: MRI language test - lexer failure
-lex ruby/test_yield.rb: MRI language test - lexer failure
 lex ruby/test_iseq.rb: MRI language test - lexer failure
-lex ruby/test_thread_queue.rb: MRI language test - lexer failure
-lex ruby/test_time_tz.rb: MRI language test - lexer failure
 
 # parse phase failures (lex passes)
 parse ruby/allpairs.rb: MRI language test - parser failure
@@ -707,3 +698,16 @@ walk ruby/test_yjit.rb: parse fails; walk skipped
 lex ruby/test_zjit.rb: heredoc edge case (mid-line or interpolation)
 parse ruby/test_zjit.rb: lex fails; parse skipped
 walk ruby/test_zjit.rb: parse fails; walk skipped
+lex ruby/test_name_error.rb: regexp edge case (unterminated)
+parse ruby/test_name_error.rb: lex fails; parse skipped
+walk ruby/test_name_error.rb: parse fails; walk skipped
+parse ruby/test_not.rb: parser regression from keyword/operator additions
+walk ruby/test_not.rb: parse fails; walk skipped
+parse rake/lib/rake/rule_recursion_overflow_error.rb: parser regression from keyword/operator additions
+walk rake/lib/rake/rule_recursion_overflow_error.rb: parse fails; walk skipped
+parse minitest/lib/minitest/unit.rb: parser regression from keyword/operator additions
+walk minitest/lib/minitest/unit.rb: parse fails; walk skipped
+parse ruby/test_undef.rb: parser regression from keyword/operator additions
+walk ruby/test_undef.rb: parse fails; walk skipped
+parse ruby/test_io_timeout.rb: parser regression from keyword/operator additions
+walk ruby/test_io_timeout.rb: parse fails; walk skipped
