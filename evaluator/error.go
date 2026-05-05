@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"go/token"
 
-	"github.com/goruby/goruby/ast"
+	"github.com/lczyk/goruby/ast"
 )
 
 func wrapStack(err error, node, root ast.Node, file *token.File) error {

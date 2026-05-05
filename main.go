@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/goruby/goruby/interpreter"
+	"github.com/lczyk/goruby/interpreter"
 	"github.com/pkg/errors"
 )
 

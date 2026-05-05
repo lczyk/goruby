@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/goruby/goruby/ast"
-	"github.com/goruby/goruby/token"
+	"github.com/lczyk/goruby/ast"
+	"github.com/lczyk/goruby/token"
 	"github.com/pkg/errors"
 )
 

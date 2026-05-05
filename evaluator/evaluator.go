@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/goruby/goruby/ast"
-	"github.com/goruby/goruby/object"
+	"github.com/lczyk/goruby/ast"
+	"github.com/lczyk/goruby/object"
 	"github.com/pkg/errors"
 )
 

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/goruby/goruby/parser"
+	"github.com/lczyk/goruby/parser"
 	"github.com/pkg/errors"
 )
 

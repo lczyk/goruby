@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/goruby/goruby/ast"
+	"github.com/lczyk/goruby/ast"
 )
 
 func mustCall(obj RubyObject, err error) RubyObject {
@@ -136,8 +136,8 @@ func TestFunctionCall(t *testing.T) {
 		t.Run("without default params", func(t *testing.T) {
 			function := &Function{
 				Parameters: []*FunctionParameter{
-					&FunctionParameter{Name: "foo"},
-					&FunctionParameter{Name: "bar"},
+					{Name: "foo"},
+					{Name: "bar"},
 				},
 			}
 
@@ -176,9 +176,9 @@ func TestFunctionCall(t *testing.T) {
 			t.Skip()
 			function := &Function{
 				Parameters: []*FunctionParameter{
-					&FunctionParameter{Name: "foo", Default: &Integer{Value: 12}},
-					&FunctionParameter{Name: "bar"},
-					&FunctionParameter{Name: "qux"},
+					{Name: "foo", Default: &Integer{Value: 12}},
+					{Name: "bar"},
+					{Name: "qux"},
 				},
 			}
 
@@ -279,7 +279,7 @@ func TestFunctionCall(t *testing.T) {
 
 		function := &Function{
 			Parameters: []*FunctionParameter{
-				&FunctionParameter{Name: "x"},
+				{Name: "x"},
 			},
 		}
 
@@ -352,8 +352,8 @@ func TestFunctionCall(t *testing.T) {
 
 		t.Run("with default arguments", func(t *testing.T) {
 			function.Parameters = []*FunctionParameter{
-				&FunctionParameter{Name: "x", Default: TRUE},
-				&FunctionParameter{Name: "y"},
+				{Name: "x", Default: TRUE},
+				{Name: "y"},
 			}
 
 			_, err := function.Call(context, &Integer{Value: 8})

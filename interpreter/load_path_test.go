@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/goruby/goruby/interpreter"
-	"github.com/goruby/goruby/object"
+	"github.com/lczyk/goruby/interpreter"
+	"github.com/lczyk/goruby/object"
 	"github.com/pkg/errors"
 )
 
