@@ -68,7 +68,7 @@ func fileExpandPath(context CallContext, args ...RubyObject) (RubyObject, error)
 		// TODO: make sure this is really the wanted behaviour
 		abs, err := filepath.Abs(filepath.Join(dirname.Value, filename.Value))
 		if err != nil {
-			return nil, NewNotImplementedError(err.Error())
+			return nil, NewNotImplementedError("%s", err.Error())
 		}
 
 		return &String{Value: abs}, nil

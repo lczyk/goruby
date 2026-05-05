@@ -247,7 +247,7 @@ func kernelRaise(context CallContext, args ...RubyObject) (RubyObject, error) {
 	case 1:
 		switch arg := args[0].(type) {
 		case *String:
-			return nil, NewRuntimeError(arg.Value)
+			return nil, NewRuntimeError("%s", arg.Value)
 		default:
 			exc, err := Send(NewCallContext(context.Env(), arg), "exception")
 			if err != nil {
