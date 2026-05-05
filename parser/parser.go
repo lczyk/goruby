@@ -1153,7 +1153,9 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 		}
 		return true
 	}
-	ast.Inspect(lit.Body, inspect)
+	if lit.Body != nil {
+		ast.Inspect(lit.Body, inspect)
+	}
 	return lit
 }
 

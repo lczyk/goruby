@@ -112,7 +112,9 @@ func Test_Equal(t *testing.T) {
 							Right:    &IntegerLiteral{Value: 42},
 						},
 					},
-					nil,
+					&ExpressionStatement{
+						Expression: &IntegerLiteral{Value: 3},
+					},
 					&ExpressionStatement{
 						Expression: &IntegerLiteral{Value: 2},
 					},

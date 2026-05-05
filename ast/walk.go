@@ -3,6 +3,7 @@ package ast
 import (
 	"container/list"
 	"fmt"
+	"reflect"
 )
 
 // A Visitor's Visit method is invoked for each node encountered by Walk.  If
@@ -111,25 +112,33 @@ func WalkEmit(root Node) <-chan Node {
 
 func walkParameterList(v Visitor, list []*FunctionParameter) {
 	for _, x := range list {
-		Walk(v, x)
+		if x != nil {
+			Walk(v, x)
+		}
 	}
 }
 
 func walkIdentifierList(v Visitor, list []*Identifier) {
 	for _, x := range list {
-		Walk(v, x)
+		if x != nil {
+			Walk(v, x)
+		}
 	}
 }
 
 func walkExprList(v Visitor, list []Expression) {
 	for _, x := range list {
-		Walk(v, x)
+		if x != nil {
+			Walk(v, x)
+		}
 	}
 }
 
 func walkStmtList(v Visitor, list []Statement) {
 	for _, x := range list {
-		Walk(v, x)
+		if x != nil {
+			Walk(v, x)
+		}
 	}
 }
 
@@ -139,6 +148,9 @@ func walkStmtList(v Visitor, list []Statement) {
 // w for each of the non-nil children of node, followed by a call of
 // w.Visit(nil).
 func Walk(v Visitor, node Node) {
+	if node == nil || reflect.ValueOf(node).IsNil() {
+		return
+	}
 	if v = v.Visit(node); v == nil {
 		return
 	}
