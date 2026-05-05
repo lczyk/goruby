@@ -179,6 +179,16 @@ func startLexer(l *Lexer) StateFn {
 		l.emit(token.SYMBEG)
 		return startLexer
 	case '.':
+		if l.peek() == '.' {
+			l.next()
+			if l.peek() == '.' {
+				l.next()
+				l.emit(token.RANGEEX)
+				return startLexer
+			}
+			l.emit(token.RANGE)
+			return startLexer
+		}
 		if isDigit(l.peek()) {
 			return lexFloat(l)
 		}
@@ -212,6 +222,11 @@ func startLexer(l *Lexer) StateFn {
 			l.emit(token.SUBASSIGN)
 			return startLexer
 		}
+		if l.peek() == '>' {
+			l.next()
+			l.emit(token.LAMBDA)
+			return startLexer
+		}
 		l.emit(token.MINUS)
 		return startLexer
 	case '!':
@@ -241,13 +256,13 @@ func startLexer(l *Lexer) StateFn {
 		}
 		return lexCharacterLiteral
 	case '/':
+		if isRegexBeginContext(l.lastToken.Type) {
+			return lexRegex
+		}
 		if l.peek() == '=' {
 			l.next()
 			l.emit(token.DIVASSIGN)
 			return startLexer
-		}
-		if isRegexBeginContext(l.lastToken.Type) {
-			return lexRegex
 		}
 		l.emit(token.SLASH)
 		return startLexer
@@ -257,6 +272,16 @@ func startLexer(l *Lexer) StateFn {
 			l.emit(token.MULASSIGN)
 			return startLexer
 		}
+		if l.peek() == '*' {
+			l.next()
+			if l.peek() == '=' {
+				l.next()
+				l.emit(token.POWERASSIGN)
+				return startLexer
+			}
+			l.emit(token.POWER)
+			return startLexer
+		}
 		l.emit(token.ASTERISK)
 		return startLexer
 	case '%':
@@ -264,6 +289,10 @@ func startLexer(l *Lexer) StateFn {
 			l.next()
 			l.emit(token.MODASSIGN)
 			return startLexer
+		}
+		// %q, %Q, %w, %W, %i, %I, %r, %x, %s always start percent literals.
+		if p := l.peek(); isPercentTypeChar(p) {
+			return lexPercentLiteral
 		}
 		// % literal: %w[...], %q{...}, %r/.../, %x|...|, %{...}
 		// Same context as regex, or after whitespace following IDENT/CONST
@@ -277,7 +306,17 @@ func startLexer(l *Lexer) StateFn {
 	case '&':
 		if p := l.peek(); p == '&' {
 			l.next()
+			if l.peek() == '=' {
+				l.next()
+				l.emit(token.ANDASSIGN)
+				return startLexer
+			}
 			l.emit(token.LOGICALAND)
+			return startLexer
+		}
+		if l.peek() == '.' {
+			l.next()
+			l.emit(token.LONELY)
 			return startLexer
 		}
 		if p := l.peek(); isLetter(p) {
@@ -368,6 +407,11 @@ func startLexer(l *Lexer) StateFn {
 		}
 		if p := l.peek(); p == '|' {
 			l.next()
+			if l.peek() == '=' {
+				l.next()
+				l.emit(token.ORASSIGN)
+				return startLexer
+			}
 			l.emit(token.LOGICALOR)
 			return startLexer
 		}
@@ -568,6 +612,11 @@ func lexSingleQuoteString(l *Lexer) StateFn {
 	r := l.next()
 
 	for r != '\'' {
+		if r == '\\' {
+			l.next() // skip escaped char (\' or \\)
+		} else if r == eof || r == '\n' {
+			return l.errorf("unterminated string")
+		}
 		r = l.next()
 	}
 	l.backup()
@@ -755,14 +804,15 @@ func lexGlobal(l *Lexer) StateFn {
 		return l.errorf("Illegal character: '%c'", r)
 	}
 
-	if isExpressionDelimiter(r) {
-		return l.errorf("Illegal character: '%c'", r)
-	}
-
-	// Single-character punctuation or digit globals: $., $?, $!, $~, $0, etc.
+	// Single-character punctuation or digit globals: $., $?, $!, $~, $;, $0, etc.
+	// Must check BEFORE isExpressionDelimiter since ; is both punct and delim.
 	if isGlobalPunct(r) || isDigit(r) {
 		l.emit(token.GLOBAL)
 		return startLexer
+	}
+
+	if isExpressionDelimiter(r) {
+		return l.errorf("Illegal character: '%c'", r)
 	}
 
 	for !isWhitespace(r) && !isExpressionDelimiter(r) && !isGlobalDelim(r) {
@@ -1001,6 +1051,14 @@ func isExpressionEnd(tok token.Type) bool {
 	return false
 }
 
+func isPercentTypeChar(r rune) bool {
+	switch r {
+	case 'q', 'Q', 'w', 'W', 'i', 'I', 'r', 'x', 's':
+		return true
+	}
+	return false
+}
+
 func isMethodCallTarget(tok token.Type) bool {
 	switch tok {
 	case token.IDENT, token.CONST, token.GLOBAL,
@@ -1018,8 +1076,10 @@ func isRegexBeginContext(tok token.Type) bool {
 		token.LPAREN, token.LBRACKET, token.LBRACE,
 		token.COMMA, token.SEMICOLON, token.COLON, token.QMARK,
 		token.BANG, token.TILDE,
+		token.LOGICALAND, token.LOGICALOR, token.PIPE,
 		token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.RETURN, token.THEN,
 		token.DO, token.CASE, token.WHEN, token.BREAK, token.NEXT,
+		token.KW_AND, token.KW_OR, token.KW_NOT, token.KW_DEFINED, token.KW_SUPER,
 		token.HASHROCKET:
 		return true
 	}
@@ -1036,6 +1096,10 @@ func lexRegex(l *Lexer) StateFn {
 		}
 		if r == '\\' {
 			l.next() // skip escaped character
+		} else if r == '#' && l.peek() == '{' {
+			l.next() // consume {
+			l.next() // consume first char of interpolation
+			skipInterpolation(l)
 		}
 		r = l.next()
 	}

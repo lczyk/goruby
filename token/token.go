@@ -35,6 +35,9 @@ const (
 	MULASSIGN // *=
 	DIVASSIGN // /=
 	MODASSIGN // %=
+	POWERASSIGN // **=
+	ORASSIGN    // ||=
+	ANDASSIGN   // &&=
 	operator_assign_end
 
 	PLUS       // +
@@ -44,6 +47,11 @@ const (
 	SLASH      // /
 	MODULO     // %
 	XOR        // ^
+	POWER   // **
+	LONELY  // &.
+	RANGE   // ..
+	RANGEEX // ...
+	LAMBDA  // ->
 	AND        // &
 	LOGICALAND // &&
 	PIPE       // |
@@ -113,7 +121,22 @@ const (
 	WHEN
 	BREAK
 	NEXT
+	KW_UNDEF
+	KW_SUPER
+	KW_RETRY
+	KW_REDO
+	KW_OR
+	KW_NOT
+	KW_IN
+	KW_FOR
+	KW_ENSURE
+	KW_ELSIF
+	KW_DEFINED
+	KW_AND
+	KW_ALIAS
 	KEYWORD__FILE__
+	KEYWORD__LINE__
+	KEYWORD__ENCODING__
 	keyword_end
 )
 
@@ -137,6 +160,9 @@ var tokens = [...]string{
 	MULASSIGN: "*=",
 	DIVASSIGN: "/=",
 	MODASSIGN: "%=",
+	POWERASSIGN: "**=",
+	ORASSIGN:    "||=",
+	ANDASSIGN:   "&&=",
 
 	PLUS:       "+",
 	MINUS:      "-",
@@ -145,6 +171,11 @@ var tokens = [...]string{
 	SLASH:      "/",
 	MODULO:     "%",
 	XOR:        "^",
+	POWER:   "**",
+	LONELY:  "&.",
+	RANGE:   "..",
+	RANGEEX: "...",
+	LAMBDA:  "->",
 	AND:        "&",
 	CAPTURE:    "&",
 	LOGICALAND: "&&",
@@ -208,6 +239,21 @@ var tokens = [...]string{
 	BREAK:           "break",
 	NEXT:            "next",
 	KEYWORD__FILE__: "__FILE__",
+	KEYWORD__LINE__:    "__LINE__",
+	KEYWORD__ENCODING__: "__ENCODING__",
+	KW_ALIAS:           "alias",
+	KW_AND:             "and",
+	KW_DEFINED:         "defined?",
+	KW_ELSIF:           "elsif",
+	KW_ENSURE:          "ensure",
+	KW_FOR:             "for",
+	KW_IN:              "in",
+	KW_NOT:             "not",
+	KW_OR:              "or",
+	KW_REDO:            "redo",
+	KW_RETRY:           "retry",
+	KW_SUPER:           "super",
+	KW_UNDEF:           "undef",
 }
 
 // String returns the string corresponding to the token tok.
