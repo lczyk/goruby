@@ -21,6 +21,8 @@ const (
 	CLASS_VAR // @@variable
 	INT
 	STRING
+	REGEX // /pattern/
+	XSTR  // `command`
 	literal_end
 
 	// Operators
@@ -40,6 +42,7 @@ const (
 	ASTERISK   // *
 	SLASH      // /
 	MODULO     // %
+	XOR        // ^
 	AND        // &
 	LOGICALAND // &&
 	PIPE       // |
@@ -52,7 +55,11 @@ const (
 	EQ        // ==
 	NOTEQ     // !=
 	SPACESHIP // <=>
-	LSHIFT    // <<
+	LSHIFT // <<
+
+	TILDE   // ~
+	MATCH   // =~
+	NMATCH  // !~
 	operator_end
 
 	HASHROCKET // =>
@@ -100,6 +107,11 @@ const (
 	BEGIN
 	RESCUE
 	WHILE
+	UNTIL
+	CASE
+	WHEN
+	BREAK
+	NEXT
 	KEYWORD__FILE__
 	keyword_end
 )
@@ -114,6 +126,8 @@ var tokens = [...]string{
 	CLASS_VAR: "CLASS_VAR",
 	INT:       "INT",
 	STRING:    "STRING",
+	REGEX:     "REGEX",
+	XSTR:      "XSTR",
 
 	ASSIGN:    "=",
 	ADDASSIGN: "+=",
@@ -128,6 +142,7 @@ var tokens = [...]string{
 	ASTERISK:   "*",
 	SLASH:      "/",
 	MODULO:     "%",
+	XOR:        "^",
 	AND:        "&",
 	CAPTURE:    "&",
 	LOGICALAND: "&&",
@@ -141,6 +156,9 @@ var tokens = [...]string{
 	NOTEQ:     "!=",
 	SPACESHIP: "<=>",
 	LSHIFT:    "<<",
+	TILDE:     "~",
+	MATCH:     "=~",
+	NMATCH:     "!~",
 
 	NEWLINE:   "NEWLINE",
 	COMMA:     ",",
@@ -182,6 +200,11 @@ var tokens = [...]string{
 	BEGIN:           "begin",
 	RESCUE:          "rescue",
 	WHILE:           "while",
+	UNTIL:           "until",
+	CASE:            "case",
+	WHEN:            "when",
+	BREAK:           "break",
+	NEXT:            "next",
 	KEYWORD__FILE__: "__FILE__",
 }
 

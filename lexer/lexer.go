@@ -40,13 +40,14 @@ func New(input string) *Lexer {
 
 // Lexer is the engine to process input and emit Tokens
 type Lexer struct {
-	input     string           // the string being scanned.
-	state     StateFn          // the next lexing function to enter
-	pos       int              // current position in the input.
-	start     int              // start position of this item.
-	width     int              // width of last rune read from input.
-	tokens    chan token.Token // channel of scanned tokens.
-	lastToken token.Token      // lastToken stores the last token emitted by the lexer
+	input        string           // the string being scanned.
+	state        StateFn          // the next lexing function to enter
+	pos          int              // current position in the input.
+	start        int              // start position of this item.
+	width        int              // width of last rune read from input.
+	tokens       chan token.Token // channel of scanned tokens.
+	lastToken    token.Token      // lastToken stores the last token emitted by the lexer
+	hadWhitespace bool            // true if whitespace was skipped before current token
 }
 
 // NextToken will return the next token processed from the lexer.
@@ -124,8 +125,20 @@ func (l *Lexer) errorf(format string, args ...interface{}) StateFn {
 func startLexer(l *Lexer) StateFn {
 	r := l.next()
 	if isWhitespace(r) {
+		l.hadWhitespace = true
 		l.ignore()
 		return startLexer
+	}
+	hadWhitespace := l.hadWhitespace
+	l.hadWhitespace = false
+	// line continuation: backslash followed by newline
+	if r == '\\' {
+		if l.peek() == '\n' {
+			l.next() // consume newline
+			l.ignore()
+			return startLexer
+		}
+		return l.errorf("Illegal character: '%c'", r)
 	}
 	switch r {
 	case '$':
@@ -160,6 +173,9 @@ func startLexer(l *Lexer) StateFn {
 		} else if l.peek() == '>' {
 			l.next()
 			l.emit(token.HASHROCKET)
+		} else if l.peek() == '~' {
+			l.next()
+			l.emit(token.MATCH)
 		} else {
 			l.emit(token.ASSIGN)
 		}
@@ -184,9 +200,15 @@ func startLexer(l *Lexer) StateFn {
 		if l.peek() == '=' {
 			l.next()
 			l.emit(token.NOTEQ)
+		} else if l.peek() == '~' {
+			l.next()
+			l.emit(token.NMATCH)
 		} else {
 			l.emit(token.BANG)
 		}
+		return startLexer
+	case '~':
+		l.emit(token.TILDE)
 		return startLexer
 	case '?':
 		p := l.peek()
@@ -206,6 +228,9 @@ func startLexer(l *Lexer) StateFn {
 			l.emit(token.DIVASSIGN)
 			return startLexer
 		}
+		if isRegexBeginContext(l.lastToken.Type) {
+			return lexRegex
+		}
 		l.emit(token.SLASH)
 		return startLexer
 	case '*':
@@ -221,6 +246,13 @@ func startLexer(l *Lexer) StateFn {
 			l.next()
 			l.emit(token.MODASSIGN)
 			return startLexer
+		}
+		// % literal: %w[...], %q{...}, %r/.../, %x|...|, %{...}
+		// Same context as regex, or after whitespace following IDENT/CONST
+		// (method call syntax: `foo %w[a b]`)
+		if isRegexBeginContext(l.lastToken.Type) ||
+			(hadWhitespace && isMethodCallTarget(l.lastToken.Type)) {
+			return lexPercentLiteral
 		}
 		l.emit(token.MODULO)
 		return startLexer
@@ -280,6 +312,11 @@ func startLexer(l *Lexer) StateFn {
 	case ']':
 		l.emit(token.RBRACKET)
 		return startLexer
+	case '^':
+		l.emit(token.XOR)
+		return startLexer
+	case '`':
+		return lexBacktick
 	case ',':
 		l.emit(token.COMMA)
 		return startLexer
@@ -387,6 +424,15 @@ func lexString(l *Lexer) StateFn {
 	r := l.next()
 
 	for r != '"' {
+		if r == '\\' {
+			l.next() // skip escaped character (e.g. \", \\, \n, \t)
+		} else if r == '#' && l.peek() == '{' {
+			l.next() // consume {
+			l.next() // consume first char of interpolation
+			skipInterpolation(l)
+		} else if r == eof {
+			return l.errorf("unterminated string")
+		}
 		r = l.next()
 	}
 	l.backup()
@@ -394,6 +440,70 @@ func lexString(l *Lexer) StateFn {
 	l.next()
 	l.ignore()
 	return startLexer
+}
+
+// skipInterpolation skips characters until the matching '}' for #{...}.
+func skipInterpolation(l *Lexer) {
+	depth := 1
+	for depth > 0 {
+		r := l.next()
+		switch r {
+		case eof:
+			return
+		case '{':
+			depth++
+		case '}':
+			depth--
+		case '"':
+			// nested string inside interpolation
+			for {
+				c := l.next()
+				if c == eof || c == '\n' {
+					return
+				}
+				if c == '\\' {
+					l.next() // skip escaped char
+					continue
+				}
+				if c == '"' {
+					break
+				}
+			}
+		case '\'':
+			// nested single-quoted string
+			for {
+				c := l.next()
+				if c == eof || c == '\n' {
+					return
+				}
+				if c == '\'' {
+					break
+				}
+			}
+		case '/':
+			// nested regex inside interpolation
+			for {
+				c := l.next()
+				if c == eof || c == '\n' {
+					return
+				}
+				if c == '\\' {
+					l.next()
+					continue
+				}
+				if c == '/' {
+					break
+				}
+			}
+		case '\\':
+			l.next() // skip escaped char
+		case '#':
+			if l.peek() == '{' {
+				l.next()
+				depth++
+			}
+		}
+	}
 }
 
 func lexGlobal(l *Lexer) StateFn {
@@ -431,12 +541,161 @@ func commentLexer(l *Lexer) StateFn {
 	return startLexer
 }
 
+func lexPercentLiteral(l *Lexer) StateFn {
+	l.ignore() // skip %
+
+	opener := l.next()
+
+	// %q, %Q, %w, %W, %i, %I, %r, %x, %s — opener is the type char
+	if isLetter(opener) {
+		opener = l.next() // next char is the actual delimiter
+	}
+
+	closing := closingDelim(opener)
+	paired := opener != closing // {} () [] <> track depth; // !! track single match
+
+	if paired {
+		depth := 1
+		for depth > 0 {
+			c := l.next()
+			if c == eof {
+				return l.errorf("unterminated percent literal")
+			}
+			if c == '\\' {
+				l.next()
+				continue
+			}
+			if c == opener {
+				depth++
+			} else if c == closing {
+				depth--
+			}
+		}
+	} else {
+		for {
+			c := l.next()
+			if c == eof {
+				return l.errorf("unterminated percent literal")
+			}
+			if c == '\\' {
+				l.next()
+				continue
+			}
+			if c == closing {
+				break
+			}
+		}
+	}
+	l.backup()
+	l.emit(token.STRING)
+	l.next()
+	l.ignore() // consume closing delimiter
+	return startLexer
+}
+
+func closingDelim(r rune) rune {
+	switch r {
+	case '{':
+		return '}'
+	case '(':
+		return ')'
+	case '[':
+		return ']'
+	case '<':
+		return '>'
+	default:
+		return r
+	}
+}
+
+func lexBacktick(l *Lexer) StateFn {
+	l.ignore()
+	r := l.next()
+
+	for r != '`' {
+		if r == eof {
+			return l.errorf("unterminated command literal")
+		}
+		r = l.next()
+	}
+	l.backup()
+	l.emit(token.XSTR)
+	l.next()
+	l.ignore()
+	return startLexer
+}
+
+func isExpressionEnd(tok token.Type) bool {
+	switch tok {
+	case token.IDENT, token.CONST, token.GLOBAL, token.CLASS_VAR,
+		token.INT, token.STRING, token.REGEX, token.XSTR,
+		token.RPAREN, token.RBRACKET, token.RBRACE,
+		token.TRUE, token.FALSE, token.NIL, token.SELF,
+		token.END:
+		return true
+	}
+	return false
+}
+
+func isMethodCallTarget(tok token.Type) bool {
+	switch tok {
+	case token.IDENT, token.CONST, token.GLOBAL,
+		token.RPAREN, token.RBRACKET, token.RBRACE,
+		token.END:
+		return true
+	}
+	return false
+}
+
+func isRegexBeginContext(tok token.Type) bool {
+	switch tok {
+	case token.EOF, token.NEWLINE,
+		token.ASSIGN, token.MATCH, token.NMATCH,
+		token.LPAREN, token.LBRACKET, token.LBRACE,
+		token.COMMA, token.SEMICOLON, token.COLON, token.QMARK,
+		token.BANG, token.TILDE,
+		token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.RETURN, token.THEN,
+		token.DO, token.CASE, token.WHEN, token.BREAK, token.NEXT,
+		token.HASHROCKET:
+		return true
+	}
+	return false
+}
+
+func lexRegex(l *Lexer) StateFn {
+	l.ignore()
+	r := l.next()
+
+	for r != '/' {
+		if r == eof {
+			return l.errorf("unterminated regexp")
+		}
+		if r == '\\' {
+			l.next() // skip escaped character
+		}
+		r = l.next()
+	}
+	l.backup()
+	l.emit(token.REGEX)
+	l.next()
+	l.ignore()
+	// Consume regex options (i, m, x, o)
+	for {
+		r := l.next()
+		if r != 'i' && r != 'm' && r != 'x' && r != 'o' {
+			l.backup()
+			break
+		}
+	}
+	return startLexer
+}
+
 func isWhitespace(r rune) bool {
 	return unicode.IsSpace(r) && r != '\n'
 }
 
 func isLetter(r rune) bool {
-	return 'a' <= r && r <= 'z' || 'A' <= r && r <= 'Z' || r == '_'
+	return unicode.IsLetter(r) || r == '_'
 }
 
 func isDigit(r rune) bool {
