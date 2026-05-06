@@ -436,6 +436,7 @@ func TestLexerHeredoc(t *testing.T) {
 				{token.STRING_END, ""},
 				{token.DOT, "."},
 				{token.IDENT, "chop"},
+				{token.NEWLINE, "\n"},
 				{token.EOF, ""},
 			},
 		},
@@ -447,6 +448,7 @@ func TestLexerHeredoc(t *testing.T) {
 				literal string
 			}{
 				{token.STRING, "hello\nworld\n"},
+				{token.NEWLINE, "\n"},
 				{token.EOF, ""},
 			},
 		},
@@ -460,6 +462,7 @@ func TestLexerHeredoc(t *testing.T) {
 				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "\tcontent\n"},
 				{token.STRING_END, ""},
+				{token.NEWLINE, "\n"},
 				{token.EOF, ""},
 			},
 		},
@@ -478,6 +481,70 @@ func TestLexerHeredoc(t *testing.T) {
 				{token.DOT, "."},
 				{token.IDENT, "strip"},
 				{token.RPAREN, ")"},
+				{token.NEWLINE, "\n"},
+				{token.EOF, ""},
+			},
+		},
+		{
+			name:  "two heredocs on same line as method args",
+			input: "foo(<<A, <<B)\nbody_a\nA\nbody_b\nB\n",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "foo"},
+				{token.LPAREN, "("},
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "body_a\n"},
+				{token.STRING_END, ""},
+				{token.COMMA, ","},
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "body_b\n"},
+				{token.STRING_END, ""},
+				{token.RPAREN, ")"},
+				{token.NEWLINE, "\n"},
+				{token.EOF, ""},
+			},
+		},
+		{
+			name:  "three chained heredocs",
+			input: "f(<<A, <<B, <<C)\naaa\nA\nb_b\nB\nccc\nC\n",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "f"},
+				{token.LPAREN, "("},
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "aaa\n"},
+				{token.STRING_END, ""},
+				{token.COMMA, ","},
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "b_b\n"},
+				{token.STRING_END, ""},
+				{token.COMMA, ","},
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "ccc\n"},
+				{token.STRING_END, ""},
+				{token.RPAREN, ")"},
+				{token.NEWLINE, "\n"},
+				{token.EOF, ""},
+			},
+		},
+		{
+			name:  "two literal heredocs on same line",
+			input: "f(<<'A', <<'B')\naaa\nA\nb_b\nB\n",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "f"},
+				{token.LPAREN, "("},
+				{token.STRING, "aaa\n"},
+				{token.COMMA, ","},
+				{token.STRING, "b_b\n"},
+				{token.RPAREN, ")"},
+				{token.NEWLINE, "\n"},
 				{token.EOF, ""},
 			},
 		},

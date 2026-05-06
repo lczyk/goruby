@@ -56,11 +56,13 @@ type Lexer struct {
 	hadWhitespace bool             // true if whitespace was skipped before current token
 
 	// Heredoc state.
-	heredocDelim   string
-	heredocIndent  bool // <<-
-	heredocSquig   bool // <<~
-	heredocQuote   rune
-	heredocTrailer string // trailer text on delim line (e.g. ".chop")
+	heredocDelim    string
+	heredocIndent   bool // <<-
+	heredocSquig    bool // <<~
+	heredocQuote    rune
+	heredocPostBody string // bytes from after delim to end-of-line (incl. \n);
+	// spliced back into input after the heredoc body's STRING_END so trailers
+	// like <<EOS.chop and chained heredocs like <<A, <<B both lex naturally.
 
 	// Interpolation state.
 	braceDepth  int
@@ -1199,25 +1201,27 @@ func lexHeredocStart(l *Lexer, indent, squig bool) StateFn {
 		l.heredocDelim += string(r)
 	}
 
-	// Save trailer for method chaining like <<EOS.chop.
-	if p := l.peek(); p != eof && p != '\n' {
-		start := l.pos
-		for {
-			r := l.next()
-			if r == eof || r == '\n' {
-				l.backup() // rewind to exclude \n from trailer
-				break
-			}
-		}
-		l.heredocTrailer = l.input[start:l.pos]
-		l.next() // re-consume the \n
+	// Capture rest-of-line (including the trailing \n) and splice it out, so
+	// the body lexer sees the heredoc body immediately after a single \n.
+	// The captured bytes are re-injected after STRING_END / STRING -- this
+	// handles trailers (<<EOS.chop) and chained heredocs (<<A, <<B) uniformly.
+	restStart := l.pos
+	nlPos := restStart
+	for nlPos < len(l.input) && l.input[nlPos] != '\n' {
+		nlPos++
+	}
+	if nlPos < len(l.input) {
+		l.heredocPostBody = l.input[restStart : nlPos+1]
+		l.input = l.input[:restStart] + "\n" + l.input[nlPos+1:]
 	} else {
-		// Skip to end of line.
-		for {
-			r := l.next()
-			if r == eof || r == '\n' {
-				break
-			}
+		l.heredocPostBody = l.input[restStart:nlPos]
+		l.input = l.input[:restStart]
+	}
+	// Consume the inserted \n (or hit eof on unterminated input).
+	for {
+		r := l.next()
+		if r == eof || r == '\n' {
+			break
 		}
 	}
 	l.ignore()
@@ -1371,11 +1375,9 @@ func lexHeredocBody(l *Lexer) StateFn {
 				}
 				l.ignore()
 				l.heredocDelim = ""
-				// Replay trailer tokens (e.g. .chop from <<EOS.chop).
-				if l.heredocTrailer != "" {
-					trailer := l.heredocTrailer
-					l.heredocTrailer = ""
-					lexTrailer(l, trailer)
+				if l.heredocPostBody != "" {
+					l.input = l.input[:l.pos] + l.heredocPostBody + l.input[l.pos:]
+					l.heredocPostBody = ""
 				}
 				return startLexer
 			}
@@ -1448,10 +1450,9 @@ func lexHeredocContent(l *Lexer) StateFn {
 				l.ignore()
 				l.emit(endTok)
 				l.heredocDelim = ""
-				if l.heredocTrailer != "" {
-					trailer := l.heredocTrailer
-					l.heredocTrailer = ""
-					lexTrailer(l, trailer)
+				if l.heredocPostBody != "" {
+					l.input = l.input[:l.pos] + l.heredocPostBody + l.input[l.pos:]
+					l.heredocPostBody = ""
 				}
 				return startLexer
 			}
@@ -1531,34 +1532,6 @@ func stripHeredocIndent(s string) string {
 		}
 	}
 	return strings.Join(lines, "\n")
-}
-
-// lexTrailer runs the lexer over a trailer string (e.g. ".chop") and
-// emits the resulting tokens (excluding EOF) to the main channel.
-func lexTrailer(l *Lexer, trailer string) {
-	// Use a separate channel with generous buffer to avoid deadlock
-	// with the main channel during emit.
-	sub := &Lexer{
-		input:  trailer,
-		state:  startLexer,
-		tokens: make(chan token.Token, 16),
-	}
-	// Run the state machine until we've consumed all input.
-	for sub.state != nil && sub.pos < len(sub.input) {
-		sub.state = sub.state(sub)
-	}
-	// Drain all tokens except EOF into the main channel.
-	for {
-		select {
-		case tok := <-sub.tokens:
-			if tok.Type == token.EOF {
-				return
-			}
-			l.tokens <- tok
-		default:
-			return
-		}
-	}
 }
 
 func isExpressionEnd(tok token.Type) bool {

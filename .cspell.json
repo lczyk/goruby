@@ -150,6 +150,7 @@
     "REGEX_BEG",
     "REGEX_END",
     "heredocs",
+    "incl",
     "interp",
     "Interp",
     "XORASSIGN",
