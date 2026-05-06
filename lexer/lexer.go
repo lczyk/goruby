@@ -127,6 +127,83 @@ func (l *Lexer) backup() {
 	l.pos -= l.width
 }
 
+// consumeEscape advances past the remainder of an escape sequence.
+// The backslash has already been consumed; this reads the char after
+// the backslash and consumes the rest of any multi-character sequence
+// (e.g. \u{XXXX}, \xNN, \C-x, \M-x, \cX, \o{NNN}).
+func (l *Lexer) consumeEscape() {
+	r := l.next()
+	switch r {
+	case 'u':
+		if l.peek() == '{' {
+			l.next() // consume {
+			for {
+				c := l.next()
+				if c == eof || c == '\n' {
+					return
+				}
+				if c == '}' {
+					break
+				}
+			}
+		} else {
+			// \uXXXX -- exactly 4 hex digits
+			for i := 0; i < 4; i++ {
+				if isHexDigit(l.peek()) {
+					l.next()
+				}
+			}
+		}
+	case 'x':
+		// \xNN -- 1 or 2 hex digits
+		for i := 0; i < 2; i++ {
+			if isHexDigit(l.peek()) {
+				l.next()
+			}
+		}
+	case 'C':
+		if l.peek() == '-' {
+			l.next() // consume -
+			r = l.next()
+			if r == 'M' && l.peek() == '-' {
+				l.next() // consume -
+				l.next() // consume final char
+			}
+		}
+	case 'M':
+		if l.peek() == '-' {
+			l.next() // consume -
+			r = l.next()
+			if r == 'C' && l.peek() == '-' {
+				l.next() // consume -
+				l.next() // consume final char
+			}
+		}
+	case 'c':
+		l.next() // consume the control char
+	case 'o':
+		if l.peek() == '{' {
+			l.next() // consume {
+			for {
+				c := l.next()
+				if c == eof || c == '\n' {
+					return
+				}
+				if c == '}' {
+					break
+				}
+			}
+		} else {
+			// up to 3 octal digits
+			for i := 0; i < 3; i++ {
+				if isOctDigit(l.peek()) {
+					l.next()
+				}
+			}
+		}
+	}
+}
+
 // peek returns but does not consume
 // the next rune in the input.
 func (l *Lexer) peek() rune {
@@ -707,7 +784,7 @@ func lexSingleQuoteString(l *Lexer) StateFn {
 
 	for r != '\'' {
 		if r == '\\' {
-			l.next() // skip escaped char (\' or \\)
+			l.consumeEscape()
 		} else if r == eof {
 			return l.errorf("unterminated string")
 		}
@@ -862,7 +939,7 @@ func lexStringContent(l *Lexer) StateFn {
 			}
 			// plain # character in string, continue
 		case '\\':
-			l.next() // skip escaped char (e.g. \" \\ \n \t \#)
+			l.consumeEscape()
 		case eof:
 			return l.errorf("unterminated string")
 		}
@@ -968,7 +1045,7 @@ func lexPercentLiteralBody(l *Lexer, opener, closer rune, paired bool, tok token
 			return l.errorf("unterminated percent literal")
 		}
 		if r == '\\' {
-			l.next()
+			l.consumeEscape()
 			continue
 		}
 		if paired {
@@ -1018,7 +1095,7 @@ func lexPercentContent(l *Lexer, opener, closer rune, paired bool,
 			return l.errorf("unterminated percent literal")
 		}
 		if r == '\\' {
-			l.next() // skip escaped char
+			l.consumeEscape()
 			continue
 		}
 		if paired {
@@ -1162,7 +1239,7 @@ func lexBacktickContent(l *Lexer) StateFn {
 				return lexGlobal
 			}
 		case '\\':
-			l.next() // skip escaped char
+			l.consumeEscape()
 		case eof:
 			return l.errorf("unterminated command literal")
 		}
@@ -1558,7 +1635,7 @@ func lexHeredocContent(l *Lexer) StateFn {
 			}
 		}
 		if r == '\\' {
-			l.next() // skip escaped char
+			l.consumeEscape()
 		}
 	}
 }
@@ -1713,7 +1790,7 @@ func lexRegexContent(l *Lexer) StateFn {
 				return lexGlobal
 			}
 		case '\\':
-			l.next() // skip escaped char
+			l.consumeEscape()
 		case eof:
 			return l.errorf("unterminated regexp")
 		}
