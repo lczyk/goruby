@@ -197,3 +197,105 @@ func BenchmarkLexKeywords(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkLexSingleQuoted(b *testing.B) {
+	// Single-quoted string -- exercises lexSingleQuoteString hot path.
+	const src = "'hello world this is a simple single-quoted string'"
+	b.ReportAllocs()
+	b.SetBytes(int64(len(src)))
+	for i := 0; i < b.N; i++ {
+		l := New(src)
+		for l.HasNext() {
+			tok := l.NextToken()
+			if tok.Type == token.EOF {
+				break
+			}
+		}
+	}
+}
+
+func BenchmarkLexRegexBody(b *testing.B) {
+	// Regex with escapes and interpolation -- exercises lexRegexContent path.
+	const src = "/foo \\u{41} bar \\x7e #{x} baz \\C-a qux \\M-\\n/ix"
+	b.ReportAllocs()
+	b.SetBytes(int64(len(src)))
+	for i := 0; i < b.N; i++ {
+		l := New(src)
+		for l.HasNext() {
+			tok := l.NextToken()
+			if tok.Type == token.EOF {
+				break
+			}
+		}
+	}
+}
+
+func BenchmarkLexPercentLiteral(b *testing.B) {
+	// Percent literal with paired delimiters -- exercises lexPercentContent
+	// depth tracking and escape consumption.
+	const src = "%Q{hello \\u{41} world #{name} \\x7e}"
+	b.ReportAllocs()
+	b.SetBytes(int64(len(src)))
+	for i := 0; i < b.N; i++ {
+		l := New(src)
+		for l.HasNext() {
+			tok := l.NextToken()
+			if tok.Type == token.EOF {
+				break
+			}
+		}
+	}
+}
+
+func BenchmarkLexSquigHeredoc(b *testing.B) {
+	// Squiggy heredoc -- exercises stripSquigInterpBody indent stripping
+	// and the squig heredoc content path.
+	const src = "<<~EOS\n" +
+		"    hello #{name}\n" +
+		"      world\n" +
+		"  EOS\n"
+	b.ReportAllocs()
+	b.SetBytes(int64(len(src)))
+	for i := 0; i < b.N; i++ {
+		l := New(src)
+		for l.HasNext() {
+			tok := l.NextToken()
+			if tok.Type == token.EOF {
+				break
+			}
+		}
+	}
+}
+
+func BenchmarkLexFloatLiteral(b *testing.B) {
+	// Float literals with fraction, exponent, and suffixes --
+	// exercises lexFloatFraction + lexFloatExponent paths.
+	const src = "1.5e+10r 2.5e-3i .5r 1e10 3.14"
+	b.ReportAllocs()
+	b.SetBytes(int64(len(src)))
+	for i := 0; i < b.N; i++ {
+		l := New(src)
+		for l.HasNext() {
+			tok := l.NextToken()
+			if tok.Type == token.EOF {
+				break
+			}
+		}
+	}
+}
+
+func BenchmarkLexComment(b *testing.B) {
+	// Hash comment -- exercises commentLexer path.
+	const src = "# this is a comment with some text that goes on for a while\n"
+	b.ReportAllocs()
+	b.SetBytes(int64(len(src)))
+	for i := 0; i < b.N; i++ {
+		l := New(src)
+		for l.HasNext() {
+			tok := l.NextToken()
+			if tok.Type == token.EOF {
+				break
+			}
+		}
+	}
+}
