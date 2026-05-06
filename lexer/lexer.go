@@ -456,6 +456,11 @@ func startLexer(l *Lexer) StateFn {
 				return startLexer
 			}
 			// Check for heredoc: <<, <<-, <<~
+			// class << expr is singleton class syntax, not a heredoc.
+			if l.lastToken.Type == token.CLASS {
+				l.emit(token.LSHIFT)
+				return startLexer
+			}
 			p := l.peek()
 			if p == '-' || p == '~' {
 				l.next()
