@@ -26,6 +26,12 @@ var LexStartFn = startLexer
 // another non start state function if the partial input to parse is abiguous.
 type StateFn func(*Lexer) StateFn
 
+// interpState saves the lexer state before entering an interpolation region.
+type interpState struct {
+	stateFn      StateFn // state to return to (e.g. lexStringContent)
+	returnOnNext bool    // if true, pop on next checkInterpStack call (for #$var style)
+}
+
 const operatorCharacters = "+-!*/%&<>=,;#.:(){}[]|@?$"
 
 // New returns a Lexer instance ready to process the given input.
@@ -55,6 +61,10 @@ type Lexer struct {
 	heredocSquig   bool // <<~
 	heredocQuote   rune
 	heredocTrailer string // trailer text on delim line (e.g. ".chop")
+
+	// Interpolation state.
+	braceDepth  int
+	interpStack []interpState
 }
 
 // NextToken will return the next token processed from the lexer.
@@ -161,6 +171,15 @@ func startLexer(l *Lexer) StateFn {
 		return lexGlobal
 	case '\n':
 		l.emit(token.NEWLINE)
+		// __END__ at line start: consume rest of input.
+		if strings.HasPrefix(l.input[l.pos:], "__END__") {
+			after := l.pos + 7
+			if after >= len(l.input) || l.input[after] == '\n' || l.input[after] == '\r' {
+				l.pos = len(l.input)
+				l.emit(token.EOF)
+				return nil
+			}
+		}
 		return startLexer
 	case '\'':
 		return lexSingleQuoteString
@@ -263,7 +282,7 @@ func startLexer(l *Lexer) StateFn {
 		return lexCharacterLiteral
 	case '/':
 		if isRegexBeginContext(l.lastToken.Type) {
-			return lexRegex
+			return lexRegexBegin
 		}
 		if l.peek() == '=' {
 			l.next()
@@ -400,8 +419,20 @@ func startLexer(l *Lexer) StateFn {
 		return startLexer
 	case '{':
 		l.emit(token.LBRACE)
+		if inInterp(l) {
+			l.braceDepth++
+		}
 		return startLexer
 	case '}':
+		if inInterp(l) {
+			l.braceDepth--
+			if l.braceDepth == 0 {
+				l.emit(token.EMBEXPR_END)
+				top := l.interpStack[len(l.interpStack)-1]
+				l.interpStack = l.interpStack[:len(l.interpStack)-1]
+				return top.stateFn
+			}
+		}
 		l.emit(token.RBRACE)
 		return startLexer
 	case '[':
@@ -473,6 +504,27 @@ func startLexer(l *Lexer) StateFn {
 	}
 }
 
+// inInterp returns true if the lexer is inside a #{...} interpolation region
+// (as opposed to #$var / #@var style, which uses returnOnNext).
+func inInterp(l *Lexer) bool {
+	if len(l.interpStack) == 0 {
+		return false
+	}
+	return !l.interpStack[len(l.interpStack)-1].returnOnNext
+}
+
+// checkInterpStack checks if we should return to a saved interpolation state.
+func checkInterpStack(l *Lexer) StateFn {
+	if len(l.interpStack) > 0 {
+		top := &l.interpStack[len(l.interpStack)-1]
+		if top.returnOnNext {
+			l.interpStack = l.interpStack[:len(l.interpStack)-1]
+			return top.stateFn
+		}
+	}
+	return startLexer
+}
+
 func lexIdentifier(l *Lexer) StateFn {
 	legalIdentifierCharacters := []byte{'?', '!'}
 	r := l.next()
@@ -489,7 +541,7 @@ func lexIdentifier(l *Lexer) StateFn {
 	l.backup()
 	literal := l.input[l.start:l.pos]
 	l.emit(token.LookupIdent(literal))
-	return startLexer
+	return checkInterpStack
 }
 
 func lexDigit(l *Lexer) StateFn {
@@ -556,7 +608,7 @@ func lexDigit(l *Lexer) StateFn {
 }
 
 func lexFloat(l *Lexer) StateFn {
-	// Leading-dot float: .5 — the dot was already consumed by startLexer.
+	// Leading-dot float: .5 -- the dot was already consumed by startLexer.
 	return lexFloatFraction(l)
 }
 
@@ -687,7 +739,7 @@ func lexCharacterLiteral(l *Lexer) StateFn {
 			}
 			// else: \u without {} is invalid; already consumed u
 		case 'x':
-			// \xNN — one or two hex digits
+			// \xNN -- one or two hex digits
 			for i := 0; i < 2; i++ {
 				if isHexDigit(l.peek()) {
 					l.next()
@@ -702,7 +754,7 @@ func lexCharacterLiteral(l *Lexer) StateFn {
 					l.next() // consume -
 					l.next() // consume the final char
 				}
-				// else: \C-x — already consumed the char after -
+				// else: \C-x -- already consumed the char after -
 			}
 		case 'M':
 			// \M-x or \M-\C-x
@@ -713,10 +765,10 @@ func lexCharacterLiteral(l *Lexer) StateFn {
 					l.next() // consume -
 					l.next() // consume the final char
 				}
-				// else: \M-x — already consumed the char after -
+				// else: \M-x -- already consumed the char after -
 			}
 		case 'c':
-			// \cx — control char (lowercase c variant)
+			// \cx -- control char (lowercase c variant)
 			l.next() // consume the character after \c
 		case 'o':
 			// \o{NNN} or \oNNN
@@ -747,88 +799,68 @@ func lexCharacterLiteral(l *Lexer) StateFn {
 }
 
 func lexString(l *Lexer) StateFn {
-	l.ignore()
-	r := l.next()
-
-	for r != '"' {
-		if r == '\\' {
-			l.next() // skip escaped character (e.g. \", \\, \n, \t)
-		} else if r == '#' && l.peek() == '{' {
-			l.next() // consume {
-			l.next() // consume first char of interpolation
-			skipInterpolation(l)
-		} else if r == eof {
-			return l.errorf("unterminated string")
-		}
-		r = l.next()
-	}
-	l.backup()
-	l.emit(token.STRING)
-	l.next()
-	l.ignore()
-	return startLexer
+	l.ignore() // consume opening "
+	l.emit(token.STRING_BEG)
+	return lexStringContent
 }
 
-// skipInterpolation skips characters until the matching '}' for #{...}.
-func skipInterpolation(l *Lexer) {
-	depth := 1
-	for depth > 0 {
+// lexStringContent scans through a double-quoted string, emitting STRING_CONTENT
+// for literal text and handling #{...} / #$var / #@var interpolation.
+func lexStringContent(l *Lexer) StateFn {
+	for {
 		r := l.next()
 		switch r {
-		case eof:
-			return
-		case '{':
-			depth++
-		case '}':
-			depth--
 		case '"':
-			// nested string inside interpolation
-			for {
-				c := l.next()
-				if c == eof || c == '\n' {
-					return
-				}
-				if c == '\\' {
-					l.next() // skip escaped char
-					continue
-				}
-				if c == '"' {
-					break
-				}
+			if l.pos-l.width > l.start {
+				l.backup()
+				l.emit(token.STRING_CONTENT)
+				l.next() // re-consume the closing "
 			}
-		case '\'':
-			// nested single-quoted string
-			for {
-				c := l.next()
-				if c == eof || c == '\n' {
-					return
-				}
-				if c == '\'' {
-					break
-				}
-			}
-		case '/':
-			// nested regex inside interpolation
-			for {
-				c := l.next()
-				if c == eof || c == '\n' {
-					return
-				}
-				if c == '\\' {
-					l.next()
-					continue
-				}
-				if c == '/' {
-					break
-				}
-			}
-		case '\\':
-			l.next() // skip escaped char
+			l.emit(token.STRING_END) // literal is the closing "
+			return checkInterpStack
 		case '#':
-			if l.peek() == '{' {
-				l.next()
-				depth++
+			p := l.peek()
+			if p == '{' {
+				if l.pos-l.width > l.start {
+					l.backup()
+					l.emit(token.STRING_CONTENT)
+					l.next() // re-consume #
+				}
+				l.next() // consume {
+				l.emit(token.EMBEXPR_BEG)
+				l.interpStack = append(l.interpStack, interpState{stateFn: lexStringContent})
+				l.braceDepth = 1
+				return startLexer
 			}
+			if p == '@' || p == '$' {
+				if l.pos-l.width > l.start {
+					l.backup()
+					l.emit(token.STRING_CONTENT)
+					l.next() // re-consume #
+				}
+				l.ignore() // skip the # character
+				l.interpStack = append(l.interpStack, interpState{stateFn: lexStringContent, returnOnNext: true})
+				if p == '@' {
+					l.next() // consume @
+					if l.peek() == '@' {
+						l.next()
+						l.emit(token.CLASS_VAR)
+					} else {
+						l.emit(token.AT)
+					}
+					return lexIdentifier
+				}
+				// p == '$' -- consume $ so lexGlobal starts from the variable name
+				l.next()
+				return lexGlobal
+			}
+			// plain # character in string, continue
+		case '\\':
+			l.next() // skip escaped char (e.g. \" \\ \n \t \#)
+		case eof:
+			return l.errorf("unterminated string")
+		case '\n':
+			return l.errorf("unterminated string")
 		}
 	}
 }
@@ -844,19 +876,19 @@ func lexGlobal(l *Lexer) StateFn {
 	// Must check BEFORE isExpressionDelimiter since ; is both punct and delim.
 	if isGlobalPunct(r) || isDigit(r) {
 		l.emit(token.GLOBAL)
-		return startLexer
+		return checkInterpStack
 	}
 
 	if isExpressionDelimiter(r) {
 		return l.errorf("Illegal character: '%c'", r)
 	}
 
-	for !isWhitespace(r) && !isExpressionDelimiter(r) && !isGlobalDelim(r) {
+	for isLetter(r) || isDigit(r) || r == '_' {
 		r = l.next()
 	}
 	l.backup()
 	l.emit(token.GLOBAL)
-	return startLexer
+	return checkInterpStack
 }
 
 func isGlobalPunct(r rune) bool {
@@ -866,10 +898,6 @@ func isGlobalPunct(r rune) bool {
 		return true
 	}
 	return false
-}
-
-func isGlobalDelim(r rune) bool {
-	return isGlobalPunct(r) || r == '.' || r == ','
 }
 
 func commentLexer(l *Lexer) StateFn {
@@ -887,53 +915,176 @@ func commentLexer(l *Lexer) StateFn {
 func lexPercentLiteral(l *Lexer) StateFn {
 	l.ignore() // skip %
 
-	opener := l.next()
+	c := l.next() // type char or delimiter if no type char
 
-	// %q, %Q, %w, %W, %i, %I, %r, %x, %s — opener is the type char
-	if isLetter(opener) {
-		opener = l.next() // next char is the actual delimiter
-	}
+	var typ rune    // q, Q, w, W, i, I, r, x, s, or 0 for bare %{...}
+	var opener rune // the opening delimiter
 
-	closing := closingDelim(opener)
-	paired := opener != closing // {} () [] <> track depth; // !! track single match
-
-	if paired {
-		depth := 1
-		for depth > 0 {
-			c := l.next()
-			if c == eof {
-				return l.errorf("unterminated percent literal")
-			}
-			if c == '\\' {
-				l.next()
-				continue
-			}
-			if c == opener {
-				depth++
-			} else if c == closing {
-				depth--
-			}
-		}
+	if isPercentTypeChar(c) {
+		typ = c
+		opener = l.next()
 	} else {
-		for {
-			c := l.next()
-			if c == eof {
-				return l.errorf("unterminated percent literal")
-			}
-			if c == '\\' {
-				l.next()
+		typ = 0 // bare %, defaults to %Q (interpolating string)
+		opener = c
+	}
+
+	closer := closingDelim(opener)
+	paired := opener != closer
+	l.ignore() // skip type char and opener
+
+	switch typ {
+	case 'q', 's':
+		return lexPercentLiteralBody(l, opener, closer, paired, token.STRING)
+	case 'w', 'i':
+		return lexPercentLiteralBody(l, opener, closer, paired, token.STRING)
+	case 'Q', 'W', 'I', 0:
+		l.emit(token.STRING_BEG)
+		return lexPercentContent(l, opener, closer, paired, token.STRING_CONTENT, token.STRING_END)
+	case 'r':
+		l.emit(token.REGEX_BEG)
+		return lexPercentContent(l, opener, closer, paired, token.STRING_CONTENT, token.REGEX_END)
+	case 'x':
+		l.emit(token.XSTR_BEG)
+		return lexPercentContent(l, opener, closer, paired, token.XSTR_CONTENT, token.XSTR_END)
+	default:
+		return l.errorf("unknown percent literal type: %c", typ)
+	}
+}
+
+// lexPercentLiteralBody reads a non-interpolating percent literal body
+// and emits a single token of the given type.
+func lexPercentLiteralBody(l *Lexer, opener, closer rune, paired bool, tok token.Type) StateFn {
+	depth := 0
+	if paired {
+		depth = 1
+	}
+	for {
+		r := l.next()
+		if r == eof {
+			return l.errorf("unterminated percent literal")
+		}
+		if r == '\\' {
+			l.next()
+			continue
+		}
+		if paired {
+			if r == opener {
+				depth++
 				continue
 			}
-			if c == closing {
-				break
+			if r == closer {
+				depth--
+				if depth == 0 {
+					l.backup()
+					l.emit(tok)
+					l.next()
+					l.ignore()
+					return startLexer
+				}
+				continue
+			}
+		} else {
+			if r == closer {
+				l.backup()
+				l.emit(tok)
+				l.next()
+				l.ignore()
+				return startLexer
 			}
 		}
 	}
-	l.backup()
-	l.emit(token.STRING)
-	l.next()
-	l.ignore() // consume closing delimiter
-	return startLexer
+}
+
+// lexPercentContent scans through an interpolating percent literal body,
+// emitting content tokens and handling #{...} / #$var / #@var interpolation.
+func lexPercentContent(l *Lexer, opener, closer rune, paired bool,
+	contentTok, endTok token.Type) StateFn {
+
+	depth := 0
+	if paired {
+		depth = 1
+	}
+	resumeFn := func(_ *Lexer) StateFn {
+		return lexPercentContent(l, opener, closer, paired, contentTok, endTok)
+	}
+
+	for {
+		r := l.next()
+		if r == eof {
+			return l.errorf("unterminated percent literal")
+		}
+		if r == '\\' {
+			l.next() // skip escaped char
+			continue
+		}
+		if paired {
+			if r == opener {
+				depth++
+				continue
+			}
+			if r == closer {
+				depth--
+				if depth == 0 {
+					if l.pos-l.width > l.start {
+						l.backup()
+						l.emit(contentTok)
+						l.next()
+					}
+					l.ignore() // consume closer
+					l.emit(endTok)
+					return checkInterpStack
+				}
+				continue
+			}
+		} else {
+			if r == closer {
+				if l.pos-l.width > l.start {
+					l.backup()
+					l.emit(contentTok)
+					l.next()
+				}
+				l.ignore() // consume closer
+				l.emit(endTok)
+				return checkInterpStack
+			}
+		}
+		if r == '#' {
+			p := l.peek()
+			if p == '{' {
+				if l.pos-l.width > l.start {
+					l.backup()
+					l.emit(contentTok)
+					l.next()
+				}
+				l.next() // consume {
+				l.emit(token.EMBEXPR_BEG)
+				l.interpStack = append(l.interpStack, interpState{stateFn: resumeFn})
+				l.braceDepth = 1
+				return startLexer
+			}
+			if p == '@' || p == '$' {
+				if l.pos-l.width > l.start {
+					l.backup()
+					l.emit(contentTok)
+					l.next()
+				}
+				l.ignore() // skip #
+				l.interpStack = append(l.interpStack, interpState{stateFn: resumeFn, returnOnNext: true})
+				if p == '@' {
+					l.next()
+					if l.peek() == '@' {
+						l.next()
+						l.emit(token.CLASS_VAR)
+					} else {
+						l.emit(token.AT)
+					}
+					return lexIdentifier
+				}
+				l.next() // consume $
+				return lexGlobal
+			}
+		}
+	}
 }
 
 func closingDelim(r rune) rune {
@@ -952,20 +1103,68 @@ func closingDelim(r rune) rune {
 }
 
 func lexBacktick(l *Lexer) StateFn {
-	l.ignore()
-	r := l.next()
+	l.ignore() // consume opening `
+	l.emit(token.XSTR_BEG)
+	return lexBacktickContent
+}
 
-	for r != '`' {
-		if r == eof {
+// lexBacktickContent scans through a backtick command string, emitting
+// XSTR_CONTENT for literal segments and handling #{...} / #$var / #@var.
+func lexBacktickContent(l *Lexer) StateFn {
+	for {
+		r := l.next()
+		switch r {
+		case '`':
+			if l.pos-l.width > l.start {
+				l.backup()
+				l.emit(token.XSTR_CONTENT)
+				l.next() // re-consume the closing `
+			}
+			l.emit(token.XSTR_END)
+			return checkInterpStack
+		case '#':
+			p := l.peek()
+			if p == '{' {
+				if l.pos-l.width > l.start {
+					l.backup()
+					l.emit(token.XSTR_CONTENT)
+					l.next() // re-consume #
+				}
+				l.next() // consume {
+				l.emit(token.EMBEXPR_BEG)
+				l.interpStack = append(l.interpStack, interpState{stateFn: lexBacktickContent})
+				l.braceDepth = 1
+				return startLexer
+			}
+			if p == '@' || p == '$' {
+				if l.pos-l.width > l.start {
+					l.backup()
+					l.emit(token.XSTR_CONTENT)
+					l.next() // re-consume #
+				}
+				l.ignore() // skip #
+				l.interpStack = append(l.interpStack, interpState{stateFn: lexBacktickContent, returnOnNext: true})
+				if p == '@' {
+					l.next()
+					if l.peek() == '@' {
+						l.next()
+						l.emit(token.CLASS_VAR)
+					} else {
+						l.emit(token.AT)
+					}
+					return lexIdentifier
+				}
+				l.next() // consume $
+				return lexGlobal
+			}
+		case '\\':
+			l.next() // skip escaped char
+		case eof:
+			return l.errorf("unterminated command literal")
+		case '\n':
 			return l.errorf("unterminated command literal")
 		}
-		r = l.next()
 	}
-	l.backup()
-	l.emit(token.XSTR)
-	l.next()
-	l.ignore()
-	return startLexer
 }
 
 // lexHeredocStart reads the heredoc delimiter and transitions to body lexing.
@@ -1022,10 +1221,21 @@ func lexHeredocStart(l *Lexer, indent, squig bool) StateFn {
 		}
 	}
 	l.ignore()
-	return lexHeredocBody
+	// Literal heredocs (<<'EOS') are a single STRING token.
+	// Interpolating heredocs emit STRING_BEG + STRING_CONTENT segments.
+	if l.heredocQuote == '\'' {
+		return lexHeredocBody
+	}
+	if l.heredocQuote == '`' {
+		l.emit(token.XSTR_BEG)
+	} else {
+		l.emit(token.STRING_BEG)
+	}
+	return lexHeredocContent
 }
 
-// lexHeredocBody reads the heredoc content until the delimiter appears at line start.
+// lexHeredocBody reads a literal (non-interpolating) heredoc body until
+// the delimiter appears at line start.
 func lexHeredocBody(l *Lexer) StateFn {
 	delim := l.heredocDelim
 	for {
@@ -1095,6 +1305,122 @@ func lexHeredocBody(l *Lexer) StateFn {
 			}
 
 			l.pos = contentEnd
+		}
+	}
+}
+
+// lexHeredocContent reads an interpolating heredoc body, emitting
+// STRING_CONTENT (or XSTR_CONTENT for backtick heredocs) for literal
+// segments and handling #{...} / #$var / #@var.
+func lexHeredocContent(l *Lexer) StateFn {
+	contentTok := token.STRING_CONTENT
+	endTok := token.STRING_END
+	if l.heredocQuote == '`' {
+		contentTok = token.XSTR_CONTENT
+		endTok = token.XSTR_END
+	}
+	delim := l.heredocDelim
+	for {
+		r := l.next()
+		if r == eof {
+			return l.errorf("unterminated heredoc")
+		}
+		if r == '\n' {
+			lineStart := l.pos // position just after \n
+			r2 := l.next()
+			if r2 == eof {
+				return l.errorf("unterminated heredoc")
+			}
+			if l.heredocIndent {
+				for r2 == ' ' || r2 == '\t' {
+					r2 = l.next()
+					if r2 == eof {
+						return l.errorf("unterminated heredoc")
+					}
+				}
+			}
+			matched := true
+			for i := 0; i < len(delim); i++ {
+				if r2 != rune(delim[i]) {
+					matched = false
+					break
+				}
+				if i < len(delim)-1 {
+					r2 = l.next()
+					if r2 == eof {
+						return l.errorf("unterminated heredoc")
+					}
+				}
+			}
+			if matched {
+				if lineStart > l.start {
+					after := l.pos
+					l.pos = lineStart
+					l.emit(contentTok)
+					l.pos = after
+				} else {
+					l.pos = lineStart
+					l.ignore()
+				}
+				// Consume rest of delimiter line.
+				for {
+					r := l.next()
+					if r == eof || r == '\n' {
+						break
+					}
+				}
+				l.ignore()
+				l.emit(endTok)
+				l.heredocDelim = ""
+				if l.heredocTrailer != "" {
+					trailer := l.heredocTrailer
+					l.heredocTrailer = ""
+					lexTrailer(l, trailer)
+				}
+				return startLexer
+			}
+			// Not a delimiter -- rewind so content includes the full line.
+			l.pos = lineStart
+			continue
+		}
+		if r == '#' {
+			p := l.peek()
+			if p == '{' {
+				if l.pos-l.width > l.start {
+					l.backup()
+					l.emit(contentTok)
+					l.next()
+				}
+				l.next() // consume {
+				l.emit(token.EMBEXPR_BEG)
+				l.interpStack = append(l.interpStack, interpState{stateFn: lexHeredocContent})
+				l.braceDepth = 1
+				return startLexer
+			}
+			if p == '@' || p == '$' {
+				if l.pos-l.width > l.start {
+					l.backup()
+					l.emit(contentTok)
+					l.next()
+				}
+				l.ignore() // skip #
+				l.interpStack = append(l.interpStack, interpState{stateFn: lexHeredocContent, returnOnNext: true})
+				if p == '@' {
+					l.next()
+					if l.peek() == '@' {
+						l.next()
+						l.emit(token.CLASS_VAR)
+					} else {
+						l.emit(token.AT)
+					}
+					return lexIdentifier
+				}
+				l.next() // consume $
+				return lexGlobal
+			}
+		}
+		if r == '\\' {
+			l.next() // skip escaped char
 		}
 	}
 }
@@ -1191,7 +1517,7 @@ func isMethodCallTarget(tok token.Type) bool {
 
 func isRegexBeginContext(tok token.Type) bool {
 	switch tok {
-	case token.EOF, token.NEWLINE,
+	case token.ILLEGAL, token.EOF, token.NEWLINE,
 		token.ASSIGN, token.MATCH, token.NMATCH,
 		token.LPAREN, token.LBRACKET, token.LBRACE,
 		token.COMMA, token.SEMICOLON, token.COLON, token.QMARK,
@@ -1206,36 +1532,84 @@ func isRegexBeginContext(tok token.Type) bool {
 	return false
 }
 
-func lexRegex(l *Lexer) StateFn {
-	l.ignore()
-	r := l.next()
+func lexRegexBegin(l *Lexer) StateFn {
+	l.ignore() // consume opening /
+	l.emit(token.REGEX_BEG)
+	return lexRegexContent
+}
 
-	for r != '/' {
-		if r == eof {
-			return l.errorf("unterminated regexp")
-		}
-		if r == '\\' {
-			l.next() // skip escaped character
-		} else if r == '#' && l.peek() == '{' {
-			l.next() // consume {
-			l.next() // consume first char of interpolation
-			skipInterpolation(l)
-		}
-		r = l.next()
-	}
-	l.backup()
-	l.emit(token.REGEX)
-	l.next()
-	l.ignore()
-	// Consume regex options (i, m, x, o)
+// lexRegexContent scans through a regex literal, emitting STRING_CONTENT
+// for literal segments and handling #{...} / #$var / #@var interpolation.
+func lexRegexContent(l *Lexer) StateFn {
 	for {
 		r := l.next()
-		if r != 'i' && r != 'm' && r != 'x' && r != 'o' {
-			l.backup()
-			break
+		switch r {
+		case '/':
+			if l.pos-l.width > l.start {
+				l.backup()
+				l.emit(token.STRING_CONTENT)
+				l.next() // re-consume /
+			}
+			// Consume regex options (i, m, x, o, u, n, e, s)
+			opts := ""
+			for {
+				p := l.peek()
+				if p == 'i' || p == 'm' || p == 'x' || p == 'o' ||
+					p == 'u' || p == 'n' || p == 'e' || p == 's' {
+					l.next()
+					opts += string(p)
+				} else {
+					break
+				}
+			}
+			tok := token.NewToken(token.REGEX_END, opts, l.start)
+			l.lastToken = tok
+			l.tokens <- tok
+			l.start = l.pos
+			return checkInterpStack
+		case '#':
+			p := l.peek()
+			if p == '{' {
+				if l.pos-l.width > l.start {
+					l.backup()
+					l.emit(token.STRING_CONTENT)
+					l.next()
+				}
+				l.next() // consume {
+				l.emit(token.EMBEXPR_BEG)
+				l.interpStack = append(l.interpStack, interpState{stateFn: lexRegexContent})
+				l.braceDepth = 1
+				return startLexer
+			}
+			if p == '@' || p == '$' {
+				if l.pos-l.width > l.start {
+					l.backup()
+					l.emit(token.STRING_CONTENT)
+					l.next()
+				}
+				l.ignore() // skip #
+				l.interpStack = append(l.interpStack, interpState{stateFn: lexRegexContent, returnOnNext: true})
+				if p == '@' {
+					l.next()
+					if l.peek() == '@' {
+						l.next()
+						l.emit(token.CLASS_VAR)
+					} else {
+						l.emit(token.AT)
+					}
+					return lexIdentifier
+				}
+				l.next() // consume $
+				return lexGlobal
+			}
+		case '\\':
+			l.next() // skip escaped char
+		case eof:
+			return l.errorf("unterminated regexp")
+		case '\n':
+			return l.errorf("unterminated regexp")
 		}
 	}
-	return startLexer
 }
 
 func isWhitespace(r rune) bool {

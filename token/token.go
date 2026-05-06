@@ -22,8 +22,16 @@ const (
 	INT
 	FLOAT
 	STRING
-	REGEX // /pattern/
-	XSTR  // `command`
+	REGEX          // /pattern/
+	XSTR           // `command`
+	STRING_BEG     // " -- start of a double-quoted string
+	STRING_CONTENT // literal content within a string
+	STRING_END     // " -- closing quote of a string
+	XSTR_BEG       // ` -- start of a backtick command string
+	XSTR_CONTENT   // literal content within a backtick string
+	XSTR_END       // ` -- closing backtick of a command string
+	REGEX_BEG      // / -- start of a regex literal
+	REGEX_END      // / -- end of a regex literal (literal carries flags)
 	literal_end
 
 	// Operators
@@ -97,6 +105,9 @@ const (
 	LBRACKET // [
 	RBRACKET // ]
 
+	EMBEXPR_BEG // #{
+	EMBEXPR_END // }
+
 	SCOPE // ::
 	AT    // @
 
@@ -151,15 +162,23 @@ var tokens = [...]string{
 	ILLEGAL: "ILLEGAL",
 	EOF:     "EOF",
 
-	IDENT:     "IDENT",
-	CONST:     "CONST",
-	GLOBAL:    "GLOBAL",
-	CLASS_VAR: "CLASS_VAR",
-	INT:       "INT",
-	FLOAT:     "FLOAT",
-	STRING:    "STRING",
-	REGEX:     "REGEX",
-	XSTR:      "XSTR",
+	IDENT:          "IDENT",
+	CONST:          "CONST",
+	GLOBAL:         "GLOBAL",
+	CLASS_VAR:      "CLASS_VAR",
+	INT:            "INT",
+	FLOAT:          "FLOAT",
+	STRING:         "STRING",
+	REGEX:          "REGEX",
+	XSTR:           "XSTR",
+	STRING_BEG:     "STRING_BEG",
+	STRING_CONTENT: "STRING_CONTENT",
+	STRING_END:     "STRING_END",
+	XSTR_BEG:       "XSTR_BEG",
+	XSTR_CONTENT:   "XSTR_CONTENT",
+	XSTR_END:       "XSTR_END",
+	REGEX_BEG:      "REGEX_BEG",
+	REGEX_END:      "REGEX_END",
 
 	ASSIGN:            "=",
 	ADDASSIGN:         "+=",
@@ -212,15 +231,17 @@ var tokens = [...]string{
 	SEMICOLON: ";",
 	HASH:      "#",
 
-	DOT:      ".",
-	COLON:    ":",
-	LPAREN:   "(",
-	RPAREN:   ")",
-	LBRACE:   "{",
-	RBRACE:   "}",
-	LBRACKET: "[",
-	RBRACKET: "]",
-	PIPE:     "|",
+	DOT:         ".",
+	COLON:       ":",
+	LPAREN:      "(",
+	RPAREN:      ")",
+	LBRACE:      "{",
+	RBRACE:      "}",
+	LBRACKET:    "[",
+	RBRACKET:    "]",
+	EMBEXPR_BEG: "EMBEXPR_BEG",
+	EMBEXPR_END: "EMBEXPR_END",
+	PIPE:        "|",
 
 	SCOPE:      "::",
 	HASHROCKET: "=>",

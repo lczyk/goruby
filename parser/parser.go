@@ -76,6 +76,9 @@ var precedences = map[token.Type]int{
 	token.INT:               precCallArg,
 	token.FLOAT:             precCallArg,
 	token.STRING:            precCallArg,
+	token.STRING_BEG:        precCallArg,
+	token.XSTR_BEG:          precCallArg,
+	token.REGEX_BEG:         precCallArg,
 	token.REGEX:             precCallArg,
 	token.XSTR:              precCallArg,
 	token.SELF:              precCallArg,
@@ -182,6 +185,9 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.INT, p.parseIntegerLiteral)
 	p.registerPrefix(token.FLOAT, p.parseFloatLiteral)
 	p.registerPrefix(token.STRING, p.parseStringLiteral)
+	p.registerPrefix(token.STRING_BEG, p.parseInterpolatedString)
+	p.registerPrefix(token.XSTR_BEG, p.parseInterpolatedString)
+	p.registerPrefix(token.REGEX_BEG, p.parseInterpolatedRegex)
 	p.registerPrefix(token.REGEX, p.parseStringLiteral)
 	p.registerPrefix(token.XSTR, p.parseStringLiteral)
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
@@ -261,6 +267,9 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerInfix(token.INT, p.parseCallArgument)
 	p.registerInfix(token.FLOAT, p.parseCallArgument)
 	p.registerInfix(token.STRING, p.parseCallArgument)
+	p.registerInfix(token.STRING_BEG, p.parseCallArgument)
+	p.registerInfix(token.XSTR_BEG, p.parseCallArgument)
+	p.registerInfix(token.REGEX_BEG, p.parseCallArgument)
 	p.registerInfix(token.REGEX, p.parseCallArgument)
 	p.registerInfix(token.XSTR, p.parseCallArgument)
 	p.registerInfix(token.SYMBEG, p.parseCallArgument)
@@ -846,12 +855,104 @@ func (p *parser) parseStringLiteral() ast.Expression {
 	return &ast.StringLiteral{Token: p.curToken, Value: p.curToken.Literal}
 }
 
+func (p *parser) parseInterpolatedString() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseInterpolatedString"))
+	}
+	sl := &ast.StringLiteral{Token: p.curToken} // STRING_BEG
+	p.nextToken()                               // advance to first content token
+
+	var parts []ast.Expression
+	for !p.currentTokenIs(token.STRING_END) && !p.currentTokenIs(token.XSTR_END) && !p.currentTokenIs(token.EOF) {
+		switch p.curToken.Type {
+		case token.STRING_CONTENT, token.XSTR_CONTENT:
+			parts = append(parts, &ast.StringContent{Token: p.curToken, Value: p.curToken.Literal})
+		case token.EMBEXPR_BEG:
+			p.nextToken() // advance past EMBEXPR_BEG to first expression token
+			exp := p.parseExpression(precLowest)
+			if exp != nil {
+				parts = append(parts, exp)
+			}
+			if !p.peekTokenIs(token.EMBEXPR_END) {
+				p.peekError(token.EMBEXPR_END)
+				return nil
+			}
+			p.nextToken() // consume EMBEXPR_END
+		default:
+			p.expectError(token.STRING_CONTENT, token.EMBEXPR_BEG, token.STRING_END)
+			return nil
+		}
+		p.nextToken()
+	}
+
+	// Optimisation: simple string without interpolation.
+	if len(parts) == 1 {
+		if sc, ok := parts[0].(*ast.StringContent); ok {
+			sl.Value = sc.Value
+			return sl
+		}
+	}
+	if len(parts) == 0 {
+		sl.Value = ""
+		return sl
+	}
+	sl.Parts = parts
+	return sl
+}
+
+func (p *parser) parseInterpolatedRegex() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseInterpolatedRegex"))
+	}
+	rl := &ast.RegexLiteral{Token: p.curToken} // REGEX_BEG
+	p.nextToken()                              // advance to first content token
+
+	var parts []ast.Expression
+	for !p.currentTokenIs(token.REGEX_END) && !p.currentTokenIs(token.EOF) {
+		switch p.curToken.Type {
+		case token.STRING_CONTENT:
+			parts = append(parts, &ast.StringContent{Token: p.curToken, Value: p.curToken.Literal})
+		case token.EMBEXPR_BEG:
+			p.nextToken()
+			exp := p.parseExpression(precLowest)
+			if exp != nil {
+				parts = append(parts, exp)
+			}
+			if !p.peekTokenIs(token.EMBEXPR_END) {
+				p.peekError(token.EMBEXPR_END)
+				return nil
+			}
+			p.nextToken()
+		default:
+			p.expectError(token.STRING_CONTENT, token.EMBEXPR_BEG, token.REGEX_END)
+			return nil
+		}
+		p.nextToken()
+	}
+
+	// REGEX_END literal carries the options flags.
+	rl.Options = p.curToken.Literal
+
+	if len(parts) == 1 {
+		if sc, ok := parts[0].(*ast.StringContent); ok {
+			rl.Value = sc.Value
+			return rl
+		}
+	}
+	if len(parts) == 0 {
+		rl.Value = ""
+		return rl
+	}
+	rl.Parts = parts
+	return rl
+}
+
 func (p *parser) parseSymbolLiteral() ast.Expression {
 	if p.trace {
 		defer un(trace(p, "parseSymbolLiteral"))
 	}
 	symbol := &ast.SymbolLiteral{Token: p.curToken}
-	if !p.acceptOneOf(token.IDENT, token.STRING) {
+	if !p.acceptOneOf(token.IDENT, token.STRING, token.STRING_BEG) {
 		return nil
 	}
 	val := p.parseExpression(precHighest)

@@ -146,6 +146,12 @@
     "varibale",
     "Whens",
     "XSTR",
+    "EMBEXPR",
+    "REGEX_BEG",
+    "REGEX_END",
+    "heredocs",
+    "interp",
+    "Interp",
     "XORASSIGN",
     "Yukihiro"
   ]

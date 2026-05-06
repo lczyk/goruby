@@ -528,10 +528,13 @@ func (b *Boolean) End() int { return b.Token.Pos + len(fmt.Sprintf("%t", b.Value
 func (b *Boolean) TokenLiteral() string { return b.Token.Literal }
 func (b *Boolean) String() string       { return fmt.Sprintf("%t", b.Value) }
 
-// StringLiteral represents a double quoted string in the AST
+// StringLiteral represents a string in the AST. For non-interpolated strings,
+// Value holds the content and Parts is nil. For interpolated strings, Parts
+// holds StringContent and expression nodes.
 type StringLiteral struct {
-	Token token.Token // the '"'
-	Value string
+	Token token.Token  // STRING_BEG or STRING
+	Value string       // for non-interpolated strings
+	Parts []Expression // for interpolated strings
 }
 
 func (sl *StringLiteral) expressionNode() {}
@@ -541,11 +544,83 @@ func (sl *StringLiteral) literalNode()    {}
 func (sl *StringLiteral) Pos() int { return sl.Token.Pos }
 
 // End returns the position of first character immediately after the node
-func (sl *StringLiteral) End() int { return sl.Token.Pos + len(sl.Value) }
+func (sl *StringLiteral) End() int {
+	if sl.Parts != nil {
+		if len(sl.Parts) == 0 {
+			return sl.Token.Pos + 2 // empty string: "" = 2 chars
+		}
+		return sl.Parts[len(sl.Parts)-1].End()
+	}
+	return sl.Token.Pos + len(sl.Value)
+}
 
-// TokenLiteral returns the literal from token token.STRING
+// TokenLiteral returns the literal from the string token
 func (sl *StringLiteral) TokenLiteral() string { return sl.Token.Literal }
-func (sl *StringLiteral) String() string       { return sl.Value }
+func (sl *StringLiteral) String() string {
+	if sl.Parts != nil {
+		var parts []string
+		for _, p := range sl.Parts {
+			parts = append(parts, p.String())
+		}
+		return strings.Join(parts, "")
+	}
+	return sl.Value
+}
+
+// StringContent represents a literal text segment within an interpolated string.
+type StringContent struct {
+	Token token.Token // STRING_CONTENT
+	Value string
+}
+
+func (sc *StringContent) expressionNode() {}
+func (sc *StringContent) literalNode()    {}
+
+// Pos returns the position of first character belonging to the node
+func (sc *StringContent) Pos() int { return sc.Token.Pos }
+
+// End returns the position of first character immediately after the node
+func (sc *StringContent) End() int { return sc.Token.Pos + len(sc.Value) }
+
+// TokenLiteral returns the literal of the STRING_CONTENT token
+func (sc *StringContent) TokenLiteral() string { return sc.Token.Literal }
+func (sc *StringContent) String() string       { return sc.Value }
+
+// RegexLiteral represents a regex literal in the AST.
+type RegexLiteral struct {
+	Token   token.Token  // REGEX_BEG
+	Value   string       // for non-interpolated regexes
+	Parts   []Expression // for interpolated regexes
+	Options string       // flags like "imx"
+}
+
+func (rl *RegexLiteral) expressionNode() {}
+func (rl *RegexLiteral) literalNode()    {}
+func (rl *RegexLiteral) Pos() int        { return rl.Token.Pos }
+func (rl *RegexLiteral) End() int {
+	if rl.Parts != nil {
+		if len(rl.Parts) == 0 {
+			return rl.Token.Pos + 2
+		}
+		return rl.Parts[len(rl.Parts)-1].End()
+	}
+	return rl.Token.Pos + len(rl.Value)
+}
+func (rl *RegexLiteral) TokenLiteral() string { return rl.Token.Literal }
+func (rl *RegexLiteral) String() string {
+	var out bytes.Buffer
+	out.WriteString("/")
+	if rl.Parts != nil {
+		for _, p := range rl.Parts {
+			out.WriteString(p.String())
+		}
+	} else {
+		out.WriteString(rl.Value)
+	}
+	out.WriteString("/")
+	out.WriteString(rl.Options)
+	return out.String()
+}
 
 // Comment represents a double quoted string in the AST
 type Comment struct {

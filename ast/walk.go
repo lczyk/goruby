@@ -160,18 +160,30 @@ func Walk(v Visitor, node Node) {
 	// of the corresponding node types in ast.go)
 	switch n := node.(type) {
 	// Expressions
+	case *StringLiteral:
+		if n.Parts != nil {
+			for _, p := range n.Parts {
+				Walk(v, p)
+			}
+		}
+	case *RegexLiteral:
+		if n.Parts != nil {
+			for _, p := range n.Parts {
+				Walk(v, p)
+			}
+		}
 	case *Identifier,
 		*Global,
 		*IntegerLiteral,
 		*FloatLiteral,
-		*StringLiteral,
 		*SymbolLiteral,
 		*Boolean,
 		*Nil,
 		*Self,
 		*BlockCapture,
 		*Keyword__FILE__,
-		*Comment:
+		*Comment,
+		*StringContent:
 		// nothing to do
 
 	case *BlockExpression:

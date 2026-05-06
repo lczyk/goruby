@@ -266,13 +266,18 @@ $a
 		{token.XORASSIGN, "^="},
 		{token.INT, "2"},
 		{token.NEWLINE, "\n"},
-		{token.STRING, ""},
+		{token.STRING_BEG, ""},
+		{token.STRING_END, "\""},
+		{token.NEWLINE, "\n"},
+		{token.STRING_BEG, ""},
+		{token.STRING_CONTENT, "foobar"},
+		{token.STRING_END, "\""},
 		{token.NEWLINE, "\n"},
 		{token.STRING, "foobar"},
 		{token.NEWLINE, "\n"},
-		{token.STRING, "foobar"},
-		{token.NEWLINE, "\n"},
-		{token.STRING, "foo bar"},
+		{token.STRING_BEG, ""},
+		{token.STRING_CONTENT, "foo bar"},
+		{token.STRING_END, "\""},
 		{token.NEWLINE, "\n"},
 		{token.STRING, "foo bar"},
 		{token.NEWLINE, "\n"},
@@ -280,7 +285,9 @@ $a
 		{token.IDENT, "sym"},
 		{token.NEWLINE, "\n"},
 		{token.SYMBEG, ":"},
-		{token.STRING, "sym"},
+		{token.STRING_BEG, ""},
+		{token.STRING_CONTENT, "sym"},
+		{token.STRING_END, "\""},
 		{token.NEWLINE, "\n"},
 		{token.SYMBEG, ":"},
 		{token.STRING, "sym"},
@@ -424,7 +431,9 @@ func TestLexerHeredoc(t *testing.T) {
 			}{
 				{token.IDENT, "x"},
 				{token.ASSIGN, "="},
-				{token.STRING, "content\n"},
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "content\n"},
+				{token.STRING_END, ""},
 				{token.DOT, "."},
 				{token.IDENT, "chop"},
 				{token.EOF, ""},
@@ -432,7 +441,7 @@ func TestLexerHeredoc(t *testing.T) {
 		},
 		{
 			name:  "squiggy heredoc strips common indent",
-			input: "<<~EOS\n  hello\n  world\nEOS\n",
+			input: "<<~'EOS'\n  hello\n  world\nEOS\n",
 			expected: []struct {
 				typ     token.Type
 				literal string
@@ -448,7 +457,9 @@ func TestLexerHeredoc(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING, "\tcontent\n"},
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "\tcontent\n"},
+				{token.STRING_END, ""},
 				{token.EOF, ""},
 			},
 		},
@@ -461,7 +472,9 @@ func TestLexerHeredoc(t *testing.T) {
 			}{
 				{token.IDENT, "foo"},
 				{token.LPAREN, "("},
-				{token.STRING, "content\n"},
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "content\n"},
+				{token.STRING_END, ""},
 				{token.DOT, "."},
 				{token.IDENT, "strip"},
 				{token.RPAREN, ")"},
@@ -480,6 +493,396 @@ func TestLexerHeredoc(t *testing.T) {
 				tok := l.NextToken()
 				if tok.Type != exp.typ {
 					t.Errorf("pos %d: expected type %s, got %s", i, exp.typ, tok.Type)
+				}
+				if tok.Literal != exp.literal {
+					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
+				}
+			}
+		})
+	}
+}
+
+func TestLexerStringInterpolation(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []struct {
+			typ     token.Type
+			literal string
+		}
+	}{
+		{
+			name:  "simple interpolation #{name}",
+			input: "\"hello #{name} world\"",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "hello "},
+				{token.EMBEXPR_BEG, "#{"},
+				{token.IDENT, "name"},
+				{token.EMBEXPR_END, "}"},
+				{token.STRING_CONTENT, " world"},
+				{token.STRING_END, "\""},
+			},
+		},
+		{
+			name:  "variable interpolation #$foo",
+			input: "\"hello #$foo world\"",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "hello "},
+				{token.GLOBAL, "$foo"},
+				{token.STRING_CONTENT, " world"},
+				{token.STRING_END, "\""},
+			},
+		},
+		{
+			name:  "variable interpolation #@foo",
+			input: "\"hello #@foo world\"",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "hello "},
+				{token.AT, "@"},
+				{token.IDENT, "foo"},
+				{token.STRING_CONTENT, " world"},
+				{token.STRING_END, "\""},
+			},
+		},
+		{
+			name:  "nested braces in interpolation",
+			input: "\"x=#{ {a: 1} }\"",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "x="},
+				{token.EMBEXPR_BEG, "#{"},
+				{token.LBRACE, "{"},
+				{token.IDENT, "a"},
+				{token.COLON, ":"},
+				{token.INT, "1"},
+				{token.RBRACE, "}"},
+				{token.EMBEXPR_END, "}"},
+				{token.STRING_END, "\""},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := New(tt.input)
+			for i, exp := range tt.expected {
+				if !l.HasNext() {
+					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				}
+				tok := l.NextToken()
+				if tok.Type != exp.typ {
+					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
+				}
+				if tok.Literal != exp.literal {
+					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
+				}
+			}
+		})
+	}
+}
+
+func TestLexerHeredocInterpolation(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []struct {
+			typ     token.Type
+			literal string
+		}
+	}{
+		{
+			name:  "heredoc with simple interpolation",
+			input: "<<EOS\nhello #{name} world\nEOS\n",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "hello "},
+				{token.EMBEXPR_BEG, "#{"},
+				{token.IDENT, "name"},
+				{token.EMBEXPR_END, "}"},
+				{token.STRING_CONTENT, " world\n"},
+				{token.STRING_END, ""},
+			},
+		},
+		{
+			name:  "heredoc with variable interpolation #$foo",
+			input: "<<EOS\nhello #$foo world\nEOS\n",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "hello "},
+				{token.GLOBAL, "$foo"},
+				{token.STRING_CONTENT, " world\n"},
+				{token.STRING_END, ""},
+			},
+		},
+		{
+			name:  "backtick heredoc",
+			input: "<<`CMD`\nls -la\nCMD\n",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.XSTR_BEG, ""},
+				{token.XSTR_CONTENT, "ls -la\n"},
+				{token.XSTR_END, ""},
+			},
+		},
+		{
+			name:  "backtick heredoc with interpolation",
+			input: "<<`CMD`\nls #{path}\nCMD\n",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.XSTR_BEG, ""},
+				{token.XSTR_CONTENT, "ls "},
+				{token.EMBEXPR_BEG, "#{"},
+				{token.IDENT, "path"},
+				{token.EMBEXPR_END, "}"},
+				{token.XSTR_CONTENT, "\n"},
+				{token.XSTR_END, ""},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := New(tt.input)
+			for i, exp := range tt.expected {
+				if !l.HasNext() {
+					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				}
+				tok := l.NextToken()
+				if tok.Type != exp.typ {
+					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
+				}
+				if tok.Literal != exp.literal {
+					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
+				}
+			}
+		})
+	}
+}
+
+func TestLexerRegex(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []struct {
+			typ     token.Type
+			literal string
+		}
+	}{
+		{
+			name:  "simple regex",
+			input: "/foo/",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.REGEX_BEG, ""},
+				{token.STRING_CONTENT, "foo"},
+				{token.REGEX_END, ""},
+			},
+		},
+		{
+			name:  "regex with flags",
+			input: "/foo/im",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.REGEX_BEG, ""},
+				{token.STRING_CONTENT, "foo"},
+				{token.REGEX_END, "im"},
+			},
+		},
+		{
+			name:  "regex with interpolation",
+			input: "/foo #{x}/",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.REGEX_BEG, ""},
+				{token.STRING_CONTENT, "foo "},
+				{token.EMBEXPR_BEG, "#{"},
+				{token.IDENT, "x"},
+				{token.EMBEXPR_END, "}"},
+				{token.REGEX_END, ""},
+			},
+		},
+		{
+			name:  "regex with escaped slash",
+			input: "/foo\\/bar/",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.REGEX_BEG, ""},
+				{token.STRING_CONTENT, "foo\\/bar"},
+				{token.REGEX_END, ""},
+			},
+		},
+		{
+			name:  "empty regex",
+			input: "//",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.REGEX_BEG, ""},
+				{token.REGEX_END, ""},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := New(tt.input)
+			for i, exp := range tt.expected {
+				if !l.HasNext() {
+					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				}
+				tok := l.NextToken()
+				if tok.Type != exp.typ {
+					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
+				}
+				if tok.Literal != exp.literal {
+					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
+				}
+			}
+		})
+	}
+}
+
+func TestLexerPercentLiteral(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []struct {
+			typ     token.Type
+			literal string
+		}
+	}{
+		{
+			name:  "%q literal string",
+			input: "%q{hello world}",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING, "hello world"},
+			},
+		},
+		{
+			name:  "%Q interpolating string",
+			input: "%Q{hello #{name}}",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "hello "},
+				{token.EMBEXPR_BEG, "#{"},
+				{token.IDENT, "name"},
+				{token.EMBEXPR_END, "}"},
+				{token.STRING_END, ""},
+			},
+		},
+		{
+			name:  "bare % interpolating string",
+			input: "%{hello}",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "hello"},
+				{token.STRING_END, ""},
+			},
+		},
+		{
+			name:  "%r regex literal",
+			input: "%r{pattern}",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.REGEX_BEG, ""},
+				{token.STRING_CONTENT, "pattern"},
+				{token.REGEX_END, ""},
+			},
+		},
+		{
+			name:  "%x backtick literal",
+			input: "%x{ls -la}",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.XSTR_BEG, ""},
+				{token.XSTR_CONTENT, "ls -la"},
+				{token.XSTR_END, ""},
+			},
+		},
+		{
+			name:  "%w literal word array",
+			input: "%w{foo bar baz}",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING, "foo bar baz"},
+			},
+		},
+		{
+			name:  "%W interpolating word array",
+			input: "%W{foo #{bar}}",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "foo "},
+				{token.EMBEXPR_BEG, "#{"},
+				{token.IDENT, "bar"},
+				{token.EMBEXPR_END, "}"},
+				{token.STRING_END, ""},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := New(tt.input)
+			for i, exp := range tt.expected {
+				if !l.HasNext() {
+					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				}
+				tok := l.NextToken()
+				if tok.Type != exp.typ {
+					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
 				}
 				if tok.Literal != exp.literal {
 					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
