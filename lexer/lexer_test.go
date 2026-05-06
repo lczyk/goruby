@@ -762,6 +762,53 @@ func TestLexerHeredocInterpolation(t *testing.T) {
 				{token.STRING_END, ""},
 			},
 		},
+		{
+			name:  "empty body heredoc with interpolation",
+			input: "<<EOS\nEOS\n",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, ""},
+				{token.STRING_END, ""},
+				{token.NEWLINE, "\n"},
+			},
+		},
+		{
+			name:  "squig heredoc with indented closing delim",
+			input: "<<~EOS\n  body\n  EOS\n",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "body\n"},
+				{token.STRING_END, ""},
+				{token.NEWLINE, "\n"},
+			},
+		},
+		{
+			name:  "nested interpolation: heredoc inside string interpolation with inner #{} in body",
+			input: "\"#{<<~A}\"\n\"#{x}\"\nA\n",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING_BEG, ""},
+				{token.EMBEXPR_BEG, "#{"},
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "\""},
+				{token.EMBEXPR_BEG, "#{"},
+				{token.IDENT, "x"},
+				{token.EMBEXPR_END, "}"},
+				{token.STRING_CONTENT, "\"\n"},
+				{token.STRING_END, ""},
+				{token.EMBEXPR_END, "}"},
+				{token.STRING_END, "\""},
+				{token.NEWLINE, "\n"},
+			},
+		},
 	}
 
 	for _, tt := range tests {

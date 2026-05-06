@@ -30,6 +30,7 @@ type StateFn func(*Lexer) StateFn
 type interpState struct {
 	stateFn      StateFn // state to return to (e.g. lexStringContent)
 	returnOnNext bool    // if true, pop on next checkInterpStack call (for #$var style)
+	braceDepth   int     // outer braceDepth, restored on pop
 }
 
 const operatorCharacters = "+-!*/%&<>=,;#.:(){}[]|@?$"
@@ -434,6 +435,7 @@ func startLexer(l *Lexer) StateFn {
 				l.emit(token.EMBEXPR_END)
 				top := l.interpStack[len(l.interpStack)-1]
 				l.interpStack = l.interpStack[:len(l.interpStack)-1]
+				l.braceDepth = top.braceDepth
 				return top.stateFn
 			}
 		}
@@ -832,7 +834,7 @@ func lexStringContent(l *Lexer) StateFn {
 				}
 				l.next() // consume {
 				l.emit(token.EMBEXPR_BEG)
-				l.interpStack = append(l.interpStack, interpState{stateFn: lexStringContent})
+				l.interpStack = append(l.interpStack, interpState{stateFn: lexStringContent, braceDepth: l.braceDepth})
 				l.braceDepth = 1
 				return startLexer
 			}
@@ -843,7 +845,7 @@ func lexStringContent(l *Lexer) StateFn {
 					l.next() // re-consume #
 				}
 				l.ignore() // skip the # character
-				l.interpStack = append(l.interpStack, interpState{stateFn: lexStringContent, returnOnNext: true})
+				l.interpStack = append(l.interpStack, interpState{stateFn: lexStringContent, returnOnNext: true, braceDepth: l.braceDepth})
 				if p == '@' {
 					l.next() // consume @
 					if l.peek() == '@' {
@@ -1062,7 +1064,7 @@ func lexPercentContent(l *Lexer, opener, closer rune, paired bool,
 				}
 				l.next() // consume {
 				l.emit(token.EMBEXPR_BEG)
-				l.interpStack = append(l.interpStack, interpState{stateFn: resumeFn})
+				l.interpStack = append(l.interpStack, interpState{stateFn: resumeFn, braceDepth: l.braceDepth})
 				l.braceDepth = 1
 				return startLexer
 			}
@@ -1073,7 +1075,7 @@ func lexPercentContent(l *Lexer, opener, closer rune, paired bool,
 					l.next()
 				}
 				l.ignore() // skip #
-				l.interpStack = append(l.interpStack, interpState{stateFn: resumeFn, returnOnNext: true})
+				l.interpStack = append(l.interpStack, interpState{stateFn: resumeFn, returnOnNext: true, braceDepth: l.braceDepth})
 				if p == '@' {
 					l.next()
 					if l.peek() == '@' {
@@ -1136,7 +1138,7 @@ func lexBacktickContent(l *Lexer) StateFn {
 				}
 				l.next() // consume {
 				l.emit(token.EMBEXPR_BEG)
-				l.interpStack = append(l.interpStack, interpState{stateFn: lexBacktickContent})
+				l.interpStack = append(l.interpStack, interpState{stateFn: lexBacktickContent, braceDepth: l.braceDepth})
 				l.braceDepth = 1
 				return startLexer
 			}
@@ -1147,7 +1149,7 @@ func lexBacktickContent(l *Lexer) StateFn {
 					l.next() // re-consume #
 				}
 				l.ignore() // skip #
-				l.interpStack = append(l.interpStack, interpState{stateFn: lexBacktickContent, returnOnNext: true})
+				l.interpStack = append(l.interpStack, interpState{stateFn: lexBacktickContent, returnOnNext: true, braceDepth: l.braceDepth})
 				if p == '@' {
 					l.next()
 					if l.peek() == '@' {
@@ -1533,7 +1535,7 @@ func lexHeredocContent(l *Lexer) StateFn {
 				}
 				l.next() // consume {
 				l.emit(token.EMBEXPR_BEG)
-				l.interpStack = append(l.interpStack, interpState{stateFn: lexHeredocContent})
+				l.interpStack = append(l.interpStack, interpState{stateFn: lexHeredocContent, braceDepth: l.braceDepth})
 				l.braceDepth = 1
 				return startLexer
 			}
@@ -1544,7 +1546,7 @@ func lexHeredocContent(l *Lexer) StateFn {
 					l.next()
 				}
 				l.ignore() // skip #
-				l.interpStack = append(l.interpStack, interpState{stateFn: lexHeredocContent, returnOnNext: true})
+				l.interpStack = append(l.interpStack, interpState{stateFn: lexHeredocContent, returnOnNext: true, braceDepth: l.braceDepth})
 				if p == '@' {
 					l.next()
 					if l.peek() == '@' {
@@ -1689,7 +1691,7 @@ func lexRegexContent(l *Lexer) StateFn {
 				}
 				l.next() // consume {
 				l.emit(token.EMBEXPR_BEG)
-				l.interpStack = append(l.interpStack, interpState{stateFn: lexRegexContent})
+				l.interpStack = append(l.interpStack, interpState{stateFn: lexRegexContent, braceDepth: l.braceDepth})
 				l.braceDepth = 1
 				return startLexer
 			}
@@ -1700,7 +1702,7 @@ func lexRegexContent(l *Lexer) StateFn {
 					l.next()
 				}
 				l.ignore() // skip #
-				l.interpStack = append(l.interpStack, interpState{stateFn: lexRegexContent, returnOnNext: true})
+				l.interpStack = append(l.interpStack, interpState{stateFn: lexRegexContent, returnOnNext: true, braceDepth: l.braceDepth})
 				if p == '@' {
 					l.next()
 					if l.peek() == '@' {
