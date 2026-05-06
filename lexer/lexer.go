@@ -1,7 +1,6 @@
 package lexer
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 	"unicode"
@@ -33,7 +32,6 @@ type interpState struct {
 	braceDepth   int     // outer braceDepth, restored on pop
 }
 
-const operatorCharacters = "+-!*/%&<>=,;#.:(){}[]|@?$"
 
 // New returns a Lexer instance ready to process the given input.
 func New(input string) *Lexer {
@@ -615,20 +613,26 @@ func checkInterpStack(l *Lexer) StateFn {
 	return startLexer
 }
 
+// lexIdentifier scans an identifier after the first character has already
+// been consumed by the caller (startLexer or an interp return path).
+// The first character was validated by isLetter, so we start scanning
+// from the second character; this is why the loop reads before checking.
 func lexIdentifier(l *Lexer) StateFn {
-	legalIdentifierCharacters := []byte{'?', '!'}
-	r := l.next()
 	for {
-		if unicode.IsSpace(r) || strings.ContainsRune(operatorCharacters, r) || r == eof {
-			if bytes.ContainsRune(legalIdentifierCharacters, r) {
-				l.next()
-				break
-			}
-			break
+		r := l.next()
+		if isIdentChar(r) {
+			continue
 		}
-		r = l.next()
+		// ? and ! are valid method name suffixes in Ruby (e.g. nil?, run!).
+		// r has already been consumed by l.next() and is within l.pos,
+		// so we just break -- no need to consume the next character.
+		if r == '?' || r == '!' {
+			// already part of the identifier
+		} else if r != eof {
+			l.backup()
+		}
+		break
 	}
-	l.backup()
 	literal := l.input[l.start:l.pos]
 	l.emit(token.LookupIdent(literal))
 	return checkInterpStack
@@ -1806,7 +1810,10 @@ func isWhitespace(r rune) bool {
 }
 
 func isLetter(r rune) bool {
-	return unicode.IsLetter(r) || r == '_'
+	if r == '_' || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
+		return true
+	}
+	return r > 127 && unicode.IsLetter(r)
 }
 
 func isDigit(r rune) bool {
@@ -1815,6 +1822,18 @@ func isDigit(r rune) bool {
 
 func isDigitOrUnderscore(r rune) bool {
 	return isDigit(r) || r == '_'
+}
+
+// isIdentChar reports whether r is a valid identifier continuation character.
+// Ruby identifiers are [a-zA-Z_][a-zA-Z0-9_]*[?!]?.
+// ASCII letters/digits/underscore are the fast path; non-ASCII letters fall
+// through to the Unicode table.
+func isIdentChar(r rune) bool {
+	if r == '_' || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
+		(r >= '0' && r <= '9') {
+		return true
+	}
+	return r > 127 && unicode.IsLetter(r)
 }
 
 func isHexDigit(r rune) bool {

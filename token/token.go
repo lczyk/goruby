@@ -1,9 +1,7 @@
 package token
 
 import (
-	"bytes"
 	"strconv"
-	"unicode"
 )
 
 //go:generate stringer -type=Type
@@ -322,7 +320,10 @@ func LookupIdent(ident string) Type {
 	if tok, ok := keywords[ident]; ok {
 		return tok
 	}
-	if unicode.IsUpper(bytes.Runes([]byte(ident))[0]) {
+	// Ruby constants always start with ASCII [A-Z]; direct byte indexing
+	// avoids the two-alloc bytes.Runes([]byte(ident)) path. Multi-byte
+	// UTF-8 lead bytes are all > 0x7F, safely outside the A-Z range.
+	if len(ident) > 0 && ident[0] >= 'A' && ident[0] <= 'Z' {
 		return CONST
 	}
 	return IDENT
