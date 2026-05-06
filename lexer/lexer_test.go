@@ -405,3 +405,86 @@ $a
 		}
 	}
 }
+
+func TestLexerHeredoc(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []struct {
+			typ     token.Type
+			literal string
+		}
+	}{
+		{
+			name:  "mid-line chaining with .chop",
+			input: "x = <<EOS.chop\ncontent\nEOS\n",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "x"},
+				{token.ASSIGN, "="},
+				{token.STRING, "content\n"},
+				{token.DOT, "."},
+				{token.IDENT, "chop"},
+				{token.EOF, ""},
+			},
+		},
+		{
+			name:  "squiggy heredoc strips common indent",
+			input: "<<~EOS\n  hello\n  world\nEOS\n",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING, "hello\nworld\n"},
+				{token.EOF, ""},
+			},
+		},
+		{
+			name:  "indented heredoc <<-",
+			input: "<<-EOS\n\tcontent\nEOS\n",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING, "\tcontent\n"},
+				{token.EOF, ""},
+			},
+		},
+		{
+			name:  "mid-line chaining with method call",
+			input: "foo(<<EOS.strip)\ncontent\nEOS\n",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "foo"},
+				{token.LPAREN, "("},
+				{token.STRING, "content\n"},
+				{token.DOT, "."},
+				{token.IDENT, "strip"},
+				{token.RPAREN, ")"},
+				{token.EOF, ""},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := New(tt.input)
+			for i, exp := range tt.expected {
+				if !l.HasNext() {
+					t.Fatalf("pos %d: unexpected EOF", i)
+				}
+				tok := l.NextToken()
+				if tok.Type != exp.typ {
+					t.Errorf("pos %d: expected type %s, got %s", i, exp.typ, tok.Type)
+				}
+				if tok.Literal != exp.literal {
+					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
+				}
+			}
+		})
+	}
+}

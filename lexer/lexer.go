@@ -33,7 +33,7 @@ func New(input string) *Lexer {
 	l := &Lexer{
 		input:  input,
 		state:  startLexer,
-		tokens: make(chan token.Token, 2), // Two token sufficient.
+		tokens: make(chan token.Token, 16),
 	}
 	return l
 }
@@ -50,10 +50,11 @@ type Lexer struct {
 	hadWhitespace bool             // true if whitespace was skipped before current token
 
 	// Heredoc state.
-	heredocDelim  string
-	heredocIndent bool // <<-
-	heredocSquig  bool // <<~
-	heredocQuote  rune
+	heredocDelim   string
+	heredocIndent  bool // <<-
+	heredocSquig   bool // <<~
+	heredocQuote   rune
+	heredocTrailer string // trailer text on delim line (e.g. ".chop")
 }
 
 // NextToken will return the next token processed from the lexer.
@@ -999,11 +1000,25 @@ func lexHeredocStart(l *Lexer, indent, squig bool) StateFn {
 		l.heredocDelim += string(r)
 	}
 
-	// Skip to end of line.
-	for {
-		r := l.next()
-		if r == eof || r == '\n' {
-			break
+	// Save trailer for method chaining like <<EOS.chop.
+	if p := l.peek(); p != eof && p != '\n' {
+		start := l.pos
+		for {
+			r := l.next()
+			if r == eof || r == '\n' {
+				l.backup() // rewind to exclude \n from trailer
+				break
+			}
+		}
+		l.heredocTrailer = l.input[start:l.pos]
+		l.next() // re-consume the \n
+	} else {
+		// Skip to end of line.
+		for {
+			r := l.next()
+			if r == eof || r == '\n' {
+				break
+			}
 		}
 	}
 	l.ignore()
@@ -1049,27 +1064,97 @@ func lexHeredocBody(l *Lexer) StateFn {
 			}
 
 			if matched {
-				r2 = l.next()
-				if r2 == eof || r2 == '\n' || r2 == ';' {
-					if r2 == ';' {
-						for {
-							r3 := l.next()
-							if r3 == eof || r3 == '\n' {
-								break
-							}
-						}
-					}
-					after := l.pos
-					l.pos = contentEnd
+				after := l.pos
+				l.pos = contentEnd
+				if l.heredocSquig {
+					content := stripHeredocIndent(l.input[l.start:l.pos])
+					tok := token.NewToken(token.STRING, content, l.start)
+					l.lastToken = tok
+					l.tokens <- tok
+					l.start = l.pos
+				} else {
 					l.emit(token.STRING)
-					l.pos = after
-					l.ignore()
-					l.heredocDelim = ""
-					return startLexer
 				}
+				l.pos = after
+				// Consume rest of delimiter line (handles <<EOS.chop etc.)
+				for {
+					r := l.next()
+					if r == eof || r == '\n' {
+						break
+					}
+				}
+				l.ignore()
+				l.heredocDelim = ""
+				// Replay trailer tokens (e.g. .chop from <<EOS.chop).
+				if l.heredocTrailer != "" {
+					trailer := l.heredocTrailer
+					l.heredocTrailer = ""
+					lexTrailer(l, trailer)
+				}
+				return startLexer
 			}
 
 			l.pos = contentEnd
+		}
+	}
+}
+
+// stripHeredocIndent removes the minimum common leading whitespace from
+// non-blank lines in a squiggy heredoc (<<~).
+func stripHeredocIndent(s string) string {
+	lines := strings.Split(s, "\n")
+	minIndent := -1
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		indent := 0
+		for _, ch := range line {
+			if ch == ' ' || ch == '\t' {
+				indent++
+			} else {
+				break
+			}
+		}
+		if minIndent == -1 || indent < minIndent {
+			minIndent = indent
+		}
+	}
+	if minIndent <= 0 {
+		return s
+	}
+	for i, line := range lines {
+		if len(line) >= minIndent {
+			lines[i] = line[minIndent:]
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+// lexTrailer runs the lexer over a trailer string (e.g. ".chop") and
+// emits the resulting tokens (excluding EOF) to the main channel.
+func lexTrailer(l *Lexer, trailer string) {
+	// Use a separate channel with generous buffer to avoid deadlock
+	// with the main channel during emit.
+	sub := &Lexer{
+		input:  trailer,
+		state:  startLexer,
+		tokens: make(chan token.Token, 16),
+	}
+	// Run the state machine until we've consumed all input.
+	for sub.state != nil && sub.pos < len(sub.input) {
+		sub.state = sub.state(sub)
+	}
+	// Drain all tokens except EOF into the main channel.
+	for {
+		select {
+		case tok := <-sub.tokens:
+			if tok.Type == token.EOF {
+				return
+			}
+			l.tokens <- tok
+		default:
+			return
 		}
 	}
 }
