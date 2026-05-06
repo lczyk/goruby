@@ -1226,12 +1226,88 @@ func lexHeredocStart(l *Lexer, indent, squig bool) StateFn {
 	if l.heredocQuote == '\'' {
 		return lexHeredocBody
 	}
+	if l.heredocSquig {
+		// Pre-strip indentation so the interp lexer sees normalised content.
+		stripSquigInterpBody(l)
+	}
 	if l.heredocQuote == '`' {
 		l.emit(token.XSTR_BEG)
 	} else {
 		l.emit(token.STRING_BEG)
 	}
 	return lexHeredocContent
+}
+
+// stripSquigInterpBody rewrites l.input to remove the minimum common leading
+// whitespace from the heredoc body lines, so an interpolating squiggy heredoc
+// (<<~) can be lexed by lexHeredocContent without indent-aware emission. Body
+// runs from l.pos to the line whose content equals heredocDelim.
+func stripSquigInterpBody(l *Lexer) {
+	delim := l.heredocDelim
+	bodyStart := l.pos
+	pos := bodyStart
+	type lineInfo struct {
+		start  int
+		indent int
+		blank  bool
+	}
+	var lines []lineInfo
+	minIndent := -1
+	delimLineStart := -1
+	delimLineWS := 0
+	for pos < len(l.input) {
+		lineStart := pos
+		i := pos
+		for i < len(l.input) && (l.input[i] == ' ' || l.input[i] == '\t') {
+			i++
+		}
+		indent := i - lineStart
+		eol := i
+		for eol < len(l.input) && l.input[eol] != '\n' {
+			eol++
+		}
+		content := l.input[i:eol]
+		if content == delim {
+			delimLineStart = lineStart
+			delimLineWS = indent
+			break
+		}
+		blank := content == ""
+		lines = append(lines, lineInfo{lineStart, indent, blank})
+		if !blank {
+			if minIndent < 0 || indent < minIndent {
+				minIndent = indent
+			}
+		}
+		if eol >= len(l.input) {
+			return
+		}
+		pos = eol + 1
+	}
+	if delimLineStart < 0 {
+		return
+	}
+	if minIndent < 0 {
+		minIndent = 0
+	}
+	var b strings.Builder
+	b.Grow(delimLineStart - bodyStart)
+	for idx, ln := range lines {
+		var lineEnd int
+		if idx+1 < len(lines) {
+			lineEnd = lines[idx+1].start
+		} else {
+			lineEnd = delimLineStart
+		}
+		strip := minIndent
+		if ln.blank && strip > ln.indent {
+			strip = ln.indent
+		}
+		b.WriteString(l.input[ln.start+strip : lineEnd])
+	}
+	stripped := b.String()
+	delimLineContentStart := delimLineStart + delimLineWS
+	l.input = l.input[:bodyStart] + stripped + l.input[delimLineContentStart:]
 }
 
 // lexHeredocBody reads a literal (non-interpolating) heredoc body until

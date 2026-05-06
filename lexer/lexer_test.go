@@ -663,6 +663,38 @@ func TestLexerHeredocInterpolation(t *testing.T) {
 				{token.XSTR_END, ""},
 			},
 		},
+		{
+			name:  "squiggy heredoc with interpolation",
+			input: "<<~EOS\n  hello #{name}\n  world\n  EOS\n",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "hello "},
+				{token.EMBEXPR_BEG, "#{"},
+				{token.IDENT, "name"},
+				{token.EMBEXPR_END, "}"},
+				{token.STRING_CONTENT, "\nworld\n"},
+				{token.STRING_END, ""},
+			},
+		},
+		{
+			name:  "squiggy heredoc with mixed indent",
+			input: "<<~EOS\n    a\n  b\n    #{x}\n  EOS\n",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "  a\nb\n  "},
+				{token.EMBEXPR_BEG, "#{"},
+				{token.IDENT, "x"},
+				{token.EMBEXPR_END, "}"},
+				{token.STRING_CONTENT, "\n"},
+				{token.STRING_END, ""},
+			},
+		},
 	}
 
 	for _, tt := range tests {
