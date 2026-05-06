@@ -217,16 +217,12 @@ walk rake/test/test_thread_history_display.rb: parse failed; walk skipped
 # Ruby language tests from MRI test/ruby
 
 # lex phase failures
-lex ruby/test_file_exhaustive.rb: MRI language test - lexer failure
 lex ruby/test_exception.rb: MRI language test - lexer failure
-lex ruby/test_ast.rb: MRI language test - lexer failure
 lex ruby/test_allocation.rb: MRI language test - lexer failure
-lex ruby/test_parse.rb: MRI language test - lexer failure
 lex ruby/test_object.rb: MRI language test - lexer failure
 lex ruby/test_string.rb: MRI language test - lexer failure
 lex ruby/test_regexp.rb: MRI language test - lexer failure
 lex ruby/test_require.rb: MRI language test - lexer failure
-lex ruby/test_iseq.rb: MRI language test - lexer failure
 
 # parse phase failures (lex passes)
 parse ruby/allpairs.rb: MRI language test - parser failure
@@ -325,7 +321,6 @@ parse ruby/test_optimization.rb: MRI language test - parser failure
 parse ruby/test_pack.rb: MRI language test - parser failure
 parse ruby/test_path.rb: MRI language test - parser failure
 parse ruby/test_pattern_matching.rb: MRI language test - parser failure
-parse ruby/test_pipe.rb: MRI language test - parser failure
 parse ruby/test_primitive.rb: MRI language test - parser failure
 parse ruby/test_proc.rb: MRI language test - parser failure
 parse ruby/test_process.rb: MRI language test - parser failure
@@ -360,7 +355,6 @@ parse ruby/test_trace.rb: MRI language test - parser failure
 parse ruby/test_transcode.rb: MRI language test - parser failure
 parse ruby/test_variable.rb: MRI language test - parser failure
 parse ruby/test_vm_dump.rb: MRI language test - parser failure
-parse ruby/test_warning.rb: MRI language test - parser failure
 parse ruby/test_weakkeymap.rb: MRI language test - parser failure
 parse ruby/test_weakmap.rb: MRI language test - parser failure
 parse ruby/test_yjit_exit_locations.rb: MRI language test - parser failure
@@ -480,7 +474,6 @@ walk ruby/test_pack.rb: parse failed; walk skipped
 walk ruby/test_parse.rb: parse failed; walk skipped
 walk ruby/test_path.rb: parse failed; walk skipped
 walk ruby/test_pattern_matching.rb: parse failed; walk skipped
-walk ruby/test_pipe.rb: parse failed; walk skipped
 walk ruby/test_primitive.rb: parse failed; walk skipped
 walk ruby/test_proc.rb: parse failed; walk skipped
 walk ruby/test_process.rb: parse failed; walk skipped
@@ -524,7 +517,6 @@ walk ruby/test_transcode.rb: parse failed; walk skipped
 walk ruby/test_unicode_escape.rb: parse failed; walk skipped
 walk ruby/test_variable.rb: parse failed; walk skipped
 walk ruby/test_vm_dump.rb: parse failed; walk skipped
-walk ruby/test_warning.rb: parse failed; walk skipped
 walk ruby/test_weakkeymap.rb: parse failed; walk skipped
 walk ruby/test_weakmap.rb: parse failed; walk skipped
 walk ruby/test_yield.rb: parse failed; walk skipped
@@ -661,34 +653,21 @@ walk minitest/lib/minitest/unit.rb: parse fails; walk skipped
 parse ruby/test_undef.rb: parser regression from keyword/operator additions
 walk ruby/test_undef.rb: parse fails; walk skipped
 
-# lex failures: heredoc / regex / string edge cases (mostly multi-heredoc-on-same-line)
-lex ruby/test_alias.rb: lex edge case
+# lex failures: remaining heredoc / regex / string edge cases
 lex ruby/test_argf.rb: lex edge case
+lex ruby/test_array.rb: lex edge case
+lex ruby/test_autoload.rb: lex edge case
 lex ruby/test_basicinstructions.rb: lex edge case
-lex ruby/test_beginendblock.rb: lex edge case
-lex ruby/test_bignum.rb: lex edge case
-lex ruby/test_dir.rb: lex edge case
-lex ruby/test_encoding.rb: lex edge case
-lex ruby/test_float.rb: lex edge case
-lex ruby/test_io_m17n.rb: lex edge case
-lex ruby/test_iterator.rb: lex edge case
-lex ruby/test_keyword.rb: lex edge case
-lex ruby/test_literal.rb: lex edge case
-lex ruby/test_marshal.rb: lex edge case
-lex ruby/test_object_id.rb: lex edge case
-lex ruby/test_pattern_matching.rb: lex edge case
-lex ruby/test_pipe.rb: lex edge case
-lex ruby/test_rand.rb: lex edge case
+lex ruby/test_gc_compact.rb: lex edge case
+lex ruby/test_io.rb: lex edge case
+lex ruby/test_module.rb: lex edge case
+lex ruby/test_optimization.rb: lex edge case
+lex ruby/test_process.rb: lex edge case
+lex ruby/test_refinement.rb: lex edge case
 lex ruby/test_require_lib.rb: lex edge case
-lex ruby/test_set.rb: lex edge case
-lex ruby/test_shapes.rb: lex edge case
-lex ruby/test_super.rb: lex edge case
-lex ruby/test_symbol.rb: lex edge case
-lex ruby/test_system.rb: lex edge case
-lex ruby/test_thread.rb: lex edge case
+lex ruby/test_syntax.rb: lex edge case
 lex ruby/test_time_tz.rb: lex edge case
-lex ruby/test_transcode.rb: lex edge case
-lex ruby/test_warning.rb: lex edge case
+lex ruby/test_zjit.rb: lex edge case
 lex rake/test/test_rake_rake_test_loader.rb: lex edge case
 parse ruby/test_io_timeout.rb: parser regression from keyword/operator additions
 walk ruby/test_io_timeout.rb: parse fails; walk skipped
