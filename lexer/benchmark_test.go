@@ -53,3 +53,147 @@ func BenchmarkLexRealFiles(b *testing.B) {
 	b.SetBytes(totalBytes / int64(b.N))
 	b.ReportMetric(float64(totalTokens)/float64(b.N), "tokens/op")
 }
+
+func BenchmarkLexEscapes(b *testing.B) {
+	// Long string packed with multi-char escape sequences -- exercises consumeEscape.
+	const src = "\"\\u{3042}\\x41\\C-a\\M-\\n\\u{1F600 1F601}\\x7e\\c?\\M-\\C-\\xFF\\u{10FFFF}\""
+	b.ReportAllocs()
+	b.SetBytes(int64(len(src)))
+	for i := 0; i < b.N; i++ {
+		l := New(src)
+		for l.HasNext() {
+			tok := l.NextToken()
+			if tok.Type == token.EOF {
+				break
+			}
+		}
+	}
+}
+
+func BenchmarkLexInterpolation(b *testing.B) {
+	// String with many #{} interpolations -- exercises interp stack push/pop.
+	// 50 nested interpolations.
+	const src = "\"a#{" +
+		"b#{" +
+		"c#{" +
+		"d#{" +
+		"e#{" +
+		"f#{" +
+		"g#{" +
+		"h#{" +
+		"i#{" +
+		"j#{" +
+		"k#{" +
+		"l#{" +
+		"m#{" +
+		"n#{" +
+		"o#{" +
+		"p#{" +
+		"q#{" +
+		"r#{" +
+		"s#{" +
+		"t#{" +
+		"u#{" +
+		"v#{" +
+		"w#{" +
+		"x#{" +
+		"y#{" +
+		"z#{" +
+		"42" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}" +
+		"}\""
+	b.ReportAllocs()
+	b.SetBytes(int64(len(src)))
+	for i := 0; i < b.N; i++ {
+		l := New(src)
+		for l.HasNext() {
+			tok := l.NextToken()
+			if tok.Type == token.EOF {
+				break
+			}
+		}
+	}
+}
+
+func BenchmarkLexHeredocBody(b *testing.B) {
+	// Interpolating heredoc with escapes and interpolations -- exercises
+	// the full heredoc content path (delimiter matching, interpolation, escapes).
+	const src = "<<EOS\n" +
+		"hello #{name} world\n" +
+		"line \\u{41} here\n" +
+		"some \\x7e text\n" +
+		"and #{more} stuff\n" +
+		"EOS\n"
+	b.ReportAllocs()
+	b.SetBytes(int64(len(src)))
+	for i := 0; i < b.N; i++ {
+		l := New(src)
+		for l.HasNext() {
+			tok := l.NextToken()
+			if tok.Type == token.EOF {
+				break
+			}
+		}
+	}
+}
+
+func BenchmarkLexIdentifierStream(b *testing.B) {
+	// Stream of identifiers -- exercises lexIdentifier + LookupIdent hot path.
+	const src = "foo bar baz qux quux corge grault garply waldo fred plugh xyzzy thud " +
+		"alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi " +
+		"omicron pi rho sigma tau upsilon phi chi psi omega one two three four five " +
+		"hello world example sample test demo prototype benchmark profile trace " +
+		"ruby goruby lexer parser token identifier keyword lookup loop state function"
+	b.ReportAllocs()
+	b.SetBytes(int64(len(src)))
+	for i := 0; i < b.N; i++ {
+		l := New(src)
+		for l.HasNext() {
+			tok := l.NextToken()
+			if tok.Type == token.EOF {
+				break
+			}
+		}
+	}
+}
+
+func BenchmarkLexKeywords(b *testing.B) {
+	// Stream of Ruby keywords -- exercises token.LookupIdent keyword path.
+	const src = "def class module if else elsif unless while until for in do end " +
+		"begin rescue ensure case when then return next break yield super self nil " +
+		"true false and or not defined alias undef BEGIN END __FILE__ __LINE__"
+	b.ReportAllocs()
+	b.SetBytes(int64(len(src)))
+	for i := 0; i < b.N; i++ {
+		l := New(src)
+		for l.HasNext() {
+			tok := l.NextToken()
+			if tok.Type == token.EOF {
+				break
+			}
+		}
+	}
+}
