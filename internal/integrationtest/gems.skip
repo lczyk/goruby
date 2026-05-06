@@ -218,11 +218,7 @@ walk rake/test/test_thread_history_display.rb: parse failed; walk skipped
 
 # lex phase failures
 lex ruby/test_exception.rb: MRI language test - lexer failure
-lex ruby/test_allocation.rb: MRI language test - lexer failure
 lex ruby/test_object.rb: MRI language test - lexer failure
-lex ruby/test_string.rb: MRI language test - lexer failure
-lex ruby/test_regexp.rb: MRI language test - lexer failure
-lex ruby/test_require.rb: MRI language test - lexer failure
 
 # parse phase failures (lex passes)
 parse ruby/allpairs.rb: MRI language test - parser failure
@@ -654,20 +650,10 @@ parse ruby/test_undef.rb: parser regression from keyword/operator additions
 walk ruby/test_undef.rb: parse fails; walk skipped
 
 # lex failures: remaining heredoc / regex / string edge cases
-lex ruby/test_argf.rb: lex edge case
 lex ruby/test_array.rb: lex edge case
-lex ruby/test_autoload.rb: lex edge case
-lex ruby/test_basicinstructions.rb: lex edge case
-lex ruby/test_gc_compact.rb: lex edge case
-lex ruby/test_io.rb: lex edge case
-lex ruby/test_module.rb: lex edge case
 lex ruby/test_optimization.rb: lex edge case
-lex ruby/test_process.rb: lex edge case
-lex ruby/test_refinement.rb: lex edge case
-lex ruby/test_require_lib.rb: lex edge case
 lex ruby/test_syntax.rb: lex edge case
 lex ruby/test_time_tz.rb: lex edge case
-lex ruby/test_zjit.rb: lex edge case
 lex rake/test/test_rake_rake_test_loader.rb: lex edge case
 parse ruby/test_io_timeout.rb: parser regression from keyword/operator additions
 walk ruby/test_io_timeout.rb: parse fails; walk skipped
