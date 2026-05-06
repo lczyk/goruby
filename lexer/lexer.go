@@ -637,28 +637,23 @@ func lexIdentifier(l *Lexer) StateFn {
 func lexDigit(l *Lexer) StateFn {
 	r := l.next()
 
-	// Leading zero: check for hex, octal, binary, decimal prefixes.
-	if r == '0' {
-		p := l.peek()
-		switch p {
+	if l.input[l.start] == '0' {
+		switch r {
 		case 'x', 'X':
-			l.next() // consume x
 			return lexHexDigits(l)
 		case 'o', 'O':
-			l.next() // consume o
 			return lexOctDigits(l)
 		case 'b', 'B':
-			l.next() // consume b
 			return lexBinDigits(l)
 		case 'd', 'D':
-			l.next() // consume d
 			return lexDecimalDigits(l)
-		case '.': // 0.5
-			l.next() // consume .
-			return lexFloatFraction(l)
+		case '.':
+			if isDigit(l.peek()) {
+				return lexFloatFraction(l)
+			}
 		}
 		// If followed by digit, continue reading as octal/decimal int.
-		if isDigitOrUnderscore(p) {
+		if isDigitOrUnderscore(r) {
 			r = l.next()
 		}
 	}
@@ -839,10 +834,11 @@ func lexCharacterLiteral(l *Lexer) StateFn {
 			// \C-x or \C-\M-x
 			if l.peek() == '-' {
 				l.next() // consume -
-				r = l.next()
-				if r == 'M' && l.peek() == '-' {
-					l.next() // consume -
-					l.next() // consume the final char
+				if l.peek() == '\\' {
+					l.next()        // consume \\
+					l.consumeEscape() // target is an escape sequence
+				} else {
+					l.next() // consume single target char
 				}
 				// else: \C-x -- already consumed the char after -
 			}
@@ -850,10 +846,11 @@ func lexCharacterLiteral(l *Lexer) StateFn {
 			// \M-x or \M-\C-x
 			if l.peek() == '-' {
 				l.next() // consume -
-				r = l.next()
-				if r == 'C' && l.peek() == '-' {
-					l.next() // consume -
-					l.next() // consume the final char
+				if l.peek() == '\\' {
+					l.next()        // consume \\
+					l.consumeEscape() // target is an escape sequence
+				} else {
+					l.next() // consume single target char
 				}
 				// else: \M-x -- already consumed the char after -
 			}
