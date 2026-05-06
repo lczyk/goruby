@@ -217,7 +217,6 @@ walk rake/test/test_thread_history_display.rb: parse failed; walk skipped
 # Ruby language tests from MRI test/ruby
 
 # lex phase failures
-lex ruby/test_exception.rb: MRI language test - lexer failure
 lex ruby/test_object.rb: MRI language test - lexer failure
 
 # parse phase failures (lex passes)
@@ -650,10 +649,5 @@ parse ruby/test_undef.rb: parser regression from keyword/operator additions
 walk ruby/test_undef.rb: parse fails; walk skipped
 
 # lex failures: remaining heredoc / regex / string edge cases
-lex ruby/test_array.rb: lex edge case
-lex ruby/test_optimization.rb: lex edge case
-lex ruby/test_syntax.rb: lex edge case
-lex ruby/test_time_tz.rb: lex edge case
-lex rake/test/test_rake_rake_test_loader.rb: lex edge case
 parse ruby/test_io_timeout.rb: parser regression from keyword/operator additions
 walk ruby/test_io_timeout.rb: parse fails; walk skipped
