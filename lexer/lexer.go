@@ -381,7 +381,9 @@ func startLexer(l *Lexer) StateFn {
 				l.next()
 				p2 := l.peek()
 				if isLetter(p2) || p2 == '_' || p2 == '"' || p2 == '\'' || p2 == '`' {
-					return lexHeredocStart(l, p == '-', p == '~')
+					// <<~ implies indent-aware delim matching (and indent stripping
+					// in the body), so pass indent=true for both - and ~.
+					return lexHeredocStart(l, true, p == '~')
 				}
 				l.backup()
 				l.emit(token.LSHIFT)
@@ -1314,10 +1316,53 @@ func stripSquigInterpBody(l *Lexer) {
 	l.input = l.input[:bodyStart] + stripped + l.input[delimLineContentStart:]
 }
 
+// matchHeredocDelimLine reports whether the line beginning at pos is the
+// closing delimiter line. On match, returns the position past the delim text
+// (caller still needs to consume the trailing \n / line tail).
+func matchHeredocDelimLine(l *Lexer, pos int) (int, bool) {
+	if l.heredocIndent {
+		for pos < len(l.input) && (l.input[pos] == ' ' || l.input[pos] == '\t') {
+			pos++
+		}
+	}
+	end := pos + len(l.heredocDelim)
+	if end > len(l.input) || l.input[pos:end] != l.heredocDelim {
+		return 0, false
+	}
+	if end < len(l.input) && l.input[end] != '\n' {
+		return 0, false
+	}
+	return end, true
+}
+
 // lexHeredocBody reads a literal (non-interpolating) heredoc body until
 // the delimiter appears at line start.
 func lexHeredocBody(l *Lexer) StateFn {
 	delim := l.heredocDelim
+	// Empty body: delim line is the first body line.
+	if _, ok := matchHeredocDelimLine(l, l.pos); ok {
+		if l.heredocSquig {
+			tok := token.NewToken(token.STRING, "", l.start)
+			l.lastToken = tok
+			l.tokens <- tok
+			l.start = l.pos
+		} else {
+			l.emit(token.STRING)
+		}
+		for {
+			r := l.next()
+			if r == eof || r == '\n' {
+				break
+			}
+		}
+		l.ignore()
+		l.heredocDelim = ""
+		if l.heredocPostBody != "" {
+			l.input = l.input[:l.pos] + l.heredocPostBody + l.input[l.pos:]
+			l.heredocPostBody = ""
+		}
+		return startLexer
+	}
 	for {
 		r := l.next()
 		if r == eof {
@@ -1398,6 +1443,24 @@ func lexHeredocContent(l *Lexer) StateFn {
 		endTok = token.XSTR_END
 	}
 	delim := l.heredocDelim
+	// Empty body: delim line is the first body line.
+	if _, ok := matchHeredocDelimLine(l, l.pos); ok {
+		l.emit(contentTok)
+		for {
+			r := l.next()
+			if r == eof || r == '\n' {
+				break
+			}
+		}
+		l.ignore()
+		l.emit(endTok)
+		l.heredocDelim = ""
+		if l.heredocPostBody != "" {
+			l.input = l.input[:l.pos] + l.heredocPostBody + l.input[l.pos:]
+			l.heredocPostBody = ""
+		}
+		return startLexer
+	}
 	for {
 		r := l.next()
 		if r == eof {
