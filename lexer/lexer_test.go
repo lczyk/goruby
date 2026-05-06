@@ -922,6 +922,69 @@ func TestLexerRegex(t *testing.T) {
 	}
 }
 
+func TestLexerMultilineLiterals(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []struct {
+			typ     token.Type
+			literal string
+		}
+	}{
+		{
+			name:  "double-quote string with literal newline",
+			input: "\"a\nb\"",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "a\nb"},
+				{token.STRING_END, "\""},
+			},
+		},
+		{
+			name:  "single-quote string with literal newline",
+			input: "'a\nb'",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING, "a\nb"},
+			},
+		},
+		{
+			name:  "regex with literal newline",
+			input: "/a\nb/",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.REGEX_BEG, ""},
+				{token.STRING_CONTENT, "a\nb"},
+				{token.REGEX_END, ""},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := New(tt.input)
+			for i, exp := range tt.expected {
+				if !l.HasNext() {
+					t.Fatalf("pos %d: unexpected EOF", i)
+				}
+				tok := l.NextToken()
+				if tok.Type != exp.typ {
+					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
+				}
+				if tok.Literal != exp.literal {
+					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
+				}
+			}
+		})
+	}
+}
+
 func TestLexerPercentLiteral(t *testing.T) {
 	tests := []struct {
 		name     string

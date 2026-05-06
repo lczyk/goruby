@@ -708,7 +708,7 @@ func lexSingleQuoteString(l *Lexer) StateFn {
 	for r != '\'' {
 		if r == '\\' {
 			l.next() // skip escaped char (\' or \\)
-		} else if r == eof || r == '\n' {
+		} else if r == eof {
 			return l.errorf("unterminated string")
 		}
 		r = l.next()
@@ -864,8 +864,6 @@ func lexStringContent(l *Lexer) StateFn {
 		case '\\':
 			l.next() // skip escaped char (e.g. \" \\ \n \t \#)
 		case eof:
-			return l.errorf("unterminated string")
-		case '\n':
 			return l.errorf("unterminated string")
 		}
 	}
@@ -1166,8 +1164,6 @@ func lexBacktickContent(l *Lexer) StateFn {
 		case '\\':
 			l.next() // skip escaped char
 		case eof:
-			return l.errorf("unterminated command literal")
-		case '\n':
 			return l.errorf("unterminated command literal")
 		}
 	}
@@ -1719,8 +1715,6 @@ func lexRegexContent(l *Lexer) StateFn {
 		case '\\':
 			l.next() // skip escaped char
 		case eof:
-			return l.errorf("unterminated regexp")
-		case '\n':
 			return l.errorf("unterminated regexp")
 		}
 	}
