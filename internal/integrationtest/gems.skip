@@ -574,16 +574,13 @@ walk ruby/enc/test_emoji_breaks.rb: parse failed; walk skipped
 walk ruby/test_io.rb: parse failed; walk skipped
 
 # Heredoc edge cases (mid-line, interpolation)
-lex minitest/test/minitest/metametameta.rb: heredoc edge case (mid-line or interpolation)
 parse minitest/test/minitest/metametameta.rb: lex fails; parse skipped
 walk minitest/test/minitest/metametameta.rb: parse fails; walk skipped
 lex minitest/test/minitest/test_minitest_assertions.rb: heredoc edge case (mid-line or interpolation)
 parse minitest/test/minitest/test_minitest_assertions.rb: lex fails; parse skipped
 walk minitest/test/minitest/test_minitest_assertions.rb: parse fails; walk skipped
-lex minitest/test/minitest/test_minitest_reporter.rb: heredoc edge case (mid-line or interpolation)
 parse minitest/test/minitest/test_minitest_reporter.rb: lex fails; parse skipped
 walk minitest/test/minitest/test_minitest_reporter.rb: parse fails; walk skipped
-lex minitest/test/minitest/test_minitest_test.rb: heredoc edge case (mid-line or interpolation)
 parse minitest/test/minitest/test_minitest_test.rb: lex fails; parse skipped
 walk minitest/test/minitest/test_minitest_test.rb: parse fails; walk skipped
 lex ruby/test_array.rb: heredoc edge case (mid-line or interpolation)
@@ -604,7 +601,6 @@ walk ruby/test_compile_prism.rb: parse fails; walk skipped
 lex ruby/test_complex.rb: heredoc edge case (mid-line or interpolation)
 parse ruby/test_complex.rb: lex fails; parse skipped
 walk ruby/test_complex.rb: parse fails; walk skipped
-lex ruby/test_env.rb: heredoc edge case (mid-line or interpolation)
 parse ruby/test_env.rb: lex fails; parse skipped
 walk ruby/test_env.rb: parse fails; walk skipped
 lex ruby/test_eval.rb: heredoc edge case (mid-line or interpolation)
@@ -628,10 +624,8 @@ walk ruby/test_integer.rb: parse fails; walk skipped
 lex ruby/test_io.rb: heredoc edge case (mid-line or interpolation)
 parse ruby/test_io.rb: lex fails; parse skipped
 walk ruby/test_io.rb: parse fails; walk skipped
-lex ruby/test_lambda.rb: heredoc edge case (mid-line or interpolation)
 parse ruby/test_lambda.rb: lex fails; parse skipped
 walk ruby/test_lambda.rb: parse fails; walk skipped
-lex ruby/test_m17n.rb: heredoc edge case (mid-line or interpolation)
 parse ruby/test_m17n.rb: lex fails; parse skipped
 walk ruby/test_m17n.rb: parse fails; walk skipped
 lex ruby/test_method.rb: heredoc edge case (mid-line or interpolation)
@@ -661,7 +655,6 @@ walk ruby/test_refinement.rb: parse fails; walk skipped
 lex ruby/test_rubyoptions.rb: heredoc edge case (mid-line or interpolation)
 parse ruby/test_rubyoptions.rb: lex fails; parse skipped
 walk ruby/test_rubyoptions.rb: parse fails; walk skipped
-lex ruby/test_rubyvm.rb: heredoc edge case (mid-line or interpolation)
 parse ruby/test_rubyvm.rb: lex fails; parse skipped
 walk ruby/test_rubyvm.rb: parse fails; walk skipped
 lex ruby/test_settracefunc.rb: heredoc edge case (mid-line or interpolation)
@@ -670,19 +663,16 @@ walk ruby/test_settracefunc.rb: parse fails; walk skipped
 lex ruby/test_signal.rb: heredoc edge case (mid-line or interpolation)
 parse ruby/test_signal.rb: lex fails; parse skipped
 walk ruby/test_signal.rb: parse fails; walk skipped
-lex ruby/test_struct.rb: heredoc edge case (mid-line or interpolation)
 parse ruby/test_struct.rb: lex fails; parse skipped
 walk ruby/test_struct.rb: parse fails; walk skipped
 lex ruby/test_variable.rb: heredoc edge case (mid-line or interpolation)
 parse ruby/test_variable.rb: lex fails; parse skipped
 walk ruby/test_variable.rb: parse fails; walk skipped
-lex ruby/test_weakkeymap.rb: heredoc edge case (mid-line or interpolation)
 parse ruby/test_weakkeymap.rb: lex fails; parse skipped
 walk ruby/test_weakkeymap.rb: parse fails; walk skipped
 lex ruby/test_weakmap.rb: heredoc edge case (mid-line or interpolation)
 parse ruby/test_weakmap.rb: lex fails; parse skipped
 walk ruby/test_weakmap.rb: parse fails; walk skipped
-lex ruby/test_yjit_exit_locations.rb: heredoc edge case (mid-line or interpolation)
 parse ruby/test_yjit_exit_locations.rb: lex fails; parse skipped
 walk ruby/test_yjit_exit_locations.rb: parse fails; walk skipped
 lex ruby/test_yjit.rb: heredoc edge case (mid-line or interpolation)
