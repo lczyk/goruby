@@ -71,7 +71,6 @@ parse rake/lib/rake/name_space.rb: parser: unsupported syntax (heredoc, key:, %w
 parse rake/lib/rake/packagetask.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/private_reader.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/promise.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse rake/lib/rake/pseudo_status.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/rake_module.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/rake_test_loader.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/lib/rake/scope.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
@@ -97,7 +96,6 @@ parse rake/test/test_rake_definitions.rb: parser: unsupported syntax (heredoc, k
 parse rake/test/test_rake_directory_task.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_dsl.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_extension.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse rake/test/test_rake_file_creation_task.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_file_list.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_file_task.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_file_utils.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
@@ -108,7 +106,6 @@ parse rake/test/test_rake_multi_task.rb: parser: unsupported syntax (heredoc, ke
 parse rake/test/test_rake_name_space.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_path_map_partial.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_path_map.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
-parse rake/test/test_rake_pseudo_status.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_rake_test_loader.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_require.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse rake/test/test_rake_rules.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
@@ -167,7 +164,6 @@ walk rake/lib/rake/name_space.rb: parse failed; walk skipped
 walk rake/lib/rake/packagetask.rb: parse failed; walk skipped
 walk rake/lib/rake/private_reader.rb: parse failed; walk skipped
 walk rake/lib/rake/promise.rb: parse failed; walk skipped
-walk rake/lib/rake/pseudo_status.rb: parse failed; walk skipped
 walk rake/lib/rake/rake_module.rb: parse failed; walk skipped
 walk rake/lib/rake/rake_test_loader.rb: parse failed; walk skipped
 walk rake/lib/rake/scope.rb: parse failed; walk skipped
@@ -193,7 +189,6 @@ walk rake/test/test_rake_definitions.rb: parse failed; walk skipped
 walk rake/test/test_rake_directory_task.rb: parse failed; walk skipped
 walk rake/test/test_rake_dsl.rb: parse failed; walk skipped
 walk rake/test/test_rake_extension.rb: parse failed; walk skipped
-walk rake/test/test_rake_file_creation_task.rb: parse failed; walk skipped
 walk rake/test/test_rake_file_list.rb: parse failed; walk skipped
 walk rake/test/test_rake_file_task.rb: parse failed; walk skipped
 walk rake/test/test_rake_file_utils.rb: parse failed; walk skipped
@@ -204,7 +199,6 @@ walk rake/test/test_rake_multi_task.rb: parse failed; walk skipped
 walk rake/test/test_rake_name_space.rb: parse failed; walk skipped
 walk rake/test/test_rake_path_map_partial.rb: parse failed; walk skipped
 walk rake/test/test_rake_path_map.rb: parse failed; walk skipped
-walk rake/test/test_rake_pseudo_status.rb: parse failed; walk skipped
 walk rake/test/test_rake_rake_test_loader.rb: parse failed; walk skipped
 walk rake/test/test_rake_require.rb: parse failed; walk skipped
 walk rake/test/test_rake_rules.rb: parse failed; walk skipped
@@ -223,7 +217,6 @@ walk rake/test/test_thread_history_display.rb: parse failed; walk skipped
 # Ruby language tests from MRI test/ruby
 
 # lex phase failures
-lex ruby/test_syntax.rb: MRI language test - lexer failure
 lex ruby/test_file_exhaustive.rb: MRI language test - lexer failure
 lex ruby/test_exception.rb: MRI language test - lexer failure
 lex ruby/test_ast.rb: MRI language test - lexer failure
@@ -698,9 +691,6 @@ walk ruby/test_yjit.rb: parse fails; walk skipped
 lex ruby/test_zjit.rb: heredoc edge case (mid-line or interpolation)
 parse ruby/test_zjit.rb: lex fails; parse skipped
 walk ruby/test_zjit.rb: parse fails; walk skipped
-lex ruby/test_name_error.rb: regexp edge case (unterminated)
-parse ruby/test_name_error.rb: lex fails; parse skipped
-walk ruby/test_name_error.rb: parse fails; walk skipped
 parse ruby/test_not.rb: parser regression from keyword/operator additions
 walk ruby/test_not.rb: parse fails; walk skipped
 parse rake/lib/rake/rule_recursion_overflow_error.rb: parser regression from keyword/operator additions
@@ -709,5 +699,37 @@ parse minitest/lib/minitest/unit.rb: parser regression from keyword/operator add
 walk minitest/lib/minitest/unit.rb: parse fails; walk skipped
 parse ruby/test_undef.rb: parser regression from keyword/operator additions
 walk ruby/test_undef.rb: parse fails; walk skipped
+
+# lex failures: heredoc / regex / string edge cases (mostly multi-heredoc-on-same-line)
+lex ruby/test_alias.rb: lex edge case
+lex ruby/test_argf.rb: lex edge case
+lex ruby/test_basicinstructions.rb: lex edge case
+lex ruby/test_beginendblock.rb: lex edge case
+lex ruby/test_bignum.rb: lex edge case
+lex ruby/test_dir.rb: lex edge case
+lex ruby/test_encoding.rb: lex edge case
+lex ruby/test_enum.rb: lex edge case
+lex ruby/test_float.rb: lex edge case
+lex ruby/test_io_m17n.rb: lex edge case
+lex ruby/test_iterator.rb: lex edge case
+lex ruby/test_keyword.rb: lex edge case
+lex ruby/test_literal.rb: lex edge case
+lex ruby/test_marshal.rb: lex edge case
+lex ruby/test_object_id.rb: lex edge case
+lex ruby/test_pack.rb: lex edge case (timeout)
+lex ruby/test_pattern_matching.rb: lex edge case
+lex ruby/test_pipe.rb: lex edge case
+lex ruby/test_rand.rb: lex edge case
+lex ruby/test_require_lib.rb: lex edge case
+lex ruby/test_set.rb: lex edge case
+lex ruby/test_shapes.rb: lex edge case
+lex ruby/test_super.rb: lex edge case
+lex ruby/test_symbol.rb: lex edge case
+lex ruby/test_system.rb: lex edge case
+lex ruby/test_thread.rb: lex edge case
+lex ruby/test_time_tz.rb: lex edge case
+lex ruby/test_transcode.rb: lex edge case
+lex ruby/test_warning.rb: lex edge case
+lex rake/test/test_rake_rake_test_loader.rb: lex edge case
 parse ruby/test_io_timeout.rb: parser regression from keyword/operator additions
 walk ruby/test_io_timeout.rb: parse fails; walk skipped
