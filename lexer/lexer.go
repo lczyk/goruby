@@ -164,19 +164,21 @@ func (l *Lexer) consumeEscape() {
 	case 'C':
 		if l.peek() == '-' {
 			l.next() // consume -
-			r = l.next()
-			if r == 'M' && l.peek() == '-' {
-				l.next() // consume -
-				l.next() // consume final char
+			if l.peek() == '\\' {
+				l.next()        // consume \
+				l.consumeEscape() // target is an escape sequence (e.g. \C-\M-x, \C-\\)
+			} else {
+				l.next() // consume single target char
 			}
 		}
 	case 'M':
 		if l.peek() == '-' {
 			l.next() // consume -
-			r = l.next()
-			if r == 'C' && l.peek() == '-' {
-				l.next() // consume -
-				l.next() // consume final char
+			if l.peek() == '\\' {
+				l.next()        // consume \
+				l.consumeEscape() // target is an escape sequence (e.g. \M-\C-x, \M-\\)
+			} else {
+				l.next() // consume single target char
 			}
 		}
 	case 'c':
@@ -784,7 +786,7 @@ func lexSingleQuoteString(l *Lexer) StateFn {
 
 	for r != '\'' {
 		if r == '\\' {
-			l.consumeEscape()
+			l.next() // only \\ and \' are escapes in single-quoted strings
 		} else if r == eof {
 			return l.errorf("unterminated string")
 		}
@@ -1045,7 +1047,7 @@ func lexPercentLiteralBody(l *Lexer, opener, closer rune, paired bool, tok token
 			return l.errorf("unterminated percent literal")
 		}
 		if r == '\\' {
-			l.consumeEscape()
+			l.next() // non-interpolating: only escape the next char
 			continue
 		}
 		if paired {
