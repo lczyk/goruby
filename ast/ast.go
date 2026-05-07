@@ -365,8 +365,8 @@ func (s *Self) TokenLiteral() string { return s.Token.Literal }
 
 // YieldExpression represents self in the current context in the program
 type YieldExpression struct {
-	Token     token.Token     // the token.YIELD token
-	Arguments []Expression    // The arguments to yield
+	Token     token.Token      // the token.YIELD token
+	Arguments []Expression     // The arguments to yield
 	Block     *BlockExpression // optional block passed to yield
 }
 
@@ -401,8 +401,8 @@ func (y *YieldExpression) TokenLiteral() string { return y.Token.Literal }
 
 // SuperExpression represents a `super` call with optional arguments
 type SuperExpression struct {
-	Token     token.Token     // the token.KW_SUPER token
-	Arguments []Expression    // optional explicit arguments; nil means implicit forwarding
+	Token     token.Token      // the token.KW_SUPER token
+	Arguments []Expression     // optional explicit arguments; nil means implicit forwarding
 	Block     *BlockExpression // optional block passed to super
 }
 
