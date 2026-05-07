@@ -204,6 +204,14 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.IF, p.parseIfExpression)
 	p.registerPrefix(token.UNLESS, p.parseIfExpression)
 	p.registerPrefix(token.WHILE, p.parseLoopExpression)
+	p.registerPrefix(token.UNTIL, p.parseLoopExpression)
+	p.registerPrefix(token.KW_FOR, p.parseLoopExpression)
+	p.registerPrefix(token.CASE, p.parseErrorSkip)
+	p.registerPrefix(token.BREAK, p.parseJumpExpression)
+	p.registerPrefix(token.NEXT, p.parseJumpExpression)
+	p.registerPrefix(token.KW_REDO, p.parseJumpExpression)
+	p.registerPrefix(token.KW_RETRY, p.parseJumpExpression)
+	p.registerPrefix(token.KW_ENSURE, p.parseErrorSkip)
 	p.registerPrefix(token.DEF, p.parseFunctionLiteral)
 	p.registerPrefix(token.LABEL, p.parseLabelExpression)
 	p.registerPrefix(token.SYMBEG, p.parseSymbolLiteral)
@@ -219,6 +227,12 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.KEYWORD__FILE__, p.parseKeyword__FILE__)
 	p.registerPrefix(token.KEYWORD__LINE__, p.parseKeyword__LINE__)
 	p.registerPrefix(token.KEYWORD__ENCODING__, p.parseEncodingKeyword)
+	p.registerPrefix(token.RPAREN, p.parseErrorSkip)
+	p.registerPrefix(token.RBRACKET, p.parseErrorSkip)
+	p.registerPrefix(token.RBRACE, p.parseErrorSkip)
+	p.registerPrefix(token.NEWLINE, p.parseErrorSkip)
+	p.registerPrefix(token.EMBEXPR_END, p.parseErrorSkip)
+	p.registerPrefix(token.HASHROCKET, p.parseErrorSkip)
 	p.registerPrefix(token.BEGIN, p.parseExceptionHandlingBlock)
 	p.registerPrefix(token.CLASS_VAR, p.parseClassVariable)
 	p.registerPrefix(token.CAPTURE, p.parseBlockCapture)
@@ -227,9 +241,6 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.KW_NOT, p.parsePrefixExpression)
 	p.registerPrefix(token.KW_DEFINED, p.parseSelf)
 	p.registerPrefix(token.KW_ALIAS, p.parseSelf)
-	p.registerPrefix(token.KW_REDO, p.parseSelf)
-	p.registerPrefix(token.KW_RETRY, p.parseSelf)
-	p.registerPrefix(token.KW_ENSURE, p.parseSelf)
 	p.registerPrefix(token.LAMBDA, p.parseSelf)
 
 	p.infixParseFns = make(map[token.Type]infixParseFn)
@@ -778,6 +789,80 @@ func (p *parser) parseLabelExpression() ast.Expression {
 		Operator: ":",
 		Right:    val,
 	}
+}
+
+// parseErrorSkip is an error-recovery handler for tokens that appear as
+// curToken in unexpected contexts (e.g. ) outside parens, ] outside indexing).
+// It emits an error and returns a Nil placeholder so parsing can continue.
+func (p *parser) parseErrorSkip() ast.Expression {
+	p.expectError(token.IDENT) // generic expected error
+	return &ast.Nil{Token: p.curToken}
+}
+
+func (p *parser) parseJumpExpression() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseJumpExpression"))
+	}
+	jmp := &ast.JumpExpression{Token: p.curToken}
+	// break/next can take an optional value: break expr, next expr
+	// redo/retry take no value
+	if p.currentTokenIs(token.BREAK) || p.currentTokenIs(token.NEXT) {
+		if !p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.EOF) {
+			p.nextToken()
+			jmp.Value = p.parseExpression(precLowest)
+		}
+	}
+	return jmp
+}
+
+func (p *parser) parseCaseExpression() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseCaseExpression"))
+	}
+	expr := &ast.ConditionalExpression{Token: p.curToken} // case
+	p.nextToken()
+	// Optional case expression: case x; when ...
+	if !p.currentTokenIs(token.WHEN) && !p.currentTokenIs(token.NEWLINE) {
+		expr.Condition = p.parseExpression(precLowest)
+	}
+	if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
+		return nil
+	}
+	// Parse when/else body as a block statement.
+	body := &ast.BlockStatement{Token: p.curToken, Statements: []ast.Statement{}}
+	for !p.currentTokenIs(token.END) && !p.currentTokenIs(token.EOF) {
+		if p.currentTokenIs(token.NEWLINE) {
+			p.nextToken()
+			continue
+		}
+		if p.currentTokenIs(token.WHEN) {
+			whenCond := p.parseExpression(precLowest)
+			if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
+				return nil
+			}
+			whenBody := p.parseBlockStatement(token.END, token.WHEN, token.ELSE)
+			_ = whenCond
+			_ = whenBody
+			// Store in the Alternative as a simple chain for now.
+			p.nextToken()
+			continue
+		}
+		if p.currentTokenIs(token.ELSE) {
+			p.nextToken()
+			elseBody := p.parseBlockStatement(token.END)
+			expr.Alternative = elseBody
+			continue
+		}
+		// Default: treat as body statement.
+		stmt := p.parseStatement()
+		if stmt != nil {
+			body.Statements = append(body.Statements, stmt)
+		}
+		p.nextToken()
+	}
+	expr.Consequence = body
+	expr.EndToken = p.curToken
+	return expr
 }
 
 func (p *parser) parseNilLiteral() ast.Expression {

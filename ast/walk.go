@@ -260,6 +260,11 @@ func Walk(v Visitor, node Node) {
 	case *SplatExpression:
 		Walk(v, n.Right)
 
+	case *JumpExpression:
+		if n.Value != nil {
+			Walk(v, n.Value)
+		}
+
 	case *PrefixExpression:
 		Walk(v, n.Right)
 

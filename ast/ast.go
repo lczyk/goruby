@@ -1234,6 +1234,34 @@ func (s *SplatExpression) End() int { return s.Right.End() }
 // TokenLiteral returns the literal from the * token
 func (s *SplatExpression) TokenLiteral() string { return s.Token.Literal }
 
+// A JumpExpression represents break, next, redo, or retry with an optional value
+type JumpExpression struct {
+	Token token.Token // break, next, redo, or retry
+	Value Expression  // optional value (nil for bare break/next/redo/retry)
+}
+
+func (j *JumpExpression) String() string {
+	if j.Value != nil {
+		return j.Token.Literal + " " + j.Value.String()
+	}
+	return j.Token.Literal
+}
+func (j *JumpExpression) expressionNode() {}
+
+// Pos returns the position of first character belonging to the node
+func (j *JumpExpression) Pos() int { return j.Token.Pos }
+
+// End returns the position of first character immediately after the node
+func (j *JumpExpression) End() int {
+	if j.Value != nil {
+		return j.Value.End()
+	}
+	return j.Token.Pos + len(j.Token.Literal)
+}
+
+// TokenLiteral returns the literal from the keyword token
+func (j *JumpExpression) TokenLiteral() string { return j.Token.Literal }
+
 // PrefixExpression represents a prefix operator
 type PrefixExpression struct {
 	Token    token.Token // The prefix token, e.g. !
