@@ -670,7 +670,7 @@ func (p *parser) parseRescueBlock() *ast.RescueBlock {
 	if !p.accept(token.NEWLINE) {
 		return nil
 	}
-	block.Body = p.parseBlockStatement(token.END)
+	block.Body = p.parseBlockStatement(token.END, token.KW_ENSURE)
 	return block
 }
 
@@ -1981,12 +1981,17 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 	if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
 		return nil
 	}
-	lit.Body = p.parseBlockStatement(token.END, token.RESCUE)
+	lit.Body = p.parseBlockStatement(token.END, token.RESCUE, token.KW_ENSURE)
 	lit.Rescues = []*ast.RescueBlock{}
 	for p.peekTokenIs(token.RESCUE) {
 		p.accept(token.RESCUE)
 		rescue := p.parseRescueBlock()
 		lit.Rescues = append(lit.Rescues, rescue)
+	}
+	if p.peekTokenIs(token.KW_ENSURE) {
+		p.accept(token.KW_ENSURE)
+		p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+		lit.EnsureBody = p.parseBlockStatement(token.END)
 	}
 	if !p.accept(token.END) {
 		return nil

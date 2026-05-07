@@ -223,6 +223,9 @@ func Walk(v Visitor, node Node) {
 		for _, r := range n.Rescues {
 			Walk(v, r)
 		}
+		if n.EnsureBody != nil {
+			Walk(v, n.EnsureBody)
+		}
 
 	case *FunctionParameter:
 		Walk(v, n.Name)
