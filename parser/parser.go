@@ -42,6 +42,7 @@ const (
 )
 
 var precedences = map[token.Type]int{
+	token.RESCUE:            precIfUnless,
 	token.IF:                precIfUnless,
 	token.UNLESS:            precIfUnless,
 	token.EQ:                precEquals,
@@ -233,15 +234,16 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.NEWLINE, p.parseErrorSkip)
 	p.registerPrefix(token.EMBEXPR_END, p.parseErrorSkip)
 	p.registerPrefix(token.HASHROCKET, p.parseErrorSkip)
+	p.registerPrefix(token.RESCUE, p.parseExceptionHandlingBlock)
 	p.registerPrefix(token.BEGIN, p.parseExceptionHandlingBlock)
 	p.registerPrefix(token.CLASS_VAR, p.parseClassVariable)
 	p.registerPrefix(token.CAPTURE, p.parseBlockCapture)
 	p.registerPrefix(token.KW_SUPER, p.parseSelf)
-	p.registerPrefix(token.KW_UNDEF, p.parseSelf)
+	p.registerPrefix(token.KW_UNDEF, p.parseErrorSkip)
 	p.registerPrefix(token.KW_NOT, p.parsePrefixExpression)
-	p.registerPrefix(token.KW_DEFINED, p.parseSelf)
-	p.registerPrefix(token.KW_ALIAS, p.parseSelf)
-	p.registerPrefix(token.LAMBDA, p.parseSelf)
+	p.registerPrefix(token.KW_DEFINED, p.parseErrorSkip)
+	p.registerPrefix(token.KW_ALIAS, p.parseErrorSkip)
+	p.registerPrefix(token.LAMBDA, p.parseErrorSkip)
 
 	p.infixParseFns = make(map[token.Type]infixParseFn)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
@@ -305,6 +307,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerInfix(token.POWER, p.parseInfixExpression)
 	p.registerInfix(token.RANGE, p.parseInfixExpression)
 	p.registerInfix(token.RANGEEX, p.parseInfixExpression)
+	p.registerInfix(token.RESCUE, p.parseRescueModifier)
 	p.registerInfix(token.LONELY, p.parseMethodCall)
 	p.registerInfix(token.KW_AND, p.parseInfixExpression)
 	p.registerInfix(token.KW_OR, p.parseInfixExpression)
@@ -794,6 +797,21 @@ func (p *parser) parseLabelExpression() ast.Expression {
 // parseErrorSkip is an error-recovery handler for tokens that appear as
 // curToken in unexpected contexts (e.g. ) outside parens, ] outside indexing).
 // It emits an error and returns a Nil placeholder so parsing can continue.
+func (p *parser) parseRescueModifier(left ast.Expression) ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseRescueModifier"))
+	}
+	// expr rescue fallback -- low-precedence infix
+	p.nextToken() // consume rescue
+	right := p.parseExpression(precLowest)
+	return &ast.InfixExpression{
+		Token:    p.curToken,
+		Left:     left,
+		Operator: "rescue",
+		Right:    right,
+	}
+}
+
 func (p *parser) parseErrorSkip() ast.Expression {
 	p.expectError(token.IDENT) // generic expected error
 	return &ast.Nil{Token: p.curToken}
