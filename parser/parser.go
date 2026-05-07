@@ -903,6 +903,9 @@ func (p *parser) parseCaseExpression() ast.Expression {
 	}
 	// Allow optional newline/semicolon after case expression.
 	p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+		p.nextToken()
+	}
 	// Parse when clauses.
 	for p.currentTokenIs(token.WHEN) {
 		wc := &ast.WhenClause{Token: p.curToken}
@@ -918,6 +921,9 @@ func (p *parser) parseCaseExpression() ast.Expression {
 			p.consume(token.THEN)
 		}
 		p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.nextToken()
+		}
 		// Parse when body until next when, else, or end.
 		wc.Body = p.parseBlockStatement(token.END, token.WHEN, token.ELSE)
 		expr.WhenClauses = append(expr.WhenClauses, wc)
