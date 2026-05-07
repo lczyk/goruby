@@ -273,6 +273,19 @@ func Walk(v Visitor, node Node) {
 	case *EndBlock:
 		Walk(v, n.Body)
 
+	case *Keyword__CALLEE__:
+		// leaf
+
+	case *Keyword__METHOD__:
+		// leaf
+
+	case *UsingExpression:
+		Walk(v, n.Expr)
+
+	case *RefineExpression:
+		Walk(v, n.Expr)
+		Walk(v, n.Body)
+
 	case *SuperExpression:
 		walkExprList(v, n.Arguments)
 

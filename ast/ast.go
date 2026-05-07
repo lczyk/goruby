@@ -488,6 +488,60 @@ func (d *Keyword__DIR__) Pos() int             { return d.Token.Pos }
 func (d *Keyword__DIR__) End() int             { return d.Token.Pos + 6 }
 func (d *Keyword__DIR__) TokenLiteral() string { return d.Token.Literal }
 
+// Keyword__CALLEE__ represents __callee__ in the AST
+type Keyword__CALLEE__ struct {
+	Token token.Token
+}
+
+func (c *Keyword__CALLEE__) String() string       { return c.Token.Literal }
+func (c *Keyword__CALLEE__) expressionNode()      {}
+func (c *Keyword__CALLEE__) literalNode()         {}
+func (c *Keyword__CALLEE__) Pos() int             { return c.Token.Pos }
+func (c *Keyword__CALLEE__) End() int             { return c.Token.Pos + 10 }
+func (c *Keyword__CALLEE__) TokenLiteral() string { return c.Token.Literal }
+
+// Keyword__METHOD__ represents __method__ in the AST
+type Keyword__METHOD__ struct {
+	Token token.Token
+}
+
+func (m *Keyword__METHOD__) String() string       { return m.Token.Literal }
+func (m *Keyword__METHOD__) expressionNode()      {}
+func (m *Keyword__METHOD__) literalNode()         {}
+func (m *Keyword__METHOD__) Pos() int             { return m.Token.Pos }
+func (m *Keyword__METHOD__) End() int             { return m.Token.Pos + 10 }
+func (m *Keyword__METHOD__) TokenLiteral() string { return m.Token.Literal }
+
+// UsingExpression represents a `using Module` statement
+type UsingExpression struct {
+	Token token.Token // the using keyword
+	Expr  Expression  // the module/refinement
+}
+
+func (u *UsingExpression) expressionNode()      {}
+func (u *UsingExpression) Pos() int             { return u.Token.Pos }
+func (u *UsingExpression) End() int             { return u.Expr.End() }
+func (u *UsingExpression) TokenLiteral() string { return u.Token.Literal }
+func (u *UsingExpression) String() string {
+	return "using " + u.Expr.String()
+}
+
+// RefineExpression represents a `refine Class do ... end` block
+type RefineExpression struct {
+	Token    token.Token // the refine keyword
+	EndToken token.Token // the end token
+	Expr     Expression  // the target class
+	Body     *BlockStatement
+}
+
+func (r *RefineExpression) expressionNode()      {}
+func (r *RefineExpression) Pos() int             { return r.Token.Pos }
+func (r *RefineExpression) End() int             { return r.EndToken.Pos }
+func (r *RefineExpression) TokenLiteral() string { return r.Token.Literal }
+func (r *RefineExpression) String() string {
+	return "refine " + r.Expr.String() + " do " + r.Body.String() + " end"
+}
+
 // An Identifier represents an identifier in the program
 type Identifier struct {
 	Token token.Token // the token.IDENT token

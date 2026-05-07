@@ -157,6 +157,10 @@ const (
 	KEYWORD__DIR__
 	KW_BEGIN
 	KW_END
+	KW_USING
+	KW_REFINE
+	KEYWORD__CALLEE__
+	KEYWORD__METHOD__
 	keyword_end
 )
 
@@ -282,6 +286,10 @@ var tokens = [...]string{
 	KEYWORD__DIR__:      "__dir__",
 	KW_BEGIN:            "BEGIN",
 	KW_END:              "END",
+	KW_USING:            "using",
+	KW_REFINE:           "refine",
+	KEYWORD__CALLEE__:   "__callee__",
+	KEYWORD__METHOD__:   "__method__",
 	KW_ALIAS:            "alias",
 	KW_AND:              "and",
 	KW_DEFINED:          "defined?",

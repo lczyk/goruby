@@ -243,6 +243,10 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.KEYWORD__DIR__, p.parseKeyword__DIR__)
 	p.registerPrefix(token.KW_BEGIN, p.parseBeginBlock)
 	p.registerPrefix(token.KW_END, p.parseEndBlock)
+	p.registerPrefix(token.KW_USING, p.parseUsing)
+	p.registerPrefix(token.KW_REFINE, p.parseRefine)
+	p.registerPrefix(token.KEYWORD__CALLEE__, p.parseKeyword__CALLEE__)
+	p.registerPrefix(token.KEYWORD__METHOD__, p.parseKeyword__METHOD__)
 	p.registerPrefix(token.RPAREN, p.parseErrorSkip)
 	p.registerPrefix(token.RBRACKET, p.parseErrorSkip)
 	p.registerPrefix(token.RBRACE, p.parseErrorSkip)
@@ -723,7 +727,7 @@ func (p *parser) parseAssignmentOperator(left ast.Expression) ast.Expression {
 		Left:  left,
 	}
 	p.nextToken()
-	newInf.Right = p.parseExpression(precLowest)
+	newInf.Right = p.parseExpression(precAssignment)
 	assign.Right = newInf
 	return assign
 }
@@ -1097,6 +1101,42 @@ func (p *parser) parseEndBlock() ast.Expression {
 	block.Body = p.parseBlockStatement(token.RBRACE)
 	p.nextToken() // consume }
 	return block
+}
+
+func (p *parser) parseUsing() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseUsing"))
+	}
+	expr := &ast.UsingExpression{Token: p.curToken}
+	p.nextToken()
+	expr.Expr = p.parseExpression(precLowest)
+	return expr
+}
+
+func (p *parser) parseRefine() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseRefine"))
+	}
+	expr := &ast.RefineExpression{Token: p.curToken}
+	p.nextToken()
+	expr.Expr = p.parseExpression(precLowest)
+	if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
+		return nil
+	}
+	expr.Body = p.parseBlockStatement(token.END)
+	if !p.accept(token.END) {
+		return nil
+	}
+	expr.EndToken = p.curToken
+	return expr
+}
+
+func (p *parser) parseKeyword__CALLEE__() ast.Expression {
+	return &ast.Keyword__CALLEE__{Token: p.curToken}
+}
+
+func (p *parser) parseKeyword__METHOD__() ast.Expression {
+	return &ast.Keyword__METHOD__{Token: p.curToken}
 }
 
 func (p *parser) parseKeyword__DIR__() ast.Expression {
