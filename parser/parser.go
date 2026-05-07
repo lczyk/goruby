@@ -1371,13 +1371,21 @@ func (p *parser) parseIndexExpression(left ast.Expression) ast.Expression {
 	exp := &ast.IndexExpression{Token: p.curToken, Left: left}
 
 	p.nextToken()
+	// Empty index: x[] -- ] immediately follows [
+	if p.currentTokenIs(token.RBRACKET) {
+		p.nextToken() // consume ]
+		return exp
+	}
 	exp.Index = p.parseExpression(precLowest)
 	if elist, ok := exp.Index.(ast.ExpressionList); ok {
 		exp.Index = elist[0]
 		exp.Length = elist[1]
 	}
 
-	if !p.accept(token.RBRACKET) {
+	// Endless range like x[3..] leaves ] as curToken.
+	if p.currentTokenIs(token.RBRACKET) {
+		// already consumed by the parse, just skip it
+	} else if !p.accept(token.RBRACKET) {
 		return nil
 	}
 	return exp
