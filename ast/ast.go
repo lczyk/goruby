@@ -1504,19 +1504,33 @@ func (oe *InfixExpression) IsControlExpression() bool {
 func (oe *InfixExpression) expressionNode() {}
 
 // Pos returns the position of first character belonging to the left node
-func (oe *InfixExpression) Pos() int { return oe.Left.Pos() }
+func (oe *InfixExpression) Pos() int {
+	if oe.Left != nil {
+		return oe.Left.Pos()
+	}
+	return oe.Token.Pos
+}
 
 // End returns the position of last character belonging to the right node
-func (oe *InfixExpression) End() int { return oe.Right.End() }
+func (oe *InfixExpression) End() int {
+	if oe.Right != nil {
+		return oe.Right.End()
+	}
+	return oe.Token.Pos + len(oe.Token.Literal)
+}
 
 // TokenLiteral returns the literal from the infix operator token
 func (oe *InfixExpression) TokenLiteral() string { return oe.Token.Literal }
 func (oe *InfixExpression) String() string {
 	var out bytes.Buffer
 	out.WriteString("(")
-	out.WriteString(oe.Left.String())
+	if oe.Left != nil {
+		out.WriteString(oe.Left.String())
+	}
 	out.WriteString(" " + oe.Operator + " ")
-	out.WriteString(oe.Right.String())
+	if oe.Right != nil {
+		out.WriteString(oe.Right.String())
+	}
 	out.WriteString(")")
 	return out.String()
 }
