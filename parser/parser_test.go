@@ -4238,11 +4238,11 @@ func TestParsingClassExpressions(t *testing.T) {
 		}
 	})
 	t.Run("downcase class", func(t *testing.T) {
-		t.Skip("evaluate error")
 		input := "class a\n3\nend\n"
-
 		_, err := parseSource(input)
-		checkParserErrors(t, err)
+		if err == nil {
+			t.Errorf("expected error for lowercase class name")
+		}
 	})
 }
 
