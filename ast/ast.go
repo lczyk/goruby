@@ -170,6 +170,7 @@ type ExceptionHandlingBlock struct {
 	EndToken   token.Token
 	TryBody    *BlockStatement
 	Rescues    []*RescueBlock
+	EnsureBody *BlockStatement
 }
 
 func (eh *ExceptionHandlingBlock) expressionNode() {}
@@ -190,6 +191,11 @@ func (eh *ExceptionHandlingBlock) String() string {
 	out.WriteString("\n")
 	for _, r := range eh.Rescues {
 		out.WriteString(r.String())
+	}
+	if eh.EnsureBody != nil {
+		out.WriteString("ensure\n")
+		out.WriteString(eh.EnsureBody.String())
+		out.WriteString("\n")
 	}
 	out.WriteString("end")
 	return out.String()
@@ -1233,6 +1239,82 @@ func (s *SplatExpression) End() int { return s.Right.End() }
 
 // TokenLiteral returns the literal from the * token
 func (s *SplatExpression) TokenLiteral() string { return s.Token.Literal }
+
+// A CaseExpression represents a case/when expression
+type CaseExpression struct {
+	Token       token.Token // case
+	EndToken    token.Token // end
+	Condition   Expression  // optional, nil for case without expr
+	WhenClauses []*WhenClause
+	ElseBody    *BlockStatement
+}
+
+func (c *CaseExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString("case")
+	if c.Condition != nil {
+		out.WriteString(" ")
+		out.WriteString(c.Condition.String())
+	}
+	out.WriteString("\n")
+	for _, w := range c.WhenClauses {
+		out.WriteString(w.String())
+	}
+	if c.ElseBody != nil {
+		out.WriteString("else\n")
+		out.WriteString(c.ElseBody.String())
+		out.WriteString("\n")
+	}
+	out.WriteString("end")
+	return out.String()
+}
+func (c *CaseExpression) expressionNode() {}
+
+func (c *CaseExpression) Pos() int           { return c.Token.Pos }
+func (c *CaseExpression) End() int           { return c.EndToken.Pos }
+func (c *CaseExpression) TokenLiteral() string { return c.Token.Literal }
+
+// A WhenClause represents a single when branch in a case expression
+type WhenClause struct {
+	Token      token.Token // when
+	Conditions []Expression
+	Body       *BlockStatement
+}
+
+func (w *WhenClause) String() string {
+	var out bytes.Buffer
+	out.WriteString("when ")
+	for i, cond := range w.Conditions {
+		if i > 0 {
+			out.WriteString(", ")
+		}
+		out.WriteString(cond.String())
+	}
+	out.WriteString("\n")
+	out.WriteString(w.Body.String())
+	out.WriteString("\n")
+	return out.String()
+}
+func (w *WhenClause) expressionNode() {}
+
+func (w *WhenClause) Pos() int           { return w.Token.Pos }
+func (w *WhenClause) End() int           { return w.Body.End() }
+func (w *WhenClause) TokenLiteral() string { return w.Token.Literal }
+
+// A DefinedExpression represents defined?(expr)
+type DefinedExpression struct {
+	Token token.Token
+	Expr  Expression
+}
+
+func (d *DefinedExpression) String() string {
+	return "defined?(" + d.Expr.String() + ")"
+}
+func (d *DefinedExpression) expressionNode() {}
+
+func (d *DefinedExpression) Pos() int { return d.Token.Pos }
+func (d *DefinedExpression) End() int { return d.Expr.End() }
+func (d *DefinedExpression) TokenLiteral() string { return d.Token.Literal }
 
 // A JumpExpression represents break, next, redo, or retry with an optional value
 type JumpExpression struct {

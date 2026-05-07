@@ -199,6 +199,8 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
 	p.registerPrefix(token.ASTERISK, p.parseSplatExpression)
 	p.registerPrefix(token.TILDE, p.parsePrefixExpression)
+	p.registerPrefix(token.LOGICALAND, p.parsePrefixExpression)
+	p.registerPrefix(token.LOGICALOR, p.parsePrefixExpression)
 	p.registerPrefix(token.TRUE, p.parseBoolean)
 	p.registerPrefix(token.FALSE, p.parseBoolean)
 	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
@@ -207,7 +209,11 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.WHILE, p.parseLoopExpression)
 	p.registerPrefix(token.UNTIL, p.parseLoopExpression)
 	p.registerPrefix(token.KW_FOR, p.parseLoopExpression)
-	p.registerPrefix(token.CASE, p.parseErrorSkip)
+	p.registerPrefix(token.CASE, p.parseCaseExpression)
+	p.registerPrefix(token.WHEN, p.parseErrorSkip) // when outside case is an error
+	p.registerPrefix(token.ELSE, p.parseErrorSkip)  // else outside if/case is an error
+	p.registerPrefix(token.KW_ELSIF, p.parseErrorSkip)
+	p.registerPrefix(token.KW_IN, p.parseErrorSkip)
 	p.registerPrefix(token.BREAK, p.parseJumpExpression)
 	p.registerPrefix(token.NEXT, p.parseJumpExpression)
 	p.registerPrefix(token.KW_REDO, p.parseJumpExpression)
@@ -242,7 +248,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.KW_SUPER, p.parseSelf)
 	p.registerPrefix(token.KW_UNDEF, p.parseErrorSkip)
 	p.registerPrefix(token.KW_NOT, p.parsePrefixExpression)
-	p.registerPrefix(token.KW_DEFINED, p.parseErrorSkip)
+	p.registerPrefix(token.KW_DEFINED, p.parseDefinedExpression)
 	p.registerPrefix(token.KW_ALIAS, p.parseErrorSkip)
 	p.registerPrefix(token.LAMBDA, p.parseErrorSkip)
 
@@ -598,12 +604,19 @@ func (p *parser) parseExceptionHandlingBlock() ast.Expression {
 	if !p.accept(token.NEWLINE) {
 		return nil
 	}
-	block.TryBody = p.parseBlockStatement(token.END, token.RESCUE)
+	// Try body ends at END, RESCUE, or ENSURE.
+	block.TryBody = p.parseBlockStatement(token.END, token.RESCUE, token.KW_ENSURE)
 	block.Rescues = []*ast.RescueBlock{}
 	for p.peekTokenIs(token.RESCUE) {
 		p.accept(token.RESCUE)
 		rescue := p.parseRescueBlock()
 		block.Rescues = append(block.Rescues, rescue)
+	}
+	// Optional ensure clause.
+	if p.peekTokenIs(token.KW_ENSURE) {
+		p.accept(token.KW_ENSURE)
+		p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+		block.EnsureBody = p.parseBlockStatement(token.END)
 	}
 	if !p.accept(token.END) {
 		return nil
@@ -828,6 +841,26 @@ func (p *parser) parseTopLevelScope() ast.Expression {
 	return &ast.ScopedIdentifier{Token: tok, Inner: inner}
 }
 
+func (p *parser) parseDefinedExpression() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseDefinedExpression"))
+	}
+	expr := &ast.DefinedExpression{Token: p.curToken}
+	// defined? can be: defined?(expr) or defined? expr
+	if p.peekTokenIs(token.LPAREN) {
+		p.accept(token.LPAREN)
+		p.nextToken()
+		expr.Expr = p.parseExpression(precLowest)
+		if !p.accept(token.RPAREN) {
+			return nil
+		}
+	} else {
+		p.nextToken()
+		expr.Expr = p.parseExpression(precLowest)
+	}
+	return expr
+}
+
 func (p *parser) parseErrorSkip() ast.Expression {
 	p.expectError(token.IDENT) // generic expected error
 	return &ast.Nil{Token: p.curToken}
@@ -853,48 +886,41 @@ func (p *parser) parseCaseExpression() ast.Expression {
 	if p.trace {
 		defer un(trace(p, "parseCaseExpression"))
 	}
-	expr := &ast.ConditionalExpression{Token: p.curToken} // case
+	expr := &ast.CaseExpression{Token: p.curToken}
 	p.nextToken()
-	// Optional case expression: case x; when ...
-	if !p.currentTokenIs(token.WHEN) && !p.currentTokenIs(token.NEWLINE) {
+	// Optional case expression: case x
+	if !p.currentTokenIs(token.WHEN) && !p.currentTokenIs(token.NEWLINE) && !p.currentTokenIs(token.SEMICOLON) {
 		expr.Condition = p.parseExpression(precLowest)
 	}
-	if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
+	// Allow optional newline/semicolon after case expression.
+	p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+	// Parse when clauses.
+	for p.currentTokenIs(token.WHEN) {
+		wc := &ast.WhenClause{Token: p.curToken}
+		p.nextToken()
+		// Parse one or more when conditions (comma-separated).
+		wc.Conditions = []ast.Expression{p.parseExpression(precLowest)}
+		for p.peekTokenIs(token.COMMA) {
+			p.consume(token.COMMA)
+			wc.Conditions = append(wc.Conditions, p.parseExpression(precLowest))
+		}
+		// Optional then/newline/semicolon.
+		if p.peekTokenIs(token.THEN) {
+			p.consume(token.THEN)
+		}
+		p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+		// Parse when body until next when, else, or end.
+		wc.Body = p.parseBlockStatement(token.END, token.WHEN, token.ELSE)
+		expr.WhenClauses = append(expr.WhenClauses, wc)
+	}
+	// Optional else clause.
+	if p.currentTokenIs(token.ELSE) {
+		p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+		expr.ElseBody = p.parseBlockStatement(token.END)
+	}
+	if !p.accept(token.END) {
 		return nil
 	}
-	// Parse when/else body as a block statement.
-	body := &ast.BlockStatement{Token: p.curToken, Statements: []ast.Statement{}}
-	for !p.currentTokenIs(token.END) && !p.currentTokenIs(token.EOF) {
-		if p.currentTokenIs(token.NEWLINE) {
-			p.nextToken()
-			continue
-		}
-		if p.currentTokenIs(token.WHEN) {
-			whenCond := p.parseExpression(precLowest)
-			if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
-				return nil
-			}
-			whenBody := p.parseBlockStatement(token.END, token.WHEN, token.ELSE)
-			_ = whenCond
-			_ = whenBody
-			// Store in the Alternative as a simple chain for now.
-			p.nextToken()
-			continue
-		}
-		if p.currentTokenIs(token.ELSE) {
-			p.nextToken()
-			elseBody := p.parseBlockStatement(token.END)
-			expr.Alternative = elseBody
-			continue
-		}
-		// Default: treat as body statement.
-		stmt := p.parseStatement()
-		if stmt != nil {
-			body.Statements = append(body.Statements, stmt)
-		}
-		p.nextToken()
-	}
-	expr.Consequence = body
 	expr.EndToken = p.curToken
 	return expr
 }

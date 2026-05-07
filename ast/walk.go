@@ -195,6 +195,9 @@ func Walk(v Visitor, node Node) {
 		for _, r := range n.Rescues {
 			Walk(v, r)
 		}
+		if n.EnsureBody != nil {
+			Walk(v, n.EnsureBody)
+		}
 
 	case *RescueBlock:
 		if len(n.ExceptionClasses) != 0 {
@@ -256,6 +259,26 @@ func Walk(v Visitor, node Node) {
 
 	case *YieldExpression:
 		walkExprList(v, n.Arguments)
+
+	case *CaseExpression:
+		if n.Condition != nil {
+			Walk(v, n.Condition)
+		}
+		for _, w := range n.WhenClauses {
+			Walk(v, w)
+		}
+		if n.ElseBody != nil {
+			Walk(v, n.ElseBody)
+		}
+
+	case *WhenClause:
+		for _, cond := range n.Conditions {
+			Walk(v, cond)
+		}
+		Walk(v, n.Body)
+
+	case *DefinedExpression:
+		Walk(v, n.Expr)
 
 	case *SplatExpression:
 		Walk(v, n.Right)
