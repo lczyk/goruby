@@ -1,200 +1,156 @@
 # Indexing and bracket-disambiguation adversarial examples.
 # Seed: the (a[0][a[1]]) pattern from pyramid-scheme's pyra.rb.
 
-a = [[10, 20, 30], [0, 1, 2], [100, 200, 300], 3, 4, 5, 6]
-b = a.dup
-c = a.dup
-d = [[[[[99]]]]]
-e = [0]
-h = { x: 1 }
-x = 1
-
+# a[N] == N for all indices, so a[a[a[...[0]...]]] == 0.
+a = [0, 1, 2, 3, 4, 5, 6]
+na = [[10, 20, 30], [0, 1, 2], [100, 200, 300]]
 def foo(*args); args.flatten; end
-def bar(*args); args.flatten; end
+obj = Struct.new(:data) { def foo(*args); data; end }.new([10, 20, 30])
 
-obj = Struct.new(:data) do
-  def foo(*args); data; end
-end.new([10, 20, 30])
-
-m = Hash.new { |h, k| h[k] = {} }
-m[[0,1]] = 2
-
-# simple chained indexing
-a[0][0]
-a[0][1][2]
-a[0][1][2][3]
-
-# index expression contains indexing
+# -- recursive self-indexing at increasing depth --
 a[a[0]]
 a[a[a[0]]]
-a[0][a[1]]
-a[a[0]][a[1]]
-a[a[0]][a[a[1]]]
+a[a[a[a[0]]]]
+a[a[a[a[a[0]]]]]
+a[a[a[a[a[a[0]]]]]]
+a[a[a[a[a[a[a[0]]]]]]]
 
-# parenthesised chained indexing (the original trigger)
-(a[0])
-(a[0][1])
-(a[0][a[1]])
-(a[a[0]][a[1]])
-((a[0])[a[1]])
-((a[0])[(a[1])])
+# -- chained indexing where inner index is itself indexed --
+na[0][a[1]]
+na[a[0]][a[1]]
+na[a[0]][a[a[1]]]
+na[a[a[0]]][a[a[a[1]]]]
 
-# indexing on parenthesised expressions
-(a)[0]
-(a)[0][1]
-((a))[0]
-((a)[0])[1]
-(a[0])[a[1]]
+# -- parenthesised chained indexing (the original pyra.rb trigger) --
+(na[0][a[1]])
+(na[a[0]][a[1]])
+((na[0])[a[1]])
+((na[0])[(a[1])])
+(((na)[a[0]])[a[1]])
+((((na)[a[0]]))[a[1]])
 
-# indexing on literals
-[1,2,3][0]
-[1,2,3][0][0]
+# -- extra parens at every nesting level --
+(a[(a[(a[0])])])
+((a[0]))
+(((a[0])))
+((((a[0]))))
+(a[((0))])
+(a[(((0)))])
+
+# -- indexing on parenthesised expressions --
+((na)[0])[1]
+(na[0])[a[1]]
+((a))[((0))]
+(((a)))[0]
+
+# -- indexing on literal constructors --
+[[1,2],[3,4]][0][1]
 ([1,2,3])[0]
 ([1,2,3][0])
-"hello"[0]
-"hello"[0][0]
-("hello")[0]
-("hello"[0])
-
-# indexing on hash literals
-{a: 1}[:a]
-({a: 1})[:a]
 ({a: 1, b: {c: 2}})[:b][:c]
 
-# indexing on method return values
-foo[0]
-foo()[0]
-foo(1)[0]
-foo(1, 2)[0][1]
+# -- indexing on method call results with nested index args --
 foo(a[0])[a[1]]
-foo(a[0])[a[1]][a[2]]
-bar(a[0], b[1])[c[2]]
-obj.foo[0]
-obj.foo[0][1]
-obj.foo(1)[0]
+foo(a[a[0]])[a[a[1]]]
+foo(na[0][a[1]])[0]
 obj.foo(a[0])[a[1]]
+obj.foo[a[a[0]]]
 
-# indexing inside argument lists
-foo(a[0], b[1])
-foo(a[0][1], b[2][3])
-foo(a[a[0]], b[b[1]])
-[a[0], b[1], c[2]]
-[a[0][1], b[c[2]]]
+# -- nested indexing inside argument lists --
+foo(a[a[0]], na[a[1]][a[2]])
+foo(na[a[0]][a[1]], a[a[a[2]]])
+[a[a[0]], na[a[1]][a[2]]]
 
-# indexing inside blocks / lambdas
--> { a[0] }
--> { a[0][a[1]] }
--> (*x) { x[0][x[1]] }
-proc { |x| x[0] }
-proc { |x| x[0][x[1]] }
-lambda { |a| a[0][a[1]] }
+# -- indexing inside lambdas / procs --
+-> { na[0][a[1]] }
+-> (*x) { x[x[0]] }
+proc { |x| x[0] if x.is_a?(Array) }
+lambda { |v| v.is_a?(Array) ? v[v.size - 1] : v }
 
-# indexing with assignment
-w = [0, [0, 0, 0], 0, 0, 0, 0, 0]
-w[0] = 1
-w[1][1] = 2
-w[w[0]] = 3
-z = [[0, 0], [0, 0]]
-z[0][z[1][0]] = 4
-w[0], w[1] = 1, 2
+# -- indexing with assignment: nested lhs --
+w = [[0, 0, 0], [0, 0, 0], 0, 0]
+w[0][w[1][0]] = 9
+w[a[0]][a[1]] = 8
+z = [[0, 0], [0, 1]]
+z[z[0][0]][z[1][1]] = 7
+z[z[0][0]][z[1][1]] += 10
 
-# indexing with op-assignment
-w = [0, [0, 0, 0], 0, 0]
-w[0] += 1
-w[1][1] += 2
-w[w[0]] += 3
-y = [[0, 0], [0, 1]]
-y[y[0][0]][y[1][1]] += 4
-w[0] ||= 1
-w[1][1] &&= 2
-
-# []= method and [] method calls
+# -- explicit .[] and .[]= method call form --
 a_copy = a.dup
 a_copy.[](0)
-a_copy.[]=(0, 1)
+a_copy.[]=(0, 99)
+a_copy.[](a_copy.[](1))
 
-# splat / spread inside brackets
-a[*b]
-a[*b, 1]
-foo(*a[0])
-foo(a[0], *b[1])
-
-# indexing in ternary
-a[0] ? a[1] : a[2]
-(a[0] ? a[1] : a[2])[0]
-a[a[0] ? 1 : 2]
-
-# indexing in boolean expressions
-a[0] && a[1]
-a[0] || a[1]
-a[0] && a[1][2]
-(a[0] && a[1])[0]
-a[0] && b[a[1]]
-
-# indexing mixed with ranges
-a[0..1]
-a[0..a[1]]
-a[a[0]..a[1]]
-a[0...a.size]
-(a[0..1])[0]
-a[0..1][0..1]
-
-# nested structure access
-a[0][1..2]
-a[0..1][0][1]
-a[0..1].map { |x| x[0] }
-
-# indexing on conditional results
-(if true then a else b end)[0]
-(case x; when 1 then a; else []; end)[0]
-(begin; a; rescue; b; end)[0]
-
-# safe navigation with indexing
+# -- safe navigation with indexing --
 a&.[](0)
-a&.foo[0]
-a&.foo&.[](0)
+nil&.[](0)
+a&.[](a&.[](0))
 
-# indexing on string interpolation
-"#{a[0]}"
-"#{a[0][1]}"
-"#{a[a[0]]}"
-"#{a[0]}#{b[a[1]]}"
-"hello #{a[0][a[1]]} world"
+# -- indexing on conditional / control-flow results --
+(if true then na else [] end)[0][1]
+(case a[1]; when 1 then na; else []; end)[0][a[1]]
+(begin; na; rescue; []; end)[0][a[1]]
+(true ? na : [])[0][a[1]]
+(a[1] == 1 ? na[0] : na[1])[a[2]]
 
-# indexing inside heredocs
+# -- indexing in boolean short-circuit --
+a[1] && na[a[1]][a[2]]
+a[0] || na[a[1]][a[2]]
+(a[1] && na[a[1]])[a[2]]
+
+# -- indexing mixed with ranges --
+a[a[0]..a[2]]
+na[0][a[0]..a[1]]
+(a[0..2])[a[1]]
+a[0..2][a[0]..a[1]]
+
+# -- indexing inside string interpolation --
+"#{na[0][a[1]]}"
+"#{na[a[0]][a[a[1]]]}"
+"prefix #{na[a[0]][a[1]]} middle #{a[a[a[2]]]} suffix"
+
+# -- indexing inside heredoc interpolation --
 <<~HEREDOC
-  #{a[0][a[1]]}
+  val: #{na[0][a[1]]}
+  deep: #{na[a[0]][a[a[1]]]}
 HEREDOC
 
-# deeply nested -- stress test
-a[b[c[d[e[0]]]]]
-a[0][1][2][3][4][5]
-a[a[a[a[a[0]]]]]
-((((a[0])[1])[2])[3])
-(a[(b[(c[0])])])
+# -- deeply nested across multiple [] on same receiver (Integer#[] is bit-index) --
+a[1][0]
+a[3][0]
+a[3][1]
+a[5][0][0]
+a[a[3]][a[1]]
+a[a[a[3]]][0]
 
-# indexing on begin/end
-begin; a; end[0]
+# -- splat inside brackets --
+a[*[0]]
+a[*[0, 2]]
+foo(*na[0])
+foo(na[0][a[1]], *na[1])
 
-# indexing on block result
-foo { [1, 2] }[0]
+# -- indexing on begin/end and block results --
+begin; na; end[0][1]
+foo { na }[0]
 
-# negative indices
-a[-1]
-a[-1][-2]
-a[a[-1]]
-a[-a[0]]
-
-# computed indices with arithmetic
-a[0 + 1]
-a[a[0] + a[1]]
-a[a[0] * 2][a[1] - 1]
-a[(a[0] + 1) * 2]
-
-# multi-arg indexing
-a[0, 1]
-a[0, 2]
-
-# space-before-bracket disambiguation
+# -- space-before-bracket (argument list, not indexing) --
 a [0]
-a [0, 1]
+a [0, 2]
+foo [a[0]]
+foo [a[0], a[1]]
+
+# -- ternary with indexing on both branches --
+(a[1] > 0 ? na[0] : na[1])[a[2]]
+na[a[1] > 0 ? 0 : 1][a[1] > 0 ? 2 : 0]
+
+# -- indexing result used as method receiver --
+na[0][a[1]].to_s
+na[a[0]][a[1]].to_s.length
+(na[0][a[1]]).to_s
+((na[0])[a[1]]).class
+
+# -- compound nested: index + method + index --
+na[0].dup[a[1]]
+na[0].dup[a[a[1]]]
+na.dup[a[0]][a[1]]
+na.dup[a[0]].dup[a[1]]
