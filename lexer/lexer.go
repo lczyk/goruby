@@ -32,7 +32,6 @@ type interpState struct {
 	braceDepth   int     // outer braceDepth, restored on pop
 }
 
-
 // New returns a Lexer instance ready to process the given input.
 func New(input string) *Lexer {
 	l := &Lexer{
@@ -170,7 +169,7 @@ func (l *Lexer) consumeEscape() {
 		if l.peek() == '-' {
 			l.next() // consume -
 			if l.peek() == '\\' {
-				l.next()        // consume \
+				l.next()          // consume \
 				l.consumeEscape() // target is an escape sequence (e.g. \C-\M-x, \C-\\)
 			} else {
 				l.next() // consume single target char
@@ -180,7 +179,7 @@ func (l *Lexer) consumeEscape() {
 		if l.peek() == '-' {
 			l.next() // consume -
 			if l.peek() == '\\' {
-				l.next()        // consume \
+				l.next()          // consume \
 				l.consumeEscape() // target is an escape sequence (e.g. \M-\C-x, \M-\\)
 			} else {
 				l.next() // consume single target char
@@ -648,7 +647,7 @@ func lexIdentifier(l *Lexer) StateFn {
 		if l.peekSecond() == ':' {
 			// This is :: -- emit normally, don't treat as label.
 		} else {
-			l.next() // consume : so it is included in l.start..l.pos
+			l.next()            // consume : so it is included in l.start..l.pos
 			l.emit(token.LABEL) // literal is e.g. "foo:" -- colon stripped by parser
 			return checkInterpStack
 		}
@@ -859,7 +858,7 @@ func lexCharacterLiteral(l *Lexer) StateFn {
 			if l.peek() == '-' {
 				l.next() // consume -
 				if l.peek() == '\\' {
-					l.next()        // consume \\
+					l.next()          // consume \\
 					l.consumeEscape() // target is an escape sequence
 				} else {
 					l.next() // consume single target char
@@ -871,7 +870,7 @@ func lexCharacterLiteral(l *Lexer) StateFn {
 			if l.peek() == '-' {
 				l.next() // consume -
 				if l.peek() == '\\' {
-					l.next()        // consume \\
+					l.next()          // consume \\
 					l.consumeEscape() // target is an escape sequence
 				} else {
 					l.next() // consume single target char

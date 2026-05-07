@@ -746,10 +746,10 @@ end
 
 func TestReturnStatements(t *testing.T) {
 	tests := []struct {
-		name         string
-		input        string
+		name          string
+		input         string
 		expectedValue interface{}
-		expectError  error
+		expectError   error
 	}{
 		{name: "single int", input: "return 5;", expectedValue: 5},
 		{name: "single bool", input: "return true;", expectedValue: true},
@@ -2228,35 +2228,35 @@ func TestCaseExpression(t *testing.T) {
 			whenCount: 1,
 		},
 		{
-			name:      "case with else",
-			input:     "case x\nwhen 1\n  y\nelse\n  z\nend",
+			name:         "case with else",
+			input:        "case x\nwhen 1\n  y\nelse\n  z\nend",
 			hasCondition: true,
-			whenCount: 1,
-			hasElse:   true,
+			whenCount:    1,
+			hasElse:      true,
 		},
 		{
-			name:      "case with multiple when clauses",
-			input:     "case x\nwhen 1\n  a\nwhen 2\n  b\nend",
+			name:         "case with multiple when clauses",
+			input:        "case x\nwhen 1\n  a\nwhen 2\n  b\nend",
 			hasCondition: true,
-			whenCount: 2,
+			whenCount:    2,
 		},
 		{
-			name:      "case with comma-separated when conditions",
-			input:     "case x\nwhen 1, 2, 3\n  y\nend",
+			name:         "case with comma-separated when conditions",
+			input:        "case x\nwhen 1, 2, 3\n  y\nend",
 			hasCondition: true,
-			whenCount: 1,
+			whenCount:    1,
 		},
 		{
-			name:      "case with then keyword",
-			input:     "case x\nwhen 1 then\ny\nend",
+			name:         "case with then keyword",
+			input:        "case x\nwhen 1 then\ny\nend",
 			hasCondition: true,
-			whenCount: 1,
+			whenCount:    1,
 		},
 		{
-			name:        "case missing end",
-			input:       "case x\nwhen 1\n  y",
+			name:         "case missing end",
+			input:        "case x\nwhen 1\n  y",
 			hasCondition: true,
-			expectError: &unexpectedTokenError{expectedTokens: []token.Type{token.EOF}, actualToken: token.EOF},
+			expectError:  &unexpectedTokenError{expectedTokens: []token.Type{token.EOF}, actualToken: token.EOF},
 		},
 	}
 
@@ -3965,9 +3965,9 @@ func TestContextCallExpression(t *testing.T) {
 
 func TestStringLiteralExpression(t *testing.T) {
 	tests := []struct {
-		name       string
-		input      string
-		expectVal  string
+		name        string
+		input       string
+		expectVal   string
 		expectParts bool
 	}{
 		{name: "simple", input: `"hello world"`, expectVal: "hello world"},
@@ -4654,7 +4654,7 @@ func TestInstanceVariableNoIdent(t *testing.T) {
 
 func TestModuleErrorPaths(t *testing.T) {
 	tests := []string{
-		"module A\n3",    // missing end
+		"module A\n3",     // missing end
 		"module A 3\nend", // missing newline after const
 	}
 	for _, input := range tests {
@@ -4746,11 +4746,11 @@ func TestInterpolatedRegexEmbexpr(t *testing.T) {
 
 func TestParseErrorPaths(t *testing.T) {
 	tests := []string{
-		"::foo",    // top-level scope without CONST
-		"@@",       // class var without IDENT
-		"(1",       // grouped expr without closing paren
-		"{1 => 2",  // hash without closing brace
-		"x[1",      // index without closing bracket
+		"::foo",   // top-level scope without CONST
+		"@@",      // class var without IDENT
+		"(1",      // grouped expr without closing paren
+		"{1 => 2", // hash without closing brace
+		"x[1",     // index without closing bracket
 	}
 	for _, input := range tests {
 		t.Run(input, func(t *testing.T) {

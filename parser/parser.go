@@ -90,7 +90,7 @@ var precedences = map[token.Type]int{
 	token.DO:                precBlockDo,
 	token.SCOPE:             precScope,
 	token.SYMBEG:            precSymbol,
-	token.HASHROCKET:         precAssignment,
+	token.HASHROCKET:        precAssignment,
 	token.COMMA:             precAssignment,
 	token.THEN:              precHighest,
 	token.NEWLINE:           precHighest,
@@ -212,7 +212,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.KW_FOR, p.parseLoopExpression)
 	p.registerPrefix(token.CASE, p.parseCaseExpression)
 	p.registerPrefix(token.WHEN, p.parseErrorSkip) // when outside case is an error
-	p.registerPrefix(token.ELSE, p.parseErrorSkip)  // else outside if/case is an error
+	p.registerPrefix(token.ELSE, p.parseErrorSkip) // else outside if/case is an error
 	p.registerPrefix(token.KW_ELSIF, p.parseErrorSkip)
 	p.registerPrefix(token.KW_IN, p.parseErrorSkip)
 	p.registerPrefix(token.BREAK, p.parseJumpExpression)

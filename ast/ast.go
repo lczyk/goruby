@@ -997,12 +997,12 @@ func (fl *FunctionLiteral) String() string {
 
 // A FunctionParameter represents a parameter in a function literal
 type FunctionParameter struct {
-	Name           *Identifier
-	Default        Expression
-	IsSplat        bool
-	IsKeyword      bool
-	IsKeywordRest  bool // **kwargs
-	IsForwarding   bool // ... argument forwarding
+	Name          *Identifier
+	Default       Expression
+	IsSplat       bool
+	IsKeyword     bool
+	IsKeywordRest bool // **kwargs
+	IsForwarding  bool // ... argument forwarding
 }
 
 func (f *FunctionParameter) expressionNode() {}
@@ -1343,8 +1343,8 @@ func (c *CaseExpression) String() string {
 }
 func (c *CaseExpression) expressionNode() {}
 
-func (c *CaseExpression) Pos() int           { return c.Token.Pos }
-func (c *CaseExpression) End() int           { return c.EndToken.Pos }
+func (c *CaseExpression) Pos() int             { return c.Token.Pos }
+func (c *CaseExpression) End() int             { return c.EndToken.Pos }
 func (c *CaseExpression) TokenLiteral() string { return c.Token.Literal }
 
 // A WhenClause represents a single when branch in a case expression
@@ -1370,8 +1370,8 @@ func (w *WhenClause) String() string {
 }
 func (w *WhenClause) expressionNode() {}
 
-func (w *WhenClause) Pos() int           { return w.Token.Pos }
-func (w *WhenClause) End() int           { return w.Body.End() }
+func (w *WhenClause) Pos() int             { return w.Token.Pos }
+func (w *WhenClause) End() int             { return w.Body.End() }
 func (w *WhenClause) TokenLiteral() string { return w.Token.Literal }
 
 // A DefinedExpression represents defined?(expr)
@@ -1385,8 +1385,8 @@ func (d *DefinedExpression) String() string {
 }
 func (d *DefinedExpression) expressionNode() {}
 
-func (d *DefinedExpression) Pos() int { return d.Token.Pos }
-func (d *DefinedExpression) End() int { return d.Expr.End() }
+func (d *DefinedExpression) Pos() int             { return d.Token.Pos }
+func (d *DefinedExpression) End() int             { return d.Expr.End() }
 func (d *DefinedExpression) TokenLiteral() string { return d.Token.Literal }
 
 // A JumpExpression represents break, next, redo, or retry with an optional value
@@ -1429,8 +1429,8 @@ func (a *AliasExpression) String() string {
 }
 func (a *AliasExpression) expressionNode() {}
 
-func (a *AliasExpression) Pos() int           { return a.Token.Pos }
-func (a *AliasExpression) End() int           { return a.OldName.End() }
+func (a *AliasExpression) Pos() int             { return a.Token.Pos }
+func (a *AliasExpression) End() int             { return a.OldName.End() }
 func (a *AliasExpression) TokenLiteral() string { return a.Token.Literal }
 
 // UndefExpression represents an `undef method1, method2, ...` statement
@@ -1451,8 +1451,8 @@ func (u *UndefExpression) String() string {
 }
 func (u *UndefExpression) expressionNode() {}
 
-func (u *UndefExpression) Pos() int           { return u.Token.Pos }
-func (u *UndefExpression) End() int           { return u.Names[len(u.Names)-1].End() }
+func (u *UndefExpression) Pos() int             { return u.Token.Pos }
+func (u *UndefExpression) End() int             { return u.Names[len(u.Names)-1].End() }
 func (u *UndefExpression) TokenLiteral() string { return u.Token.Literal }
 
 // PrefixExpression represents a prefix operator
