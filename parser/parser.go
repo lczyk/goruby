@@ -1297,8 +1297,8 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 	if p.trace {
 		defer un(trace(p, "parseInterpolatedString"))
 	}
-	sl := &ast.StringLiteral{Token: p.curToken} // STRING_BEG
-	p.nextToken()                               // advance to first content token
+	begToken := p.curToken // STRING_BEG or XSTR_BEG
+	p.nextToken()          // advance to first content token
 
 	var parts []ast.Expression
 	for !p.currentTokenIs(token.STRING_END) && !p.currentTokenIs(token.XSTR_END) && !p.currentTokenIs(token.EOF) {
@@ -1323,6 +1323,18 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 		p.nextToken()
 	}
 
+	// Branch based on percent literal type.
+	switch begToken.Literal {
+	case "w", "W":
+		return p.buildWordArray(begToken, parts, false)
+	case "i", "I":
+		return p.buildWordArray(begToken, parts, true)
+	case "s":
+		return p.buildSymbolFromPercent(begToken, parts)
+	default: // "", "Q", "q", "x" -- string/regex/xstr
+	}
+
+	sl := &ast.StringLiteral{Token: begToken}
 	// Optimisation: simple string without interpolation.
 	if len(parts) == 1 {
 		if sc, ok := parts[0].(*ast.StringContent); ok {
@@ -1788,20 +1800,6 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 		}
 	}
 
-	if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
-		return nil
-	}
-	lit.Body = p.parseBlockStatement(token.END, token.RESCUE)
-	lit.Rescues = []*ast.RescueBlock{}
-	for p.peekTokenIs(token.RESCUE) {
-		p.accept(token.RESCUE)
-		rescue := p.parseRescueBlock()
-		lit.Rescues = append(lit.Rescues, rescue)
-	}
-	if !p.accept(token.END) {
-		return nil
-	}
-	lit.EndToken = p.curToken
 	inspect := func(n ast.Node) bool {
 		x, ok := n.(*ast.Assignment)
 		if !ok {
@@ -1823,6 +1821,47 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 		}
 		return true
 	}
+
+	// Endless method: def name = expr (Ruby 3.0+)
+	if p.peekTokenIs(token.ASSIGN) {
+		p.consume(token.ASSIGN)
+		expr := p.parseExpression(precLowest)
+		if expr == nil {
+			return nil
+		}
+		lit.Body = &ast.BlockStatement{
+			Token: p.curToken,
+			Statements: []ast.Statement{
+				&ast.ExpressionStatement{Token: p.curToken, Expression: expr},
+			},
+		}
+		if p.peekTokenIs(token.SEMICOLON) {
+			p.accept(token.SEMICOLON)
+			if p.peekTokenIs(token.END) {
+				p.accept(token.END)
+			}
+		}
+		lit.EndToken = p.curToken
+		if lit.Body != nil {
+			ast.Inspect(lit.Body, inspect)
+		}
+		return lit
+	}
+
+	if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
+		return nil
+	}
+	lit.Body = p.parseBlockStatement(token.END, token.RESCUE)
+	lit.Rescues = []*ast.RescueBlock{}
+	for p.peekTokenIs(token.RESCUE) {
+		p.accept(token.RESCUE)
+		rescue := p.parseRescueBlock()
+		lit.Rescues = append(lit.Rescues, rescue)
+	}
+	if !p.accept(token.END) {
+		return nil
+	}
+	lit.EndToken = p.curToken
 	if lit.Body != nil {
 		ast.Inspect(lit.Body, inspect)
 	}
@@ -1851,7 +1890,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 		return identifiers
 	}
 
-	if !hasDelimiters && p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+	if !hasDelimiters && p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.ASSIGN) {
 		return identifiers
 	}
 
@@ -2022,7 +2061,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 	function := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 	contextCallExpression.Function = function
 
-	if p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE, token.EOF, token.DOT, token.SCOPE) {
+	if p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE, token.EOF, token.DOT, token.SCOPE, token.LONELY) {
 		contextCallExpression.Arguments = []ast.Expression{}
 		return contextCallExpression
 	}
@@ -2038,7 +2077,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 		return contextCallExpression
 	}
 
-	if p.peekTokenOneOf(append(tokensNotPossibleInCallArgs, token.RBRACE, token.RPAREN, token.EMBEXPR_END, token.SEMICOLON, token.EOF)...) {
+	if p.peekTokenOneOf(append(tokensNotPossibleInCallArgs, token.RBRACE, token.RPAREN, token.EMBEXPR_END, token.SEMICOLON, token.EOF, token.LONELY)...) {
 		return contextCallExpression
 	}
 
@@ -2225,6 +2264,120 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 	}
 
 	return list
+}
+
+// buildWordArray produces an ArrayLiteral from the parts of a %w/%W (word list)
+// or %i/%I (symbol list) percent literal. isSymbol controls whether elements are
+// wrapped in SymbolLiteral (for %i/%I) or left as StringLiteral (for %w/%W).
+func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbol bool) ast.Expression {
+	var elements []ast.Expression
+	var curWord []ast.Expression // parts comprising the current word (for %W/%I interpolation)
+
+	flushWord := func() {
+		if len(curWord) == 0 {
+			return
+		}
+		var elem ast.Expression
+		if len(curWord) == 1 {
+			elem = curWord[0]
+		} else {
+			elem = &ast.StringLiteral{Token: beg, Parts: curWord}
+		}
+		elements = append(elements, elem)
+		curWord = nil
+	}
+
+	for i, part := range parts {
+		switch pt := part.(type) {
+		case *ast.StringContent:
+			hasLeadingWS := len(pt.Value) > 0 && isSpace(rune(pt.Value[0]))
+			hasTrailingWS := len(pt.Value) > 0 && isSpace(rune(pt.Value[len(pt.Value)-1]))
+
+			words := splitWordList(pt.Value)
+			for j, w := range words {
+				if j == 0 {
+					if hasLeadingWS || (len(curWord) > 0 && i > 0) {
+						flushWord()
+					}
+				} else {
+					flushWord()
+				}
+				if isSymbol {
+					curWord = append(curWord, &ast.SymbolLiteral{
+						Token: pt.Token,
+						Value: &ast.StringLiteral{Value: w},
+					})
+				} else {
+					curWord = append(curWord, &ast.StringLiteral{Value: w})
+				}
+				if j == len(words)-1 && hasTrailingWS {
+					flushWord()
+				}
+			}
+			if len(words) == 0 {
+				// All-whitespace content -- forces a word boundary.
+				flushWord()
+			}
+		default:
+			// EMBEXPR expression -- part of current word if no whitespace separates them.
+			curWord = append(curWord, pt)
+		}
+	}
+	flushWord()
+
+	return &ast.ArrayLiteral{
+		Token:    beg,
+		Rbracket: p.curToken, // STRING_END
+		Elements: elements,
+	}
+}
+
+// splitWordList splits s by unicode whitespace, respecting backslash escapes.
+func splitWordList(s string) []string {
+	var words []string
+	var cur strings.Builder
+	escaping := false
+	for _, r := range s {
+		if escaping {
+			cur.WriteRune(r)
+			escaping = false
+			continue
+		}
+		if r == '\\' {
+			escaping = true
+			continue
+		}
+		if isSpace(r) {
+			if cur.Len() > 0 {
+				words = append(words, cur.String())
+				cur.Reset()
+			}
+			continue
+		}
+		cur.WriteRune(r)
+	}
+	if cur.Len() > 0 {
+		words = append(words, cur.String())
+	}
+	return words
+}
+
+func isSpace(r rune) bool {
+	return r == ' ' || r == '\t' || r == '\n' || r == '\r'
+}
+
+// buildSymbolFromPercent produces a SymbolLiteral from a %s(...) percent literal.
+func (p *parser) buildSymbolFromPercent(beg token.Token, parts []ast.Expression) ast.Expression {
+	if len(parts) == 1 {
+		if sc, ok := parts[0].(*ast.StringContent); ok {
+			return &ast.SymbolLiteral{
+				Token: beg,
+				Value: &ast.StringLiteral{Value: sc.Value},
+			}
+		}
+	}
+	p.errors = append(p.errors, fmt.Errorf("invalid %%s literal"))
+	return nil
 }
 
 func (p *parser) peekPrecedence() int {

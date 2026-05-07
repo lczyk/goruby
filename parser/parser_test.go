@@ -5356,6 +5356,174 @@ func testHashLiteral(t *testing.T, expr ast.Expression, value map[string]string)
 	return true
 }
 
+func TestPercentLiterals(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// %q -- single-quoted string (non-interpolating)
+		{"%q parens", "%q(hello)", `hello`},
+		{"%q braces", "%q{hello world}", `hello world`},
+		// %Q -- double-quoted string (interpolating)
+		{"%Q simple", "%Q(hello)", `hello`},
+		// bare % -- same as %Q
+		{"bare % simple", "%(hello)", `hello`},
+		// %w -- word array (non-interpolating)
+		{"%w words", "%w[a b c]", `[a, b, c]`},
+		{"%w empty", "%w[]", `[]`},
+		{"%w extra whitespace", "%w[  a  b  ]", `[a, b]`},
+		// %W -- word array (interpolating)
+		{"%W words", "%W[a b c]", `[a, b, c]`},
+		// %i -- symbol array (non-interpolating)
+		{"%i symbols", "%i[foo bar]", `[:foo, :bar]`},
+		// %I -- symbol array (interpolating)
+		{"%I symbols", "%I[foo bar]", `[:foo, :bar]`},
+		// %s -- symbol literal
+		{"%s symbol", "%s(foo)", `:foo`},
+		// %r -- regex
+		{"%r regex", "%r{pattern}", `/pattern/`},
+		// %x -- command
+		{"%x command", "%x(ls -la)", `ls -la`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.expected == "TODO" {
+				t.Skip("TODO")
+			}
+			program, err := parseSource(tt.input)
+			checkParserErrors(t, err)
+			if len(program.Statements) == 0 {
+				t.Fatal("no statements")
+			}
+			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("expected ExpressionStatement, got %T", program.Statements[0])
+			}
+			if stmt.Expression.String() != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, stmt.Expression.String())
+			}
+		})
+	}
+}
+
+func TestHeredocParsing(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"unquoted heredoc", "<<EOS\nbody\nEOS\n"},
+		{"single-quoted heredoc", "<<'EOS'\nbody\nEOS\n"},
+		{"double-quoted heredoc", `<<"EOS"` + "\nbody\nEOS\n"},
+		{"indented heredoc", "<<-EOS\n  body\n  EOS\n"},
+		{"squiggy heredoc", "<<~EOS\n  body\n  EOS\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			program, err := parseSource(tt.input)
+			checkParserErrors(t, err)
+			if len(program.Statements) == 0 {
+				t.Fatal("no statements")
+			}
+			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("expected ExpressionStatement, got %T", program.Statements[0])
+			}
+			_, ok = stmt.Expression.(*ast.StringLiteral)
+			if !ok {
+				t.Errorf("expected StringLiteral, got %T", stmt.Expression)
+			}
+		})
+	}
+}
+
+func TestSafeNavigation(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"safe nav bare method", "obj&.method"},
+		{"safe nav with args", "obj&.method(1, 2)"},
+		{"safe nav chained", "obj&.foo&.bar"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			program, err := parseSource(tt.input)
+			checkParserErrors(t, err)
+			if len(program.Statements) == 0 {
+				t.Fatal("no statements")
+			}
+			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("expected ExpressionStatement, got %T", program.Statements[0])
+			}
+			call, ok := stmt.Expression.(*ast.ContextCallExpression)
+			if !ok {
+				t.Errorf("expected ContextCallExpression, got %T", stmt.Expression)
+			}
+			if call != nil && call.Token.Type != token.LONELY {
+				t.Errorf("expected LONELY token, got %s", call.Token.Type)
+			}
+		})
+	}
+}
+
+func TestEndlessMethod(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"bare endless method", "def foo = 42"},
+		{"endless method with params", "def add(x, y) = x + y"},
+		{"endless method parens no params", "def foo() = nil"},
+		{"endless method with string", `def greet(name) = "Hello, #{name}"`},
+		{"endless method semicolon end", "def foo = 42; end"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			program, err := parseSource(tt.input)
+			checkParserErrors(t, err)
+			if len(program.Statements) == 0 {
+				t.Fatal("no statements")
+			}
+			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("expected ExpressionStatement, got %T", program.Statements[0])
+			}
+			fn, ok := stmt.Expression.(*ast.FunctionLiteral)
+			if !ok {
+				t.Fatalf("expected FunctionLiteral, got %T", stmt.Expression)
+			}
+			if fn.Body == nil || len(fn.Body.Statements) == 0 {
+				t.Error("endless method body is empty")
+			}
+		})
+	}
+}
+
+func TestBacktickXStr(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"backtick command", "`ls -la`"},
+		{"backtick with interpolation", "`echo #{name}`"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			program, err := parseSource(tt.input)
+			checkParserErrors(t, err)
+			if len(program.Statements) == 0 {
+				t.Fatal("no statements")
+			}
+			_, ok := program.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("expected ExpressionStatement, got %T", program.Statements[0])
+			}
+		})
+	}
+}
+
 func parseSource(src string, modes ...Mode) (*ast.Program, *Errors) {
 	mode := parseMode
 	for _, m := range modes {

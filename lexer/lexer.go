@@ -102,9 +102,18 @@ func (l *Lexer) HasNext() bool {
 
 // emit passes a token back to the client.
 func (l *Lexer) emit(t token.Type) {
-	token := token.NewToken(t, l.input[l.start:l.pos], l.start)
-	l.lastToken = token
-	l.tokens <- token
+	tok := token.NewToken(t, l.input[l.start:l.pos], l.start)
+	l.lastToken = tok
+	l.tokens <- tok
+	l.start = l.pos
+}
+
+// emitLiteral emits a token of the given type with an explicit literal,
+// ignoring the input between l.start and l.pos. start is advanced to pos.
+func (l *Lexer) emitLiteral(t token.Type, literal string) {
+	tok := token.NewToken(t, literal, l.start)
+	l.lastToken = tok
+	l.tokens <- tok
 	l.start = l.pos
 }
 
@@ -1038,21 +1047,30 @@ func lexPercentLiteral(l *Lexer) StateFn {
 
 	closer := closingDelim(opener)
 	paired := opener != closer
-	l.ignore() // skip type char and opener
 
 	switch typ {
-	case 'q', 's':
+	case 'q':
+		l.ignore() // skip type char and opener
 		return lexPercentLiteralBody(l, opener, closer, paired, token.STRING)
-	case 'w', 'i':
-		return lexPercentLiteralBody(l, opener, closer, paired, token.STRING)
+	case 'w', 'i', 's':
+		l.emitLiteral(token.STRING_BEG, string(typ))
+		l.ignore() // skip type char and opener
+		return lexPercentLiteralBodyEnd(l, opener, closer, paired, token.STRING_CONTENT, token.STRING_END)
 	case 'Q', 'W', 'I', 0:
-		l.emit(token.STRING_BEG)
+		lit := string(typ)
+		if typ == 0 {
+			lit = "Q" // bare % treated as %Q
+		}
+		l.emitLiteral(token.STRING_BEG, lit)
+		l.ignore()
 		return lexPercentContent(l, opener, closer, paired, token.STRING_CONTENT, token.STRING_END)
 	case 'r':
-		l.emit(token.REGEX_BEG)
+		l.emitLiteral(token.REGEX_BEG, "r")
+		l.ignore()
 		return lexPercentContent(l, opener, closer, paired, token.STRING_CONTENT, token.REGEX_END)
 	case 'x':
-		l.emit(token.XSTR_BEG)
+		l.emitLiteral(token.XSTR_BEG, "x")
+		l.ignore()
 		return lexPercentContent(l, opener, closer, paired, token.XSTR_CONTENT, token.XSTR_END)
 	default:
 		return l.errorf("unknown percent literal type: %c", typ)
@@ -1097,6 +1115,56 @@ func lexPercentLiteralBody(l *Lexer, opener, closer rune, paired bool, tok token
 				l.emit(tok)
 				l.next()
 				l.ignore()
+				return startLexer
+			}
+		}
+	}
+}
+
+// lexPercentLiteralBodyEnd reads a non-interpolating percent literal body and
+// emits contentTok for the body followed by endTok for the closing delimiter.
+func lexPercentLiteralBodyEnd(l *Lexer, opener, closer rune, paired bool, contentTok, endTok token.Type) StateFn {
+	depth := 0
+	if paired {
+		depth = 1
+	}
+	for {
+		r := l.next()
+		if r == eof {
+			return l.errorf("unterminated percent literal")
+		}
+		if r == '\\' {
+			l.next() // non-interpolating: only escape the next char
+			continue
+		}
+		if paired {
+			if r == opener {
+				depth++
+				continue
+			}
+			if r == closer {
+				depth--
+				if depth == 0 {
+					if l.pos-l.width > l.start {
+						l.backup()
+						l.emit(contentTok)
+						l.next()
+					}
+					l.ignore() // skip closer
+					l.emit(endTok)
+					return startLexer
+				}
+				continue
+			}
+		} else {
+			if r == closer {
+				if l.pos-l.width > l.start {
+					l.backup()
+					l.emit(contentTok)
+					l.next()
+				}
+				l.ignore() // skip closer
+				l.emit(endTok)
 				return startLexer
 			}
 		}

@@ -954,8 +954,17 @@ func (fl *FunctionLiteral) literalNode()    {}
 // Pos returns the position of the `def` keyword
 func (fl *FunctionLiteral) Pos() int { return fl.Token.Pos }
 
-// End returns the position of the `end` keyword
-func (fl *FunctionLiteral) End() int { return fl.EndToken.Pos }
+// End returns the position of the `end` keyword, or the end of the body
+// for endless methods (def foo = expr).
+func (fl *FunctionLiteral) End() int {
+	if fl.EndToken.Type == token.ILLEGAL {
+		if fl.Body != nil && len(fl.Body.Statements) > 0 {
+			return fl.Body.End()
+		}
+		return fl.Token.Pos + 3
+	}
+	return fl.EndToken.Pos
+}
 
 // TokenLiteral returns the literal from token.DEF
 func (fl *FunctionLiteral) TokenLiteral() string { return fl.Token.Literal }

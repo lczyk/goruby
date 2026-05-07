@@ -190,7 +190,7 @@ func TestLexerEscapes(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "Q"},
 				{token.STRING_CONTENT, "\\u{41}"},
 				{token.STRING_END, ""},
 			},
@@ -202,7 +202,7 @@ func TestLexerEscapes(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.REGEX_BEG, ""},
+				{token.REGEX_BEG, "r"},
 				{token.STRING_CONTENT, "\\u{41}"},
 				{token.REGEX_END, ""},
 			},
