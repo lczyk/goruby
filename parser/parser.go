@@ -142,6 +142,7 @@ var tokensNotPossibleInCallArgs = []token.Type{
 	token.IF,
 	token.UNLESS,
 	token.COLON,
+	token.QMARK,
 	token.RBRACKET,
 	token.COMMA,
 }
@@ -901,7 +902,7 @@ func (p *parser) parseJumpExpression() ast.Expression {
 	// break/next can take an optional value: break expr, next expr
 	// redo/retry take no value
 	if p.currentTokenIs(token.BREAK) || p.currentTokenIs(token.NEXT) {
-		if !p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.EOF) {
+		if !p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.EOF, token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.RESCUE) {
 			p.nextToken()
 			jmp.Value = p.parseExpression(precLowest)
 		}
@@ -1546,6 +1547,10 @@ func (p *parser) parseHash() ast.Expression {
 		defer un(trace(p, "parseHash"))
 	}
 	p.nextToken()
+	// Skip leading newlines/semicolons inside the hash.
+	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+		p.nextToken()
+	}
 
 	if p.currentTokenIs(token.RBRACE) {
 		hash.Rbrace = p.curToken
@@ -1566,6 +1571,10 @@ func (p *parser) parseHash() ast.Expression {
 
 	for p.peekTokenIs(token.COMMA) {
 		p.consume(token.COMMA)
+		// Skip newlines after commas.
+		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.nextToken()
+		}
 		// Handle **expr keyword splat in hash
 		if p.currentTokenIs(token.POWER) {
 			p.nextToken()
@@ -1579,6 +1588,9 @@ func (p *parser) parseHash() ast.Expression {
 		hash.Map[k] = v
 	}
 
+	for p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+		p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+	}
 	if !p.accept(token.RBRACE) {
 		return nil
 	}
@@ -1729,16 +1741,42 @@ func (p *parser) parseIfExpression() ast.Expression {
 	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 		p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
 	}
-	consequence := p.parseBlockStatement(token.ELSE)
-	expression.Consequence = consequence
-	if p.peekTokenIs(token.ELSE) {
-		p.accept(token.ELSE)
-		if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
-			p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+	// Parse the consequence body. Terminators include ELSE, ELSIF, and END.
+	expr := expression
+	for {
+		expr.Consequence = p.parseBlockStatement(token.ELSE, token.KW_ELSIF)
+		if p.peekTokenIs(token.KW_ELSIF) {
+			p.accept(token.KW_ELSIF)
+			// elsif cond -> wrap nested conditional in a BlockStatement
+			nested := &ast.ConditionalExpression{Token: p.curToken}
+			p.nextToken()
+			nested.Condition = p.parseExpression(precLowest)
+			if p.peekTokenIs(token.THEN) {
+				p.accept(token.THEN)
+			}
+			if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+				p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+			}
+			expr.Alternative = &ast.BlockStatement{
+				Statements: []ast.Statement{
+					&ast.ExpressionStatement{Expression: nested},
+				},
+			}
+			expr = nested
+			continue
 		}
-		expression.Alternative = p.parseBlockStatement()
+		if p.peekTokenIs(token.ELSE) {
+			p.accept(token.ELSE)
+			if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+				p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+			}
+			expr.Alternative = p.parseBlockStatement()
+		}
+		break
 	}
-	p.accept(token.END)
+	if !p.accept(token.END) {
+		return nil
+	}
 	expression.EndToken = p.curToken
 	return expression
 }
