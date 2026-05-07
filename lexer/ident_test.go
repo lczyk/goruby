@@ -481,3 +481,166 @@ func TestLexerIdentifierInContexts(t *testing.T) {
 		})
 	}
 }
+
+func TestLexerUnicodeExtended(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []struct {
+			typ     token.Type
+			literal string
+		}
+	}{
+		{
+			name:  "arabic letters",
+			input: "عربي",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "عربي"},
+			},
+		},
+		{
+			name:  "devanagari letters",
+			input: "हिन्दी",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "हिन्दी"},
+			},
+		},
+		{
+			name:  "thai letters",
+			input: "ภาษา",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "ภาษา"},
+			},
+		},
+		{
+			name:  "unicode method with ! suffix",
+			input: "اختبر!",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "اختبر!"},
+			},
+		},
+		{
+			name:  "unicode method with ? suffix",
+			input: "ถูกต้อง?",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "ถูกต้อง?"},
+			},
+		},
+		{
+			name:  "emoji is not a letter",
+			input: "😀",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.ILLEGAL, ""},
+			},
+		},
+		{
+			name:  "unicode after @ (instance variable)",
+			input: "@переменная",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.AT, "@"},
+				{token.IDENT, "переменная"},
+			},
+		},
+		{
+			name:  "unicode after @@ (class variable)",
+			input: "@@класс",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.CLASS_VAR, "@@"},
+				{token.IDENT, "класс"},
+			},
+		},
+		{
+			name:  "unicode after $ (global variable)",
+			input: "$глобал",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.GLOBAL, "$глобал"},
+			},
+		},
+		{
+			name:  "non-ASCII upper-case is IDENT not CONST",
+			input: "Établissement",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "Établissement"},
+			},
+		},
+		{
+			name:  "def with unicode method name",
+			input: "def метод; end",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.DEF, "def"},
+				{token.IDENT, "метод"},
+				{token.SEMICOLON, ";"},
+				{token.END, "end"},
+			},
+		},
+		{
+			name:  "unicode idents separated by operator",
+			input: "αβ + γδ",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "αβ"},
+				{token.PLUS, "+"},
+				{token.IDENT, "γδ"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := New(tt.input)
+			for i, exp := range tt.expected {
+				if !l.HasNext() {
+					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				}
+				tok := l.NextToken()
+				if exp.typ == token.ILLEGAL {
+					if tok.Type != token.ILLEGAL {
+						t.Errorf("pos %d: expected ILLEGAL, got %s (%q)", i, tok.Type, tok.Literal)
+					}
+					return
+				}
+				if tok.Type != exp.typ {
+					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
+				}
+				if tok.Literal != exp.literal {
+					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
+				}
+			}
+		})
+	}
+}
