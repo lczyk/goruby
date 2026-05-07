@@ -4870,6 +4870,26 @@ func TestAnonymousBlockForwarding(t *testing.T) {
 	}
 }
 
+func TestParseStatementErrorPaths(t *testing.T) {
+	// ILLEGAL token path
+	_, err := parseSource("\\")
+	if err == nil {
+		t.Errorf("expected error for illegal character")
+	}
+
+	// Return statement error: incomplete expression after return
+	_, err2 := parseSource("return x +")
+	if err2 == nil {
+		t.Errorf("expected error for incomplete return")
+	}
+
+	// If expression error: missing newline/semicolon after condition
+	_, err3 := parseSource("if x y\nend")
+	if err3 == nil {
+		t.Errorf("expected error for if without separator after condition")
+	}
+}
+
 func TestRightwardAssignment(t *testing.T) {
 	tests := []string{
 		"1 => x",
