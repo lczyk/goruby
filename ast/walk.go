@@ -287,6 +287,9 @@ func Walk(v Visitor, node Node) {
 	case *InstanceVariable:
 		Walk(v, n.Name)
 
+	case *ClassVariable:
+		Walk(v, n.Name)
+
 	case *Assignment:
 		Walk(v, n.Left)
 		Walk(v, n.Right)

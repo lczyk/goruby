@@ -96,6 +96,7 @@ var precedences = map[token.Type]int{
 	token.AND:               precAnd,
 	token.LOGICALOR:         precLogicalOr,
 	token.LOGICALAND:        precLogicalAnd,
+	token.CLASS_VAR:         precCallArg,
 	token.CAPTURE:           precCapture,
 	token.POWER:             precProduct,
 	token.RANGE:             precLessGreater,
@@ -214,6 +215,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.GLOBAL, p.parseGlobal)
 	p.registerPrefix(token.KEYWORD__FILE__, p.parseKeyword__FILE__)
 	p.registerPrefix(token.BEGIN, p.parseExceptionHandlingBlock)
+	p.registerPrefix(token.CLASS_VAR, p.parseClassVariable)
 	p.registerPrefix(token.CAPTURE, p.parseBlockCapture)
 	p.registerPrefix(token.KW_SUPER, p.parseSelf)
 	p.registerPrefix(token.KW_UNDEF, p.parseSelf)
@@ -274,6 +276,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerInfix(token.REGEX, p.parseCallArgument)
 	p.registerInfix(token.XSTR, p.parseCallArgument)
 	p.registerInfix(token.SYMBEG, p.parseCallArgument)
+	p.registerInfix(token.CLASS_VAR, p.parseCallArgument)
 	p.registerInfix(token.CAPTURE, p.parseCallArgument)
 	p.registerInfix(token.SELF, p.parseCallArgument)
 	p.registerInfix(token.LAMBDA, p.parseCallArgument)
@@ -737,6 +740,18 @@ func (p *parser) parseInstanceVariable() ast.Expression {
 	}
 	instanceVariable.Name = p.parseIdentifier().(*ast.Identifier)
 	return instanceVariable
+}
+
+func (p *parser) parseClassVariable() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseClassVariable"))
+	}
+	cv := &ast.ClassVariable{Token: p.curToken}
+	if !p.accept(token.IDENT) {
+		return nil
+	}
+	cv.Name = p.parseIdentifier().(*ast.Identifier)
+	return cv
 }
 
 func (p *parser) parseNilLiteral() ast.Expression {

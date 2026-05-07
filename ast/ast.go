@@ -282,6 +282,30 @@ func (i *InstanceVariable) End() int { return i.Name.End() }
 // TokenLiteral returns the literal of the AT token
 func (i *InstanceVariable) TokenLiteral() string { return i.Token.Literal }
 
+// A ClassVariable represents a class variable in the AST
+type ClassVariable struct {
+	Token token.Token
+	Name  *Identifier
+}
+
+func (c *ClassVariable) String() string {
+	var out bytes.Buffer
+	out.WriteString(c.Token.Literal)
+	out.WriteString(c.Name.String())
+	return out.String()
+}
+func (c *ClassVariable) literalNode()    {}
+func (c *ClassVariable) expressionNode() {}
+
+// Pos returns the position of first character belonging to the node
+func (c *ClassVariable) Pos() int { return c.Token.Pos }
+
+// End returns the position of first character immediately after the node
+func (c *ClassVariable) End() int { return c.Name.End() }
+
+// TokenLiteral returns the literal of the CLASS_VAR token
+func (c *ClassVariable) TokenLiteral() string { return c.Token.Literal }
+
 // MultiAssignment represents multiple variables on the lefthand side
 type MultiAssignment struct {
 	Variables []*Identifier
