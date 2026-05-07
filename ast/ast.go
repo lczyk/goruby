@@ -1521,6 +1521,26 @@ func (oe *InfixExpression) String() string {
 	return out.String()
 }
 
+// RightwardAssignment represents a rightward assignment / one-line pattern match (expr => target)
+type RightwardAssignment struct {
+	Token token.Token // the => token
+	Left  Expression  // the value expression
+	Right Expression  // the pattern / target
+}
+
+func (ra *RightwardAssignment) expressionNode() {}
+
+func (ra *RightwardAssignment) Pos() int             { return ra.Left.Pos() }
+func (ra *RightwardAssignment) End() int             { return ra.Right.End() }
+func (ra *RightwardAssignment) TokenLiteral() string { return ra.Token.Literal }
+func (ra *RightwardAssignment) String() string {
+	var out bytes.Buffer
+	out.WriteString(ra.Left.String())
+	out.WriteString(" => ")
+	out.WriteString(ra.Right.String())
+	return out.String()
+}
+
 func encloseInParensIfNeeded(expr Expression) string {
 	val := expr.String()
 	hasParens := strings.HasPrefix(val, "(") && strings.HasSuffix(val, ")")

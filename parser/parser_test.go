@@ -4870,6 +4870,34 @@ func TestAnonymousBlockForwarding(t *testing.T) {
 	}
 }
 
+func TestRightwardAssignment(t *testing.T) {
+	tests := []string{
+		"1 => x",
+		"x => y",
+		"foo(1, 2) => result",
+	}
+	for _, input := range tests {
+		t.Run(input, func(t *testing.T) {
+			program, err := parseSource(input)
+			checkParserErrors(t, err)
+			if len(program.Statements) != 1 {
+				t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+			}
+			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			}
+			ra, ok := stmt.Expression.(*ast.RightwardAssignment)
+			if !ok {
+				t.Fatalf("expected *ast.RightwardAssignment, got %T", stmt.Expression)
+			}
+			if ra.Left == nil || ra.Right == nil {
+				t.Errorf("expected Left and Right to be set")
+			}
+		})
+	}
+}
+
 func TestCaseInExpression(t *testing.T) {
 	input := "case x\nin 1\n  y\nend"
 	program, err := parseSource(input)

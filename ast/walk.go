@@ -260,6 +260,10 @@ func Walk(v Visitor, node Node) {
 	case *YieldExpression:
 		walkExprList(v, n.Arguments)
 
+	case *RightwardAssignment:
+		Walk(v, n.Left)
+		Walk(v, n.Right)
+
 	case *SuperExpression:
 		walkExprList(v, n.Arguments)
 

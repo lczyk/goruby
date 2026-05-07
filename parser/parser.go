@@ -278,7 +278,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerInfix(token.LSHIFT, p.parseInfixExpression)
 	p.registerInfix(token.RSHIFT, p.parseInfixExpression)
 	p.registerInfix(token.CASEEQ, p.parseInfixExpression)
-	p.registerInfix(token.HASHROCKET, p.parseInfixExpression)
+	p.registerInfix(token.HASHROCKET, p.parseRightwardAssignment)
 	p.registerInfix(token.ASSIGN, p.parseAssignment)
 	p.registerInfix(token.ADDASSIGN, p.parseAssignmentOperator)
 	p.registerInfix(token.SUBASSIGN, p.parseAssignmentOperator)
@@ -1154,6 +1154,20 @@ func (p *parser) parseBeginlessRange() ast.Expression {
 		Left:     nil,
 		Operator: tok.Literal,
 		Right:    p.parseExpression(precLessGreater),
+	}
+}
+
+func (p *parser) parseRightwardAssignment(left ast.Expression) ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseRightwardAssignment"))
+	}
+	tok := p.curToken
+	precedence := p.curPrecedence()
+	p.nextToken()
+	return &ast.RightwardAssignment{
+		Token: tok,
+		Left:  left,
+		Right: p.parseExpression(precedence),
 	}
 }
 
