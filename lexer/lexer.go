@@ -68,10 +68,9 @@ type Lexer struct {
 	interpStack []interpState
 }
 
-// NextToken will return the next token processed from the lexer.
-//
-// Callers should make sure to call Lexer.HasNext before calling this method
-// as it will panic if it is called after token.EOF is returned.
+// NextToken returns the next token from the input. When the lexer is exhausted
+// (state is nil and the token buffer is drained), it returns token.EOF. Safe
+// to call without checking HasNext first -- it will keep returning EOF.
 func (l *Lexer) NextToken() token.Token {
 	for {
 		select {
@@ -79,19 +78,27 @@ func (l *Lexer) NextToken() token.Token {
 			if ok {
 				return item
 			}
-			panic(fmt.Errorf("No items left"))
+			return token.NewToken(token.EOF, "", l.pos)
 		default:
-			l.state = l.state(l)
 			if l.state == nil {
+				return token.NewToken(token.EOF, "", l.pos)
+			}
+			l.state = l.state(l)
+			// When the state chain ends, close the channel only once buffered
+			// tokens have been drained by the caller. This avoids trapping
+			// tokens (e.g. ILLEGAL) that were emitted before errorf set state
+			// to nil within a single NextToken call.
+			if l.state == nil && len(l.tokens) == 0 {
 				close(l.tokens)
 			}
 		}
 	}
 }
 
-// HasNext returns true if there are tokens left, false if EOF has reached
+// HasNext returns true if there are tokens left (including buffered tokens
+// emitted before the state machine stopped), false if the input is exhausted.
 func (l *Lexer) HasNext() bool {
-	return l.state != nil
+	return l.state != nil || len(l.tokens) > 0
 }
 
 // emit passes a token back to the client.
@@ -1825,15 +1832,18 @@ func isDigitOrUnderscore(r rune) bool {
 }
 
 // isIdentChar reports whether r is a valid identifier continuation character.
-// Ruby identifiers are [a-zA-Z_][a-zA-Z0-9_]*[?!]?.
-// ASCII letters/digits/underscore are the fast path; non-ASCII letters fall
-// through to the Unicode table.
+// Ruby identifiers are [a-zA-Z_][a-zA-Z0-9_]*[?!]? for the ASCII subset.
+// Non-ASCII continuation includes letters, marks (combining diacritics,
+// vowel signs, virama), and decimal digits from other scripts.
 func isIdentChar(r rune) bool {
 	if r == '_' || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
 		(r >= '0' && r <= '9') {
 		return true
 	}
-	return r > 127 && unicode.IsLetter(r)
+	if r <= 127 {
+		return false
+	}
+	return unicode.IsLetter(r) || unicode.IsMark(r) || unicode.Is(unicode.Nd, r)
 }
 
 func isHexDigit(r rune) bool {
