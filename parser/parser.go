@@ -661,11 +661,19 @@ func (p *parser) parseExpressions(left ast.Expression) ast.Expression {
 		defer un(trace(p, "parseExpressions"))
 	}
 	p.nextToken()
+	// Skip newlines after the comma that triggered this handler.
+	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+		p.nextToken()
+	}
 	elements := []ast.Expression{left}
 	next := p.parseExpression(precAssignment)
 	elements = append(elements, next)
 	for p.peekTokenIs(token.COMMA) {
 		p.consume(token.COMMA)
+		// Skip newlines after each comma.
+		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.nextToken()
+		}
 		next = p.parseExpression(precAssignment)
 		elements = append(elements, next)
 	}
@@ -1942,6 +1950,10 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 		defer un(trace(p, "parseExpressionList"))
 	}
 	list := []ast.Expression{}
+	// Skip leading newlines/semicolons inside parens/brackets.
+	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+		p.nextToken()
+	}
 	if p.currentTokenOneOf(end...) {
 		return list
 	}
@@ -1955,6 +1967,7 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 	}
 	list = append(list, next)
 
+	// After a single expression, check for end.
 	if p.peekTokenOneOf(end...) {
 		p.acceptOneOf(end...)
 	}
