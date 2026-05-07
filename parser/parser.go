@@ -1179,7 +1179,7 @@ func (p *parser) parseSymbolLiteral() ast.Expression {
 		defer un(trace(p, "parseSymbolLiteral"))
 	}
 	symbol := &ast.SymbolLiteral{Token: p.curToken}
-	if !p.acceptOneOf(token.IDENT, token.STRING, token.STRING_BEG) {
+	if !p.acceptOneOf(token.IDENT, token.CONST, token.STRING, token.STRING_BEG, token.CLASS_VAR) {
 		return nil
 	}
 	val := p.parseExpression(precHighest)
