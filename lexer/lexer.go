@@ -640,6 +640,19 @@ func lexIdentifier(l *Lexer) StateFn {
 		}
 		break
 	}
+	// Label detection: IDENT immediately followed by : (no space) is a label key.
+	// Avoid when the identifier ends with ? or ! (method names like valid?: are
+	// not valid label keys), and when the : is part of :: (scope resolution).
+	if l.peek() == ':' && l.input[l.pos-1] != '?' && l.input[l.pos-1] != '!' {
+		// Check for :: scope resolution -- peekSecond returns the rune after next.
+		if l.peekSecond() == ':' {
+			// This is :: -- emit normally, don't treat as label.
+		} else {
+			l.next() // consume : so it is included in l.start..l.pos
+			l.emit(token.LABEL) // literal is e.g. "foo:" -- colon stripped by parser
+			return checkInterpStack
+		}
+	}
 	literal := l.input[l.start:l.pos]
 	l.emit(token.LookupIdent(literal))
 	return checkInterpStack

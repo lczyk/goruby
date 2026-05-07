@@ -96,6 +96,7 @@ var precedences = map[token.Type]int{
 	token.AND:               precAnd,
 	token.LOGICALOR:         precLogicalOr,
 	token.LOGICALAND:        precLogicalAnd,
+	token.LABEL:             precCallArg,
 	token.CLASS_VAR:         precCallArg,
 	token.CAPTURE:           precCapture,
 	token.POWER:             precProduct,
@@ -204,6 +205,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.UNLESS, p.parseIfExpression)
 	p.registerPrefix(token.WHILE, p.parseLoopExpression)
 	p.registerPrefix(token.DEF, p.parseFunctionLiteral)
+	p.registerPrefix(token.LABEL, p.parseLabelExpression)
 	p.registerPrefix(token.SYMBEG, p.parseSymbolLiteral)
 	p.registerPrefix(token.LBRACKET, p.parseArrayLiteral)
 	p.registerPrefix(token.NIL, p.parseNilLiteral)
@@ -278,6 +280,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerInfix(token.REGEX_BEG, p.parseCallArgument)
 	p.registerInfix(token.REGEX, p.parseCallArgument)
 	p.registerInfix(token.XSTR, p.parseCallArgument)
+	p.registerInfix(token.LABEL, p.parseCallArgument)
 	p.registerInfix(token.SYMBEG, p.parseCallArgument)
 	p.registerInfix(token.CLASS_VAR, p.parseCallArgument)
 	p.registerInfix(token.CAPTURE, p.parseCallArgument)
@@ -757,6 +760,26 @@ func (p *parser) parseClassVariable() ast.Expression {
 	return cv
 }
 
+func (p *parser) parseLabelExpression() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseLabelExpression"))
+	}
+	// The LABEL token's literal is e.g. "foo:"
+	name := strings.TrimSuffix(p.curToken.Literal, ":")
+	key := &ast.SymbolLiteral{
+		Token: p.curToken,
+		Value: &ast.StringLiteral{Value: name},
+	}
+	p.nextToken()
+	val := p.parseExpression(precAssignment)
+	return &ast.InfixExpression{
+		Token:    key.Token,
+		Left:     key,
+		Operator: ":",
+		Right:    val,
+	}
+}
+
 func (p *parser) parseNilLiteral() ast.Expression {
 	if p.trace {
 		defer un(trace(p, "parseNilLiteral"))
@@ -1115,6 +1138,18 @@ func (p *parser) parseHash() ast.Expression {
 }
 
 func (p *parser) parseKeyValue() (ast.Expression, ast.Expression, bool) {
+	// Label syntax: key: value (Ruby 1.9+)
+	if p.currentTokenIs(token.LABEL) {
+		name := strings.TrimSuffix(p.curToken.Literal, ":")
+		key := &ast.SymbolLiteral{
+			Token: p.curToken,
+			Value: &ast.StringLiteral{Value: name},
+		}
+		p.nextToken()
+		val := p.parseExpression(precAssignment)
+		return key, val, true
+	}
+	// Classic hashrocket syntax: key => value
 	key := p.parseExpression(precAssignment)
 	if !p.consume(token.HASHROCKET) {
 		return nil, nil, false

@@ -111,6 +111,7 @@ const (
 
 	QMARK  // ?
 	SYMBEG // :
+	LABEL  // identifier: (label key for hashes/keyword args)
 
 	// Keywords
 	keyword_beg
@@ -247,6 +248,7 @@ var tokens = [...]string{
 
 	QMARK:  "?",
 	SYMBEG: ":",
+	LABEL:  "LABEL",
 
 	DEF:                 "def",
 	SELF:                "self",
