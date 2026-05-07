@@ -45,6 +45,8 @@ var precedences = map[token.Type]int{
 	token.RESCUE:            precIfUnless,
 	token.IF:                precIfUnless,
 	token.UNLESS:            precIfUnless,
+	token.WHILE:             precIfUnless,
+	token.UNTIL:             precIfUnless,
 	token.EQ:                precEquals,
 	token.NOTEQ:             precEquals,
 	token.MATCH:             precEquals,
@@ -92,6 +94,7 @@ var precedences = map[token.Type]int{
 	token.SYMBEG:            precSymbol,
 	token.HASHROCKET:        precAssignment,
 	token.COMMA:             precAssignment,
+	token.KW_IN:             precAssignment,
 	token.THEN:              precHighest,
 	token.NEWLINE:           precHighest,
 	token.PIPE:              precOr,
@@ -296,6 +299,9 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerInfix(token.XORASSIGN, p.parseAssignmentOperator)
 	p.registerInfix(token.IF, p.parseModifierConditionalExpression)
 	p.registerInfix(token.UNLESS, p.parseModifierConditionalExpression)
+	p.registerInfix(token.WHILE, p.parseModifierLoopExpression)
+	p.registerInfix(token.UNTIL, p.parseModifierLoopExpression)
+	p.registerInfix(token.KW_IN, p.parseInfixExpression)
 	p.registerInfix(token.QMARK, p.parseTenaryIfExpression)
 	p.registerInfix(token.LPAREN, p.parseCallExpressionWithParens)
 	p.registerInfix(token.IDENT, p.parseCallArgument)
@@ -1498,14 +1504,26 @@ func (p *parser) parseHash() ast.Expression {
 		return hash
 	}
 
-	k, v, ok := p.parseKeyValue()
-	if !ok {
-		return nil
+	// Handle **expr keyword splat as first hash entry
+	if p.currentTokenIs(token.POWER) {
+		p.nextToken()
+		hash.Splats = append(hash.Splats, p.parseExpression(precAssignment))
+	} else {
+		k, v, ok := p.parseKeyValue()
+		if !ok {
+			return nil
+		}
+		hash.Map[k] = v
 	}
-	hash.Map[k] = v
 
 	for p.peekTokenIs(token.COMMA) {
 		p.consume(token.COMMA)
+		// Handle **expr keyword splat in hash
+		if p.currentTokenIs(token.POWER) {
+			p.nextToken()
+			hash.Splats = append(hash.Splats, p.parseExpression(precAssignment))
+			continue
+		}
 		k, v, ok := p.parseKeyValue()
 		if !ok {
 			return nil
@@ -1711,6 +1729,21 @@ func (p *parser) parseModifierConditionalExpression(left ast.Expression) ast.Exp
 		},
 	}
 	return expression
+}
+
+func (p *parser) parseModifierLoopExpression(left ast.Expression) ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseModifierLoopExpression"))
+	}
+	loop := &ast.LoopExpression{Token: p.curToken}
+	p.nextToken()
+	loop.Condition = p.parseExpression(precLowest)
+	loop.Block = &ast.BlockStatement{
+		Statements: []ast.Statement{
+			&ast.ExpressionStatement{Expression: left},
+		},
+	}
+	return loop
 }
 
 func (p *parser) parseLoopExpression() ast.Expression {

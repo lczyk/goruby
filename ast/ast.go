@@ -927,8 +927,9 @@ func (al *ArrayLiteral) String() string {
 // HashLiteral represents an Hash literal within the AST
 type HashLiteral struct {
 	Token  token.Token // the '{'
-	Rbrace token.Token // the '{'
+	Rbrace token.Token // the '}'
 	Map    map[Expression]Expression
+	Splats []Expression // **expr keyword-splat entries
 }
 
 func (hl *HashLiteral) expressionNode() {}
@@ -947,6 +948,9 @@ func (hl *HashLiteral) String() string {
 	elements := []string{}
 	for key, val := range hl.Map {
 		elements = append(elements, fmt.Sprintf("%q => %q", key.String(), val.String()))
+	}
+	for _, s := range hl.Splats {
+		elements = append(elements, "**"+s.String())
 	}
 	out.WriteString("{")
 	out.WriteString(strings.Join(elements, ", "))

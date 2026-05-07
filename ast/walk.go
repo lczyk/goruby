@@ -339,6 +339,7 @@ func Walk(v Visitor, node Node) {
 			Walk(v, k)
 			Walk(v, val)
 		}
+		walkExprList(v, n.Splats)
 
 	case *ExpressionStatement:
 		Walk(v, n.Expression)
