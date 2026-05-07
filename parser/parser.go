@@ -2183,6 +2183,16 @@ func (p *parser) parseBlockStatement(t ...token.Type) *ast.BlockStatement {
 			p.peekError(token.EOF)
 			return block
 		}
+		// If curToken starts a compound expression, parse it first
+		// before advancing. This handles nested case/when where the inner
+		// when would otherwise terminate the outer when-body.
+		if p.currentTokenOneOf(token.CASE, token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.BEGIN, token.CLASS, token.MODULE, token.DEF) {
+			stmt := p.parseStatement()
+			if stmt != nil {
+				block.Statements = append(block.Statements, stmt)
+			}
+			continue
+		}
 		p.nextToken()
 		stmt := p.parseStatement()
 		if stmt != nil {
