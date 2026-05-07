@@ -262,6 +262,9 @@ func Walk(v Visitor, node Node) {
 
 	case *YieldExpression:
 		walkExprList(v, n.Arguments)
+		if n.Block != nil {
+			Walk(v, n.Block)
+		}
 
 	case *RightwardAssignment:
 		Walk(v, n.Left)
@@ -291,6 +294,9 @@ func Walk(v Visitor, node Node) {
 
 	case *SuperExpression:
 		walkExprList(v, n.Arguments)
+		if n.Block != nil {
+			Walk(v, n.Block)
+		}
 
 	case *AliasExpression:
 		Walk(v, n.NewName)

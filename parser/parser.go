@@ -1169,13 +1169,17 @@ func (p *parser) parseYield() ast.Expression {
 	}
 	yield := &ast.YieldExpression{Token: p.curToken}
 	p.nextToken()
+	if p.currentTokenOneOf(token.LBRACE, token.DO) {
+		yield.Block = p.parseBlock().(*ast.BlockExpression)
+		return yield
+	}
 	if p.currentTokenIs(token.LPAREN) {
 		p.nextToken()
 		yield.Arguments = p.parseCallArguments(token.RPAREN)
 		p.nextToken()
 		return yield
 	}
-	yield.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE)
+	yield.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE, token.LBRACE, token.DO)
 	return yield
 }
 
@@ -1185,13 +1189,17 @@ func (p *parser) parseSuper() ast.Expression {
 	}
 	sup := &ast.SuperExpression{Token: p.curToken}
 	p.nextToken()
+	if p.currentTokenOneOf(token.LBRACE, token.DO) {
+		sup.Block = p.parseBlock().(*ast.BlockExpression)
+		return sup
+	}
 	if p.currentTokenIs(token.LPAREN) {
 		p.nextToken()
 		sup.Arguments = p.parseCallArguments(token.RPAREN)
 		p.nextToken()
 		return sup
 	}
-	sup.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE, token.EOF)
+	sup.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE, token.EOF, token.LBRACE, token.DO)
 	return sup
 }
 
@@ -1697,11 +1705,12 @@ func (p *parser) parseIfExpression() ast.Expression {
 	expression := &ast.ConditionalExpression{Token: p.curToken}
 	p.nextToken()
 	expression.Condition = p.parseExpression(precLowest)
-	if p.peekTokenIs(token.THEN) {
+	hasThen := p.peekTokenIs(token.THEN)
+	if hasThen {
 		p.accept(token.THEN)
 	}
 
-	if !p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+	if !hasThen && !p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 		msg := fmt.Sprintf(
 			"could not parse if expression: unexpected token %s: '%s'",
 			p.peekToken.Type,
@@ -1717,12 +1726,16 @@ func (p *parser) parseIfExpression() ast.Expression {
 		p.errors = append(p.errors, err)
 		return nil
 	}
-	p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+		p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+	}
 	consequence := p.parseBlockStatement(token.ELSE)
 	expression.Consequence = consequence
 	if p.peekTokenIs(token.ELSE) {
 		p.accept(token.ELSE)
-		p.accept(token.NEWLINE)
+		if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+		}
 		expression.Alternative = p.parseBlockStatement()
 	}
 	p.accept(token.END)
@@ -1740,7 +1753,7 @@ func (p *parser) parseTenaryIfExpression(condition ast.Expression) ast.Expressio
 	expression.Consequence = &ast.BlockStatement{
 		Statements: []ast.Statement{
 			&ast.ExpressionStatement{
-				Expression: p.parseExpression(precTenary),
+				Expression: p.parseExpression(precLowest),
 			},
 		},
 	}
@@ -2313,6 +2326,12 @@ func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {
 	case *ast.Identifier:
 		exp.Function = fn
 		return exp
+	case *ast.YieldExpression:
+		fn.Block = exp.Block
+		return fn
+	case *ast.SuperExpression:
+		fn.Block = exp.Block
+		return fn
 	case *ast.InfixExpression:
 		ident, ok := fn.Right.(*ast.Identifier)
 		if !ok {
