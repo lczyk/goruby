@@ -12,7 +12,8 @@
     "goruby.bnf",
     "*.bnf",
     "*.html",
-    "internal/integrationtest/testdata/gems/**"
+    "internal/integrationtest/testdata/gems/**",
+    "lexer/ident_test.go"
   ],
   "words": [
     "benchmem",
@@ -154,6 +155,19 @@
     "interp",
     "Interp",
     "XORASSIGN",
-    "Yukihiro"
+    "Yukihiro",
+    "Beginless",
+    "ivar",
+    "kwargs",
+    "Rreader",
+    "codepoints",
+    "corge",
+    "defx",
+    "elta",
+    "garply",
+    "grault",
+    "plugh",
+    "virama",
+    "xyzzy"
   ]
 }
