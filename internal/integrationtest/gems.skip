@@ -13,20 +13,6 @@
 #   parse minitest/lib/minitest/spec.rb: heredoc not supported
 #   parse minitest/test/*: rspec-style metaprogramming
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 parse minitest/lib/hoe/minitest.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse minitest/lib/minitest.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
 parse minitest/lib/minitest/assertions.rb: parser: unsupported syntax (heredoc, key:, %w, splat, regex, etc.)
@@ -215,11 +201,10 @@ walk rake/test/test_rake_win32.rb: parse failed; walk skipped
 walk rake/test/test_thread_history_display.rb: parse failed; walk skipped
 
 # Ruby language tests from MRI test/ruby
-
-# lex phase failures
-lex ruby/test_object.rb: MRI language test - lexer failure
-
-# parse phase failures (lex passes)
+#
+# lex phase: all files pass (lexer bugs resolved 2026-05-07).
+#
+# parse phase failures (lex passes) -- all remaining entries are parser gaps.
 parse ruby/allpairs.rb: MRI language test - parser failure
 parse ruby/beginmainend.rb: MRI language test - parser failure
 parse ruby/box/autoloading.rb: MRI language test - parser failure
@@ -520,32 +505,32 @@ walk ruby/test_yjit.rb: parse failed; walk skipped
 walk ruby/test_zjit.rb: parse failed; walk skipped
 walk ruby/ut_eof.rb: parse failed; walk skipped
 
-# parse phase failures (lex fails)
-parse ruby/test_allocation.rb: MRI language test - lexer failure
-parse ruby/test_object.rb: MRI language test - lexer failure
-parse ruby/test_parse.rb: MRI language test - lexer failure
-parse ruby/test_iseq.rb: MRI language test - lexer failure
-parse ruby/test_lazy_enumerator.rb: MRI language test - lexer failure
-parse ruby/test_ast.rb: MRI language test - lexer failure
-parse ruby/test_file.rb: MRI language test - lexer failure
-parse ruby/test_dir_m17n.rb: MRI language test - lexer failure
-parse ruby/test_marshal.rb: MRI language test - lexer failure
-parse ruby/test_m17n_comb.rb: MRI language test - lexer failure
-parse ruby/test_assignment.rb: MRI language test - lexer failure
-parse ruby/test_exception.rb: MRI language test - lexer failure
-parse ruby/test_sprintf.rb: MRI language test - lexer failure
-parse ruby/test_io_m17n.rb: MRI language test - lexer failure
-parse ruby/test_string.rb: MRI language test - lexer failure
-parse ruby/test_yield.rb: MRI language test - lexer failure
-parse ruby/test_require.rb: MRI language test - lexer failure
-parse ruby/test_unicode_escape.rb: MRI language test - lexer failure
-parse ruby/test_time_tz.rb: MRI language test - lexer failure
-parse ruby/test_stringchar.rb: MRI language test - lexer failure
-parse ruby/test_regexp.rb: MRI language test - lexer failure
-parse ruby/test_file_exhaustive.rb: MRI language test - lexer failure
-parse ruby/enc/test_case_comprehensive.rb: MRI language test - lexer failure
-parse ruby/test_thread_queue.rb: MRI language test - lexer failure
-parse ruby/test_syntax.rb: MRI language test - lexer failure
+# additional parse-phase failures (formerly lexer failures; lex now passes, parse still fails)
+parse ruby/test_allocation.rb: MRI language test - parser failure
+parse ruby/test_object.rb: MRI language test - parser failure
+parse ruby/test_parse.rb: MRI language test - parser failure
+parse ruby/test_iseq.rb: MRI language test - parser failure
+parse ruby/test_lazy_enumerator.rb: MRI language test - parser failure
+parse ruby/test_ast.rb: MRI language test - parser failure
+parse ruby/test_file.rb: MRI language test - parser failure
+parse ruby/test_dir_m17n.rb: MRI language test - parser failure
+parse ruby/test_marshal.rb: MRI language test - parser failure
+parse ruby/test_m17n_comb.rb: MRI language test - parser failure
+parse ruby/test_assignment.rb: MRI language test - parser failure
+parse ruby/test_exception.rb: MRI language test - parser failure
+parse ruby/test_sprintf.rb: MRI language test - parser failure
+parse ruby/test_io_m17n.rb: MRI language test - parser failure
+parse ruby/test_string.rb: MRI language test - parser failure
+parse ruby/test_yield.rb: MRI language test - parser failure
+parse ruby/test_require.rb: MRI language test - parser failure
+parse ruby/test_unicode_escape.rb: MRI language test - parser failure
+parse ruby/test_time_tz.rb: MRI language test - parser failure
+parse ruby/test_stringchar.rb: MRI language test - parser failure
+parse ruby/test_regexp.rb: MRI language test - parser failure
+parse ruby/test_file_exhaustive.rb: MRI language test - parser failure
+parse ruby/enc/test_case_comprehensive.rb: MRI language test - parser failure
+parse ruby/test_thread_queue.rb: MRI language test - parser failure
+parse ruby/test_syntax.rb: MRI language test - parser failure
 
 parse ruby/box/line_splitter.rb: MRI language test - parser failure
 walk ruby/box/line_splitter.rb: parse failed; walk skipped
@@ -560,7 +545,7 @@ walk ruby/enc/test_grapheme_breaks.rb: parse failed; walk skipped
 walk ruby/enc/test_emoji_breaks.rb: parse failed; walk skipped
 walk ruby/test_io.rb: parse failed; walk skipped
 
-# Heredoc edge cases (mid-line, interpolation)
+# Heredoc-heavy files (formerly lexer failures; lex now passes, parse still fails)
 parse minitest/test/minitest/metametameta.rb: lex fails; parse skipped
 walk minitest/test/minitest/metametameta.rb: parse fails; walk skipped
 parse minitest/test/minitest/test_minitest_assertions.rb: lex fails; parse skipped
@@ -648,6 +633,5 @@ walk minitest/lib/minitest/unit.rb: parse fails; walk skipped
 parse ruby/test_undef.rb: parser regression from keyword/operator additions
 walk ruby/test_undef.rb: parse fails; walk skipped
 
-# lex failures: remaining heredoc / regex / string edge cases
 parse ruby/test_io_timeout.rb: parser regression from keyword/operator additions
 walk ruby/test_io_timeout.rb: parse fails; walk skipped
