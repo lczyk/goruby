@@ -244,6 +244,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.RESCUE, p.parseExceptionHandlingBlock)
 	p.registerPrefix(token.BEGIN, p.parseExceptionHandlingBlock)
 	p.registerPrefix(token.CLASS_VAR, p.parseClassVariable)
+	p.registerPrefix(token.AND, p.parseBlockCapture) // &:to_s, &block
 	p.registerPrefix(token.CAPTURE, p.parseBlockCapture)
 	p.registerPrefix(token.KW_SUPER, p.parseSelf)
 	p.registerPrefix(token.KW_UNDEF, p.parseErrorSkip)
@@ -1221,7 +1222,7 @@ func (p *parser) parseSymbolLiteral() ast.Expression {
 		defer un(trace(p, "parseSymbolLiteral"))
 	}
 	symbol := &ast.SymbolLiteral{Token: p.curToken}
-	if !p.acceptOneOf(token.IDENT, token.CONST, token.STRING, token.STRING_BEG, token.CLASS_VAR) {
+	if !p.acceptOneOf(token.IDENT, token.CONST, token.AT, token.STRING, token.STRING_BEG, token.CLASS_VAR, token.GLOBAL) {
 		return nil
 	}
 	val := p.parseExpression(precHighest)
