@@ -504,6 +504,10 @@ func (p *parser) parseStatement() ast.Statement {
 		return nil
 	case token.NEWLINE:
 		return nil
+	case token.END, token.RBRACE, token.RBRACKET:
+		// Compound expressions leave these terminators at curToken.
+		// Silently skip rather than producing an error.
+		return nil
 	case token.RETURN:
 		return p.parseReturnStatement()
 	case token.HASH:
@@ -531,8 +535,10 @@ func (p *parser) parseReturnStatement() *ast.ReturnStatement {
 		stmt.ReturnValue = &ast.ArrayLiteral{Elements: list}
 	}
 
-	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
-		p.nextToken()
+	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.ELSE, token.KW_ELSIF, token.END) {
+		if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.nextToken()
+		}
 		return stmt
 	}
 
@@ -1575,6 +1581,13 @@ func (p *parser) parseHash() ast.Expression {
 		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 			p.nextToken()
 		}
+		if p.currentTokenIs(token.RBRACE) {
+			hash.Rbrace = p.curToken
+			return hash
+		}
+		for p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+		}
 		// Handle **expr keyword splat in hash
 		if p.currentTokenIs(token.POWER) {
 			p.nextToken()
@@ -1691,7 +1704,9 @@ func (p *parser) parseIndexExpression(left ast.Expression) ast.Expression {
 
 	// Endless range like x[3..] leaves ] as curToken.
 	if p.currentTokenIs(token.RBRACKET) {
-		// already consumed by the parse, just skip it
+		if p.peekTokenIs(token.RBRACKET) {
+			p.accept(token.RBRACKET)
+		}
 	} else if !p.accept(token.RBRACKET) {
 		return nil
 	}

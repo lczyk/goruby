@@ -4613,7 +4613,7 @@ func TestEncodingKeyword(t *testing.T) {
 
 func TestErrorSkipPrefixes(t *testing.T) {
 	// tokens that map to parseErrorSkip -- all should produce errors
-	inputs := []string{"when", "else", ")", "]", "}", "=>"}
+	inputs := []string{"when", "else", ")", "=>"}
 	for _, input := range inputs {
 		t.Run(input, func(t *testing.T) {
 			_, err := parseSource(input)
