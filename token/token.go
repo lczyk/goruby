@@ -154,6 +154,9 @@ const (
 	KEYWORD__FILE__
 	KEYWORD__LINE__
 	KEYWORD__ENCODING__
+	KEYWORD__DIR__
+	KW_BEGIN
+	KW_END
 	keyword_end
 )
 
@@ -276,6 +279,9 @@ var tokens = [...]string{
 	KEYWORD__FILE__:     "__FILE__",
 	KEYWORD__LINE__:     "__LINE__",
 	KEYWORD__ENCODING__: "__ENCODING__",
+	KEYWORD__DIR__:      "__dir__",
+	KW_BEGIN:            "BEGIN",
+	KW_END:              "END",
 	KW_ALIAS:            "alias",
 	KW_AND:              "and",
 	KW_DEFINED:          "defined?",

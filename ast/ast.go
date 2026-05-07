@@ -429,6 +429,34 @@ func (s *SuperExpression) End() int {
 }
 func (s *SuperExpression) TokenLiteral() string { return s.Token.Literal }
 
+// BeginBlock represents a top-level BEGIN { ... } block
+type BeginBlock struct {
+	Token token.Token // the BEGIN token
+	Body  *BlockStatement
+}
+
+func (b *BeginBlock) expressionNode()      {}
+func (b *BeginBlock) Pos() int             { return b.Token.Pos }
+func (b *BeginBlock) End() int             { return b.Body.End() }
+func (b *BeginBlock) TokenLiteral() string { return b.Token.Literal }
+func (b *BeginBlock) String() string {
+	return "BEGIN {" + b.Body.String() + "}"
+}
+
+// EndBlock represents a top-level END { ... } block
+type EndBlock struct {
+	Token token.Token // the END token
+	Body  *BlockStatement
+}
+
+func (e *EndBlock) expressionNode()      {}
+func (e *EndBlock) Pos() int             { return e.Token.Pos }
+func (e *EndBlock) End() int             { return e.Body.End() }
+func (e *EndBlock) TokenLiteral() string { return e.Token.Literal }
+func (e *EndBlock) String() string {
+	return "END {" + e.Body.String() + "}"
+}
+
 // Keyword__FILE__ represents __FILE__ in the AST
 type Keyword__FILE__ struct {
 	Token    token.Token // the token.FILE__ token
@@ -447,6 +475,18 @@ func (f *Keyword__FILE__) End() int { return f.Token.Pos + 8 }
 
 // TokenLiteral returns the literal of the token.FILE__ token
 func (f *Keyword__FILE__) TokenLiteral() string { return f.Token.Literal }
+
+// Keyword__DIR__ represents __dir__ in the AST
+type Keyword__DIR__ struct {
+	Token token.Token // the KEYWORD__DIR__ token
+}
+
+func (d *Keyword__DIR__) String() string       { return d.Token.Literal }
+func (d *Keyword__DIR__) expressionNode()      {}
+func (d *Keyword__DIR__) literalNode()         {}
+func (d *Keyword__DIR__) Pos() int             { return d.Token.Pos }
+func (d *Keyword__DIR__) End() int             { return d.Token.Pos + 6 }
+func (d *Keyword__DIR__) TokenLiteral() string { return d.Token.Literal }
 
 // An Identifier represents an identifier in the program
 type Identifier struct {
@@ -1316,6 +1356,17 @@ func (s *SplatExpression) End() int { return s.Right.End() }
 
 // TokenLiteral returns the literal from the * token
 func (s *SplatExpression) TokenLiteral() string { return s.Token.Literal }
+
+// ArgumentForwarding represents `...` in a call argument context: foo(...)
+type ArgumentForwarding struct {
+	Token token.Token // the ... token
+}
+
+func (af *ArgumentForwarding) expressionNode()      {}
+func (af *ArgumentForwarding) Pos() int             { return af.Token.Pos }
+func (af *ArgumentForwarding) End() int             { return af.Token.Pos + 3 }
+func (af *ArgumentForwarding) TokenLiteral() string { return af.Token.Literal }
+func (af *ArgumentForwarding) String() string       { return "..." }
 
 // A CaseExpression represents a case/when or case/in expression
 type CaseExpression struct {

@@ -1808,6 +1808,7 @@ func isRegexBeginContext(tok token.Type) bool {
 		token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.RETURN, token.THEN,
 		token.DO, token.CASE, token.WHEN, token.BREAK, token.NEXT,
 		token.KW_AND, token.KW_OR, token.KW_NOT, token.KW_DEFINED, token.KW_SUPER,
+		token.RANGE, token.RANGEEX,
 		token.HASHROCKET:
 		return true
 	}

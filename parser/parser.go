@@ -199,6 +199,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.PLUS, p.parsePrefixExpression)
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
 	p.registerPrefix(token.ASTERISK, p.parseSplatExpression)
+	p.registerPrefix(token.POWER, p.parseSplatExpression)
 	p.registerPrefix(token.TILDE, p.parsePrefixExpression)
 	p.registerPrefix(token.LOGICALAND, p.parsePrefixExpression)
 	p.registerPrefix(token.LOGICALOR, p.parsePrefixExpression)
@@ -236,6 +237,9 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.KEYWORD__FILE__, p.parseKeyword__FILE__)
 	p.registerPrefix(token.KEYWORD__LINE__, p.parseKeyword__LINE__)
 	p.registerPrefix(token.KEYWORD__ENCODING__, p.parseEncodingKeyword)
+	p.registerPrefix(token.KEYWORD__DIR__, p.parseKeyword__DIR__)
+	p.registerPrefix(token.KW_BEGIN, p.parseBeginBlock)
+	p.registerPrefix(token.KW_END, p.parseEndBlock)
 	p.registerPrefix(token.RPAREN, p.parseErrorSkip)
 	p.registerPrefix(token.RBRACKET, p.parseErrorSkip)
 	p.registerPrefix(token.RBRACE, p.parseErrorSkip)
@@ -254,7 +258,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.KW_ALIAS, p.parseAlias)
 	p.registerPrefix(token.LAMBDA, p.parseLambda)
 	p.registerPrefix(token.RANGE, p.parseBeginlessRange)
-	p.registerPrefix(token.RANGEEX, p.parseBeginlessRange)
+	p.registerPrefix(token.RANGEEX, p.parseRangeOrForwarding)
 
 	p.infixParseFns = make(map[token.Type]infixParseFn)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
@@ -1061,6 +1065,41 @@ func (p *parser) parseKeyword__LINE__() ast.Expression {
 	return &ast.IntegerLiteral{Token: p.curToken, Value: int64(line)}
 }
 
+func (p *parser) parseBeginBlock() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseBeginBlock"))
+	}
+	block := &ast.BeginBlock{Token: p.curToken}
+	if !p.accept(token.LBRACE) {
+		return nil
+	}
+	p.nextToken()
+	block.Body = p.parseBlockStatement(token.RBRACE)
+	p.nextToken() // consume }
+	return block
+}
+
+func (p *parser) parseEndBlock() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseEndBlock"))
+	}
+	block := &ast.EndBlock{Token: p.curToken}
+	if !p.accept(token.LBRACE) {
+		return nil
+	}
+	p.nextToken()
+	block.Body = p.parseBlockStatement(token.RBRACE)
+	p.nextToken() // consume }
+	return block
+}
+
+func (p *parser) parseKeyword__DIR__() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseKeyword__DIR__"))
+	}
+	return &ast.Keyword__DIR__{Token: p.curToken}
+}
+
 func (p *parser) parseEncodingKeyword() ast.Expression {
 	if p.trace {
 		defer un(trace(p, "parseEncodingKeyword"))
@@ -1141,6 +1180,24 @@ func (p *parser) parseUndef() ast.Expression {
 		expr.Names = append(expr.Names, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 	}
 	return expr
+}
+
+func (p *parser) parseRangeOrForwarding() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseRangeOrForwarding"))
+	}
+	tok := p.curToken
+	// If the next token is a terminator, ... is argument forwarding
+	if p.peekTokenOneOf(token.RPAREN, token.COMMA, token.RBRACKET, token.NEWLINE, token.SEMICOLON, token.EOF) {
+		return &ast.ArgumentForwarding{Token: tok}
+	}
+	p.nextToken()
+	return &ast.InfixExpression{
+		Token:    tok,
+		Left:     nil,
+		Operator: tok.Literal,
+		Right:    p.parseExpression(precLessGreater),
+	}
 }
 
 func (p *parser) parseBeginlessRange() ast.Expression {

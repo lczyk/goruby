@@ -264,6 +264,15 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.Left)
 		Walk(v, n.Right)
 
+	case *ArgumentForwarding:
+		// leaf node, no children
+
+	case *BeginBlock:
+		Walk(v, n.Body)
+
+	case *EndBlock:
+		Walk(v, n.Body)
+
 	case *SuperExpression:
 		walkExprList(v, n.Arguments)
 
