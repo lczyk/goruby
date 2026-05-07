@@ -260,12 +260,27 @@ func Walk(v Visitor, node Node) {
 	case *YieldExpression:
 		walkExprList(v, n.Arguments)
 
+	case *SuperExpression:
+		walkExprList(v, n.Arguments)
+
+	case *AliasExpression:
+		Walk(v, n.NewName)
+		Walk(v, n.OldName)
+
+	case *UndefExpression:
+		for _, name := range n.Names {
+			Walk(v, name)
+		}
+
 	case *CaseExpression:
 		if n.Condition != nil {
 			Walk(v, n.Condition)
 		}
 		for _, w := range n.WhenClauses {
 			Walk(v, w)
+		}
+		for _, in := range n.InClauses {
+			Walk(v, in)
 		}
 		if n.ElseBody != nil {
 			Walk(v, n.ElseBody)

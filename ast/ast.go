@@ -398,6 +398,37 @@ func (y *YieldExpression) End() int {
 // TokenLiteral returns the literal of the token.YIELD token
 func (y *YieldExpression) TokenLiteral() string { return y.Token.Literal }
 
+// SuperExpression represents a `super` call with optional arguments
+type SuperExpression struct {
+	Token     token.Token  // the token.KW_SUPER token
+	Arguments []Expression // optional explicit arguments; nil means implicit forwarding
+}
+
+func (s *SuperExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.Token.Literal)
+	if len(s.Arguments) != 0 {
+		args := []string{}
+		for _, a := range s.Arguments {
+			args = append(args, a.String())
+		}
+		out.WriteString("(")
+		out.WriteString(strings.Join(args, ", "))
+		out.WriteString(")")
+	}
+	return out.String()
+}
+func (s *SuperExpression) expressionNode() {}
+
+func (s *SuperExpression) Pos() int { return s.Token.Pos }
+func (s *SuperExpression) End() int {
+	if len(s.Arguments) == 0 {
+		return s.Pos() + len(s.Token.Literal)
+	}
+	return s.Arguments[len(s.Arguments)-1].End()
+}
+func (s *SuperExpression) TokenLiteral() string { return s.Token.Literal }
+
 // Keyword__FILE__ represents __FILE__ in the AST
 type Keyword__FILE__ struct {
 	Token    token.Token // the token.FILE__ token
@@ -906,14 +937,15 @@ func (b *BlockCapture) TokenLiteral() string { return b.Token.Literal }
 
 // A FunctionLiteral represents a function definition in the AST
 type FunctionLiteral struct {
-	Token         token.Token // The 'def' token
-	EndToken      token.Token // the 'end' token
+	Token         token.Token // The 'def' or '->' token
+	EndToken      token.Token // the 'end' or '}' token
 	Receiver      *Identifier
 	Name          *Identifier
 	Parameters    []*FunctionParameter
 	CapturedBlock *BlockCapture
 	Body          *BlockStatement
 	Rescues       []*RescueBlock
+	IsLambda      bool // true for -> lambda literals
 }
 
 func (fl *FunctionLiteral) expressionNode() {}
@@ -936,12 +968,16 @@ func (fl *FunctionLiteral) String() string {
 	if fl.CapturedBlock != nil {
 		params = append(params, fl.CapturedBlock.String())
 	}
-	out.WriteString("def ")
-	if fl.Receiver != nil {
-		out.WriteString(fl.Receiver.String())
-		out.WriteString(".")
+	if fl.IsLambda {
+		out.WriteString("->")
+	} else {
+		out.WriteString("def ")
+		if fl.Receiver != nil {
+			out.WriteString(fl.Receiver.String())
+			out.WriteString(".")
+		}
+		out.WriteString(fl.Name.String())
 	}
-	out.WriteString(fl.Name.String())
 	out.WriteString("(")
 	out.WriteString(strings.Join(params, ", "))
 	out.WriteString(") ")
@@ -951,39 +987,67 @@ func (fl *FunctionLiteral) String() string {
 	for _, r := range fl.Rescues {
 		out.WriteString(r.String())
 	}
-	out.WriteString(" end")
+	if fl.IsLambda {
+		out.WriteString(" }")
+	} else {
+		out.WriteString(" end")
+	}
 	return out.String()
 }
 
 // A FunctionParameter represents a parameter in a function literal
 type FunctionParameter struct {
-	Name      *Identifier
-	Default   Expression
-	IsSplat   bool
-	IsKeyword bool
+	Name           *Identifier
+	Default        Expression
+	IsSplat        bool
+	IsKeyword      bool
+	IsKeywordRest  bool // **kwargs
+	IsForwarding   bool // ... argument forwarding
 }
 
 func (f *FunctionParameter) expressionNode() {}
 
 // Pos returns the position of first character belonging to the node
-func (f *FunctionParameter) Pos() int { return f.Name.Pos() }
+func (f *FunctionParameter) Pos() int {
+	if f.Name != nil {
+		return f.Name.Pos()
+	}
+	return 0
+}
 
 // End returns the position of the default end if it exists, otherwise the end position of Name
 func (f *FunctionParameter) End() int {
 	if f.Default != nil {
 		return f.Default.End()
 	}
-	return f.Name.End()
+	if f.Name != nil {
+		return f.Name.End()
+	}
+	return 0
 }
 
 // TokenLiteral returns the token of the parameter name
-func (f *FunctionParameter) TokenLiteral() string { return f.Name.TokenLiteral() }
+func (f *FunctionParameter) TokenLiteral() string {
+	if f.Name != nil {
+		return f.Name.TokenLiteral()
+	}
+	return ""
+}
 func (f *FunctionParameter) String() string {
 	var out bytes.Buffer
+	if f.IsForwarding {
+		out.WriteString("...")
+		return out.String()
+	}
 	if f.IsSplat {
 		out.WriteString("*")
 	}
-	out.WriteString(f.Name.String())
+	if f.IsKeywordRest {
+		out.WriteString("**")
+	}
+	if f.Name != nil {
+		out.WriteString(f.Name.String())
+	}
 	if f.IsKeyword {
 		out.WriteString(":")
 	}
@@ -1244,12 +1308,13 @@ func (s *SplatExpression) End() int { return s.Right.End() }
 // TokenLiteral returns the literal from the * token
 func (s *SplatExpression) TokenLiteral() string { return s.Token.Literal }
 
-// A CaseExpression represents a case/when expression
+// A CaseExpression represents a case/when or case/in expression
 type CaseExpression struct {
 	Token       token.Token // case
 	EndToken    token.Token // end
 	Condition   Expression  // optional, nil for case without expr
 	WhenClauses []*WhenClause
+	InClauses   []*WhenClause // pattern-matching in clauses (reuse WhenClause for now)
 	ElseBody    *BlockStatement
 }
 
@@ -1263,6 +1328,10 @@ func (c *CaseExpression) String() string {
 	out.WriteString("\n")
 	for _, w := range c.WhenClauses {
 		out.WriteString(w.String())
+	}
+	for _, in := range c.InClauses {
+		out.WriteString("in ")
+		out.WriteString(in.String())
 	}
 	if c.ElseBody != nil {
 		out.WriteString("else\n")
@@ -1347,6 +1416,44 @@ func (j *JumpExpression) End() int {
 
 // TokenLiteral returns the literal from the keyword token
 func (j *JumpExpression) TokenLiteral() string { return j.Token.Literal }
+
+// AliasExpression represents an `alias new_name old_name` statement
+type AliasExpression struct {
+	Token   token.Token // the alias keyword
+	NewName *Identifier
+	OldName *Identifier
+}
+
+func (a *AliasExpression) String() string {
+	return "alias " + a.NewName.Value + " " + a.OldName.Value
+}
+func (a *AliasExpression) expressionNode() {}
+
+func (a *AliasExpression) Pos() int           { return a.Token.Pos }
+func (a *AliasExpression) End() int           { return a.OldName.End() }
+func (a *AliasExpression) TokenLiteral() string { return a.Token.Literal }
+
+// UndefExpression represents an `undef method1, method2, ...` statement
+type UndefExpression struct {
+	Token token.Token // the undef keyword
+	Names []*Identifier
+}
+
+func (u *UndefExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString("undef ")
+	names := []string{}
+	for _, n := range u.Names {
+		names = append(names, n.Value)
+	}
+	out.WriteString(strings.Join(names, ", "))
+	return out.String()
+}
+func (u *UndefExpression) expressionNode() {}
+
+func (u *UndefExpression) Pos() int           { return u.Token.Pos }
+func (u *UndefExpression) End() int           { return u.Names[len(u.Names)-1].End() }
+func (u *UndefExpression) TokenLiteral() string { return u.Token.Literal }
 
 // PrefixExpression represents a prefix operator
 type PrefixExpression struct {

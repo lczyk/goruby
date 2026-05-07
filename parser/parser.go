@@ -247,12 +247,14 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.CLASS_VAR, p.parseClassVariable)
 	p.registerPrefix(token.AND, p.parseBlockCapture) // &:to_s, &block
 	p.registerPrefix(token.CAPTURE, p.parseBlockCapture)
-	p.registerPrefix(token.KW_SUPER, p.parseSelf)
-	p.registerPrefix(token.KW_UNDEF, p.parseErrorSkip)
+	p.registerPrefix(token.KW_SUPER, p.parseSuper)
+	p.registerPrefix(token.KW_UNDEF, p.parseUndef)
 	p.registerPrefix(token.KW_NOT, p.parsePrefixExpression)
 	p.registerPrefix(token.KW_DEFINED, p.parseDefinedExpression)
-	p.registerPrefix(token.KW_ALIAS, p.parseErrorSkip)
-	p.registerPrefix(token.LAMBDA, p.parseErrorSkip)
+	p.registerPrefix(token.KW_ALIAS, p.parseAlias)
+	p.registerPrefix(token.LAMBDA, p.parseLambda)
+	p.registerPrefix(token.RANGE, p.parseBeginlessRange)
+	p.registerPrefix(token.RANGEEX, p.parseBeginlessRange)
 
 	p.infixParseFns = make(map[token.Type]infixParseFn)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
@@ -904,12 +906,20 @@ func (p *parser) parseCaseExpression() ast.Expression {
 		expr.Condition = p.parseExpression(precLowest)
 	}
 	// Allow optional newline/semicolon after case expression.
-	p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+	if !p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+		p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+	}
 	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 		p.nextToken()
 	}
 	// Parse when clauses.
-	for p.currentTokenIs(token.WHEN) {
+	for p.currentTokenIs(token.WHEN) || p.peekTokenIs(token.WHEN) {
+		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.nextToken()
+		}
+		if !p.currentTokenIs(token.WHEN) {
+			break
+		}
 		wc := &ast.WhenClause{Token: p.curToken}
 		p.nextToken()
 		// Parse one or more when conditions (comma-separated).
@@ -922,18 +932,57 @@ func (p *parser) parseCaseExpression() ast.Expression {
 		if p.peekTokenIs(token.THEN) {
 			p.consume(token.THEN)
 		}
-		p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+		if !p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+		}
 		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 			p.nextToken()
 		}
 		// Parse when body until next when, else, or end.
-		wc.Body = p.parseBlockStatement(token.END, token.WHEN, token.ELSE)
+		wc.Body = p.parseBlockStatement(token.END, token.WHEN, token.KW_IN, token.ELSE)
 		expr.WhenClauses = append(expr.WhenClauses, wc)
+	}
+	// Parse in clauses (pattern matching).
+	for p.currentTokenIs(token.KW_IN) || p.peekTokenIs(token.KW_IN) {
+		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.nextToken()
+		}
+		if !p.currentTokenIs(token.KW_IN) {
+			break
+		}
+		ic := &ast.WhenClause{Token: p.curToken}
+		p.nextToken()
+		ic.Conditions = []ast.Expression{p.parseExpression(precLowest)}
+		for p.peekTokenIs(token.COMMA) {
+			p.consume(token.COMMA)
+			ic.Conditions = append(ic.Conditions, p.parseExpression(precLowest))
+		}
+		if p.peekTokenIs(token.THEN) {
+			p.consume(token.THEN)
+		}
+		if !p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+		}
+		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.nextToken()
+		}
+		ic.Body = p.parseBlockStatement(token.END, token.WHEN, token.KW_IN, token.ELSE)
+		expr.InClauses = append(expr.InClauses, ic)
+	}
+	// Consume optional newlines/semicolons between when bodies and else.
+	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+		p.nextToken()
 	}
 	// Optional else clause.
 	if p.currentTokenIs(token.ELSE) {
-		p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+		if !p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+		}
 		expr.ElseBody = p.parseBlockStatement(token.END)
+	}
+	if p.currentTokenIs(token.END) {
+		expr.EndToken = p.curToken
+		return expr
 	}
 	if !p.accept(token.END) {
 		return nil
@@ -1043,6 +1092,95 @@ func (p *parser) parseYield() ast.Expression {
 	}
 	yield.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE)
 	return yield
+}
+
+func (p *parser) parseSuper() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseSuper"))
+	}
+	sup := &ast.SuperExpression{Token: p.curToken}
+	p.nextToken()
+	if p.currentTokenIs(token.LPAREN) {
+		p.nextToken()
+		sup.Arguments = p.parseCallArguments(token.RPAREN)
+		p.nextToken()
+		return sup
+	}
+	sup.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE, token.EOF)
+	return sup
+}
+
+func (p *parser) parseAlias() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseAlias"))
+	}
+	expr := &ast.AliasExpression{Token: p.curToken}
+	p.nextToken()
+	if !p.currentTokenIs(token.IDENT) {
+		return nil
+	}
+	expr.NewName = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	p.nextToken()
+	if !p.currentTokenIs(token.IDENT) {
+		return nil
+	}
+	expr.OldName = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	p.nextToken()
+	return expr
+}
+
+func (p *parser) parseUndef() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseUndef"))
+	}
+	expr := &ast.UndefExpression{Token: p.curToken}
+	p.nextToken()
+	expr.Names = []*ast.Identifier{{Token: p.curToken, Value: p.curToken.Literal}}
+	for p.peekTokenIs(token.COMMA) {
+		p.consume(token.COMMA)
+		expr.Names = append(expr.Names, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+	}
+	return expr
+}
+
+func (p *parser) parseBeginlessRange() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseBeginlessRange"))
+	}
+	tok := p.curToken
+	p.nextToken()
+	return &ast.InfixExpression{
+		Token:    tok,
+		Left:     nil,
+		Operator: tok.Literal,
+		Right:    p.parseExpression(precLessGreater),
+	}
+}
+
+func (p *parser) parseLambda() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseLambda"))
+	}
+	lit := &ast.FunctionLiteral{Token: p.curToken, IsLambda: true}
+	// Optional parameters: ->(x, y) or bare ->
+	if p.peekTokenIs(token.LPAREN) {
+		lit.Parameters = p.parseParameters(token.LPAREN, token.RPAREN)
+	}
+	// Body must be a block: { ... } or do ... end
+	if p.peekTokenOneOf(token.LBRACE, token.DO) {
+		p.acceptOneOf(token.LBRACE, token.DO)
+		block := p.parseBlock()
+		blk, ok := block.(*ast.BlockExpression)
+		if !ok {
+			return nil
+		}
+		if lit.Parameters == nil {
+			lit.Parameters = blk.Parameters
+		}
+		lit.Body = blk.Body
+		lit.EndToken = blk.EndToken
+	}
+	return lit
 }
 
 var integerLiteralReplacer = strings.NewReplacer("_", "")
@@ -1619,13 +1757,20 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 	lit.Parameters = p.parseParameters(token.LPAREN, token.RPAREN)
 
 	if p.currentTokenOneOf(token.CAPTURE, token.AND) {
-		capture := p.parseBlockCapture()
-		if capture == nil {
-			return nil
-		}
-		lit.CapturedBlock = capture.(*ast.BlockCapture)
-		if p.peekTokenIs(token.RPAREN) {
-			p.acceptOneOf(token.RPAREN)
+		// Anonymous block forwarding: & without name
+		if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.EOF, token.RPAREN) {
+			if p.peekTokenIs(token.RPAREN) {
+				p.accept(token.RPAREN)
+			}
+		} else {
+			capture := p.parseBlockCapture()
+			if capture == nil {
+				return nil
+			}
+			lit.CapturedBlock = capture.(*ast.BlockCapture)
+			if p.peekTokenIs(token.RPAREN) {
+				p.acceptOneOf(token.RPAREN)
+			}
 		}
 	}
 
@@ -1696,16 +1841,60 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 		return identifiers
 	}
 
+	// Forwarding: def foo(...)
+	if p.peekTokenIs(token.RANGEEX) {
+		p.accept(token.RANGEEX)
+		identifiers = append(identifiers, &ast.FunctionParameter{IsForwarding: true})
+		if hasDelimiters {
+			p.accept(endToken)
+		}
+		return identifiers
+	}
+
+	if p.peekTokenIs(token.POWER) {
+		p.accept(token.POWER)
+		if p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.CONST) {
+			p.accept(token.IDENT)
+		}
+		kp := &ast.FunctionParameter{
+			Name:          &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
+			IsKeywordRest: true,
+		}
+		identifiers = append(identifiers, kp)
+		if hasDelimiters {
+			p.accept(endToken)
+		}
+		return identifiers
+	}
+
 	if p.peekTokenIs(token.ASTERISK) {
 		p.accept(token.ASTERISK)
 	}
 	if p.peekTokenOneOf(token.CAPTURE, token.AND) {
 		p.acceptOneOf(token.CAPTURE, token.AND)
+		// Anonymous block forwarding: def foo(&)
+		if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.NEWLINE, token.SEMICOLON, token.EOF) {
+			if hasDelimiters {
+				p.accept(endToken)
+			}
+			return identifiers
+		}
+		// Named block capture: let parseFunctionLiteral handle it
 		return identifiers
 	}
-	p.accept(token.IDENT)
+	// First param: accept IDENT or LABEL (def foo(a:))
+	if p.peekTokenIs(token.LABEL) {
+		p.accept(token.LABEL)
+	} else {
+		p.accept(token.IDENT)
+	}
 
-	ident := &ast.FunctionParameter{Name: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}}
+	name := p.curToken.Literal
+	isKeyword := strings.HasSuffix(name, ":")
+	if isKeyword {
+		name = strings.TrimSuffix(name, ":")
+	}
+	ident := &ast.FunctionParameter{Name: &ast.Identifier{Token: p.curToken, Value: name}, IsKeyword: isKeyword}
 	if p.peekTokenIs(token.ASSIGN) {
 		p.consume(token.ASSIGN)
 		ident.Default = p.parseExpression(precAssignment)
@@ -1714,30 +1903,53 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 
 	for p.peekTokenIs(token.COMMA) {
 		p.accept(token.COMMA)
+		if p.peekTokenIs(token.POWER) {
+			p.accept(token.POWER)
+			if p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.CONST) {
+				p.accept(token.IDENT)
+			}
+			kp := &ast.FunctionParameter{
+				Name:          &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
+				IsKeywordRest: true,
+			}
+			identifiers = append(identifiers, kp)
+			if hasDelimiters {
+				p.accept(endToken)
+			}
+			return identifiers
+		}
 		if p.peekTokenIs(token.ASTERISK) {
 			p.accept(token.ASTERISK)
 		}
 		if p.peekTokenOneOf(token.CAPTURE, token.AND) {
 			p.acceptOneOf(token.CAPTURE, token.AND)
+			// Anonymous block forwarding: & without name
+			if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.NEWLINE, token.SEMICOLON, token.EOF) {
+				if hasDelimiters {
+					p.accept(endToken)
+				}
+				return identifiers
+			}
+			// Named block capture: let parseFunctionLiteral handle it
 			return identifiers
 		}
-		isKeyword := false
+		isKw := false
 		if p.peekTokenIs(token.LABEL) {
 			p.accept(token.LABEL)
-			isKeyword = true
+			isKw = true
 		} else {
 			p.accept(token.IDENT)
 		}
-		name := p.curToken.Literal
-		if isKeyword {
-			name = strings.TrimSuffix(name, ":")
+		pName := p.curToken.Literal
+		if isKw {
+			pName = strings.TrimSuffix(pName, ":")
 		}
-		ident := &ast.FunctionParameter{Name: &ast.Identifier{Token: p.curToken, Value: name}, IsKeyword: isKeyword}
+		pIdent := &ast.FunctionParameter{Name: &ast.Identifier{Token: p.curToken, Value: pName}, IsKeyword: isKw}
 		if p.peekTokenIs(token.ASSIGN) {
 			p.consume(token.ASSIGN)
-			ident.Default = p.parseExpression(precPrefix)
+			pIdent.Default = p.parseExpression(precPrefix)
 		}
-		identifiers = append(identifiers, ident)
+		identifiers = append(identifiers, pIdent)
 	}
 
 	if !hasDelimiters && p.peekTokenIs(endToken) {

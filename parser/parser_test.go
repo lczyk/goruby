@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	gotoken "go/token"
@@ -745,40 +746,49 @@ end
 
 func TestReturnStatements(t *testing.T) {
 	tests := []struct {
-		input         string
+		name         string
+		input        string
 		expectedValue interface{}
+		expectError  error
 	}{
-		{"return 5;", 5},
-		{"return true;", true},
-		{"return foobar;", "foobar"},
-		{"return 3, 5, 8;", []string{"3", "5", "8"}},
+		{name: "single int", input: "return 5;", expectedValue: 5},
+		{name: "single bool", input: "return true;", expectedValue: true},
+		{name: "single ident", input: "return foobar;", expectedValue: "foobar"},
+		{name: "multi value", input: "return 3, 5, 8;", expectedValue: []string{"3", "5", "8"}},
+		{name: "bare return", input: "return\n", expectedValue: nil},
+		{name: "return with whitespace only", input: "return;", expectedValue: nil},
 	}
 
 	for _, tt := range tests {
-		program, err := parseSource(tt.input)
-		checkParserErrors(t, err)
+		t.Run(tt.name, func(t *testing.T) {
+			program, err := parseSource(tt.input)
+			if tt.expectError != nil {
+				compareFirstParserError(t, tt.expectError, err)
+				return
+			}
+			checkParserErrors(t, err)
 
-		if len(program.Statements) != 1 {
-			t.Fatalf(
-				"program.Statements does not contain 1 statements. got=%d",
-				len(program.Statements),
-			)
-		}
-
-		stmt := program.Statements[0]
-		returnStmt, ok := stmt.(*ast.ReturnStatement)
-		if !ok {
-			t.Fatalf("stmt not *ast.returnStatement. got=%T", stmt)
-		}
-		if returnStmt.TokenLiteral() != "return" {
-			t.Fatalf(
-				"returnStmt.TokenLiteral not 'return', got %q",
-				returnStmt.TokenLiteral(),
-			)
-		}
-		if !testLiteralExpression(t, returnStmt.ReturnValue, tt.expectedValue) {
-			t.Fail()
-		}
+			if len(program.Statements) != 1 {
+				t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+			}
+			stmt := program.Statements[0]
+			returnStmt, ok := stmt.(*ast.ReturnStatement)
+			if !ok {
+				t.Fatalf("stmt not *ast.ReturnStatement. got=%T", stmt)
+			}
+			if returnStmt.TokenLiteral() != "return" {
+				t.Fatalf("returnStmt.TokenLiteral not 'return', got %q", returnStmt.TokenLiteral())
+			}
+			if tt.expectedValue == nil {
+				if returnStmt.ReturnValue != nil {
+					t.Errorf("expected nil ReturnValue, got %v", returnStmt.ReturnValue)
+				}
+			} else {
+				if !testLiteralExpression(t, returnStmt.ReturnValue, tt.expectedValue) {
+					t.Fail()
+				}
+			}
+		})
 	}
 }
 
@@ -1144,36 +1154,54 @@ func TestYieldExpression(t *testing.T) {
 }
 
 func TestIntegerLiteralExpression(t *testing.T) {
-	input := "5;"
+	tests := []struct {
+		input       string
+		expectValue int64
+		expectBig   bool
+	}{
+		{input: "5", expectValue: 5},
+		{input: "0x1A", expectValue: 26},
+		{input: "0XFF", expectValue: 255},
+		{input: "0b101", expectValue: 5},
+		{input: "0B111", expectValue: 7},
+		{input: "0o77", expectValue: 63},
+		{input: "0O77", expectValue: 63},
+		{input: "0d99", expectValue: 99},
+		{input: "0D99", expectValue: 99},
+		{input: "09", expectValue: 9},
+		{input: "1_000", expectValue: 1000},
+		{input: "42r", expectValue: 42},
+		{input: "42i", expectValue: 42},
+		{input: "0xFFFFFFFFFFFFFFFF", expectBig: true},
+		{input: "9223372036854775808", expectBig: true},
+	}
 
-	program, err := parseSource(input)
-	checkParserErrors(t, err)
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			program, err := parseSource(tt.input)
+			checkParserErrors(t, err)
 
-	if len(program.Statements) != 1 {
-		t.Fatalf(
-			"program has not enough statements. got=%d",
-			len(program.Statements),
-		)
-	}
-	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	if !ok {
-		t.Fatalf(
-			"program.Statements[0] is not ast.ExpressionStatement. got=%T",
-			program.Statements[0])
-	}
-
-	literal, ok := stmt.Expression.(*ast.IntegerLiteral)
-	if !ok {
-		t.Fatalf("expression not *ast.IntegerLiteral. got=%T", stmt.Expression)
-	}
-	if literal.Value != 5 {
-		t.Errorf("expression.Value not %d. got=%d", 5, literal.Value)
-	}
-	if literal.TokenLiteral() != "5" {
-		t.Errorf(
-			"expression.TokenLiteral not %s. got=%s", "5",
-			literal.TokenLiteral(),
-		)
+			if len(program.Statements) != 1 {
+				t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+			}
+			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			}
+			literal, ok := stmt.Expression.(*ast.IntegerLiteral)
+			if !ok {
+				t.Fatalf("expected *ast.IntegerLiteral, got %T", stmt.Expression)
+			}
+			if tt.expectBig {
+				if literal.BigInt == nil {
+					t.Errorf("expected BigInt to be set")
+				}
+			} else {
+				if literal.Value != tt.expectValue {
+					t.Errorf("expected Value=%d, got %d", tt.expectValue, literal.Value)
+				}
+			}
+		})
 	}
 }
 
@@ -2177,6 +2205,121 @@ func TestConditionalExpressionWithAlternative(t *testing.T) {
 			return
 		}
 	})
+}
+
+func TestCaseExpression(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		expectError  error
+		hasCondition bool
+		whenCount    int
+		hasElse      bool
+	}{
+		{
+			name:         "case with condition, single when",
+			input:        "case x\nwhen 1\n  y\nend",
+			hasCondition: true,
+			whenCount:    1,
+		},
+		{
+			name:      "case without condition",
+			input:     "case\nwhen 1\n  y\nend",
+			whenCount: 1,
+		},
+		{
+			name:      "case with else",
+			input:     "case x\nwhen 1\n  y\nelse\n  z\nend",
+			hasCondition: true,
+			whenCount: 1,
+			hasElse:   true,
+		},
+		{
+			name:      "case with multiple when clauses",
+			input:     "case x\nwhen 1\n  a\nwhen 2\n  b\nend",
+			hasCondition: true,
+			whenCount: 2,
+		},
+		{
+			name:      "case with comma-separated when conditions",
+			input:     "case x\nwhen 1, 2, 3\n  y\nend",
+			hasCondition: true,
+			whenCount: 1,
+		},
+		{
+			name:      "case with then keyword",
+			input:     "case x\nwhen 1 then\ny\nend",
+			hasCondition: true,
+			whenCount: 1,
+		},
+		{
+			name:        "case missing end",
+			input:       "case x\nwhen 1\n  y",
+			hasCondition: true,
+			expectError: &unexpectedTokenError{expectedTokens: []token.Type{token.EOF}, actualToken: token.EOF},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			program, err := parseSource(tt.input)
+			if tt.expectError != nil {
+				compareFirstParserError(t, tt.expectError, err)
+				return
+			}
+			checkParserErrors(t, err)
+
+			if len(program.Statements) != 1 {
+				t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+			}
+			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			}
+
+			caseExpr, ok := stmt.Expression.(*ast.CaseExpression)
+			if !ok {
+				t.Fatalf("expected *ast.CaseExpression, got %T", stmt.Expression)
+			}
+
+			if tt.hasCondition {
+				if caseExpr.Condition == nil {
+					t.Errorf("expected condition to be present")
+				}
+			} else {
+				if caseExpr.Condition != nil {
+					t.Errorf("expected no condition, got %s", caseExpr.Condition.String())
+				}
+			}
+
+			if len(caseExpr.WhenClauses) != tt.whenCount {
+				t.Errorf("expected %d when clauses, got %d", tt.whenCount, len(caseExpr.WhenClauses))
+			}
+
+			for _, wc := range caseExpr.WhenClauses {
+				if len(wc.Conditions) == 0 {
+					t.Errorf("when clause has no conditions")
+				}
+				if wc.Body == nil {
+					t.Errorf("when clause has no body")
+				}
+			}
+
+			if tt.hasElse {
+				if caseExpr.ElseBody == nil {
+					t.Errorf("expected else body")
+				}
+			} else {
+				if caseExpr.ElseBody != nil {
+					t.Errorf("expected no else body")
+				}
+			}
+
+			if caseExpr.TokenLiteral() != "case" {
+				t.Errorf("expected TokenLiteral to be 'case', got %q", caseExpr.TokenLiteral())
+			}
+		})
+	}
 }
 
 func TestFunctionLiteralParsing(t *testing.T) {
@@ -3821,19 +3964,62 @@ func TestContextCallExpression(t *testing.T) {
 }
 
 func TestStringLiteralExpression(t *testing.T) {
-	input := `"hello world";`
-
-	program, err := parseSource(input)
-	checkParserErrors(t, err)
-
-	stmt := program.Statements[0].(*ast.ExpressionStatement)
-	literal, ok := stmt.Expression.(*ast.StringLiteral)
-	if !ok {
-		t.Fatalf("exp not *ast.StringLiteral. got=%T", stmt.Expression)
+	tests := []struct {
+		name       string
+		input      string
+		expectVal  string
+		expectParts bool
+	}{
+		{name: "simple", input: `"hello world"`, expectVal: "hello world"},
+		{name: "empty", input: `""`, expectVal: ""},
+		{name: "interpolated", input: `"hello #{name}"`, expectParts: true},
 	}
 
-	if literal.Value != "hello world" {
-		t.Errorf("literal.Value not %q. got=%q", "hello world", literal.Value)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			program, err := parseSource(tt.input)
+			checkParserErrors(t, err)
+
+			stmt := program.Statements[0].(*ast.ExpressionStatement)
+			literal, ok := stmt.Expression.(*ast.StringLiteral)
+			if !ok {
+				t.Fatalf("exp not *ast.StringLiteral. got=%T", stmt.Expression)
+			}
+
+			if tt.expectParts {
+				if len(literal.Parts) == 0 {
+					t.Errorf("expected Parts to be non-empty")
+				}
+			} else {
+				if literal.Value != tt.expectVal {
+					t.Errorf("literal.Value not %q. got=%q", tt.expectVal, literal.Value)
+				}
+			}
+		})
+	}
+}
+
+func TestInterpolatedRegex(t *testing.T) {
+	tests := []string{
+		"/simple/",
+		"/foo bar/",
+	}
+	for _, input := range tests {
+		t.Run(input, func(t *testing.T) {
+			program, err := parseSource(input)
+			checkParserErrors(t, err)
+			if len(program.Statements) != 1 {
+				t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+			}
+			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			}
+			_, ok = stmt.Expression.(*ast.RegexLiteral)
+			if !ok {
+				t.Fatalf("expected *ast.RegexLiteral, got %T", stmt.Expression)
+			}
+		})
 	}
 }
 
@@ -4103,6 +4289,98 @@ func TestParsingSingletonClassExpressions(t *testing.T) {
 	})
 }
 
+func TestReadSourceIORreader(t *testing.T) {
+	// io.Reader path in readSource
+	_, err := ParseFile(gotoken.NewFileSet(), "", strings.NewReader("1"), 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	// *bytes.Buffer path
+	var buf bytes.Buffer
+	buf.WriteString("1")
+	_, err = ParseFile(gotoken.NewFileSet(), "", &buf, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+}
+
+func TestContextCallScopeOperator(t *testing.T) {
+	input := "Foo::bar"
+	program, err := parseSource(input)
+	checkParserErrors(t, err)
+	if len(program.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	}
+	sid, ok := stmt.Expression.(*ast.ScopedIdentifier)
+	if !ok {
+		t.Fatalf("expected *ast.ScopedIdentifier, got %T", stmt.Expression)
+	}
+	if sid.Outer == nil || sid.Outer.Value != "Foo" {
+		t.Errorf("expected Outer 'Foo', got %v", sid.Outer)
+	}
+}
+
+func TestContextCallNoArgs(t *testing.T) {
+	input := "foo.bar"
+	program, err := parseSource(input)
+	checkParserErrors(t, err)
+	if len(program.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	}
+	cce, ok := stmt.Expression.(*ast.ContextCallExpression)
+	if !ok {
+		t.Fatalf("expected *ast.ContextCallExpression, got %T", stmt.Expression)
+	}
+	if len(cce.Arguments) != 0 {
+		t.Errorf("expected 0 arguments, got %d", len(cce.Arguments))
+	}
+}
+
+func TestCallExpressionWithParensNonIdent(t *testing.T) {
+	input := "@ivar.call(1)"
+	program, err := parseSource(input)
+	checkParserErrors(t, err)
+	if len(program.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	}
+	_, ok = stmt.Expression.(*ast.ContextCallExpression)
+	if !ok {
+		t.Fatalf("expected *ast.ContextCallExpression, got %T", stmt.Expression)
+	}
+}
+
+func TestExceptionHandlingEnsure(t *testing.T) {
+	input := "begin\n  1\nensure\n  2\nend\n"
+	program, err := parseSource(input)
+	checkParserErrors(t, err)
+	if len(program.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	}
+	block, ok := stmt.Expression.(*ast.ExceptionHandlingBlock)
+	if !ok {
+		t.Fatalf("expected *ast.ExceptionHandlingBlock, got %T", stmt.Expression)
+	}
+	if block.EnsureBody == nil {
+		t.Errorf("expected EnsureBody to be set")
+	}
+}
+
 func TestParseHash(t *testing.T) {
 	tests := []struct {
 		input   string
@@ -4115,6 +4393,10 @@ func TestParseHash(t *testing.T) {
 		{
 			input:   `{"foo" => 42, "bar" => "baz"}`,
 			hashMap: map[string]string{"foo": "42", "bar": "baz"},
+		},
+		{
+			input:   `{foo: 42}`,
+			hashMap: map[string]string{"foo": "42"},
 		},
 	}
 
@@ -4129,6 +4411,638 @@ func TestParseHash(t *testing.T) {
 		}
 
 		testHashLiteral(t, stmt.Expression, tt.hashMap)
+	}
+}
+
+func TestFloatLiteralExpression(t *testing.T) {
+	tests := []string{"1.5", "0.5", "1.5e10", "1.5E-10"}
+	for _, input := range tests {
+		t.Run(input, func(t *testing.T) {
+			program, err := parseSource(input)
+			checkParserErrors(t, err)
+			if len(program.Statements) != 1 {
+				t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+			}
+			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			}
+			_, ok = stmt.Expression.(*ast.FloatLiteral)
+			if !ok {
+				t.Fatalf("expected *ast.FloatLiteral, got %T", stmt.Expression)
+			}
+		})
+	}
+}
+
+func TestJumpExpression(t *testing.T) {
+	tests := []struct {
+		input     string
+		expectVal bool
+	}{
+		{input: "break", expectVal: false},
+		{input: "next", expectVal: false},
+		{input: "redo", expectVal: false},
+		{input: "retry", expectVal: false},
+		{input: "break 5", expectVal: true},
+		{input: "next x", expectVal: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			program, err := parseSource(tt.input)
+			checkParserErrors(t, err)
+			if len(program.Statements) != 1 {
+				t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+			}
+			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			}
+			jmp, ok := stmt.Expression.(*ast.JumpExpression)
+			if !ok {
+				t.Fatalf("expected *ast.JumpExpression, got %T", stmt.Expression)
+			}
+			if tt.expectVal && jmp.Value == nil {
+				t.Errorf("expected Value to be set")
+			}
+			if !tt.expectVal && jmp.Value != nil {
+				t.Errorf("expected Value to be nil, got %v", jmp.Value)
+			}
+		})
+	}
+}
+
+func TestDefinedExpression(t *testing.T) {
+	tests := []string{"defined? x", "defined?(x)"}
+	for _, input := range tests {
+		t.Run(input, func(t *testing.T) {
+			program, err := parseSource(input)
+			checkParserErrors(t, err)
+			if len(program.Statements) != 1 {
+				t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+			}
+			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			}
+			expr, ok := stmt.Expression.(*ast.DefinedExpression)
+			if !ok {
+				t.Fatalf("expected *ast.DefinedExpression, got %T", stmt.Expression)
+			}
+			if expr.Expr == nil {
+				t.Errorf("expected Expr to be set")
+			}
+		})
+	}
+}
+
+func TestRescueModifier(t *testing.T) {
+	input := "x rescue y"
+	program, err := parseSource(input)
+	checkParserErrors(t, err)
+	if len(program.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	}
+	infix, ok := stmt.Expression.(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("expected *ast.InfixExpression, got %T", stmt.Expression)
+	}
+	if infix.Operator != "rescue" {
+		t.Errorf("expected operator 'rescue', got %q", infix.Operator)
+	}
+}
+
+func TestSplatExpression(t *testing.T) {
+	tests := []string{"*x", "*call(1, 2)"}
+	for _, input := range tests {
+		t.Run(input, func(t *testing.T) {
+			program, err := parseSource(input)
+			checkParserErrors(t, err)
+			if len(program.Statements) != 1 {
+				t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+			}
+			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			}
+			_, ok = stmt.Expression.(*ast.SplatExpression)
+			if !ok {
+				t.Fatalf("expected *ast.SplatExpression, got %T", stmt.Expression)
+			}
+		})
+	}
+}
+
+func TestTopLevelScope(t *testing.T) {
+	input := "::Foo"
+	program, err := parseSource(input)
+	checkParserErrors(t, err)
+	if len(program.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	}
+	_, ok = stmt.Expression.(*ast.ScopedIdentifier)
+	if !ok {
+		t.Fatalf("expected *ast.ScopedIdentifier, got %T", stmt.Expression)
+	}
+}
+
+func TestClassVariable(t *testing.T) {
+	input := "@@foo"
+	program, err := parseSource(input)
+	checkParserErrors(t, err)
+	if len(program.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	}
+	cv, ok := stmt.Expression.(*ast.ClassVariable)
+	if !ok {
+		t.Fatalf("expected *ast.ClassVariable, got %T", stmt.Expression)
+	}
+	if cv.Name == nil || cv.Name.Value != "foo" {
+		t.Errorf("expected Name.Value 'foo', got %v", cv.Name)
+	}
+}
+
+func TestKeyword__LINE__(t *testing.T) {
+	input := "__LINE__"
+	program, err := parseSource(input)
+	checkParserErrors(t, err)
+	if len(program.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	}
+	_, ok = stmt.Expression.(*ast.IntegerLiteral)
+	if !ok {
+		t.Fatalf("expected *ast.IntegerLiteral, got %T", stmt.Expression)
+	}
+}
+
+func TestEncodingKeyword(t *testing.T) {
+	input := "__ENCODING__"
+	program, err := parseSource(input)
+	checkParserErrors(t, err)
+	if len(program.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	}
+	str, ok := stmt.Expression.(*ast.StringLiteral)
+	if !ok {
+		t.Fatalf("expected *ast.StringLiteral, got %T", stmt.Expression)
+	}
+	if str.Value != "UTF-8" {
+		t.Errorf("expected Value 'UTF-8', got %q", str.Value)
+	}
+}
+
+func TestErrorSkipPrefixes(t *testing.T) {
+	// tokens that map to parseErrorSkip -- all should produce errors
+	inputs := []string{"when", "else", ")", "]", "}", "=>"}
+	for _, input := range inputs {
+		t.Run(input, func(t *testing.T) {
+			_, err := parseSource(input)
+			if err == nil {
+				t.Errorf("expected error for %q", input)
+			}
+		})
+	}
+}
+
+func TestLabelExpression(t *testing.T) {
+	input := "foo: 42"
+	program, err := parseSource(input)
+	checkParserErrors(t, err)
+	if len(program.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	}
+	infix, ok := stmt.Expression.(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("expected *ast.InfixExpression, got %T", stmt.Expression)
+	}
+	if infix.Operator != ":" {
+		t.Errorf("expected operator ':', got %q", infix.Operator)
+	}
+}
+
+func TestInstanceVariableNoIdent(t *testing.T) {
+	input := "@"
+	_, err := parseSource(input)
+	if err == nil {
+		t.Errorf("expected error for bare @")
+	}
+}
+
+func TestModuleErrorPaths(t *testing.T) {
+	tests := []string{
+		"module A\n3",    // missing end
+		"module A 3\nend", // missing newline after const
+	}
+	for _, input := range tests {
+		t.Run(input, func(t *testing.T) {
+			_, err := parseSource(input)
+			if err == nil {
+				t.Errorf("expected error for %q", input)
+			}
+		})
+	}
+}
+
+func TestSetterAssignment(t *testing.T) {
+	input := "obj.x = 5"
+	program, err := parseSource(input)
+	checkParserErrors(t, err)
+	if len(program.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	}
+	cce, ok := stmt.Expression.(*ast.ContextCallExpression)
+	if !ok {
+		t.Fatalf("expected *ast.ContextCallExpression, got %T", stmt.Expression)
+	}
+	if cce.Function.Value != "x=" {
+		t.Errorf("expected Function 'x=', got %q", cce.Function.Value)
+	}
+	if len(cce.Arguments) != 1 {
+		t.Errorf("expected 1 argument, got %d", len(cce.Arguments))
+	}
+}
+
+func TestContextCallNonIdent(t *testing.T) {
+	tests := []string{"@x bar", "$x bar"}
+	for _, input := range tests {
+		t.Run(input, func(t *testing.T) {
+			program, err := parseSource(input)
+			checkParserErrors(t, err)
+			if len(program.Statements) != 1 {
+				t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+			}
+			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			}
+			_, ok = stmt.Expression.(*ast.ContextCallExpression)
+			if !ok {
+				t.Fatalf("expected *ast.ContextCallExpression, got %T", stmt.Expression)
+			}
+		})
+	}
+}
+
+func TestCallBlockOnInfix(t *testing.T) {
+	input := "x + y do\nend"
+	program, err := parseSource(input)
+	checkParserErrors(t, err)
+	if len(program.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+	}
+	_, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	}
+}
+
+func TestInterpolatedRegexEmbexpr(t *testing.T) {
+	input := "/foo#{bar}baz/"
+	program, err := parseSource(input)
+	checkParserErrors(t, err)
+	if len(program.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	}
+	rl, ok := stmt.Expression.(*ast.RegexLiteral)
+	if !ok {
+		t.Fatalf("expected *ast.RegexLiteral, got %T", stmt.Expression)
+	}
+	if len(rl.Parts) == 0 {
+		t.Errorf("expected Parts to be non-empty")
+	}
+}
+
+func TestParseErrorPaths(t *testing.T) {
+	tests := []string{
+		"::foo",    // top-level scope without CONST
+		"@@",       // class var without IDENT
+		"(1",       // grouped expr without closing paren
+		"{1 => 2",  // hash without closing brace
+		"x[1",      // index without closing bracket
+	}
+	for _, input := range tests {
+		t.Run(input, func(t *testing.T) {
+			_, err := parseSource(input)
+			if err == nil {
+				t.Errorf("expected error for %q", input)
+			}
+		})
+	}
+}
+
+func TestCallBlockErrorPath(t *testing.T) {
+	// block on infix where right side is not an identifier -> error
+	_, err := parseSource("x + 1 do\nend")
+	if err == nil {
+		t.Errorf("expected error for block on non-identifier")
+	}
+}
+
+func TestSingletonClassErrorPath(t *testing.T) {
+	_, err := parseSource("class <<\nend")
+	if err == nil {
+		t.Errorf("expected error for incomplete singleton class")
+	}
+}
+
+func TestKeywordRestParameter(t *testing.T) {
+	input := "def foo(**kwargs)\nend"
+	program, err := parseSource(input)
+	checkParserErrors(t, err)
+	if len(program.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	}
+	fl, ok := stmt.Expression.(*ast.FunctionLiteral)
+	if !ok {
+		t.Fatalf("expected *ast.FunctionLiteral, got %T", stmt.Expression)
+	}
+	if len(fl.Parameters) != 1 {
+		t.Fatalf("expected 1 param, got %d", len(fl.Parameters))
+	}
+	if !fl.Parameters[0].IsKeywordRest {
+		t.Errorf("expected IsKeywordRest")
+	}
+	if fl.Parameters[0].Name.Value != "kwargs" {
+		t.Errorf("expected name 'kwargs', got %q", fl.Parameters[0].Name.Value)
+	}
+}
+
+func TestFirstParamKeyword(t *testing.T) {
+	input := "def foo(a:)\nend"
+	program, err := parseSource(input)
+	checkParserErrors(t, err)
+	if len(program.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	}
+	fl, ok := stmt.Expression.(*ast.FunctionLiteral)
+	if !ok {
+		t.Fatalf("expected *ast.FunctionLiteral, got %T", stmt.Expression)
+	}
+	if len(fl.Parameters) != 1 {
+		t.Fatalf("expected 1 param, got %d", len(fl.Parameters))
+	}
+	if !fl.Parameters[0].IsKeyword {
+		t.Errorf("expected IsKeyword")
+	}
+}
+
+func TestArgumentForwarding(t *testing.T) {
+	input := "def foo(...)\nend"
+	program, err := parseSource(input)
+	checkParserErrors(t, err)
+	if len(program.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	}
+	fl, ok := stmt.Expression.(*ast.FunctionLiteral)
+	if !ok {
+		t.Fatalf("expected *ast.FunctionLiteral, got %T", stmt.Expression)
+	}
+	if len(fl.Parameters) != 1 {
+		t.Fatalf("expected 1 param, got %d", len(fl.Parameters))
+	}
+	if !fl.Parameters[0].IsForwarding {
+		t.Errorf("expected IsForwarding")
+	}
+}
+
+func TestAnonymousBlockForwarding(t *testing.T) {
+	input := "def foo(&)\nend"
+	program, err := parseSource(input)
+	checkParserErrors(t, err)
+	if len(program.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	}
+	fl, ok := stmt.Expression.(*ast.FunctionLiteral)
+	if !ok {
+		t.Fatalf("expected *ast.FunctionLiteral, got %T", stmt.Expression)
+	}
+	// Anonymous block forwarding should have no captured block name
+	if fl.CapturedBlock != nil {
+		t.Errorf("expected nil CapturedBlock for anonymous &")
+	}
+}
+
+func TestCaseInExpression(t *testing.T) {
+	input := "case x\nin 1\n  y\nend"
+	program, err := parseSource(input)
+	checkParserErrors(t, err)
+	if len(program.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	}
+	caseExpr, ok := stmt.Expression.(*ast.CaseExpression)
+	if !ok {
+		t.Fatalf("expected *ast.CaseExpression, got %T", stmt.Expression)
+	}
+	if len(caseExpr.InClauses) != 1 {
+		t.Errorf("expected 1 in clause, got %d", len(caseExpr.InClauses))
+	}
+	if caseExpr.InClauses[0].Body == nil {
+		t.Errorf("expected in clause body")
+	}
+}
+
+func TestBeginlessRange(t *testing.T) {
+	tests := []string{"..5", "...5"}
+	for _, input := range tests {
+		t.Run(input, func(t *testing.T) {
+			program, err := parseSource(input)
+			checkParserErrors(t, err)
+			if len(program.Statements) != 1 {
+				t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+			}
+			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			}
+			infix, ok := stmt.Expression.(*ast.InfixExpression)
+			if !ok {
+				t.Fatalf("expected *ast.InfixExpression, got %T", stmt.Expression)
+			}
+			if infix.Left != nil {
+				t.Errorf("expected nil Left for beginless range")
+			}
+		})
+	}
+}
+
+func TestAliasExpression(t *testing.T) {
+	input := "alias new old"
+	program, err := parseSource(input)
+	checkParserErrors(t, err)
+	if len(program.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	}
+	a, ok := stmt.Expression.(*ast.AliasExpression)
+	if !ok {
+		t.Fatalf("expected *ast.AliasExpression, got %T", stmt.Expression)
+	}
+	if a.NewName.Value != "new" || a.OldName.Value != "old" {
+		t.Errorf("expected new/old, got %q/%q", a.NewName.Value, a.OldName.Value)
+	}
+}
+
+func TestUndefExpression(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantNames int
+	}{
+		{name: "single", input: "undef foo", wantNames: 1},
+		{name: "multiple", input: "undef foo, bar, baz", wantNames: 3},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			program, err := parseSource(tt.input)
+			checkParserErrors(t, err)
+			if len(program.Statements) != 1 {
+				t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+			}
+			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			}
+			u, ok := stmt.Expression.(*ast.UndefExpression)
+			if !ok {
+				t.Fatalf("expected *ast.UndefExpression, got %T", stmt.Expression)
+			}
+			if len(u.Names) != tt.wantNames {
+				t.Errorf("expected %d names, got %d", tt.wantNames, len(u.Names))
+			}
+		})
+	}
+}
+
+func TestLambdaExpression(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		wantParams int
+	}{
+		{name: "no params", input: "-> { }", wantParams: 0},
+		{name: "with params", input: "->(x, y) { }", wantParams: 2},
+		{name: "do end body", input: "-> do\nend", wantParams: 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			program, err := parseSource(tt.input)
+			checkParserErrors(t, err)
+			if len(program.Statements) != 1 {
+				t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+			}
+			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			}
+			fl, ok := stmt.Expression.(*ast.FunctionLiteral)
+			if !ok {
+				t.Fatalf("expected *ast.FunctionLiteral, got %T", stmt.Expression)
+			}
+			if !fl.IsLambda {
+				t.Errorf("expected IsLambda to be true")
+			}
+			if len(fl.Parameters) != tt.wantParams {
+				t.Errorf("expected %d params, got %d", tt.wantParams, len(fl.Parameters))
+			}
+			if fl.Body == nil {
+				t.Errorf("expected Body to be set")
+			}
+		})
+	}
+}
+
+func TestSuperExpression(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		wantArgs int
+	}{
+		{name: "bare super", input: "super", wantArgs: 0},
+		{name: "super with parens", input: "super(1, 2)", wantArgs: 2},
+		{name: "super with args no parens", input: "super 1, 2", wantArgs: 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			program, err := parseSource(tt.input)
+			checkParserErrors(t, err)
+			if len(program.Statements) != 1 {
+				t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+			}
+			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			}
+			sup, ok := stmt.Expression.(*ast.SuperExpression)
+			if !ok {
+				t.Fatalf("expected *ast.SuperExpression, got %T", stmt.Expression)
+			}
+			if len(sup.Arguments) != tt.wantArgs {
+				t.Errorf("expected %d args, got %d", tt.wantArgs, len(sup.Arguments))
+			}
+		})
+	}
+}
+
+func TestAssignmentToFILE(t *testing.T) {
+	input := "__FILE__ = 5"
+	_, err := parseSource(input)
+	if err == nil {
+		t.Errorf("expected error for assignment to __FILE__")
 	}
 }
 
