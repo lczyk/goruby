@@ -54,6 +54,14 @@ gems-clean:  ## Remove fetched gem fixtures
 integration: gems  ## Run integration smoke suite (requires fetched fixtures)
 	go test -tags=integration -race -timeout 10m ./internal/integrationtest/...
 
+.PHONY: rubies
+rubies:  ## Fetch MRI ruby source fixtures for multi-version smoke tests
+	@bash internal/integrationtest/testdata/fetch_rubies.sh
+
+.PHONY: rubies-clean
+rubies-clean:  ## Remove fetched ruby source fixtures
+	rm -rf internal/integrationtest/testdata/rubies/
+
 .PHONY: clean
 clean:  ## Remove generated files
 	rm -f cover.out cover.html

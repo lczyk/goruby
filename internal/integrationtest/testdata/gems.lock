@@ -5,3 +5,4 @@
 
 minitest	https://github.com/minitest/minitest.git	v5.25.4
 rake	https://github.com/ruby/rake.git	v13.2.1
+pyramid-scheme	https://github.com/ConorOBrien-Foxx/Pyramid-Scheme.git	master
