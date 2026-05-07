@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	gotoken "go/token"
+	"math/big"
 	"strings"
 
 	"github.com/lczyk/goruby/token"
@@ -455,8 +456,9 @@ func (i *ScopedIdentifier) TokenLiteral() string { return i.Token.Literal }
 
 // IntegerLiteral represents an integer in the AST
 type IntegerLiteral struct {
-	Token token.Token
-	Value int64
+	Token  token.Token
+	Value  int64
+	BigInt *big.Int // set for values that overflow int64
 }
 
 func (il *IntegerLiteral) expressionNode() {}
@@ -466,11 +468,21 @@ func (il *IntegerLiteral) literalNode()    {}
 func (il *IntegerLiteral) Pos() int { return il.Token.Pos }
 
 // End returns the position of first character immediately after the node
-func (il *IntegerLiteral) End() int { return il.Token.Pos + len(fmt.Sprintf("%d", il.Value)) }
+func (il *IntegerLiteral) End() int {
+	if il.BigInt != nil {
+		return il.Token.Pos + len(il.BigInt.String())
+	}
+	return il.Token.Pos + len(fmt.Sprintf("%d", il.Value))
+}
 
 // TokenLiteral returns the literal from the token.INT token
 func (il *IntegerLiteral) TokenLiteral() string { return il.Token.Literal }
-func (il *IntegerLiteral) String() string       { return fmt.Sprintf("%d", il.Value) }
+func (il *IntegerLiteral) String() string {
+	if il.BigInt != nil {
+		return il.BigInt.String()
+	}
+	return fmt.Sprintf("%d", il.Value)
+}
 
 // FloatLiteral represents a floating-point number in the AST
 type FloatLiteral struct {

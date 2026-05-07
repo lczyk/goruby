@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	gotoken "go/token"
+	"math/big"
 	"strconv"
 	"strings"
 
@@ -823,13 +824,19 @@ func (p *parser) parseIntegerLiteral() ast.Expression {
 		defer un(trace(p, "parseIntegerLiteral"))
 	}
 	lit := &ast.IntegerLiteral{Token: p.curToken}
-	value, err := strconv.ParseInt(integerLiteralReplacer.Replace(p.curToken.Literal), 0, 64)
+	s := integerLiteralReplacer.Replace(p.curToken.Literal)
+	s = strings.TrimRight(s, "riRI")
+	v, bigV, err := parseRubyInt(s)
 	if err != nil {
 		msg := fmt.Errorf("could not parse %q as integer", p.curToken.Literal)
 		p.errors = append(p.errors, msg)
 		return nil
 	}
-	lit.Value = value
+	if bigV != nil {
+		lit.BigInt = bigV
+	} else {
+		lit.Value = v
+	}
 	return lit
 }
 
@@ -838,7 +845,10 @@ func (p *parser) parseFloatLiteral() ast.Expression {
 		defer un(trace(p, "parseFloatLiteral"))
 	}
 	lit := &ast.FloatLiteral{Token: p.curToken}
-	value, err := strconv.ParseFloat(integerLiteralReplacer.Replace(p.curToken.Literal), 64)
+	s := integerLiteralReplacer.Replace(p.curToken.Literal)
+	// Strip rational/complex suffixes -- the numeric value is the same.
+	s = strings.TrimRight(s, "riRI")
+	value, err := parseFloat(s)
 	if err != nil {
 		msg := fmt.Errorf("could not parse %q as float", p.curToken.Literal)
 		p.errors = append(p.errors, msg)
@@ -846,6 +856,54 @@ func (p *parser) parseFloatLiteral() ast.Expression {
 	}
 	lit.Value = value
 	return lit
+}
+
+// parseRubyInt parses a Ruby integer literal, handling hex (0x), binary (0b),
+// octal (0o, 0O), explicit decimal (0d, 0D), leading-zero decimal (09), and
+// underscores. When the value overflows int64, the *big.Int result is non-nil.
+func parseRubyInt(s string) (int64, *big.Int, error) {
+	base := 10
+	switch {
+	case len(s) >= 2 && s[0] == '0':
+		switch s[1] {
+		case 'x', 'X':
+			base = 16
+			s = s[2:]
+		case 'b', 'B':
+			base = 2
+			s = s[2:]
+		case 'o', 'O':
+			base = 8
+			s = s[2:]
+		case 'd', 'D':
+			base = 10
+			s = s[2:]
+		default:
+			// Leading zero without base prefix is decimal in Ruby
+			// (e.g. 09 is decimal 9, not invalid octal).
+			base = 10
+		}
+	}
+	if s == "" {
+		return 0, nil, fmt.Errorf("empty number")
+	}
+	bi := new(big.Int)
+	bi, ok := bi.SetString(s, base)
+	if !ok {
+		return 0, nil, fmt.Errorf("invalid digits for base %d: %q", base, s)
+	}
+	if bi.IsInt64() {
+		return bi.Int64(), nil, nil
+	}
+	return 0, bi, nil
+}
+
+// parseFloat is like strconv.ParseFloat but handles Ruby float edge cases.
+func parseFloat(s string) (float64, error) {
+	if s == "" {
+		return 0, fmt.Errorf("empty float")
+	}
+	return strconv.ParseFloat(s, 64)
 }
 
 func (p *parser) parseStringLiteral() ast.Expression {

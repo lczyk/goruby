@@ -691,9 +691,9 @@ func lexDigit(l *Lexer) StateFn {
 			return lexFloatExponent(l)
 		}
 	}
-	// Rational or complex suffix.
+	// Rational or complex suffix -- the suffix character was already
+	// consumed as the r that broke the integer-part loop; emit in-place.
 	if r == 'r' || r == 'i' {
-		l.next() // consume suffix
 		l.emit(token.INT)
 		return startLexer
 	}
