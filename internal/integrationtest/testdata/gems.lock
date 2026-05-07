@@ -6,3 +6,29 @@
 minitest	https://github.com/minitest/minitest.git	v5.25.4
 rake	https://github.com/ruby/rake.git	v13.2.1
 pyramid-scheme	https://github.com/ConorOBrien-Foxx/Pyramid-Scheme.git	master
+
+# esolang interpreters written in ruby (esolangs.org)
+# -- martin ender's reference implementations
+hexagony	https://github.com/m-ender/hexagony.git	master
+labyrinth	https://github.com/m-ender/labyrinth.git	master
+stackcats	https://github.com/m-ender/stackcats.git	master
+alice	https://github.com/m-ender/alice.git	master
+brian-chuck	https://github.com/m-ender/brian-chuck.git	master
+wumpus	https://github.com/m-ender/wumpus.git	master
+pada	https://github.com/m-ender/pada.git	master
+# -- other esolang ruby interpreters
+bouncy-lang	https://github.com/Mercerenies/bouncy-lang.git	master
+esolang-book-sources	https://github.com/yhara/esolang-book-sources.git	master
+brain-flak	https://github.com/DJMcMayhem/Brain-Flak.git	master
+hq9f-ruby	https://github.com/wobh/HQ9F-Ruby.git	master
+thue	https://github.com/catseye/Thue.git	master
+ropy	https://github.com/tormaroe/ropy.git	master
+mariolang-rb	https://github.com/mynery/mariolang.rb.git	master
+eek-esolang	https://github.com/ZeroPlayerRodent/Eek-Esolang.git	main
+puberty	https://github.com/izumariu/puberty.git	master
+forter	https://github.com/judofyr/forter.git	master
+replace-esolang	https://github.com/groowyCZ/Replace-esolang-interpreters.git	master
+bangyen-esolangs	https://github.com/bangyen/esolangs.git	main
+kaiser-ruby	https://github.com/marcinruszkiewicz/kaiser-ruby.git	master
+pan-unicode-lang	https://github.com/Mercerenies/pan-unicode-lang.git	master
+brainfint	https://github.com/quocl/brainfint.git	master

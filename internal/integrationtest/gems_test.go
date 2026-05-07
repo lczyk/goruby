@@ -26,11 +26,12 @@ import (
 )
 
 const (
-	fixturesDir     = "testdata/gems"
-	langFixturesDir = "testdata/ruby"
-	lockFile        = "testdata/gems.lock"
-	skipFile        = "gems.skip"
-	phaseTimeout    = 5 * time.Second
+	fixturesDir        = "testdata/gems"
+	langFixturesDir    = "testdata/mri-tests"
+	esolangFixturesDir = "testdata/esolangs"
+	lockFile           = "testdata/gems.lock"
+	skipFile           = "gems.skip"
+	phaseTimeout       = 5 * time.Second
 )
 
 type counters struct {
@@ -98,8 +99,18 @@ func bootstrap() error {
 		return fmt.Errorf("walk lang fixtures: %w", err)
 	}
 	for _, f := range langFiles {
-		rubyFiles = append(rubyFiles, "ruby/"+f)
+		rubyFiles = append(rubyFiles, "mri-tests/"+f)
 	}
+
+	// Also walk esolang interpreter fixtures (committed, not fetched).
+	esolangFiles, err := walkRubyFiles(esolangFixturesDir)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("walk esolang fixtures: %w", err)
+	}
+	for _, f := range esolangFiles {
+		rubyFiles = append(rubyFiles, "esolangs/"+f)
+	}
+
 	skips, err = loadSkips(skipFile)
 	if err != nil {
 		return fmt.Errorf("load %s: %w", skipFile, err)
@@ -385,9 +396,12 @@ func runPhase(t *testing.T, phase, relpath string, c *counters, phaseFn func() e
 func mustReadFile(t *testing.T, relpath string) string {
 	t.Helper()
 	baseDir := fixturesDir
-	if strings.HasPrefix(relpath, "ruby/") {
+	if strings.HasPrefix(relpath, "mri-tests/") {
 		baseDir = langFixturesDir
-		relpath = strings.TrimPrefix(relpath, "ruby/")
+		relpath = strings.TrimPrefix(relpath, "mri-tests/")
+	} else if strings.HasPrefix(relpath, "esolangs/") {
+		baseDir = esolangFixturesDir
+		relpath = strings.TrimPrefix(relpath, "esolangs/")
 	}
 	abs := filepath.Join(baseDir, relpath)
 	data, err := os.ReadFile(abs)
