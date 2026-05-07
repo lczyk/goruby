@@ -214,6 +214,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.KW_RETRY, p.parseJumpExpression)
 	p.registerPrefix(token.KW_ENSURE, p.parseErrorSkip)
 	p.registerPrefix(token.DEF, p.parseFunctionLiteral)
+	p.registerPrefix(token.SCOPE, p.parseTopLevelScope)
 	p.registerPrefix(token.LABEL, p.parseLabelExpression)
 	p.registerPrefix(token.SYMBEG, p.parseSymbolLiteral)
 	p.registerPrefix(token.LBRACKET, p.parseArrayLiteral)
@@ -810,6 +811,21 @@ func (p *parser) parseRescueModifier(left ast.Expression) ast.Expression {
 		Operator: "rescue",
 		Right:    right,
 	}
+}
+
+func (p *parser) parseTopLevelScope() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseTopLevelScope"))
+	}
+	// ::Foo, ::Foo::Bar -- scope resolution from top-level
+	tok := p.curToken // SCOPE token
+	p.nextToken()     // advance past ::
+	if !p.currentTokenIs(token.CONST) {
+		p.expectError(token.CONST)
+		return nil
+	}
+	inner := p.parseIdentifier().(*ast.Identifier)
+	return &ast.ScopedIdentifier{Token: tok, Inner: inner}
 }
 
 func (p *parser) parseErrorSkip() ast.Expression {
@@ -1735,7 +1751,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 		return contextCallExpression
 	}
 
-	if p.peekTokenOneOf(append(tokensNotPossibleInCallArgs, token.RBRACE)...) {
+	if p.peekTokenOneOf(append(tokensNotPossibleInCallArgs, token.RBRACE, token.RPAREN)...) {
 		return contextCallExpression
 	}
 
@@ -1788,7 +1804,7 @@ func (p *parser) parseContextCallExpression(context ast.Expression) ast.Expressi
 		return contextCallExpression
 	}
 
-	if p.peekTokenOneOf(append(tokensNotPossibleInCallArgs, token.RBRACE)...) {
+	if p.peekTokenOneOf(append(tokensNotPossibleInCallArgs, token.RBRACE, token.RPAREN)...) {
 		return contextCallExpression
 	}
 
@@ -1854,13 +1870,14 @@ func (p *parser) parseCallExpressionWithParens(function ast.Expression) ast.Expr
 	if p.trace {
 		defer un(trace(p, "parseCallExpressionWithParens"))
 	}
-	ident, ok := function.(*ast.Identifier)
-	if !ok {
-		msg := fmt.Errorf("could not parse call expression: expected identifier, got token '%T'", function)
-		p.errors = append(p.errors, msg)
-		return nil
+	exp := &ast.ContextCallExpression{Token: p.curToken}
+	if ident, ok := function.(*ast.Identifier); ok {
+		exp.Function = ident
+	} else {
+		// Non-identifier callable: @ivar(args), method_returning_proc(args)
+		exp.Context = function
+		exp.Function = &ast.Identifier{Token: p.curToken, Value: "call"}
 	}
-	exp := &ast.ContextCallExpression{Token: p.curToken, Function: ident}
 	p.nextToken()
 	exp.Arguments = p.parseExpressionList(token.RPAREN)
 	if p.peekTokenOneOf(token.LBRACE, token.DO) {
