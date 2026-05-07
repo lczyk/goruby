@@ -152,3 +152,29 @@ func Test_Equal(t *testing.T) {
 		})
 	}
 }
+
+func Test_compare(t *testing.T) {
+	// compare with 3+ nodes hits the next != nil branch
+	a := &Identifier{Value: "x"}
+	b := &Identifier{Value: "x"}
+	c := &Identifier{Value: "x"}
+	if !compare(a, b, c) {
+		t.Errorf("expected compare to return true for three equal identifiers")
+	}
+	d := &Identifier{Value: "y"}
+	if compare(a, b, d) {
+		t.Errorf("expected compare to return false for mismatched third arg")
+	}
+	// len(nodes) < 2 returns false
+	if compare() {
+		t.Errorf("expected compare() to return false")
+	}
+	if compare(a) {
+		t.Errorf("expected compare with 1 node to return false")
+	}
+	// type mismatch between pair
+	il := &IntegerLiteral{Value: 1}
+	if compare(a, il) {
+		t.Errorf("expected compare to return false for type mismatch")
+	}
+}
