@@ -957,9 +957,10 @@ func (fl *FunctionLiteral) String() string {
 
 // A FunctionParameter represents a parameter in a function literal
 type FunctionParameter struct {
-	Name    *Identifier
-	Default Expression
-	IsSplat bool
+	Name      *Identifier
+	Default   Expression
+	IsSplat   bool
+	IsKeyword bool
 }
 
 func (f *FunctionParameter) expressionNode() {}
@@ -983,6 +984,9 @@ func (f *FunctionParameter) String() string {
 		out.WriteString("*")
 	}
 	out.WriteString(f.Name.String())
+	if f.IsKeyword {
+		out.WriteString(":")
+	}
 	if f.Default != nil {
 		out.WriteString(" = ")
 		out.WriteString(encloseInParensIfNeeded(f.Default))

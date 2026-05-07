@@ -90,6 +90,7 @@ var precedences = map[token.Type]int{
 	token.DO:                precBlockDo,
 	token.SCOPE:             precScope,
 	token.SYMBEG:            precSymbol,
+	token.HASHROCKET:         precAssignment,
 	token.COMMA:             precAssignment,
 	token.THEN:              precHighest,
 	token.NEWLINE:           precHighest,
@@ -275,6 +276,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerInfix(token.LSHIFT, p.parseInfixExpression)
 	p.registerInfix(token.RSHIFT, p.parseInfixExpression)
 	p.registerInfix(token.CASEEQ, p.parseInfixExpression)
+	p.registerInfix(token.HASHROCKET, p.parseInfixExpression)
 	p.registerInfix(token.ASSIGN, p.parseAssignment)
 	p.registerInfix(token.ADDASSIGN, p.parseAssignmentOperator)
 	p.registerInfix(token.SUBASSIGN, p.parseAssignmentOperator)
@@ -1719,8 +1721,18 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 			p.acceptOneOf(token.CAPTURE, token.AND)
 			return identifiers
 		}
-		p.accept(token.IDENT)
-		ident := &ast.FunctionParameter{Name: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}}
+		isKeyword := false
+		if p.peekTokenIs(token.LABEL) {
+			p.accept(token.LABEL)
+			isKeyword = true
+		} else {
+			p.accept(token.IDENT)
+		}
+		name := p.curToken.Literal
+		if isKeyword {
+			name = strings.TrimSuffix(name, ":")
+		}
+		ident := &ast.FunctionParameter{Name: &ast.Identifier{Token: p.curToken, Value: name}, IsKeyword: isKeyword}
 		if p.peekTokenIs(token.ASSIGN) {
 			p.consume(token.ASSIGN)
 			ident.Default = p.parseExpression(precPrefix)
@@ -1800,7 +1812,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 		return contextCallExpression
 	}
 
-	if p.peekTokenOneOf(append(tokensNotPossibleInCallArgs, token.RBRACE, token.RPAREN)...) {
+	if p.peekTokenOneOf(append(tokensNotPossibleInCallArgs, token.RBRACE, token.RPAREN, token.EMBEXPR_END, token.SEMICOLON, token.EOF)...) {
 		return contextCallExpression
 	}
 
@@ -1853,7 +1865,7 @@ func (p *parser) parseContextCallExpression(context ast.Expression) ast.Expressi
 		return contextCallExpression
 	}
 
-	if p.peekTokenOneOf(append(tokensNotPossibleInCallArgs, token.RBRACE, token.RPAREN)...) {
+	if p.peekTokenOneOf(append(tokensNotPossibleInCallArgs, token.RBRACE, token.RPAREN, token.EMBEXPR_END, token.SEMICOLON, token.EOF)...) {
 		return contextCallExpression
 	}
 
