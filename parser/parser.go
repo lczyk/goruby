@@ -195,6 +195,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
 	p.registerPrefix(token.PLUS, p.parsePrefixExpression)
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
+	p.registerPrefix(token.ASTERISK, p.parseSplatExpression)
 	p.registerPrefix(token.TILDE, p.parsePrefixExpression)
 	p.registerPrefix(token.TRUE, p.parseBoolean)
 	p.registerPrefix(token.FALSE, p.parseBoolean)
@@ -214,6 +215,8 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.YIELD, p.parseYield)
 	p.registerPrefix(token.GLOBAL, p.parseGlobal)
 	p.registerPrefix(token.KEYWORD__FILE__, p.parseKeyword__FILE__)
+	p.registerPrefix(token.KEYWORD__LINE__, p.parseKeyword__LINE__)
+	p.registerPrefix(token.KEYWORD__ENCODING__, p.parseEncodingKeyword)
 	p.registerPrefix(token.BEGIN, p.parseExceptionHandlingBlock)
 	p.registerPrefix(token.CLASS_VAR, p.parseClassVariable)
 	p.registerPrefix(token.CAPTURE, p.parseBlockCapture)
@@ -814,6 +817,31 @@ func (p *parser) parseKeyword__FILE__() ast.Expression {
 		Filename: p.file.Name(),
 	}
 	return file
+}
+
+func (p *parser) parseKeyword__LINE__() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseKeyword__LINE__"))
+	}
+	line := p.file.Position(p.pos).Line
+	return &ast.IntegerLiteral{Token: p.curToken, Value: int64(line)}
+}
+
+func (p *parser) parseEncodingKeyword() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseEncodingKeyword"))
+	}
+	return &ast.StringLiteral{Token: p.curToken, Value: "UTF-8"}
+}
+
+func (p *parser) parseSplatExpression() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parseSplatExpression"))
+	}
+	expr := &ast.SplatExpression{Token: p.curToken, Operator: p.curToken.Literal}
+	p.nextToken()
+	expr.Right = p.parseExpression(precPrefix)
+	return expr
 }
 
 func (p *parser) parseYield() ast.Expression {

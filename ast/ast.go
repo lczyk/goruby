@@ -953,6 +953,7 @@ func (fl *FunctionLiteral) String() string {
 type FunctionParameter struct {
 	Name    *Identifier
 	Default Expression
+	IsSplat bool
 }
 
 func (f *FunctionParameter) expressionNode() {}
@@ -972,6 +973,9 @@ func (f *FunctionParameter) End() int {
 func (f *FunctionParameter) TokenLiteral() string { return f.Name.TokenLiteral() }
 func (f *FunctionParameter) String() string {
 	var out bytes.Buffer
+	if f.IsSplat {
+		out.WriteString("*")
+	}
 	out.WriteString(f.Name.String())
 	if f.Default != nil {
 		out.WriteString(" = ")
@@ -1205,6 +1209,30 @@ func (s *SingletonClassExpression) String() string {
 	out.WriteString("\nend")
 	return out.String()
 }
+
+// A SplatExpression represents a splat expression (*expr, **expr)
+type SplatExpression struct {
+	Token    token.Token // the * or ** token
+	Operator string      // "*" or "**"
+	Right    Expression
+}
+
+func (s *SplatExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.Operator)
+	out.WriteString(s.Right.String())
+	return out.String()
+}
+func (s *SplatExpression) expressionNode() {}
+
+// Pos returns the position of first character belonging to the node
+func (s *SplatExpression) Pos() int { return s.Token.Pos }
+
+// End returns the position of first character immediately after the node
+func (s *SplatExpression) End() int { return s.Right.End() }
+
+// TokenLiteral returns the literal from the * token
+func (s *SplatExpression) TokenLiteral() string { return s.Token.Literal }
 
 // PrefixExpression represents a prefix operator
 type PrefixExpression struct {
