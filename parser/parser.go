@@ -587,8 +587,12 @@ func (p *parser) parseExpressionStatement() *ast.ExpressionStatement {
 	}
 	stmt := &ast.ExpressionStatement{Token: p.curToken}
 	stmt.Expression = p.parseExpression(precLowest)
-	if p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE) {
+	for p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE) {
 		p.nextToken()
+		if p.peekTokenIs(token.DOT) {
+			p.nextToken()
+			stmt.Expression = p.parseMethodCall(stmt.Expression)
+		}
 	}
 	return stmt
 }
