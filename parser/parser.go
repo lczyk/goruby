@@ -2566,10 +2566,46 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 		}
 		if p.peekTokenOneOf(token.CAPTURE, token.AND) {
 			p.acceptOneOf(token.CAPTURE, token.AND)
-			if hasDelimiters {
-				p.accept(endToken)
+			if p.peekTokenOneOf(token.COMMA, endToken, token.NEWLINE, token.SEMICOLON, token.EOF) {
+				if hasDelimiters && p.peekTokenIs(endToken) {
+					p.accept(endToken)
+				}
+				return identifiers
 			}
-			return identifiers
+			p.accept(token.IDENT)
+			identifiers = append(identifiers, &ast.FunctionParameter{
+				Name: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
+			})
+			continue
+		}
+		// Keyword parameter: `name: default`
+		if p.peekTokenIs(token.LABEL) {
+			p.accept(token.LABEL)
+			name := strings.TrimSuffix(p.curToken.Literal, ":")
+			param := &ast.FunctionParameter{
+				Name:      &ast.Identifier{Token: p.curToken, Value: name},
+				IsKeyword: true,
+			}
+			if !p.peekTokenOneOf(token.COMMA, endToken, token.NEWLINE, token.SEMICOLON, token.PIPE, token.EOF) {
+				p.nextToken()
+				param.Default = p.parseExpression(precAssignment)
+			}
+			identifiers = append(identifiers, param)
+			continue
+		}
+		// Regular parameter
+		if p.peekTokenOneOf(token.IDENT, token.CONST) {
+			p.acceptOneOf(token.IDENT, token.CONST)
+			name := p.curToken.Literal
+			param := &ast.FunctionParameter{
+				Name: &ast.Identifier{Token: p.curToken, Value: name},
+			}
+			if p.peekTokenIs(token.ASSIGN) {
+				p.consume(token.ASSIGN)
+				param.Default = p.parseExpression(precAssignment)
+			}
+			identifiers = append(identifiers, param)
+			continue
 		}
 	}
 	if hasDelimiters {
@@ -3012,6 +3048,20 @@ func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {
 	case *ast.ContextCallExpression:
 		fn.Block = exp.Block
 		return fn
+	case *ast.Assignment:
+		if rhs, ok := fn.Right.(*ast.Identifier); ok {
+			call := &ast.ContextCallExpression{Token: rhs.Token, Function: rhs}
+			call.Block = exp.Block
+			fn.Right = call
+			return fn
+		}
+		if rhs, ok := fn.Right.(*ast.ContextCallExpression); ok {
+			rhs.Block = exp.Block
+			return fn
+		}
+	case *ast.ArrayLiteral:
+		// Array construction before block, e.g. `[items].each do...end`
+		// -- block can't attach to array, fall through to error
 	case *ast.InfixExpression:
 		ident, ok := fn.Right.(*ast.Identifier)
 		if !ok {
