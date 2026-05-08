@@ -58,6 +58,50 @@ func TestVersionAtLeast(t *testing.T) {
 	}
 }
 
+func TestLatestVersion(t *testing.T) {
+	v := LatestVersion()
+	if v.Major < 4 {
+		t.Errorf("LatestVersion major = %d, want >= 4", v.Major)
+	}
+	if !v.IsSet() {
+		t.Error("LatestVersion should be set")
+	}
+}
+
+func TestVersionIsSet(t *testing.T) {
+	unset := RubyVersion{}
+	if unset.IsSet() {
+		t.Error("zero value should not be set")
+	}
+	v := MustParseVersion("3.0")
+	if !v.IsSet() {
+		t.Error("parsed version should be set")
+	}
+}
+
+func TestMustParseVersionPanic(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("MustParseVersion should panic on invalid input")
+		}
+	}()
+	MustParseVersion("invalid")
+}
+
+func TestParseVersionUnknownMajor(t *testing.T) {
+	_, err := ParseVersion("99")
+	if err == nil {
+		t.Error("ParseVersion with unknown major should error")
+	}
+}
+
+func TestParseVersionInvalidMinor(t *testing.T) {
+	_, err := ParseVersion("3.x")
+	if err == nil {
+		t.Error("ParseVersion with invalid minor should error")
+	}
+}
+
 func TestVersionCompare(t *testing.T) {
 	tests := []struct {
 		a, b string
@@ -67,6 +111,7 @@ func TestVersionCompare(t *testing.T) {
 		{"3.1", "3.0", 1},
 		{"3.0", "3.1", -1},
 		{"4.0", "3.4", 1},
+		{"2.7", "3.0", -1},
 		{"", "", 0},
 		{"", "4.0", 1},
 		{"4.0", "", -1},
