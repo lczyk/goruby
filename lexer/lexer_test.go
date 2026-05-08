@@ -26,8 +26,12 @@ end
 ||
 
 result = add(five, ten)
-!-/*%5;
-+= -= *= /= %=
+!5
+-5
+5/5*5%5;
++= -= *=
+x /= 1
+x %= 1
 5 < 10 > 5
 return
 if 5 < 10 then
@@ -171,9 +175,16 @@ $a
 		{token.RPAREN, ")"},
 		{token.NEWLINE, "\n"},
 		{token.BANG, "!"},
+		{token.INT, "5"},
+		{token.NEWLINE, "\n"},
 		{token.MINUS, "-"},
+		{token.INT, "5"},
+		{token.NEWLINE, "\n"},
+		{token.INT, "5"},
 		{token.SLASH, "/"},
+		{token.INT, "5"},
 		{token.ASTERISK, "*"},
+		{token.INT, "5"},
 		{token.MODULO, "%"},
 		{token.INT, "5"},
 		{token.SEMICOLON, ";"},
@@ -181,8 +192,14 @@ $a
 		{token.ADDASSIGN, "+="},
 		{token.SUBASSIGN, "-="},
 		{token.MULASSIGN, "*="},
+		{token.NEWLINE, "\n"},
+		{token.IDENT, "x"},
 		{token.DIVASSIGN, "/="},
+		{token.INT, "1"},
+		{token.NEWLINE, "\n"},
+		{token.IDENT, "x"},
 		{token.MODASSIGN, "%="},
+		{token.INT, "1"},
 		{token.NEWLINE, "\n"},
 		{token.INT, "5"},
 		{token.LT, "<"},
@@ -1682,6 +1699,138 @@ func TestGlobalDashVariables(t *testing.T) {
 			}
 			if tok.Literal != tt.literal {
 				t.Errorf("expected literal %q, got %q", tt.literal, tok.Literal)
+			}
+		})
+	}
+}
+
+func TestRegexContext(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []struct {
+			typ     token.Type
+			literal string
+		}
+	}{
+		{
+			name:  "regex after yield",
+			input: "yield /foo/",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.YIELD, "yield"},
+				{token.REGEX_BEG, ""},
+				{token.STRING_CONTENT, "foo"},
+				{token.REGEX_END, ""},
+			},
+		},
+		{
+			name:  "regex after in",
+			input: "for x in /foo/; end",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.KW_FOR, "for"},
+				{token.IDENT, "x"},
+				{token.KW_IN, "in"},
+				{token.REGEX_BEG, ""},
+				{token.STRING_CONTENT, "foo"},
+				{token.REGEX_END, ""},
+				{token.SEMICOLON, ";"},
+				{token.END, "end"},
+			},
+		},
+		{
+			name:  "regex after elsif",
+			input: "if x\nelsif /foo/\nend",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IF, "if"},
+				{token.IDENT, "x"},
+				{token.NEWLINE, "\n"},
+				{token.KW_ELSIF, "elsif"},
+				{token.REGEX_BEG, ""},
+				{token.STRING_CONTENT, "foo"},
+				{token.REGEX_END, ""},
+				{token.NEWLINE, "\n"},
+				{token.END, "end"},
+			},
+		},
+		{
+			name:  "regex after plus",
+			input: "x + /bar/",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "x"},
+				{token.PLUS, "+"},
+				{token.REGEX_BEG, ""},
+				{token.STRING_CONTENT, "bar"},
+				{token.REGEX_END, ""},
+			},
+		},
+		{
+			name:  "regex after minus",
+			input: "x - /bar/",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "x"},
+				{token.MINUS, "-"},
+				{token.REGEX_BEG, ""},
+				{token.STRING_CONTENT, "bar"},
+				{token.REGEX_END, ""},
+			},
+		},
+		{
+			name:  "division after expression end",
+			input: "x / 2",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "x"},
+				{token.SLASH, "/"},
+				{token.INT, "2"},
+			},
+		},
+		{
+			name:  "division after close paren",
+			input: "(1) / 2",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.LPAREN, "("},
+				{token.INT, "1"},
+				{token.RPAREN, ")"},
+				{token.SLASH, "/"},
+				{token.INT, "2"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := New(tt.input)
+			for i, exp := range tt.expected {
+				if !l.HasNext() {
+					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				}
+				tok := l.NextToken()
+				if tok.Type != exp.typ {
+					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
+				}
+				if tok.Literal != exp.literal {
+					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
+				}
 			}
 		})
 	}

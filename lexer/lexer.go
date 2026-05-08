@@ -1932,15 +1932,27 @@ func isRegexBeginContext(tok token.Type) bool {
 	switch tok {
 	case token.ILLEGAL, token.EOF, token.NEWLINE,
 		token.ASSIGN, token.MATCH, token.NMATCH,
+		token.ADDASSIGN, token.SUBASSIGN, token.MULASSIGN,
+		token.DIVASSIGN, token.MODASSIGN, token.POWERASSIGN,
+		token.ORASSIGN, token.ANDASSIGN,
+		token.LSHIFTASSIGN, token.RSHIFTASSIGN,
+		token.ANDASSIGN_BITWISE, token.ORASSIGN_BITWISE, token.XORASSIGN,
 		token.LPAREN, token.LBRACKET, token.LBRACE,
 		token.COMMA, token.SEMICOLON, token.COLON, token.QMARK,
 		token.BANG, token.TILDE,
+		token.PLUS, token.MINUS, token.ASTERISK, token.POWER,
+		token.LT, token.GT, token.LTE, token.GTE, token.EQ, token.NOTEQ,
+		token.SPACESHIP, token.CASEEQ,
+		token.LSHIFT, token.RSHIFT,
+		token.AND, token.XOR,
 		token.LOGICALAND, token.LOGICALOR, token.PIPE,
 		token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.RETURN, token.THEN,
 		token.DO, token.CASE, token.WHEN, token.BREAK, token.NEXT,
+		token.YIELD, token.BEGIN, token.RESCUE, token.KW_ENSURE, token.ELSE, token.KW_ELSIF,
 		token.KW_AND, token.KW_OR, token.KW_NOT, token.KW_DEFINED, token.KW_SUPER,
+		token.KW_IN, token.KW_FOR,
 		token.RANGE, token.RANGEEX,
-		token.HASHROCKET:
+		token.HASHROCKET, token.EMBEXPR_BEG:
 		return true
 	}
 	return false
