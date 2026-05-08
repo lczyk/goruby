@@ -1455,3 +1455,106 @@ func TestLexerPercentLiteral(t *testing.T) {
 		})
 	}
 }
+
+func TestBlockComments(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []struct {
+			typ     token.Type
+			literal string
+		}
+	}{
+		{
+			name:  "block comment mid-file",
+			input: "x = 1\n=begin\ncomment body\n=end\ny = 2",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "x"},
+				{token.ASSIGN, "="},
+				{token.INT, "1"},
+				{token.NEWLINE, "\n"},
+				{token.IDENT, "y"},
+				{token.ASSIGN, "="},
+				{token.INT, "2"},
+			},
+		},
+		{
+			name:  "block comment at start of file",
+			input: "=begin\ncomment\n=end\nx = 1",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "x"},
+				{token.ASSIGN, "="},
+				{token.INT, "1"},
+			},
+		},
+		{
+			name:  "block comment with extra text on delimiters",
+			input: "=begin some description\ncomment\n=end trailing\nx",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "x"},
+			},
+		},
+		{
+			name:  "empty block comment",
+			input: "=begin\n=end\nx",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "x"},
+			},
+		},
+		{
+			name:  "=beginning is not a block comment",
+			input: "x\n=beginning\ny",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "x"},
+				{token.NEWLINE, "\n"},
+				{token.ASSIGN, "="},
+				{token.IDENT, "beginning"},
+				{token.NEWLINE, "\n"},
+				{token.IDENT, "y"},
+			},
+		},
+		{
+			name:  "=end not at line start is ignored",
+			input: "=begin\nnot =end here\n=end\nx",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "x"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := New(tt.input)
+			for i, exp := range tt.expected {
+				if !l.HasNext() {
+					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				}
+				tok := l.NextToken()
+				if tok.Type != exp.typ {
+					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
+				}
+				if tok.Literal != exp.literal {
+					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
+				}
+			}
+		})
+	}
+}

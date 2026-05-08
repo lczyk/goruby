@@ -288,6 +288,17 @@ func startLexer(l *Lexer) StateFn {
 		}
 		return l.errorf("Illegal character: '%c'", r)
 	}
+	// =begin block comment at column 0 (start of file or after newline).
+	if r == '=' && l.start == 0 && l.lastToken.Type == token.ILLEGAL && l.lastToken.Literal == "" {
+		if strings.HasPrefix(l.input[l.pos:], "begin") &&
+			(l.pos+5 >= len(l.input) || l.input[l.pos+5] == '\n' || l.input[l.pos+5] == ' ' || l.input[l.pos+5] == '\t' || l.input[l.pos+5] == '\r') {
+			l.backup()
+			if skipBlockComment(l) {
+				return startLexer
+			}
+			l.next()
+		}
+	}
 	switch r {
 	case '$':
 		return lexGlobal
@@ -313,6 +324,10 @@ func startLexer(l *Lexer) StateFn {
 			return startLexer
 		}
 		l.emit(token.NEWLINE)
+		// =begin block comment at line start.
+		if skipBlockComment(l) {
+			return startLexer
+		}
 		// __END__ at line start: consume rest of input.
 		if strings.HasPrefix(l.input[l.pos:], "__END__") {
 			after := l.pos + 7
@@ -1062,6 +1077,53 @@ func isGlobalPunct(r rune) bool {
 		return true
 	}
 	return false
+}
+
+// skipBlockComment checks if the current position starts a =begin block
+// comment. If so, it consumes everything through the matching =end line
+// and returns true. Returns false if not at a =begin.
+func skipBlockComment(l *Lexer) bool {
+	if !strings.HasPrefix(l.input[l.pos:], "=begin") {
+		return false
+	}
+	after := l.pos + 6
+	if after < len(l.input) && l.input[after] != '\n' && l.input[after] != ' ' && l.input[after] != '\t' && l.input[after] != '\r' {
+		return false
+	}
+	// Advance past the =begin line.
+	l.pos = after
+	for l.pos < len(l.input) && l.input[l.pos] != '\n' {
+		l.pos++
+	}
+	if l.pos < len(l.input) {
+		l.pos++ // consume \n
+	}
+	// Scan for =end at line start.
+	for l.pos < len(l.input) {
+		if strings.HasPrefix(l.input[l.pos:], "=end") {
+			endAfter := l.pos + 4
+			if endAfter >= len(l.input) || l.input[endAfter] == '\n' || l.input[endAfter] == ' ' || l.input[endAfter] == '\t' || l.input[endAfter] == '\r' {
+				l.pos = endAfter
+				for l.pos < len(l.input) && l.input[l.pos] != '\n' {
+					l.pos++
+				}
+				if l.pos < len(l.input) {
+					l.pos++ // consume trailing \n
+				}
+				l.ignore()
+				return true
+			}
+		}
+		// Skip to next line.
+		for l.pos < len(l.input) && l.input[l.pos] != '\n' {
+			l.pos++
+		}
+		if l.pos < len(l.input) {
+			l.pos++ // consume \n
+		}
+	}
+	l.ignore()
+	return true
 }
 
 func commentLexer(l *Lexer) StateFn {
