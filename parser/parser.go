@@ -2812,29 +2812,21 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 		p.accept(token.POWER)
 		if p.peekTokenIs(token.NIL) {
 			p.accept(token.NIL)
-			kp := &ast.FunctionParameter{
+			identifiers = append(identifiers, &ast.FunctionParameter{
 				Name:          &ast.Identifier{Token: p.curToken, Value: "nil"},
 				IsKeywordRest: true,
 				IsNoKeywords:  true,
+			})
+		} else {
+			if p.peekTokenOneOf(token.IDENT, token.CONST) {
+				p.acceptOneOf(token.IDENT, token.CONST)
 			}
-			identifiers = append(identifiers, kp)
-			if hasDelimiters {
-				p.accept(endToken)
-			}
-			return identifiers
+			identifiers = append(identifiers, &ast.FunctionParameter{
+				Name:          &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
+				IsKeywordRest: true,
+			})
 		}
-		if p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.CONST) {
-			p.accept(token.IDENT)
-		}
-		kp := &ast.FunctionParameter{
-			Name:          &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
-			IsKeywordRest: true,
-		}
-		identifiers = append(identifiers, kp)
-		if hasDelimiters {
-			p.accept(endToken)
-		}
-		return identifiers
+		return p.parseParametersTail(identifiers, hasDelimiters, endToken)
 	}
 
 	if p.peekTokenIs(token.ASTERISK) {
