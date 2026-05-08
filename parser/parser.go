@@ -1868,6 +1868,13 @@ func (p *parser) parseSymbolLiteral() ast.Expression {
 		symbol.Value = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 		return symbol
 	}
+	// Setter symbol: :foo= -- IDENT followed by = with no space
+	if p.currentTokenOneOf(token.IDENT, token.CONST) && p.peekTokenIs(token.ASSIGN) {
+		name := p.curToken.Literal + "="
+		p.nextToken() // consume =
+		symbol.Value = &ast.Identifier{Token: p.curToken, Value: name}
+		return symbol
+	}
 	if p.currentTokenIs(token.LBRACKET) {
 		lit := "[]"
 		if p.peekTokenIs(token.RBRACKET) {
