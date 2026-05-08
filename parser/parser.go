@@ -810,6 +810,12 @@ func (p *parser) parseBlockCapture() ast.Expression {
 	if p.peekTokenOneOf(token.RPAREN, token.COMMA, token.NEWLINE, token.SEMICOLON) {
 		return capture
 	}
+	// &expr -- block-to-proc conversion on any expression
+	if p.peekTokenOneOf(token.CONST, token.AT, token.GLOBAL, token.CLASS_VAR, token.LPAREN, token.SELF) {
+		p.nextToken()
+		capture.Expr = p.parseExpression(precPrefix)
+		return capture
+	}
 	if !p.accept(token.IDENT) {
 		return nil
 	}

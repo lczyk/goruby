@@ -79,7 +79,6 @@ parse mri-tests/test_enum.rb: MRI language test - parser failure
 parse mri-tests/test_enumerator.rb: MRI language test - parser failure
 parse mri-tests/test_env.rb: MRI language test - parser failure
 parse mri-tests/test_eval.rb: MRI language test - parser failure
-parse mri-tests/test_fiber.rb: MRI language test - parser failure
 parse mri-tests/test_gc.rb: MRI language test - parser failure
 parse mri-tests/test_hash.rb: MRI language test - parser failure
 parse mri-tests/test_insns_leaf.rb: MRI language test - parser failure
@@ -106,7 +105,6 @@ parse mri-tests/test_string_memory.rb: MRI language test - parser failure
 parse mri-tests/test_struct.rb: MRI language test - parser failure
 parse mri-tests/test_super.rb: MRI language test - parser failure
 parse mri-tests/test_symbol.rb: MRI language test - parser failure
-parse mri-tests/test_thread.rb: MRI language test - parser failure
 parse mri-tests/test_variable.rb: MRI language test - parser failure
 parse mri-tests/test_vm_dump.rb: MRI language test - parser failure
 parse mri-tests/test_yjit_exit_locations.rb: MRI language test - parser failure
@@ -134,7 +132,6 @@ walk mri-tests/test_enumerator.rb: parse failed; walk skipped
 walk mri-tests/test_env.rb: parse failed; walk skipped
 walk mri-tests/test_eval.rb: parse failed; walk skipped
 walk mri-tests/test_exception.rb: parse failed; walk skipped
-walk mri-tests/test_fiber.rb: parse failed; walk skipped
 walk mri-tests/test_file_exhaustive.rb: parse failed; walk skipped
 walk mri-tests/test_gc.rb: parse failed; walk skipped
 walk mri-tests/test_hash.rb: parse failed; walk skipped
@@ -172,7 +169,6 @@ walk mri-tests/test_struct.rb: parse failed; walk skipped
 walk mri-tests/test_super.rb: parse failed; walk skipped
 walk mri-tests/test_symbol.rb: parse failed; walk skipped
 walk mri-tests/test_syntax.rb: parse failed; walk skipped
-walk mri-tests/test_thread.rb: parse failed; walk skipped
 walk mri-tests/test_time_tz.rb: parse failed; walk skipped
 walk mri-tests/test_unicode_escape.rb: parse failed; walk skipped
 walk mri-tests/test_variable.rb: parse failed; walk skipped
@@ -214,6 +210,7 @@ parse ropy/ruby/ropy.rb: parser gaps (timeout/complexity)
 parse wumpus/interpreter.rb: parser gaps
 
 walk mri-tests/test_basicinstructions.rb: walk failure (parse now passes)
+walk mri-tests/test_thread.rb: walk failure (parse now passes)
 walk brain-flak/Interpreter.rb: parse failed; walk skipped
 walk esolang-book-sources/1-2/03.rb: parse failed; walk skipped
 walk esolang-book-sources/1-4/07.rb: parse failed; walk skipped
