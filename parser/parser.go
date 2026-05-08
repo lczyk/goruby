@@ -104,6 +104,7 @@ var precedences = map[token.Type]int{
 	token.LOGICALAND:        precLogicalAnd,
 	token.LABEL:             precCallArg,
 	token.CLASS_VAR:         precCallArg,
+	token.AT:                precCallArg,
 	token.CAPTURE:           precCapture,
 	token.POWER:             precProduct,
 	token.RANGE:             precLessGreater,
@@ -353,6 +354,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerInfix(token.CAPTURE, p.parseCallArgument)
 	p.registerInfix(token.SELF, p.parseCallArgument)
 	p.registerInfix(token.LAMBDA, p.parseCallArgument)
+	p.registerInfix(token.AT, p.parseCallArgument)
 	p.registerInfix(token.LBRACE, p.parseCallBlock)
 	p.registerInfix(token.DO, p.parseCallBlock)
 	p.registerInfix(token.DOT, p.parseMethodCall)
@@ -2167,16 +2169,23 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 		return &ast.Nil{Token: p.curToken}
 	}
 	exp := p.parseExpression(precLowest)
-	for p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE) {
-		p.acceptOneOf(token.SEMICOLON, token.NEWLINE)
+	for p.currentTokenOneOf(token.SEMICOLON, token.NEWLINE) ||
+		p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE) {
+		for p.currentTokenOneOf(token.SEMICOLON, token.NEWLINE) {
+			p.nextToken()
+		}
 		for p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE) {
 			p.acceptOneOf(token.SEMICOLON, token.NEWLINE)
 		}
-		if p.peekTokenIs(token.RPAREN) {
+		if p.currentTokenIs(token.RPAREN) || p.peekTokenIs(token.RPAREN) {
 			break
 		}
-		p.nextToken()
-		exp = p.parseExpression(precLowest)
+		if !p.currentTokenOneOf(token.SEMICOLON, token.NEWLINE, token.RPAREN) {
+			exp = p.parseExpression(precLowest)
+		} else {
+			p.nextToken()
+			exp = p.parseExpression(precLowest)
+		}
 	}
 	if !p.accept(token.RPAREN) {
 		return nil
@@ -3125,8 +3134,11 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 
 	// Handle comma-separated elements with newlines between them.
 	for {
-		// Skip newlines before checking for comma or end.
+		// Skip newlines (but not end-marker tokens) before checking for comma or end.
 		for p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			if p.peekTokenOneOf(end...) {
+				break
+			}
 			p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
 		}
 		if p.peekTokenOneOf(end...) {
@@ -3138,6 +3150,9 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 		}
 		p.consume(token.COMMA)
 		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			if p.currentTokenOneOf(end...) {
+				return list
+			}
 			p.nextToken()
 		}
 		if p.currentTokenOneOf(end...) {

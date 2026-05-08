@@ -365,7 +365,6 @@ parse bouncy-lang/bouncy/instruction/reflection_command.rb: parser gaps
 parse bouncy-lang/bouncy/instruction/reflection_table.rb: parser gaps
 parse bouncy-lang/bouncy/language/interpreter.rb: parser gaps
 parse brain-flak/Interpreter.rb: parser gaps (timeout/complexity)
-parse brian-chuck/brian-chuck.rb: parser gaps
 parse esolang-book-sources/1-2/03.rb: parser gaps
 parse esolang-book-sources/1-4/07.rb: parser gaps
 parse esolang-book-sources/1-4/08.rb: parser gaps
@@ -384,7 +383,6 @@ walk bouncy-lang/bouncy/instruction/reflection_command.rb: parse failed; walk sk
 walk bouncy-lang/bouncy/instruction/reflection_table.rb: parse failed; walk skipped
 walk bouncy-lang/bouncy/language/interpreter.rb: parse failed; walk skipped
 walk brain-flak/Interpreter.rb: parse failed; walk skipped
-walk brian-chuck/brian-chuck.rb: parse failed; walk skipped
 walk esolang-book-sources/1-2/03.rb: parse failed; walk skipped
 walk esolang-book-sources/1-4/07.rb: parse failed; walk skipped
 walk esolang-book-sources/1-4/08.rb: parse failed; walk skipped
@@ -399,3 +397,7 @@ walk rake/test/test_rake_task_manager.rb: parse failed; walk skipped
 walk ropy/ruby/ropy.rb: parse failed; walk skipped
 walk wumpus/interpreter.rb: parse failed; walk skipped
 walk mri-tests/test_thread_queue.rb: nil pointer in IndexExpression.String (pre-existing)
+parse rake/test/test_rake_task_manager.rb: parser regression from AT as call arg
+walk rake/test/test_rake_task_manager.rb: parse failed; walk skipped
+parse bouncy-lang/bouncy/instruction.rb: parser regression from grouped expression fix
+walk bouncy-lang/bouncy/instruction.rb: parse failed; walk skipped
