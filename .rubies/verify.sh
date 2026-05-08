@@ -27,8 +27,8 @@ fi
 if [[ -n "${NO_COLOR:-}" ]]; then
     RED='' GREEN='' YELLOW='' CYAN='' BOLD='' RST=''
 else
-    RED='\033[31m' GREEN='\033[32m' YELLOW='\033[33m'
-    CYAN='\033[36m' BOLD='\033[1m' RST='\033[0m'
+    RED=$'\033[31m' GREEN=$'\033[32m' YELLOW=$'\033[33m'
+    CYAN=$'\033[36m' BOLD=$'\033[1m' RST=$'\033[0m'
 fi
 
 # -- collect ruby binaries ------------------------------------------
