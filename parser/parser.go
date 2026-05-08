@@ -559,8 +559,7 @@ func (p *parser) parseReturnStatement() *ast.ReturnStatement {
 	stmt := &ast.ReturnStatement{Token: p.curToken}
 	p.nextToken()
 
-	if p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
-		p.nextToken()
+	if p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF) {
 		return stmt
 	}
 
@@ -1426,6 +1425,9 @@ func (p *parser) parseYield() ast.Expression {
 		p.nextToken()
 		yield.Arguments = p.parseCallArguments(token.RPAREN)
 		p.nextToken()
+		return yield
+	}
+	if p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE) {
 		return yield
 	}
 	yield.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE, token.LBRACE, token.DO)

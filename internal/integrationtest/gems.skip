@@ -21,14 +21,12 @@ parse minitest/lib/minitest/mock.rb: parser: various edge cases (elsif in blocks
 parse minitest/lib/minitest/parallel.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse minitest/lib/minitest/pride_plugin.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse minitest/lib/minitest/spec.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
-parse minitest/lib/minitest/test_task.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse minitest/lib/minitest/test.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 
 
 parse minitest/test/minitest/test_minitest_assertions.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse minitest/test/minitest/test_minitest_mock.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse minitest/test/minitest/test_minitest_spec.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
-parse minitest/test/minitest/test_minitest_test_task.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse minitest/test/minitest/test_minitest_test.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/lib/rake/application.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 
@@ -36,7 +34,6 @@ parse rake/lib/rake/file_list.rb: parser: various edge cases (elsif in blocks, c
 
 parse rake/lib/rake/loaders/makefile.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/lib/rake/packagetask.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
-parse rake/lib/rake/promise.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/lib/rake/task.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/lib/rake/testtask.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/lib/rake/thread_pool.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
@@ -44,7 +41,6 @@ parse rake/test/support/file_creation.rb: parser: various edge cases (elsif in b
 parse rake/test/test_private_reader.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/test_rake_application_options.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/test_rake_application.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
-parse rake/test/test_rake_backtrace.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/test_rake_clean.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/test_rake_cpu_counter.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/test_rake_file_list.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
@@ -62,21 +58,18 @@ walk minitest/lib/minitest/mock.rb: parse failed; walk skipped
 walk minitest/lib/minitest/parallel.rb: parse failed; walk skipped
 walk minitest/lib/minitest/pride_plugin.rb: parse failed; walk skipped
 walk minitest/lib/minitest/spec.rb: parse failed; walk skipped
-walk minitest/lib/minitest/test_task.rb: parse failed; walk skipped
 walk minitest/lib/minitest/test.rb: parse failed; walk skipped
 
 walk minitest/test/minitest/test_minitest_assertions.rb: parse failed; walk skipped
 walk minitest/test/minitest/test_minitest_benchmark.rb: parse failed; walk skipped
 walk minitest/test/minitest/test_minitest_mock.rb: parse failed; walk skipped
 walk minitest/test/minitest/test_minitest_spec.rb: parse failed; walk skipped
-walk minitest/test/minitest/test_minitest_test_task.rb: parse failed; walk skipped
 walk minitest/test/minitest/test_minitest_test.rb: parse failed; walk skipped
 walk rake/lib/rake/application.rb: parse failed; walk skipped
 walk rake/lib/rake/file_list.rb: parse failed; walk skipped
 
 walk rake/lib/rake/loaders/makefile.rb: parse failed; walk skipped
 walk rake/lib/rake/packagetask.rb: parse failed; walk skipped
-walk rake/lib/rake/promise.rb: parse failed; walk skipped
 walk rake/lib/rake/task.rb: parse failed; walk skipped
 walk rake/lib/rake/testtask.rb: parse failed; walk skipped
 walk rake/lib/rake/thread_pool.rb: parse failed; walk skipped
@@ -84,7 +77,6 @@ walk rake/test/support/file_creation.rb: parse failed; walk skipped
 walk rake/test/test_private_reader.rb: parse failed; walk skipped
 walk rake/test/test_rake_application_options.rb: parse failed; walk skipped
 walk rake/test/test_rake_application.rb: parse failed; walk skipped
-walk rake/test/test_rake_backtrace.rb: parse failed; walk skipped
 walk rake/test/test_rake_clean.rb: parse failed; walk skipped
 walk rake/test/test_rake_cpu_counter.rb: parse failed; walk skipped
 walk rake/test/test_rake_file_list.rb: parse failed; walk skipped
@@ -168,9 +160,7 @@ parse mri-tests/test_string_memory.rb: MRI language test - parser failure
 parse mri-tests/test_struct.rb: MRI language test - parser failure
 parse mri-tests/test_super.rb: MRI language test - parser failure
 parse mri-tests/test_symbol.rb: MRI language test - parser failure
-parse mri-tests/test_system.rb: MRI language test - parser failure
 parse mri-tests/test_thread.rb: MRI language test - parser failure
-parse mri-tests/test_time.rb: MRI language test - parser failure
 parse mri-tests/test_trace.rb: MRI language test - parser failure
 parse mri-tests/test_transcode.rb: MRI language test - parser failure
 parse mri-tests/test_variable.rb: MRI language test - parser failure
@@ -267,10 +257,8 @@ walk mri-tests/test_struct.rb: parse failed; walk skipped
 walk mri-tests/test_super.rb: parse failed; walk skipped
 walk mri-tests/test_symbol.rb: parse failed; walk skipped
 walk mri-tests/test_syntax.rb: parse failed; walk skipped
-walk mri-tests/test_system.rb: parse failed; walk skipped
 walk mri-tests/test_thread.rb: parse failed; walk skipped
 walk mri-tests/test_time_tz.rb: parse failed; walk skipped
-walk mri-tests/test_time.rb: parse failed; walk skipped
 walk mri-tests/test_trace.rb: parse failed; walk skipped
 walk mri-tests/test_transcode.rb: parse failed; walk skipped
 walk mri-tests/test_unicode_escape.rb: parse failed; walk skipped
@@ -315,7 +303,6 @@ walk mri-tests/test_io.rb: parse failed; walk skipped
 
 
 # esolang/gem parse failures -- various parser gaps
-parse alice/mode.rb: parser gaps (brace-block vs hash, multiline)
 parse brain-flak/Interpreter.rb: parser gaps (timeout/complexity)
 parse esolang-book-sources/1-2/03.rb: parser gaps
 parse esolang-book-sources/1-4/07.rb: parser gaps
@@ -323,12 +310,9 @@ parse esolang-book-sources/1-4/08.rb: parser gaps
 parse esolang-book-sources/2-1/02.rb: parser gaps
 parse esolang-book-sources/starry/starry.rb: parser gaps
 parse esolang-book-sources/whitespace/lib/whitespace/vm.rb: parser gaps
-parse hexagony/hexagony.rb: parser gaps
-parse labyrinth/labyrinth.rb: parser gaps
 parse ropy/ruby/ropy.rb: parser gaps (timeout/complexity)
 parse wumpus/interpreter.rb: parser gaps
 
-walk alice/mode.rb: parse failed; walk skipped
 walk brain-flak/Interpreter.rb: parse failed; walk skipped
 walk esolang-book-sources/1-2/03.rb: parse failed; walk skipped
 walk esolang-book-sources/1-4/07.rb: parse failed; walk skipped
@@ -336,8 +320,6 @@ walk esolang-book-sources/1-4/08.rb: parse failed; walk skipped
 walk esolang-book-sources/2-1/02.rb: parse failed; walk skipped
 walk esolang-book-sources/starry/starry.rb: parse failed; walk skipped
 walk esolang-book-sources/whitespace/lib/whitespace/vm.rb: parse failed; walk skipped
-walk hexagony/hexagony.rb: parse failed; walk skipped
-walk labyrinth/labyrinth.rb: parse failed; walk skipped
 walk rake/test/test_rake_task_manager.rb: parse failed; walk skipped
 walk ropy/ruby/ropy.rb: parse failed; walk skipped
 walk wumpus/interpreter.rb: parse failed; walk skipped
@@ -349,3 +331,4 @@ parse rake/test/test_rake_task_manager.rb: parser regression from AT as call arg
 walk rake/test/test_rake_task_manager.rb: parse failed; walk skipped
 parse bouncy-lang/bouncy/instruction.rb: parser regression from grouped expression fix
 walk bouncy-lang/bouncy/instruction.rb: parse failed; walk skipped
+walk rake/test/test_rake_backtrace.rb: walk failure (parse now passes)
