@@ -673,7 +673,15 @@ func (p *parser) parseRescueBlock() *ast.RescueBlock {
 	classes := []*ast.Identifier{}
 	for p.peekTokenIs(token.CONST) {
 		p.accept(token.CONST)
-		class := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		name := p.curToken.Literal
+		for p.peekTokenIs(token.SCOPE) {
+			p.accept(token.SCOPE)
+			if !p.accept(token.CONST) {
+				break
+			}
+			name += "::" + p.curToken.Literal
+		}
+		class := &ast.Identifier{Token: p.curToken, Value: name}
 		classes = append(classes, class)
 		if p.peekTokenIs(token.COMMA) {
 			p.accept(token.COMMA)
@@ -2559,7 +2567,7 @@ func (p *parser) parseContextCallExpression(context ast.Expression) ast.Expressi
 	ident := function.(*ast.Identifier)
 	contextCallExpression.Function = ident
 
-	if p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE, token.DOT, token.SCOPE) {
+	if p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE, token.DOT, token.SCOPE, token.END) {
 		contextCallExpression.Arguments = []ast.Expression{}
 		return contextCallExpression
 	}
