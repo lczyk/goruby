@@ -2429,9 +2429,32 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	lit := &ast.FunctionLiteral{Token: p.curToken}
 
-	if !p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL, token.LBRACKET, token.AT, token.CLASS_VAR) && !p.peekToken.Type.IsOperator() && !p.peekToken.Type.IsKeyword() {
+	if !p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL, token.LBRACKET, token.AT, token.CLASS_VAR, token.LPAREN) && !p.peekToken.Type.IsOperator() && !p.peekToken.Type.IsKeyword() {
 		p.peekError(token.IDENT, token.CONST)
 		return nil
+	}
+
+	// Singleton method on parenthesized expression: def (expr).method
+	if p.peekTokenIs(token.LPAREN) {
+		p.accept(token.LPAREN)
+		p.nextToken()
+		receiver := p.parseExpression(precLowest)
+		if !p.accept(token.RPAREN) {
+			return nil
+		}
+		lit.Receiver = &ast.Identifier{Token: p.curToken, Value: receiver.String()}
+		if !p.accept(token.DOT) {
+			return nil
+		}
+		p.nextToken()
+		if p.curToken.Type.IsKeyword() || p.currentTokenOneOf(token.IDENT, token.CONST) {
+			lit.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		} else if p.currentTokenIs(token.LBRACKET) {
+			lit.Name = &ast.Identifier{Token: p.curToken, Value: p.parseBracketMethodName()}
+		} else if p.curToken.Type.IsOperator() {
+			lit.Name = p.parseOperatorMethodName()
+		}
+		goto parseParams
 	}
 
 	// Singleton method on instance/class variable: def @obj.method
@@ -2490,6 +2513,7 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 		}
 	}
 
+parseParams:
 	lit.Parameters = p.parseParameters(token.LPAREN, token.RPAREN)
 
 	if p.currentTokenOneOf(token.CAPTURE, token.AND) {
@@ -2508,28 +2532,6 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 				p.acceptOneOf(token.RPAREN)
 			}
 		}
-	}
-
-	inspect := func(n ast.Node) bool {
-		x, ok := n.(*ast.Assignment)
-		if !ok {
-			return true
-		}
-		switch left := x.Left.(type) {
-		case *ast.Identifier:
-			if left.IsConstant() {
-				p.errors = append(p.errors, fmt.Errorf("dynamic constant assignment"))
-			}
-		case ast.ExpressionList:
-			for _, expr := range left {
-				if ident, ok := expr.(*ast.Identifier); ok {
-					if ident.IsConstant() {
-						p.errors = append(p.errors, fmt.Errorf("dynamic constant assignment"))
-					}
-				}
-			}
-		}
-		return true
 	}
 
 	// Endless method: def name = expr (Ruby 3.0+)
@@ -2552,9 +2554,6 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 			}
 		}
 		lit.EndToken = p.curToken
-		if lit.Body != nil {
-			ast.Inspect(lit.Body, inspect)
-		}
 		return lit
 	}
 
@@ -2580,9 +2579,6 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 		return nil
 	}
 	lit.EndToken = p.curToken
-	if lit.Body != nil {
-		ast.Inspect(lit.Body, inspect)
-	}
 	return lit
 }
 
