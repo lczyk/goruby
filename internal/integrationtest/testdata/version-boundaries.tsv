@@ -1,0 +1,20 @@
+# version-boundary fixture metadata
+# format: min_version<TAB>fixture_path (relative to testdata/)
+# each fixture must parse successfully at min_version and above,
+# and must fail to parse below min_version.
+#
+# "any" means the fixture is valid under all known ruby versions
+# (syntax is unchanged, but AST semantics differ by version).
+
+1.9	ruby-extra/parser/version-boundaries/ruby_1_9.rb
+2.0	ruby-extra/parser/version-boundaries/ruby_2_0.rb
+2.1	ruby-extra/parser/version-boundaries/ruby_2_1.rb
+2.3	ruby-extra/parser/version-boundaries/ruby_2_3.rb
+2.5	ruby-extra/parser/version-boundaries/ruby_2_5.rb
+2.6	ruby-extra/parser/version-boundaries/ruby_2_6.rb
+2.7	ruby-extra/parser/version-boundaries/ruby_2_7.rb
+3.0	ruby-extra/parser/version-boundaries/ruby_3_0.rb
+3.1	ruby-extra/parser/version-boundaries/ruby_3_1.rb
+3.2	ruby-extra/parser/version-boundaries/ruby_3_2.rb
+any	ruby-extra/parser/version-boundaries/ruby_3_4.rb
+4.0	ruby-extra/parser/version-boundaries/ruby_4_0.rb

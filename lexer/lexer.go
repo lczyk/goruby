@@ -32,12 +32,24 @@ type interpState struct {
 	braceDepth   int     // outer braceDepth, restored on pop
 }
 
+// Option configures the lexer.
+type Option func(*Lexer)
+
+// WithVersion sets the target ruby version. The lexer will reject syntax
+// introduced after this version. Zero value (default) means latest.
+func WithVersion(v token.RubyVersion) Option {
+	return func(l *Lexer) { l.version = v }
+}
+
 // New returns a Lexer instance ready to process the given input.
-func New(input string) *Lexer {
+func New(input string, opts ...Option) *Lexer {
 	l := &Lexer{
 		input:  input,
 		state:  startLexer,
 		tokens: make(chan token.Token, 16),
+	}
+	for _, o := range opts {
+		o(l)
 	}
 	return l
 }
@@ -52,6 +64,7 @@ type Lexer struct {
 	tokens        chan token.Token // channel of scanned tokens.
 	lastToken     token.Token      // lastToken stores the last token emitted by the lexer
 	hadWhitespace bool             // true if whitespace was skipped before current token
+	version       token.RubyVersion
 
 	// Heredoc state.
 	heredocDelim    string

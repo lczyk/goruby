@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 
 	"github.com/lczyk/goruby/ast"
+	"github.com/lczyk/goruby/token"
 	"github.com/pkg/errors"
 )
 
@@ -56,6 +57,15 @@ var parseModes = map[string]Mode{
 	"AllErrors":     AllErrors,
 }
 
+// Option configures the parser.
+type Option func(*parser)
+
+// WithVersion sets the target ruby version. The parser will reject syntax
+// introduced after this version. Zero value (default) means latest.
+func WithVersion(v token.RubyVersion) Option {
+	return func(p *parser) { p.version = v }
+}
+
 // ParseFile parses the source code of a single Ruby source file and returns
 // the corresponding ast.Program node. The source code may be provided via
 // the filename of the source file, or via the src parameter.
@@ -72,7 +82,7 @@ var parseModes = map[string]Mode{
 // If the source couldn't be read or the source was read but syntax
 // errors were found, the returned AST is nil and the error
 // indicates the specific failure.
-func ParseFile(fset *gotoken.FileSet, filename string, src interface{}, mode Mode) (*ast.Program, error) {
+func ParseFile(fset *gotoken.FileSet, filename string, src interface{}, mode Mode, opts ...Option) (*ast.Program, error) {
 	if fset == nil {
 		panic("parser.ParseFile: no token.FileSet provided (fset == nil)")
 	}
@@ -84,6 +94,9 @@ func ParseFile(fset *gotoken.FileSet, filename string, src interface{}, mode Mod
 	}
 
 	var p parser
+	for _, o := range opts {
+		o(&p)
+	}
 	p.init(fset, filename, text, mode)
 
 	return p.ParseProgram()

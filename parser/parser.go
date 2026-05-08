@@ -161,9 +161,10 @@ var defaultExpressionTerminators = []token.Type{
 // A parser parses the token emitted by the provided lexer.Lexer and returns an
 // AST describing the parsed program.
 type parser struct {
-	file   *gotoken.File
-	l      *lexer.Lexer
-	errors []error
+	file    *gotoken.File
+	l       *lexer.Lexer
+	errors  []error
+	version token.RubyVersion
 
 	// Tracing/debugging
 	mode   Mode // parsing mode
@@ -182,7 +183,7 @@ type parser struct {
 func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode Mode) {
 	p.file = fset.AddFile(filename, -1, len(src))
 
-	p.l = lexer.New(string(src))
+	p.l = lexer.New(string(src), lexer.WithVersion(p.version))
 	p.errors = []error{}
 
 	p.mode = mode
