@@ -464,6 +464,81 @@ func TestLexerBacktick(t *testing.T) {
 	}
 }
 
+func TestLexerEscapesEdgeCases(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []struct {
+			typ     token.Type
+			literal string
+		}
+	}{
+		{
+			name:  "\\oNNN octal without braces",
+			input: "\"\\o101\"",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "\\o101"},
+				{token.STRING_END, "\""},
+			},
+		},
+		{
+			name:  "\\u without braces in string",
+			input: "\"\\u2665\"",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "\\u2665"},
+				{token.STRING_END, "\""},
+			},
+		},
+		{
+			name:  "escaped newline in single-quote string",
+			input: "'line \\\n'",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING, "line \\\n"},
+			},
+		},
+		{
+			name:  "multiple escapes in string",
+			input: "\"\\n\\t\\r\"",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.STRING_BEG, ""},
+				{token.STRING_CONTENT, "\\n\\t\\r"},
+				{token.STRING_END, "\""},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := New(tt.input)
+			for i, exp := range tt.expected {
+				if !l.HasNext() {
+					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				}
+				tok := l.NextToken()
+				if tok.Type != exp.typ {
+					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
+				}
+				if tok.Literal != exp.literal {
+					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
+				}
+			}
+		})
+	}
+}
+
 func TestLexerNumbers(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -663,6 +738,79 @@ func TestLexerNumbers(t *testing.T) {
 				{token.INT, "0"},
 				{token.DOT, "."},
 				{token.IDENT, "method"},
+			},
+		},
+		{
+			name:  "float with exponent and rational suffix",
+			input: "1.5e10r",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.FLOAT, "1.5e10r"},
+			},
+		},
+		{
+			name:  "float with exponent and complex suffix",
+			input: "1.5e10i",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.FLOAT, "1.5e10i"},
+			},
+		},
+		{
+			name:  "float with underscores",
+			input: "1_234.567_890",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.FLOAT, "1_234.567_890"},
+			},
+		},
+		{
+			name:  "integer leading zero then newline",
+			input: "0\nx",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.INT, "0"},
+				{token.NEWLINE, "\n"},
+				{token.IDENT, "x"},
+			},
+		},
+		{
+			name:  "float exponent then non-digit is ident",
+			input: "1ex",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.INT, "1"},
+				{token.IDENT, "ex"},
+			},
+		},
+		{
+			name:  "hex with underscores",
+			input: "0xff_ff",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.INT, "0xff_ff"},
+			},
+		},
+		{
+			name:  "octal with underscores",
+			input: "0o77_77",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.INT, "0o77_77"},
 			},
 		},
 	}

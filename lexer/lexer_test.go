@@ -983,6 +983,333 @@ func TestLexerMultilineLiterals(t *testing.T) {
 	}
 }
 
+func TestLexerRegexInterpolation(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []struct {
+			typ     token.Type
+			literal string
+		}
+	}{
+		{
+			name:  "regex with #$var",
+			input: "/foo #$bar/",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.REGEX_BEG, ""},
+				{token.STRING_CONTENT, "foo "},
+				{token.GLOBAL, "$bar"},
+				{token.REGEX_END, ""},
+			},
+		},
+		{
+			name:  "regex with #@ivar",
+			input: "/x #@foo/",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.REGEX_BEG, ""},
+				{token.STRING_CONTENT, "x "},
+				{token.AT, "@"},
+				{token.IDENT, "foo"},
+				{token.REGEX_END, ""},
+			},
+		},
+		{
+			name:  "regex with all flags",
+			input: "/pattern/imxones",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.REGEX_BEG, ""},
+				{token.STRING_CONTENT, "pattern"},
+				{token.REGEX_END, "imxones"},
+			},
+		},
+		{
+			name:  "regex after comma",
+			input: "x, /foo/",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "x"},
+				{token.COMMA, ","},
+				{token.REGEX_BEG, ""},
+				{token.STRING_CONTENT, "foo"},
+				{token.REGEX_END, ""},
+			},
+		},
+		{
+			name:  "regex after then",
+			input: "if x then /foo/ end",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IF, "if"},
+				{token.IDENT, "x"},
+				{token.THEN, "then"},
+				{token.REGEX_BEG, ""},
+				{token.STRING_CONTENT, "foo"},
+				{token.REGEX_END, ""},
+				{token.END, "end"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := New(tt.input)
+			for i, exp := range tt.expected {
+				if !l.HasNext() {
+					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				}
+				tok := l.NextToken()
+				if tok.Type != exp.typ {
+					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
+				}
+				if tok.Literal != exp.literal {
+					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
+				}
+			}
+		})
+	}
+}
+
+func TestLexerGlobalVariables(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []struct {
+			typ     token.Type
+			literal string
+		}
+	}{
+		{
+			name:  "digit global $0",
+			input: "$0",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.GLOBAL, "$0"},
+			},
+		},
+		{
+			name:  "digit global $1",
+			input: "$1",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.GLOBAL, "$1"},
+			},
+		},
+		{
+			name:  "punct global $.",
+			input: "$.",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.GLOBAL, "$."},
+			},
+		},
+		{
+			name:  "punct global $?",
+			input: "$?",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.GLOBAL, "$?"},
+			},
+		},
+		{
+			name:  "punct global $!",
+			input: "$!",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.GLOBAL, "$!"},
+			},
+		},
+		{
+			name:  "punct global $~",
+			input: "$~",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.GLOBAL, "$~"},
+			},
+		},
+		{
+			name:  "punct global $:",
+			input: "$:",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.GLOBAL, "$:"},
+			},
+		},
+		{
+			name:  "punct global $/",
+			input: "$/",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.GLOBAL, "$/"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := New(tt.input)
+			for i, exp := range tt.expected {
+				if !l.HasNext() {
+					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				}
+				tok := l.NextToken()
+				if tok.Type != exp.typ {
+					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
+				}
+				if tok.Literal != exp.literal {
+					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
+				}
+			}
+		})
+	}
+}
+
+func TestLexerLineContinuation(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []struct {
+			typ     token.Type
+			literal string
+		}
+	}{
+		{
+			name:  "backslash-newline line continuation",
+			input: "x = 1 \\\n+ 2",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "x"},
+				{token.ASSIGN, "="},
+				{token.INT, "1"},
+				{token.PLUS, "+"},
+				{token.INT, "2"},
+			},
+		},
+		{
+			name:  "leading dot on newline",
+			input: "foo\n  .bar",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "foo"},
+				{token.DOT, "."},
+				{token.IDENT, "bar"},
+			},
+		},
+		{
+			name:  "leading lonely on newline",
+			input: "foo\n  &.bar",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "foo"},
+				{token.LONELY, "&."},
+				{token.IDENT, "bar"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := New(tt.input)
+			for i, exp := range tt.expected {
+				if !l.HasNext() {
+					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				}
+				tok := l.NextToken()
+				if tok.Type != exp.typ {
+					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
+				}
+				if tok.Literal != exp.literal {
+					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
+				}
+			}
+		})
+	}
+}
+
+func TestLexerEndMarker(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []struct {
+			typ     token.Type
+			literal string
+		}
+	}{
+		{
+			name:  "__END__ at line start consumes rest",
+			input: "x = 1\n__END__\nrest of file",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "x"},
+				{token.ASSIGN, "="},
+				{token.INT, "1"},
+				{token.NEWLINE, "\n"},
+				{token.EOF, "__END__\nrest of file"},
+			},
+		},
+		{
+			name:  "__END__ not at line start is ident",
+			input: "x__END__",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "x__END__"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := New(tt.input)
+			for i, exp := range tt.expected {
+				if !l.HasNext() {
+					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				}
+				tok := l.NextToken()
+				if tok.Type != exp.typ {
+					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
+				}
+				if tok.Literal != exp.literal {
+					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
+				}
+			}
+		})
+	}
+}
+
 func TestLexerPercentLiteral(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -992,6 +1319,34 @@ func TestLexerPercentLiteral(t *testing.T) {
 			literal string
 		}
 	}{
+		{
+			name:  "bare % after space triggers isMethodCallTarget",
+			input: "foo %(text)",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "foo"},
+				{token.STRING_BEG, "Q"},
+				{token.STRING_CONTENT, "text"},
+				{token.STRING_END, ""},
+			},
+		},
+		{
+			name:  "bare % after rparen via isMethodCallTarget path",
+			input: "foo() %(text)",
+			expected: []struct {
+				typ     token.Type
+				literal string
+			}{
+				{token.IDENT, "foo"},
+				{token.LPAREN, "("},
+				{token.RPAREN, ")"},
+				{token.STRING_BEG, "Q"},
+				{token.STRING_CONTENT, "text"},
+				{token.STRING_END, ""},
+			},
+		},
 		{
 			name:  "%q literal string",
 			input: "%q{hello world}",
