@@ -595,10 +595,35 @@ func (p *parser) parseReturnStatement() *ast.ReturnStatement {
 	return stmt
 }
 
+var bareCallArgTokens = []token.Type{
+	token.TRUE, token.FALSE, token.NIL,
+	token.INT, token.FLOAT,
+	token.SELF,
+}
+
 func (p *parser) parseExpressionStatement() *ast.ExpressionStatement {
 	defer trace.TraceCtx(p.ctx)()
 	stmt := &ast.ExpressionStatement{Token: p.curToken}
 	stmt.Expression = p.parseExpression(precLowest)
+	// Bare function call with literal args: `foo true`, `bar 42`, etc.
+	if ident, ok := stmt.Expression.(*ast.Identifier); ok && p.peekTokenOneOf(bareCallArgTokens...) {
+		exp := &ast.ContextCallExpression{Token: ident.Token, Function: ident}
+		p.nextToken()
+		exp.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE, token.LBRACE, token.DO)
+		if p.peekTokenOneOf(token.LBRACE, token.DO) {
+			p.acceptOneOf(token.LBRACE, token.DO)
+			exp.Block = p.parseBlock().(*ast.BlockExpression)
+		}
+		stmt.Expression = exp
+		// Re-enter the expression loop for modifier if/unless/while/until.
+		if p.peekTokenOneOf(token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.RESCUE) {
+			p.nextToken()
+			infix := p.infixParseFns[p.curToken.Type]
+			if infix != nil {
+				stmt.Expression = infix(stmt.Expression)
+			}
+		}
+	}
 	for p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE) {
 		p.nextToken()
 		if p.peekTokenIs(token.DOT) {
@@ -2984,9 +3009,16 @@ func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {
 	case *ast.SuperExpression:
 		fn.Block = exp.Block
 		return fn
+	case *ast.ContextCallExpression:
+		fn.Block = exp.Block
+		return fn
 	case *ast.InfixExpression:
 		ident, ok := fn.Right.(*ast.Identifier)
 		if !ok {
+			if rcc, ok := fn.Right.(*ast.ContextCallExpression); ok {
+				rcc.Block = exp.Block
+				return fn
+			}
 			break
 		}
 		exp.Function = ident

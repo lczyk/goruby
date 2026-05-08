@@ -41,7 +41,6 @@ parse rake/test/support/file_creation.rb: parser: various edge cases (elsif in b
 parse rake/test/test_private_reader.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/test_rake_application_options.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/test_rake_application.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
-parse rake/test/test_rake_clean.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/test_rake_cpu_counter.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/test_rake_file_list.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/test_rake_file_utils.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
@@ -77,7 +76,6 @@ walk rake/test/support/file_creation.rb: parse failed; walk skipped
 walk rake/test/test_private_reader.rb: parse failed; walk skipped
 walk rake/test/test_rake_application_options.rb: parse failed; walk skipped
 walk rake/test/test_rake_application.rb: parse failed; walk skipped
-walk rake/test/test_rake_clean.rb: parse failed; walk skipped
 walk rake/test/test_rake_cpu_counter.rb: parse failed; walk skipped
 walk rake/test/test_rake_file_list.rb: parse failed; walk skipped
 walk rake/test/test_rake_file_utils.rb: parse failed; walk skipped
