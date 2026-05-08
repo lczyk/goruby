@@ -1,34 +1,34 @@
 # Ruby gems used as integration-test fixtures for lex/parse smoke tests.
 # Fetched into testdata/gems/<name> by testdata/fetch_gems.sh (also `make gems`).
-# Format: name<TAB>git-url<TAB>ref      (ref = tag, branch, or commit sha)
+# Format: name<TAB>git-url<TAB>sha     (pinned; original ref in comment)
 # Lines starting with '#' and blank lines are ignored.
 
-minitest	https://github.com/minitest/minitest.git	v5.25.4
-rake	https://github.com/ruby/rake.git	v13.2.1
-pyramid-scheme	https://github.com/ConorOBrien-Foxx/Pyramid-Scheme.git	master
+minitest	https://github.com/minitest/minitest.git	d84437f874b42be1c3d46b81640904144fc7dac4
+rake	https://github.com/ruby/rake.git	1f0aa1682c53b756393c1eea2c3e7a921cbde9f4
+pyramid-scheme	https://github.com/ConorOBrien-Foxx/Pyramid-Scheme.git	fd183d296f08e0cba8bf55da907697eaf412f6a7
 
 # esolang interpreters written in ruby (esolangs.org)
 # -- martin ender's reference implementations
-hexagony	https://github.com/m-ender/hexagony.git	master
-labyrinth	https://github.com/m-ender/labyrinth.git	master
-stackcats	https://github.com/m-ender/stackcats.git	master
-alice	https://github.com/m-ender/alice.git	master
-brian-chuck	https://github.com/m-ender/brian-chuck.git	master
-wumpus	https://github.com/m-ender/wumpus.git	master
-pada	https://github.com/m-ender/pada.git	master
+hexagony	https://github.com/m-ender/hexagony.git	b674f59a0c9e10c1867bd9cf34f676ba89f0fc1c
+labyrinth	https://github.com/m-ender/labyrinth.git	d3cc04f398594549c1c85c8116ef146d461a5b6f
+stackcats	https://github.com/m-ender/stackcats.git	7109b1b6aa3953edcc2c1b40ab88f0bbc6dc7143
+alice	https://github.com/m-ender/alice.git	f537d670be54e27b6332351f7f11efcc72e08b34
+brian-chuck	https://github.com/m-ender/brian-chuck.git	79a63cc4a0670f711c0482ff033caef3c4c1cfa7
+wumpus	https://github.com/m-ender/wumpus.git	5c4989038d74c18686c9817864537eec1c2aab93
+pada	https://github.com/m-ender/pada.git	f9b7df3726bfb92db58a31f9d5c711272c892edc
 # -- other esolang ruby interpreters
-bouncy-lang	https://github.com/Mercerenies/bouncy-lang.git	master
-esolang-book-sources	https://github.com/yhara/esolang-book-sources.git	master
-brain-flak	https://github.com/DJMcMayhem/Brain-Flak.git	master
-hq9f-ruby	https://github.com/wobh/HQ9F-Ruby.git	master
-thue	https://github.com/catseye/Thue.git	master
-ropy	https://github.com/tormaroe/ropy.git	master
-mariolang-rb	https://github.com/mynery/mariolang.rb.git	master
-eek-esolang	https://github.com/ZeroPlayerRodent/Eek-Esolang.git	main
-puberty	https://github.com/izumariu/puberty.git	master
-forter	https://github.com/judofyr/forter.git	master
-replace-esolang	https://github.com/groowyCZ/Replace-esolang-interpreters.git	master
-bangyen-esolangs	https://github.com/bangyen/esolangs.git	main
-kaiser-ruby	https://github.com/marcinruszkiewicz/kaiser-ruby.git	master
-pan-unicode-lang	https://github.com/Mercerenies/pan-unicode-lang.git	master
-brainfint	https://github.com/quocl/brainfint.git	master
+bouncy-lang	https://github.com/Mercerenies/bouncy-lang.git	b4e0f4c02a1c8a2523539b026ed69cb2d8a6d73a
+esolang-book-sources	https://github.com/yhara/esolang-book-sources.git	ace59c4f9b8fe21ea187105845ce7f7958f9c5da
+brain-flak	https://github.com/DJMcMayhem/Brain-Flak.git	9665dec1bd07aadbfd5889ff742d5bec6d19d031
+hq9f-ruby	https://github.com/wobh/HQ9F-Ruby.git	39b37cfc2533ca430d16bf46876c011226b5f735
+thue	https://github.com/catseye/Thue.git	fe374a58c4529d8e7a9ff2394368c048045b6f24
+ropy	https://github.com/tormaroe/ropy.git	95a27abd4838687d9e11418a16cfcaa19b34f4e8
+mariolang-rb	https://github.com/mynery/mariolang.rb.git	27231ae07ab7b6f0877ad2e0af87495301c6e585
+eek-esolang	https://github.com/ZeroPlayerRodent/Eek-Esolang.git	5081bea38cb4d56f5ea9ac7f4805a7df3f27af71
+puberty	https://github.com/izumariu/puberty.git	c5df3b28be54d9b913d546b87ba3ac5db10c499d
+forter	https://github.com/judofyr/forter.git	8ac33af2120e5ea8fe7780b6cfa1c1755fb919cd
+replace-esolang	https://github.com/groowyCZ/Replace-esolang-interpreters.git	0e81908b83743022d3536475aacc57f6a246f4ad
+bangyen-esolangs	https://github.com/bangyen/esolangs.git	47cb88ac15f5bbdf5c5fae6ac2d799dcd5022d4b
+kaiser-ruby	https://github.com/marcinruszkiewicz/kaiser-ruby.git	56d4f31d616017e9cb7e7d39be21ec0de3eec5c0
+pan-unicode-lang	https://github.com/Mercerenies/pan-unicode-lang.git	a6710aa101499155aa216afca0b401805c2612b4
+brainfint	https://github.com/quocl/brainfint.git	aa093a57ddf223cf669b8406782899c18d6ef5b9

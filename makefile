@@ -6,9 +6,14 @@ help:  ## Show this help
 	@echo "Available targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
+GOTEST := $(shell command -v gotest 2>/dev/null || echo go test)
+
+.PHONY: unit
+unit:  ## Run unit tests with race detection
+	$(GOTEST) -race -timeout 2m ./...
+
 .PHONY: test
-test:  ## Run unit tests with race detection
-	go test -race ./...
+test: unit integration  ## Run all tests (unit + integration)
 
 .PHONY: lint
 lint:  ## go vet + gofmt check (no writes)
@@ -52,7 +57,7 @@ gems-clean:  ## Remove fetched gem fixtures
 
 .PHONY: integration
 integration: gems  ## Run integration smoke suite (requires fetched fixtures)
-	go test -tags=integration -race -timeout 10m ./internal/integrationtest/...
+	$(GOTEST) -tags=integration -race -timeout 10m ./internal/integrationtest/...
 
 .PHONY: rubies
 rubies:  ## Fetch MRI ruby source fixtures for multi-version smoke tests

@@ -5617,7 +5617,7 @@ var rubyExtraExpectFail = map[string]string{
 }
 
 func TestRubyExtraFixtures(t *testing.T) {
-	extraDir := "../ruby-extra"
+	extraDir := "../internal/integrationtest/testdata/ruby-extra/parser"
 	entries, err := os.ReadDir(extraDir)
 	if err != nil {
 		t.Fatalf("cannot read ruby-extra dir: %v", err)
