@@ -298,6 +298,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerPrefix(token.KW_UNDEF, p.parseUndef)
 	p.registerPrefix(token.KW_NOT, p.parsePrefixExpression)
 	p.registerPrefix(token.KW_DEFINED, p.parseDefinedExpression)
+	p.registerPrefix(token.RETURN, p.parseReturnExpression)
 	p.registerPrefix(token.KW_ALIAS, p.parseAlias)
 	p.registerPrefix(token.LAMBDA, p.parseLambda)
 	p.registerPrefix(token.RANGE, p.parseBeginlessRange)
@@ -552,6 +553,15 @@ func (p *parser) parseStatement() ast.Statement {
 	default:
 		return p.parseExpressionStatement()
 	}
+}
+
+func (p *parser) parseReturnExpression() ast.Expression {
+	jmp := &ast.JumpExpression{Token: p.curToken}
+	if !p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE, token.RPAREN, token.RBRACKET) {
+		p.nextToken()
+		jmp.Value = p.parseExpression(precLowest)
+	}
+	return jmp
 }
 
 func (p *parser) parseReturnStatement() *ast.ReturnStatement {
@@ -1504,6 +1514,9 @@ func (p *parser) parseYield() ast.Expression {
 func (p *parser) parseSuper() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	sup := &ast.SuperExpression{Token: p.curToken}
+	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE, token.RPAREN, token.RBRACKET) {
+		return sup
+	}
 	p.nextToken()
 	if p.currentTokenOneOf(token.LBRACE, token.DO) {
 		sup.Block = p.parseBlockExpr()
@@ -2849,6 +2862,11 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 
 	for p.peekTokenIs(token.COMMA) {
 		p.accept(token.COMMA)
+		// Trailing comma: |a,| or (a,)
+		if hasDelimiters && p.peekTokenIs(endToken) {
+			p.accept(endToken)
+			return identifiers
+		}
 		if p.peekTokenIs(token.POWER) {
 			p.accept(token.POWER)
 			if p.peekTokenIs(token.NIL) {
