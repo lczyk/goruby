@@ -33,15 +33,9 @@ parse rake/lib/rake/task.rb: parser: various edge cases (elsif in blocks, commen
 parse rake/lib/rake/thread_pool.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/support/file_creation.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/test_private_reader.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
-parse rake/test/test_rake_application_options.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/test_rake_application.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
-parse rake/test/test_rake_cpu_counter.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
-parse rake/test/test_rake_file_list.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/test_rake_file_utils.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
-parse rake/test/test_rake_path_map_partial.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/test_rake_rules.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
-parse rake/test/test_rake_task_argument_parsing.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
-parse rake/test/test_rake_top_level_functions.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 
 walk minitest/lib/minitest.rb: parse failed; walk skipped
 walk minitest/lib/minitest/assertions.rb: parse failed; walk skipped
@@ -62,19 +56,13 @@ walk rake/lib/rake/task.rb: parse failed; walk skipped
 walk rake/lib/rake/thread_pool.rb: parse failed; walk skipped
 walk rake/test/support/file_creation.rb: parse failed; walk skipped
 walk rake/test/test_private_reader.rb: parse failed; walk skipped
-walk rake/test/test_rake_application_options.rb: parse failed; walk skipped
 walk rake/test/test_rake_application.rb: parse failed; walk skipped
-walk rake/test/test_rake_cpu_counter.rb: parse failed; walk skipped
-walk rake/test/test_rake_file_list.rb: parse failed; walk skipped
 walk rake/test/test_rake_file_utils.rb: parse failed; walk skipped
-walk rake/test/test_rake_path_map_partial.rb: parse failed; walk skipped
 walk rake/test/test_rake_rules.rb: parse failed; walk skipped
-walk rake/test/test_rake_task_argument_parsing.rb: parse failed; walk skipped
 walk rake/test/test_rake_task_arguments.rb: parse failed; walk skipped
 walk rake/test/test_rake_task_with_arguments.rb: parse failed; walk skipped
 walk rake/test/test_rake_task.rb: parse failed; walk skipped
 walk rake/test/test_rake_test_task.rb: parse failed; walk skipped
-walk rake/test/test_rake_top_level_functions.rb: parse failed; walk skipped
 
 # Ruby language tests from MRI test/ruby
 #
@@ -134,7 +122,6 @@ parse mri-tests/test_rational.rb: MRI language test - parser failure
 parse mri-tests/test_readpartial.rb: MRI language test - parser failure
 parse mri-tests/test_refinement.rb: MRI language test - parser failure
 parse mri-tests/test_rubyoptions.rb: MRI language test - parser failure
-parse mri-tests/test_set.rb: MRI language test - parser failure
 parse mri-tests/test_settracefunc.rb: MRI language test - parser failure
 parse mri-tests/test_stack.rb: MRI language test - parser failure
 parse mri-tests/test_string_memory.rb: MRI language test - parser failure
@@ -218,7 +205,6 @@ walk mri-tests/test_refinement.rb: parse failed; walk skipped
 walk mri-tests/test_regexp.rb: parse failed; walk skipped
 walk mri-tests/test_require.rb: parse failed; walk skipped
 walk mri-tests/test_rubyoptions.rb: parse failed; walk skipped
-walk mri-tests/test_set.rb: parse failed; walk skipped
 walk mri-tests/test_settracefunc.rb: parse failed; walk skipped
 walk mri-tests/test_stack.rb: parse failed; walk skipped
 walk mri-tests/test_string_memory.rb: parse failed; walk skipped
@@ -299,3 +285,6 @@ walk rake/test/test_rake_task_manager.rb: walk failure (parse now passes)
 walk mri-tests/test_inlinecache.rb: walk failure (parse now passes)
 walk mri-tests/test_weakkeymap.rb: walk failure (parse now passes)
 walk mri-tests/test_box.rb: walk failure (parse now passes)
+walk mri-tests/test_set.rb: walk failure (parse now passes)
+walk rake/test/test_rake_task_argument_parsing.rb: walk failure (parse now passes)
+walk rake/test/test_rake_file_list.rb: walk failure (parse now passes)

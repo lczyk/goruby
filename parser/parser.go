@@ -2118,6 +2118,9 @@ func (p *parser) parseIndexExpression(left ast.Expression) ast.Expression {
 		}
 	}
 
+	for p.peekTokenIs(token.NEWLINE) {
+		p.nextToken()
+	}
 	// Endless range like x[3..] leaves ] as curToken.
 	if p.currentTokenIs(token.RBRACKET) {
 		if p.peekTokenIs(token.RBRACKET) {
@@ -2412,12 +2415,31 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	lit := &ast.FunctionLiteral{Token: p.curToken}
 
-	if !p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL, token.LBRACKET) && !p.peekToken.Type.IsOperator() {
+	if !p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL, token.LBRACKET, token.AT, token.CLASS_VAR) && !p.peekToken.Type.IsOperator() {
 		p.peekError(token.IDENT, token.CONST)
 		return nil
 	}
 
-	if p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL) {
+	// Singleton method on instance/class variable: def @obj.method
+	if p.peekTokenOneOf(token.AT, token.CLASS_VAR) {
+		p.nextToken()
+		ivar := p.parseInstanceVariable()
+		if ivar == nil {
+			return nil
+		}
+		lit.Receiver = &ast.Identifier{Token: p.curToken, Value: ivar.String()}
+		if !p.accept(token.DOT) {
+			return nil
+		}
+		p.nextToken()
+		if p.curToken.Type.IsKeyword() || p.currentTokenOneOf(token.IDENT, token.CONST) {
+			lit.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		} else if p.currentTokenIs(token.LBRACKET) {
+			lit.Name = &ast.Identifier{Token: p.curToken, Value: p.parseBracketMethodName()}
+		} else if p.curToken.Type.IsOperator() {
+			lit.Name = p.parseOperatorMethodName()
+		}
+	} else if p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL) {
 		p.acceptOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL)
 		if p.peekTokenIs(token.DOT) {
 			lit.Receiver = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
