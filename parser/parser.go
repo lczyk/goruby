@@ -1594,6 +1594,9 @@ func (p *parser) parseRightwardAssignment(left ast.Expression) ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	tok := p.curToken
 	p.nextToken()
+	for p.currentTokenIs(token.NEWLINE) {
+		p.nextToken()
+	}
 	p.inPattern = true
 	right := p.parsePattern()
 	p.inPattern = false
