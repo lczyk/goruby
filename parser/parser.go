@@ -1824,6 +1824,18 @@ func (p *parser) parseInterpolatedRegex() ast.Expression {
 				return nil
 			}
 			p.nextToken()
+		case token.AT:
+			exp := p.parseInstanceVariable()
+			if exp != nil {
+				parts = append(parts, exp)
+			}
+		case token.CLASS_VAR:
+			exp := p.parseClassVariable()
+			if exp != nil {
+				parts = append(parts, exp)
+			}
+		case token.GLOBAL:
+			parts = append(parts, p.parseGlobal())
 		default:
 			p.expectError(token.STRING_CONTENT, token.EMBEXPR_BEG, token.REGEX_END)
 			return nil
