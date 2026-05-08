@@ -557,7 +557,7 @@ func (p *parser) parseStatement() ast.Statement {
 
 func (p *parser) parseReturnExpression() ast.Expression {
 	jmp := &ast.JumpExpression{Token: p.curToken}
-	if !p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE, token.RPAREN, token.RBRACKET, token.EMBEXPR_END) {
+	if !p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE, token.RPAREN, token.RBRACKET, token.EMBEXPR_END, token.IF, token.UNLESS, token.WHILE, token.UNTIL) {
 		p.nextToken()
 		jmp.Value = p.parseExpression(precLowest)
 	}
@@ -569,7 +569,7 @@ func (p *parser) parseReturnStatement() *ast.ReturnStatement {
 	stmt := &ast.ReturnStatement{Token: p.curToken}
 	p.nextToken()
 
-	if p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF) {
+	if p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.IF, token.UNLESS, token.WHILE, token.UNTIL) {
 		return stmt
 	}
 
@@ -1512,7 +1512,7 @@ func (p *parser) parseYield() ast.Expression {
 func (p *parser) parseSuper() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	sup := &ast.SuperExpression{Token: p.curToken}
-	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE, token.RPAREN, token.RBRACKET, token.EMBEXPR_END) {
+	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE, token.RPAREN, token.RBRACKET, token.EMBEXPR_END, token.DOT, token.LONELY) {
 		return sup
 	}
 	p.nextToken()
