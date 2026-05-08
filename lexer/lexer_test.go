@@ -1661,3 +1661,28 @@ func TestVersionGating(t *testing.T) {
 		}
 	})
 }
+
+func TestGlobalDashVariables(t *testing.T) {
+	tests := []struct {
+		input   string
+		literal string
+	}{
+		{"$-w", "$-w"},
+		{"$-v", "$-v"},
+		{"$-d", "$-d"},
+		{"$-0", "$-0"},
+		{"$-K", "$-K"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			l := New(tt.input)
+			tok := l.NextToken()
+			if tok.Type != token.GLOBAL {
+				t.Errorf("expected GLOBAL, got %s", tok.Type)
+			}
+			if tok.Literal != tt.literal {
+				t.Errorf("expected literal %q, got %q", tt.literal, tok.Literal)
+			}
+		})
+	}
+}

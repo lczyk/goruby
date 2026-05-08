@@ -1065,6 +1065,13 @@ func lexGlobal(l *Lexer) StateFn {
 	// Single-character punctuation or digit globals: $., $?, $!, $~, $;, $0, etc.
 	// Must check BEFORE isExpressionDelimiter since ; is both punct and delim.
 	if isGlobalPunct(r) || isDigit(r) {
+		// $-x globals: $-w, $-v, $-d, $-0, etc. consume one more char.
+		if r == '-' {
+			p := l.peek()
+			if isLetter(p) || isDigit(p) {
+				l.next()
+			}
+		}
 		l.emit(token.GLOBAL)
 		return checkInterpStack
 	}
