@@ -816,6 +816,7 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 	case *ast.ClassVariable:
 	case *ast.IndexExpression:
 	case *ast.InstanceVariable:
+	case *ast.ScopedIdentifier:
 	case ast.ExpressionList:
 	case *ast.Keyword__FILE__:
 		epos := p.file.Position(p.pos)
@@ -1106,9 +1107,32 @@ func (p *parser) parseScopedIdentifierExpression(outer ast.Expression) ast.Expre
 		return p.parseMethodCall(outer)
 	}
 
-	scopedIdent := &ast.ScopedIdentifier{Token: p.curToken, Outer: ident}
+	scopeToken := p.curToken
+	scopedIdent := &ast.ScopedIdentifier{Token: scopeToken, Outer: ident}
+	if !p.peekTokenOneOf(token.CONST, token.IDENT) {
+		p.peekError(token.CONST)
+		return nil
+	}
 	p.nextToken()
-	scopedIdent.Inner = p.parseExpression(precLowest)
+	scopedIdent.Inner = p.parseIdentifier()
+	for p.peekTokenIs(token.SCOPE) {
+		p.nextToken()
+		scopeToken = p.curToken
+		if !p.peekTokenOneOf(token.CONST, token.IDENT) {
+			p.peekError(token.CONST)
+			return nil
+		}
+		p.nextToken()
+		outerIdent := &ast.Identifier{
+			Token: scopedIdent.Outer.Token,
+			Value: scopedIdent.String(),
+		}
+		scopedIdent = &ast.ScopedIdentifier{
+			Token: scopeToken,
+			Outer: outerIdent,
+			Inner: p.parseIdentifier(),
+		}
+	}
 	return scopedIdent
 }
 
@@ -2586,6 +2610,9 @@ func (p *parser) parseContextCallExpression(context ast.Expression) ast.Expressi
 	}
 	if p.currentTokenOneOf(token.DOT, token.SCOPE) {
 		p.nextToken()
+		for p.currentTokenIs(token.NEWLINE) {
+			p.nextToken()
+		}
 	}
 
 	if !p.currentTokenOneOf(token.IDENT, token.CONST, token.CLASS) {
