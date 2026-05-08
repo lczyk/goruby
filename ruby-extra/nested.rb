@@ -61,7 +61,6 @@ class Setters
 end
 
 # operator method definitions
-# NOTE: def [](idx) inside a class body hangs the parser -- omitted intentionally
 class Operators
   def +(other)
   end
@@ -70,6 +69,9 @@ class Operators
   end
 
   def ==(other)
+  end
+
+  def [](idx)
   end
 end
 
@@ -94,6 +96,26 @@ module Functions
   end
   module_function :func1
 end
+
+# unary operator methods (+@, -@)
+class UnaryOps
+  def +@
+    self
+  end
+
+  def -@
+    -self
+  end
+end
+
+# singleton method on global
+def $stdout.custom_log(msg)
+  msg
+end
+
+# top-level scope method call
+::TopLevel.method
+::Foo
 
 # endless method (def foo = expr)
 def add(x) = x + 1

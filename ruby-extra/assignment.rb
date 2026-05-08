@@ -39,3 +39,7 @@ puts y = 6
 # parallel assignment with mismatched arities
 a, b = 1
 a, b = 1, 2, 3
+
+# trailing comma in multi-assignment LHS
+a, = 1, 2, 3
+a, b, = 1, 2

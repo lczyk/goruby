@@ -291,7 +291,6 @@ $a
 		{token.NEWLINE, "\n"},
 		{token.SYMBEG, ":"},
 		{token.STRING, "sym"},
-		{token.NEWLINE, "\n"},
 		{token.DOT, "."},
 		{token.NEWLINE, "\n"},
 		{token.CAPTURE, "&"},

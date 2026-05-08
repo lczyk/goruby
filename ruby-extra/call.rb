@@ -52,3 +52,18 @@ method_with_block { |a, *b, c:, d: 1, &blk| }
 # setter call on context
 obj.x = 5
 self.value = 42
+
+# trailing comma in call args
+foo(1, 2,)
+foo(1,)
+
+# lambda as to_proc argument
+[1, 2, 3].map(&->(x) { x * 2 })
+
+# lambda called immediately
+->(x) { x * 2 }.call(5)
+
+# leading-dot chaining (dot at start of line)
+result = object
+  .method1
+  .method2(arg1, arg2)

@@ -41,3 +41,4 @@ c = "hello"[1..3]
 
 # percent with unusual delimiter
 s19 = %q%percent delimited%
+

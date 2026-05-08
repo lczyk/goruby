@@ -98,6 +98,7 @@ var precedences = map[token.Type]int{
 	token.THEN:              precHighest,
 	token.NEWLINE:           precHighest,
 	token.PIPE:              precOr,
+	token.XOR:               precOr,
 	token.AND:               precAnd,
 	token.LOGICALOR:         precLogicalOr,
 	token.LOGICALAND:        precLogicalAnd,
@@ -276,6 +277,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerInfix(token.MODULO, p.parseInfixExpression)
 	p.registerInfix(token.AND, p.parseInfixExpression)
 	p.registerInfix(token.PIPE, p.parseInfixExpression)
+	p.registerInfix(token.XOR, p.parseInfixExpression)
 	p.registerInfix(token.EQ, p.parseInfixExpression)
 	p.registerInfix(token.NOTEQ, p.parseInfixExpression)
 	p.registerInfix(token.LT, p.parseInfixExpression)
@@ -314,8 +316,8 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerInfix(token.GLOBAL, p.parseCallArgument)
 	p.registerInfix(token.INT, p.parseCallArgument)
 	p.registerInfix(token.FLOAT, p.parseCallArgument)
-	p.registerInfix(token.STRING, p.parseCallArgument)
-	p.registerInfix(token.STRING_BEG, p.parseCallArgument)
+	p.registerInfix(token.STRING, p.parseStringConcat)
+	p.registerInfix(token.STRING_BEG, p.parseStringConcat)
 	p.registerInfix(token.XSTR_BEG, p.parseCallArgument)
 	p.registerInfix(token.REGEX_BEG, p.parseCallArgument)
 	p.registerInfix(token.REGEX, p.parseCallArgument)
@@ -502,7 +504,7 @@ func (p *parser) parseStatement() ast.Statement {
 	case token.EOF:
 		p.expectError(token.NEWLINE)
 		return nil
-	case token.NEWLINE:
+	case token.NEWLINE, token.SEMICOLON:
 		return nil
 	case token.END, token.RBRACE, token.RBRACKET:
 		// Compound expressions leave these terminators at curToken.
@@ -627,7 +629,7 @@ func (p *parser) parseExceptionHandlingBlock() ast.Expression {
 		defer un(trace(p, "parseExceptionHandlingBlock"))
 	}
 	block := &ast.ExceptionHandlingBlock{BeginToken: p.curToken}
-	if !p.accept(token.NEWLINE) {
+	if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
 		return nil
 	}
 	// Try body ends at END, RESCUE, or ENSURE.
@@ -637,6 +639,17 @@ func (p *parser) parseExceptionHandlingBlock() ast.Expression {
 		p.accept(token.RESCUE)
 		rescue := p.parseRescueBlock()
 		block.Rescues = append(block.Rescues, rescue)
+	}
+	if p.peekTokenIs(token.ELSE) {
+		p.accept(token.ELSE)
+		p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+		block.ElseBody = p.parseBlockStatement(token.END, token.KW_ENSURE)
+	}
+	// Optional else clause (runs when no exception was raised).
+	if p.peekTokenIs(token.ELSE) {
+		p.accept(token.ELSE)
+		p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+		block.ElseBody = p.parseBlockStatement(token.END, token.KW_ENSURE)
 	}
 	// Optional ensure clause.
 	if p.peekTokenIs(token.KW_ENSURE) {
@@ -674,10 +687,10 @@ func (p *parser) parseRescueBlock() *ast.RescueBlock {
 		}
 		block.Exception = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 	}
-	if !p.accept(token.NEWLINE) {
+	if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
 		return nil
 	}
-	block.Body = p.parseBlockStatement(token.END, token.KW_ENSURE)
+	block.Body = p.parseBlockStatement(token.END, token.RESCUE, token.KW_ENSURE, token.ELSE)
 	return block
 }
 
@@ -685,8 +698,11 @@ func (p *parser) parseExpressions(left ast.Expression) ast.Expression {
 	if p.trace {
 		defer un(trace(p, "parseExpressions"))
 	}
+	// Trailing comma: a, = 1 -- peekToken after , is = or closing delimiter
+	if p.peekTokenOneOf(token.ASSIGN, token.RPAREN, token.RBRACKET, token.RBRACE) {
+		return ast.ExpressionList{left}
+	}
 	p.nextToken()
-	// Skip newlines after the comma that triggered this handler.
 	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 		p.nextToken()
 	}
@@ -694,10 +710,14 @@ func (p *parser) parseExpressions(left ast.Expression) ast.Expression {
 	next := p.parseExpression(precAssignment)
 	elements = append(elements, next)
 	for p.peekTokenIs(token.COMMA) {
-		p.consume(token.COMMA)
-		// Skip newlines after each comma.
+		p.accept(token.COMMA)
+		p.nextToken()
 		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 			p.nextToken()
+		}
+		// Trailing comma: a, b, = 1 -- stop if curToken is closing or =
+		if p.currentTokenOneOf(token.RPAREN, token.RBRACKET, token.RBRACE, token.ASSIGN) {
+			break
 		}
 		next = p.parseExpression(precAssignment)
 		elements = append(elements, next)
@@ -710,6 +730,11 @@ func (p *parser) parseBlockCapture() ast.Expression {
 		defer un(trace(p, "parseBlockCapture"))
 	}
 	capture := &ast.BlockCapture{Token: p.curToken}
+	if p.peekTokenIs(token.LAMBDA) {
+		p.nextToken()
+		capture.Expr = p.parseLambda()
+		return capture
+	}
 	if !p.accept(token.IDENT) {
 		return nil
 	}
@@ -747,6 +772,7 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 	switch leftNode := left.(type) {
 	case *ast.Identifier:
 	case *ast.Global:
+	case *ast.ClassVariable:
 	case *ast.IndexExpression:
 	case *ast.InstanceVariable:
 	case ast.ExpressionList:
@@ -885,7 +911,9 @@ func (p *parser) parseDefinedExpression() ast.Expression {
 		p.accept(token.LPAREN)
 		p.nextToken()
 		expr.Expr = p.parseExpression(precLowest)
-		if !p.accept(token.RPAREN) {
+		if p.currentTokenIs(token.RPAREN) {
+			// RPAREN already consumed by inner expression (e.g. super)
+		} else if !p.accept(token.RPAREN) {
 			return nil
 		}
 	} else {
@@ -1056,8 +1084,9 @@ func (p *parser) parseSelf() ast.Expression {
 	if p.peekTokenOneOf(token.IF, token.UNLESS) {
 		return self
 	}
-	if !p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.DOT, token.EOF) {
-		p.peekError(token.NEWLINE, token.SEMICOLON, token.DOT, token.EOF)
+	// self followed by an identifier or constant without a dot is an error
+	if p.peekTokenOneOf(token.IDENT, token.CONST) {
+		p.peekError(token.DOT)
 		return nil
 	}
 	return self
@@ -1206,7 +1235,7 @@ func (p *parser) parseSuper() ast.Expression {
 		p.nextToken()
 		return sup
 	}
-	sup.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE, token.EOF, token.LBRACE, token.DO)
+	sup.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE, token.EOF, token.LBRACE, token.DO, token.RPAREN, token.RBRACKET)
 	return sup
 }
 
@@ -1297,6 +1326,14 @@ func (p *parser) parseLambda() ast.Expression {
 	// Optional parameters: ->(x, y) or bare ->
 	if p.peekTokenIs(token.LPAREN) {
 		lit.Parameters = p.parseParameters(token.LPAREN, token.RPAREN)
+	}
+	if p.currentTokenOneOf(token.CAPTURE, token.AND) {
+		if !p.peekTokenOneOf(token.LBRACE, token.DO) {
+			capture := p.parseBlockCapture()
+			if capture == nil { return nil }
+			lit.CapturedBlock = capture.(*ast.BlockCapture)
+			if p.peekTokenIs(token.RPAREN) { p.accept(token.RPAREN) }
+		}
 	}
 	// Body must be a block: { ... } or do ... end
 	if p.peekTokenOneOf(token.LBRACE, token.DO) {
@@ -1639,6 +1676,32 @@ func (p *parser) parseBlock() ast.Expression {
 	block := &ast.BlockExpression{Token: p.curToken}
 	if p.peekTokenIs(token.PIPE) {
 		block.Parameters = p.parseParameters(token.PIPE, token.PIPE)
+		// Block-local variables: |params; locals|
+		if (p.peekTokenIs(token.SEMICOLON) || p.currentTokenIs(token.SEMICOLON)) && !p.currentTokenIs(token.PIPE) {
+			if p.peekTokenIs(token.SEMICOLON) {
+				p.accept(token.SEMICOLON)
+			}
+			for !p.peekTokenIs(token.PIPE) {
+				if !p.accept(token.IDENT) {
+					return nil
+				}
+				block.BlockLocals = append(block.BlockLocals,
+					&ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+				if p.peekTokenIs(token.COMMA) {
+					p.accept(token.COMMA)
+				}
+			}
+			p.accept(token.PIPE)
+		}
+	}
+
+	if p.currentTokenOneOf(token.CAPTURE, token.AND) {
+		if !p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.EOF) {
+			capture := p.parseBlockCapture()
+			if capture == nil { return nil }
+			block.CapturedBlock = capture.(*ast.BlockCapture)
+			if p.peekTokenIs(token.PIPE) { p.accept(token.PIPE) }
+		}
 	}
 
 	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
@@ -1680,6 +1743,12 @@ func (p *parser) parseInfixExpression(left ast.Expression) ast.Expression {
 	}
 	precedence := p.curPrecedence()
 	p.nextToken()
+	if (expression.Operator == ".." || expression.Operator == "...") {
+		if p.currentTokenOneOf(token.EOF, token.NEWLINE, token.SEMICOLON,
+			token.RPAREN, token.RBRACKET, token.RBRACE, token.COMMA, token.PIPE) {
+			return expression
+		}
+	}
 	expression.Right = p.parseExpression(precedence)
 	return expression
 }
@@ -1881,7 +1950,13 @@ func (p *parser) parseModule() ast.Expression {
 		return nil
 	}
 
-	expr.Body = p.parseBlockStatement()
+	expr.Body = p.parseBlockStatement(token.END, token.RESCUE)
+	expr.Rescues = []*ast.RescueBlock{}
+	for p.peekTokenIs(token.RESCUE) {
+		p.accept(token.RESCUE)
+		rescue := p.parseRescueBlock()
+		expr.Rescues = append(expr.Rescues, rescue)
+	}
 
 	if !p.accept(token.END) {
 		return nil
@@ -1912,7 +1987,13 @@ func (p *parser) parseClass() ast.Expression {
 		return nil
 	}
 
-	expr.Body = p.parseBlockStatement()
+	expr.Body = p.parseBlockStatement(token.END, token.RESCUE)
+	expr.Rescues = []*ast.RescueBlock{}
+	for p.peekTokenIs(token.RESCUE) {
+		p.accept(token.RESCUE)
+		rescue := p.parseRescueBlock()
+		expr.Rescues = append(expr.Rescues, rescue)
+	}
 
 	if !p.accept(token.END) {
 		return nil
@@ -1937,7 +2018,13 @@ func (p *parser) parseSingletonClass() ast.Expression {
 		return nil
 	}
 
-	expr.Body = p.parseBlockStatement()
+	expr.Body = p.parseBlockStatement(token.END, token.RESCUE)
+	expr.Rescues = []*ast.RescueBlock{}
+	for p.peekTokenIs(token.RESCUE) {
+		p.accept(token.RESCUE)
+		rescue := p.parseRescueBlock()
+		expr.Rescues = append(expr.Rescues, rescue)
+	}
 
 	if !p.accept(token.END) {
 		return nil
@@ -1952,28 +2039,46 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 	}
 	lit := &ast.FunctionLiteral{Token: p.curToken}
 
-	if !p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST) && !p.peekToken.Type.IsOperator() {
+	if !p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL, token.LBRACKET) && !p.peekToken.Type.IsOperator() {
 		p.peekError(token.IDENT, token.CONST)
 		return nil
 	}
 
-	if p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST) {
-		p.acceptOneOf(token.IDENT, token.SELF, token.CONST)
+	if p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL) {
+		p.acceptOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL)
 		if p.peekTokenIs(token.DOT) {
 			lit.Receiver = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 			p.accept(token.DOT)
-			if !p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST) && !p.peekToken.Type.IsOperator() {
+			if !p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL, token.LBRACKET) && !p.peekToken.Type.IsOperator() {
 				p.peekError(token.IDENT, token.CONST)
 				return nil
 			}
 			p.nextToken()
-			lit.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+			if p.currentTokenIs(token.LBRACKET) {
+				lit.Name = &ast.Identifier{Token: p.curToken, Value: p.parseBracketMethodName()}
+			} else if p.curToken.Type.IsOperator() {
+				lit.Name = p.parseOperatorMethodName()
+			} else {
+				lit.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+			}
 		} else {
-			lit.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+			if p.currentTokenIs(token.LBRACKET) {
+				lit.Name = &ast.Identifier{Token: p.curToken, Value: p.parseBracketMethodName()}
+			} else if p.curToken.Type.IsOperator() {
+				lit.Name = p.parseOperatorMethodName()
+			} else {
+				lit.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+			}
 		}
 	} else {
 		p.nextToken()
-		lit.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		if p.currentTokenIs(token.LBRACKET) {
+			lit.Name = &ast.Identifier{Token: p.curToken, Value: p.parseBracketMethodName()}
+		} else if p.curToken.Type.IsOperator() {
+			lit.Name = p.parseOperatorMethodName()
+		} else {
+			lit.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		}
 	}
 
 	lit.Parameters = p.parseParameters(token.LPAREN, token.RPAREN)
@@ -2069,6 +2174,31 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 	return lit
 }
 
+// parseBracketMethodName consumes the token stream for [] or []= method names.
+func (p *parser) parseBracketMethodName() string {
+	name := p.curToken.Literal
+	if !p.accept(token.RBRACKET) {
+		p.peekError(token.RBRACKET)
+		return ""
+	}
+	name += p.curToken.Literal
+	if p.peekTokenIs(token.ASSIGN) {
+		p.nextToken()
+		name += p.curToken.Literal
+	}
+	return name
+}
+
+// parseOperatorMethodName handles unary +@ / -@ method names.
+func (p *parser) parseOperatorMethodName() *ast.Identifier {
+	name := p.curToken.Literal
+	if p.peekTokenIs(token.AT) {
+		p.nextToken()
+		name += p.curToken.Literal
+	}
+	return &ast.Identifier{Token: p.curToken, Value: name}
+}
+
 func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.FunctionParameter {
 	if p.trace {
 		defer un(trace(p, "parseParameters"))
@@ -2081,6 +2211,8 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 
 	identifiers := []*ast.FunctionParameter{}
 
+	if hasDelimiters && p.peekTokenIs(token.SEMICOLON) { p.accept(token.SEMICOLON); return identifiers }
+
 	if !hasDelimiters && p.peekTokenIs(endToken) {
 		p.peekError(token.NEWLINE, token.SEMICOLON)
 		return nil
@@ -2088,6 +2220,12 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 
 	if hasDelimiters && p.peekTokenIs(endToken) {
 		p.accept(endToken)
+		return identifiers
+	}
+
+	// Block-local separator: |; x| -- no regular params
+	if hasDelimiters && p.peekTokenIs(token.SEMICOLON) {
+		p.accept(token.SEMICOLON)
 		return identifiers
 	}
 
@@ -2149,7 +2287,11 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 		name = strings.TrimSuffix(name, ":")
 	}
 	ident := &ast.FunctionParameter{Name: &ast.Identifier{Token: p.curToken, Value: name}, IsKeyword: isKeyword}
-	if p.peekTokenIs(token.ASSIGN) {
+	if isKeyword {
+		if !p.peekTokenOneOf(token.COMMA, token.NEWLINE, token.SEMICOLON, token.PIPE, token.RPAREN, token.EOF) {
+			ident.Default = p.parseExpression(precAssignment)
+		}
+	} else if p.peekTokenIs(token.ASSIGN) {
 		p.consume(token.ASSIGN)
 		ident.Default = p.parseExpression(precAssignment)
 	}
@@ -2199,7 +2341,11 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 			pName = strings.TrimSuffix(pName, ":")
 		}
 		pIdent := &ast.FunctionParameter{Name: &ast.Identifier{Token: p.curToken, Value: pName}, IsKeyword: isKw}
-		if p.peekTokenIs(token.ASSIGN) {
+		if isKw {
+			if !p.peekTokenOneOf(token.COMMA, token.NEWLINE, token.SEMICOLON, token.PIPE, token.RPAREN, token.EOF) {
+				pIdent.Default = p.parseExpression(precPrefix)
+			}
+		} else if p.peekTokenIs(token.ASSIGN) {
 			p.consume(token.ASSIGN)
 			pIdent.Default = p.parseExpression(precPrefix)
 		}
@@ -2209,6 +2355,10 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 	if !hasDelimiters && p.peekTokenIs(endToken) {
 		p.peekError(endToken)
 		return nil
+	}
+
+	if hasDelimiters && p.peekTokenIs(token.SEMICOLON) {
+		return identifiers
 	}
 
 	if hasDelimiters && p.peekTokenIs(endToken) {
@@ -2376,6 +2526,35 @@ func (p *parser) parseCallArgument(function ast.Expression) ast.Expression {
 		exp.Block = p.parseBlock().(*ast.BlockExpression)
 	}
 	return exp
+}
+
+func (p *parser) parseStringConcat(left ast.Expression) ast.Expression {
+	str, ok := left.(*ast.StringLiteral)
+	if !ok {
+		return p.parseCallArgument(left)
+	}
+	right := p.parseExpression(precCallArg)
+	rstr, ok := right.(*ast.StringLiteral)
+	if !ok {
+		return left
+	}
+	if len(rstr.Parts) > 0 {
+		str.Parts = append(str.Parts, rstr.Parts...)
+	} else if rstr.Value != "" {
+		str.Parts = append(str.Parts, &ast.StringLiteral{Value: rstr.Value})
+	}
+	for p.peekTokenOneOf(token.STRING, token.STRING_BEG) {
+		p.nextToken()
+		next := p.parseExpression(precCallArg)
+		if ns, ok := next.(*ast.StringLiteral); ok {
+			if len(ns.Parts) > 0 {
+				str.Parts = append(str.Parts, ns.Parts...)
+			} else if ns.Value != "" {
+				str.Parts = append(str.Parts, &ast.StringLiteral{Value: ns.Value})
+			}
+		}
+	}
+	return str
 }
 
 func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {

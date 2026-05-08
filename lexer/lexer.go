@@ -227,6 +227,20 @@ func (l *Lexer) peek() rune {
 	return r
 }
 
+// peekPastWhitespace returns the first non-whitespace rune after the
+// current position, without consuming input. Returns -1 at EOF.
+func (l *Lexer) peekPastWhitespace() rune {
+	pos := l.pos
+	for pos < len(l.input) {
+		r := rune(l.input[pos])
+		if !isWhitespace(r) {
+			return r
+		}
+		pos++
+	}
+	return -1
+}
+
 // peekSecond returns the rune after the next rune, without consuming.
 func (l *Lexer) peekSecond() rune {
 	l.next()
@@ -265,6 +279,24 @@ func startLexer(l *Lexer) StateFn {
 	case '$':
 		return lexGlobal
 	case '\n':
+		// Leading-dot: suppress NEWLINE when followed by . or &.
+		// Only skip horizontal whitespace (spaces, tabs), not newlines.
+		pos := l.pos
+		for pos < len(l.input) {
+			r := rune(l.input[pos])
+			if r != ' ' && r != '\t' {
+				break
+			}
+			pos++
+		}
+		if pos < len(l.input) && l.input[pos] == '.' {
+			l.ignore()
+			return startLexer
+		}
+		if pos < len(l.input) && l.input[pos] == '&' && pos+1 < len(l.input) && l.input[pos+1] == '.' {
+			l.ignore()
+			return startLexer
+		}
 		l.emit(token.NEWLINE)
 		// __END__ at line start: consume rest of input.
 		if strings.HasPrefix(l.input[l.pos:], "__END__") {

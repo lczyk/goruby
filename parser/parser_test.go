@@ -3437,7 +3437,7 @@ func TestContextCallExpression(t *testing.T) {
 		}
 
 		{
-			expected := []token.Type{token.NEWLINE, token.SEMICOLON, token.DOT, token.EOF}
+			expected := []token.Type{token.DOT}
 			actual := unexpectErr.expectedTokens
 			if !reflect.DeepEqual(expected, actual) {
 				t.Logf("Expected error to equal\n%+#v\n\tgot\n%+#v\n", expected, actual)
@@ -5613,30 +5613,14 @@ func checkParserErrors(t *testing.T, err error, withStack ...bool) {
 }
 
 var rubyExtraExpectFail = map[string]string{
-	// block-local variables (|params; locals|) not yet supported
-	"blocks.rb": "block-local variable syntax (; separator in block params)",
 	// nested multi-assignment with parenthesised LHS
 	"assignment.rb": "nested parenthesised LHS in multi-assignment",
-	// trailing comma in call args, leading-dot chaining
-	"call.rb": "trailing comma in call args, leading-dot chaining",
 	// case/in pattern matching
 	"case.rb": "case/in pattern matching",
-	// begin/rescue/else/ensure full combo
-	"exception.rb": "else clause in begin/rescue/else/ensure",
-	// keyword rest in lambda, empty-body lambda
-	"lambda.rb": "keyword rest and edge cases in lambda",
-	// defined? with complex args, BEGIN/END, super forms
-	"misc_keywords.rb": "defined? complex args, BEGIN/END blocks",
-	// setter methods, endless methods, module_function
-	"nested.rb": "setter methods, endless method, module_function",
-	// bitwise XOR ^, ~ prefix, ^= operator not yet supported
-	"operators.rb": "bitwise XOR, complement, and XOR-assignment operators",
 	// beginless/endless ranges
 	"ranges.rb": "beginless (..5) and endless (1..) ranges",
 	// refine/using keywords
 	"refine.rb": "refine/using keyword support",
-	// string auto-concatenation "a" "b"
-	"strings.rb": "automatic string literal concatenation",
 	// stress test combining many features
 	"stress_test.rb": "combination of multiple unsupported features",
 }

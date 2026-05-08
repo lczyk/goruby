@@ -170,6 +170,7 @@ type ExceptionHandlingBlock struct {
 	EndToken   token.Token
 	TryBody    *BlockStatement
 	Rescues    []*RescueBlock
+	ElseBody   *BlockStatement
 	EnsureBody *BlockStatement
 }
 
@@ -191,6 +192,11 @@ func (eh *ExceptionHandlingBlock) String() string {
 	out.WriteString("\n")
 	for _, r := range eh.Rescues {
 		out.WriteString(r.String())
+	}
+	if eh.ElseBody != nil {
+		out.WriteString("else\n")
+		out.WriteString(eh.ElseBody.String())
+		out.WriteString("\n")
 	}
 	if eh.EnsureBody != nil {
 		out.WriteString("ensure\n")
@@ -594,9 +600,13 @@ type ScopedIdentifier struct {
 
 func (i *ScopedIdentifier) String() string {
 	var out bytes.Buffer
-	out.WriteString(i.Outer.String())
+	if i.Outer != nil {
+		out.WriteString(i.Outer.String())
+	}
 	out.WriteString(i.Token.Literal)
-	out.WriteString(i.Inner.String())
+	if i.Inner != nil {
+		out.WriteString(i.Inner.String())
+	}
 	return out.String()
 }
 func (i *ScopedIdentifier) expressionNode() {}
@@ -1018,6 +1028,7 @@ func (hl *HashLiteral) String() string {
 type BlockCapture struct {
 	Token token.Token // the `&`
 	Name  *Identifier
+	Expr  Expression // non-identifier capture: &->(x){} or &method(:f)
 }
 
 func (b *BlockCapture) expressionNode() {}
@@ -1029,6 +1040,9 @@ func (b *BlockCapture) Pos() int { return b.Token.Pos }
 // End returns the position of the last character of Name
 func (b *BlockCapture) End() int { return b.Name.End() }
 func (b *BlockCapture) String() string {
+	if b.Expr != nil {
+		return "&" + b.Expr.String()
+	}
 	return "&" + b.Name.Value
 }
 
@@ -1262,10 +1276,12 @@ func (ce *ContextCallExpression) String() string {
 
 // A BlockExpression represents a Ruby block
 type BlockExpression struct {
-	Token      token.Token          // token.DO or token.LBRACE
-	EndToken   token.Token          // token.END or token.RBRACE
-	Parameters []*FunctionParameter // the block parameters
-	Body       *BlockStatement      // the block body
+	Token         token.Token          // token.DO or token.LBRACE
+	EndToken      token.Token          // token.END or token.RBRACE
+	Parameters    []*FunctionParameter // the block parameters
+	BlockLocals   []*Identifier        // block-local variables (after ; in |x; y|)
+	CapturedBlock *BlockCapture        // block capture: |..., &blk|
+	Body          *BlockStatement      // the block body
 }
 
 func (b *BlockExpression) expressionNode() {}
@@ -1283,13 +1299,21 @@ func (b *BlockExpression) TokenLiteral() string { return b.Token.Literal }
 func (b *BlockExpression) String() string {
 	var out bytes.Buffer
 	out.WriteString(b.Token.Literal)
-	if len(b.Parameters) != 0 {
+	if len(b.Parameters) != 0 || len(b.BlockLocals) != 0 {
 		args := []string{}
 		for _, a := range b.Parameters {
 			args = append(args, a.String())
 		}
 		out.WriteString("|")
 		out.WriteString(strings.Join(args, ", "))
+		if len(b.BlockLocals) != 0 {
+			out.WriteString("; ")
+			locals := []string{}
+			for _, l := range b.BlockLocals {
+				locals = append(locals, l.String())
+			}
+			out.WriteString(strings.Join(locals, ", "))
+		}
 		out.WriteString("|")
 		out.WriteString("\n")
 	}
@@ -1309,6 +1333,7 @@ type ModuleExpression struct {
 	EndToken token.Token // The end token
 	Name     *Identifier // The module name, will always be a const
 	Body     *BlockStatement
+	Rescues  []*RescueBlock
 }
 
 func (m *ModuleExpression) expressionNode() {}
@@ -1328,6 +1353,10 @@ func (m *ModuleExpression) String() string {
 	out.WriteString(m.Name.String())
 	out.WriteString("\n")
 	out.WriteString(m.Body.String())
+	for _, r := range m.Rescues {
+		out.WriteString("\n")
+		out.WriteString(r.String())
+	}
 	out.WriteString("\n")
 	out.WriteString("end")
 	return out.String()
@@ -1340,6 +1369,7 @@ type ClassExpression struct {
 	Name       *Identifier // The class name, will always be a const
 	SuperClass Expression  // The superclass, if any
 	Body       *BlockStatement
+	Rescues    []*RescueBlock
 }
 
 func (m *ClassExpression) expressionNode() {}
@@ -1365,6 +1395,10 @@ func (m *ClassExpression) String() string {
 	}
 	out.WriteString("\n")
 	out.WriteString(m.Body.String())
+	for _, r := range m.Rescues {
+		out.WriteString("\n")
+		out.WriteString(r.String())
+	}
 	out.WriteString("\n")
 	out.WriteString(" end")
 	return out.String()
@@ -1376,6 +1410,7 @@ type SingletonClassExpression struct {
 	EndToken token.Token // the 'end' token
 	Expr     Expression  // the expression after << (e.g. self)
 	Body     *BlockStatement
+	Rescues  []*RescueBlock
 }
 
 func (s *SingletonClassExpression) expressionNode() {}
@@ -1395,6 +1430,10 @@ func (s *SingletonClassExpression) String() string {
 	out.WriteString(s.Expr.String())
 	out.WriteString("\n")
 	out.WriteString(s.Body.String())
+	for _, r := range s.Rescues {
+		out.WriteString("\n")
+		out.WriteString(r.String())
+	}
 	out.WriteString("\nend")
 	return out.String()
 }

@@ -65,3 +65,31 @@ begin
 rescue RuntimeError
   handle
 end
+
+# rescue with multiple exception classes
+begin
+  work
+rescue IOError, SystemCallError => e
+  handle(e)
+end
+
+# begin/rescue/else/ensure (full four-part)
+begin
+  attempt
+rescue SomeError => e
+  recover(e)
+else
+  no_error
+ensure
+  cleanup
+end
+
+# rescue with semicolons
+begin; 1; rescue; 2; rescue X; 3; end
+
+# rescue in class body
+class C
+  def foo; end
+rescue
+  nil
+end

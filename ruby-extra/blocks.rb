@@ -36,3 +36,16 @@ captures { puts "hi" }
 foo do |a, *b, c:, d: 1, &blk|
   a + c + d
 end
+
+# block with only block-locals (no regular params)
+[1,2,3].each do |; x|
+  x = 1
+end
+
+# brace block with block capture
+[1,2,3].each { |a, &blk| blk.call(a) }
+
+# zero-arg block with block-locals (semicolon only)
+[1,2,3].each do |; x|
+  x = 1
+end
