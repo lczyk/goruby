@@ -978,13 +978,9 @@ func (p *parser) parseCaseExpression() ast.Expression {
 		}
 		// Optional then/newline/semicolon.
 		if p.peekTokenIs(token.THEN) {
-			p.consume(token.THEN)
-		}
-		if !p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.accept(token.THEN)
+		} else {
 			p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
-		}
-		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
-			p.nextToken()
 		}
 		// Parse when body until next when, else, or end.
 		wc.Body = p.parseBlockStatement(token.END, token.WHEN, token.KW_IN, token.ELSE)
@@ -1006,13 +1002,9 @@ func (p *parser) parseCaseExpression() ast.Expression {
 			ic.Conditions = append(ic.Conditions, p.parseExpression(precLowest))
 		}
 		if p.peekTokenIs(token.THEN) {
-			p.consume(token.THEN)
-		}
-		if !p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.accept(token.THEN)
+		} else {
 			p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
-		}
-		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
-			p.nextToken()
 		}
 		ic.Body = p.parseBlockStatement(token.END, token.WHEN, token.KW_IN, token.ELSE)
 		expr.InClauses = append(expr.InClauses, ic)
@@ -1023,7 +1015,7 @@ func (p *parser) parseCaseExpression() ast.Expression {
 	}
 	// Optional else clause.
 	if p.currentTokenIs(token.ELSE) {
-		if !p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+		if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 			p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
 		}
 		expr.ElseBody = p.parseBlockStatement(token.END)
@@ -1154,12 +1146,32 @@ func (p *parser) parseRefine() ast.Expression {
 	}
 	expr := &ast.RefineExpression{Token: p.curToken}
 	p.nextToken()
-	expr.Expr = p.parseExpression(precLowest)
-	if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
+	// Parse the refined class at precBlockBraces so that a trailing
+	// do/brace is NOT consumed as a method-call block (parseCallBlock).
+	// However, parseMethodCall (DOT handler) unconditionally consumes
+	// DO/LBRACE, so a target like String.singleton_class will still
+	// absorb the block. Detect that case below.
+	expr.Expr = p.parseExpression(precBlockBraces)
+	if expr.Expr == nil {
 		return nil
 	}
-	expr.Body = p.parseBlockStatement(token.END)
-	if !p.accept(token.END) {
+	// If the expression already has a block (consumed by parseMethodCall
+	// for cases like String.singleton_class do...end), the DO/body/end
+	// are already consumed. Just record the end token and return.
+	if cc, ok := expr.Expr.(*ast.ContextCallExpression); ok && cc.Block != nil {
+		expr.Body = cc.Block.Body
+		expr.EndToken = cc.Block.EndToken
+		return expr
+	}
+	endToken := token.END
+	p.nextToken()
+	if p.currentTokenIs(token.LBRACE) {
+		endToken = token.RBRACE
+	} else if !p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON, token.DO) {
+		return nil
+	}
+	expr.Body = p.parseBlockStatement(endToken)
+	if !p.accept(endToken) {
 		return nil
 	}
 	expr.EndToken = p.curToken
@@ -2388,7 +2400,7 @@ func (p *parser) parseBlockStatement(t ...token.Type) *ast.BlockStatement {
 		// If curToken starts a compound expression, parse it first
 		// before advancing. This handles nested case/when where the inner
 		// when would otherwise terminate the outer when-body.
-		if p.currentTokenOneOf(token.CASE, token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.BEGIN, token.CLASS, token.MODULE, token.DEF) {
+		if p.currentTokenOneOf(token.CASE, token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.BEGIN, token.CLASS, token.MODULE, token.DEF, token.STRING_BEG) {
 			stmt := p.parseStatement()
 			if stmt != nil {
 				block.Statements = append(block.Statements, stmt)

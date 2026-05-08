@@ -22,20 +22,17 @@ each entry is valid Ruby (verified with `ruby -c 2.6`).
 - ~~XOR operator~~ `a ^ b`
 - ~~lambda with block capture~~ `->(&blk) {}`
 - ~~lambda to_proc~~ `[1,2].map(&->(x) { x * 2 })`
+- ~~keyword args in block params~~ `|a, *b, c:, d: 1, &blk|`. kw/block-capture in blocks.
+- ~~parenthesised LHS in multi-assignment~~ `(a, b), c = [[1, 2], 3]`.
+- ~~leading-dot method chaining~~ `.method` on new line after receiver.
+- ~~automatic string concatenation~~ `"a" "b"`. adjacent string literals.
+- ~~defined? with complex args, BEGIN/END blocks~~
+- ~~beginless / endless ranges~~ `..5`, `1..`. range prefix/infix handling.
+- ~~refine / using~~ `refine String do ... end`, `using M`.
+- ~~stress test~~ combination of above.
 
 ## remaining
 
 ### medium
 
-- **keyword args in block params** — `|a, *b, c:, d: 1, &blk|`. keyword and block-capture parameters in blocks (`blocks.rb`).
-- **parenthesised LHS in multi-assignment** — `(a, b), c = [[1, 2], 3]`. nested parens on LHS (`assignment.rb`).
-- **leading-dot method chaining** — `.method` on new line after receiver (`call.rb`).
-- **automatic string concatenation** — `"a" "b"`. adjacent string literals (`strings.rb`).
-- **defined? with complex args, BEGIN/END blocks** — `misc_keywords.rb`.
-
-### large
-
-- **beginless / endless ranges** — `..5`, `1..`. range prefix/infix handling (`ranges.rb`).
-- **case/in pattern matching** — `case x; in 1; y; end`. full pattern-match syntax (`case.rb`).
-- **refine / using** — `refine String do ... end`, `using M`. refinement keywords (`refine.rb`).
-- **stress test** — combination of above (`stress_test.rb`).
+- **case/in pattern matching** -- `case x; in 1; y; end`. full pattern-match syntax, `=>` bind operator in hash patterns (`case.rb`).

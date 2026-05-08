@@ -5613,12 +5613,7 @@ func checkParserErrors(t *testing.T, err error, withStack ...bool) {
 }
 
 var rubyExtraExpectFail = map[string]string{
-	// case/in pattern matching
-	"case.rb": "case/in pattern matching",
-	// refine/using keywords
-	"refine.rb": "refine/using keyword support",
-	// stress test combining many features
-	"stress_test.rb": "combination of multiple unsupported features",
+	"case.rb": "case/in pattern matching (Ruby 2.7+)",
 }
 
 func TestRubyExtraFixtures(t *testing.T) {
