@@ -1409,7 +1409,7 @@ func (p *parser) parseRefine() ast.Expression {
 	// However, parseMethodCall (DOT handler) unconditionally consumes
 	// DO/LBRACE, so a target like String.singleton_class will still
 	// absorb the block. Detect that case below.
-	expr.Expr = p.parseExpression(precBlockBraces)
+	expr.Expr = p.parseExpression(precIfUnless)
 	if expr.Expr == nil {
 		return nil
 	}
@@ -2150,6 +2150,9 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 		defer un(trace(p, "parseGroupedExpression"))
 	}
 	p.nextToken()
+	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+		p.nextToken()
+	}
 	exp := p.parseExpression(precLowest)
 	if !p.accept(token.RPAREN) {
 		return nil
@@ -2290,7 +2293,7 @@ func (p *parser) parseLoopExpression() ast.Expression {
 	}
 	loop := &ast.LoopExpression{Token: p.curToken}
 	p.nextToken()
-	loop.Condition = p.parseExpression(precBlockDo)
+	loop.Condition = p.parseExpression(precIfUnless)
 	if p.peekTokenIs(token.DO) {
 		p.accept(token.DO)
 	}
@@ -3091,14 +3094,39 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 
 	next := p.parseExpression(precIfUnless)
 	if elist, ok := next.(ast.ExpressionList); ok {
+		list = append(list, elist...)
+	} else {
+		list = append(list, next)
+	}
+
+	// Handle comma-separated elements with newlines between them.
+	for {
+		// Skip newlines before checking for comma or end.
+		for p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+		}
 		if p.peekTokenOneOf(end...) {
 			p.acceptOneOf(end...)
+			return list
 		}
-		return elist
+		if !p.peekTokenIs(token.COMMA) {
+			break
+		}
+		p.consume(token.COMMA)
+		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.nextToken()
+		}
+		if p.currentTokenOneOf(end...) {
+			return list
+		}
+		next = p.parseExpression(precIfUnless)
+		if elist, ok := next.(ast.ExpressionList); ok {
+			list = append(list, elist...)
+		} else {
+			list = append(list, next)
+		}
 	}
-	list = append(list, next)
 
-	// After a single expression, check for end.
 	if p.peekTokenOneOf(end...) {
 		p.acceptOneOf(end...)
 	}
