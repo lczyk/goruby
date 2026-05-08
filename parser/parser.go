@@ -892,23 +892,32 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 	return cond
 }
 
+func (p *parser) acceptIvarName() bool {
+	if p.peekTokenOneOf(token.IDENT, token.CONST) || p.peekToken.Type.IsKeyword() {
+		p.nextToken()
+		return true
+	}
+	p.peekError(token.IDENT, token.CONST)
+	return false
+}
+
 func (p *parser) parseInstanceVariable() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	instanceVariable := &ast.InstanceVariable{Token: p.curToken}
-	if !p.acceptOneOf(token.IDENT, token.CONST) {
+	if !p.acceptIvarName() {
 		return nil
 	}
-	instanceVariable.Name = p.parseIdentifier().(*ast.Identifier)
+	instanceVariable.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 	return instanceVariable
 }
 
 func (p *parser) parseClassVariable() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	cv := &ast.ClassVariable{Token: p.curToken}
-	if !p.acceptOneOf(token.IDENT, token.CONST) {
+	if !p.acceptIvarName() {
 		return nil
 	}
-	cv.Name = p.parseIdentifier().(*ast.Identifier)
+	cv.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 	return cv
 }
 
@@ -2086,6 +2095,9 @@ func (p *parser) parseIndexExpression(left ast.Expression) ast.Expression {
 	exp := &ast.IndexExpression{Token: p.curToken, Left: left}
 
 	p.nextToken()
+	for p.currentTokenIs(token.NEWLINE) {
+		p.nextToken()
+	}
 	// Empty index: x[] -- ] immediately follows [
 	if p.currentTokenIs(token.RBRACKET) {
 		return exp
@@ -2557,6 +2569,10 @@ func (p *parser) parseOperatorMethodName() *ast.Identifier {
 
 func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDelimiters bool, endToken token.Type) []*ast.FunctionParameter {
 	defer trace.TraceCtx(p.ctx)()
+	tailDefPrec := precAssignment
+	if endToken == token.PIPE {
+		tailDefPrec = precOr
+	}
 	for p.peekTokenIs(token.COMMA) {
 		p.accept(token.COMMA)
 		if p.peekTokenIs(token.POWER) {
@@ -2602,7 +2618,7 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 			}
 			if !p.peekTokenOneOf(token.COMMA, endToken, token.NEWLINE, token.SEMICOLON, token.PIPE, token.EOF) {
 				p.nextToken()
-				param.Default = p.parseExpression(precAssignment)
+				param.Default = p.parseExpression(tailDefPrec)
 			}
 			identifiers = append(identifiers, param)
 			continue
@@ -2616,7 +2632,7 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 			}
 			if p.peekTokenIs(token.ASSIGN) {
 				p.consume(token.ASSIGN)
-				param.Default = p.parseExpression(precAssignment)
+				param.Default = p.parseExpression(tailDefPrec)
 			}
 			identifiers = append(identifiers, param)
 			continue
@@ -2741,7 +2757,11 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 		}
 	} else if p.peekTokenIs(token.ASSIGN) {
 		p.consume(token.ASSIGN)
-		ident.Default = p.parseExpression(precAssignment)
+		defPrec := precAssignment
+		if endToken == token.PIPE {
+			defPrec = precOr
+		}
+		ident.Default = p.parseExpression(defPrec)
 	}
 	identifiers = append(identifiers, ident)
 
@@ -2804,13 +2824,17 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 			pName = strings.TrimSuffix(pName, ":")
 		}
 		pIdent := &ast.FunctionParameter{Name: &ast.Identifier{Token: p.curToken, Value: pName}, IsKeyword: isKw}
+		defPrecLoop := precPrefix
+		if endToken == token.PIPE {
+			defPrecLoop = precOr
+		}
 		if isKw {
 			if !p.peekTokenOneOf(token.COMMA, token.NEWLINE, token.SEMICOLON, token.PIPE, token.RPAREN, token.EOF) {
-				pIdent.Default = p.parseExpression(precPrefix)
+				pIdent.Default = p.parseExpression(defPrecLoop)
 			}
 		} else if p.peekTokenIs(token.ASSIGN) {
 			p.consume(token.ASSIGN)
-			pIdent.Default = p.parseExpression(precPrefix)
+			pIdent.Default = p.parseExpression(defPrecLoop)
 		}
 		identifiers = append(identifiers, pIdent)
 	}
