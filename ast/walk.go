@@ -182,6 +182,7 @@ func Walk(v Visitor, node Node) {
 		*Self,
 		*BlockCapture,
 		*Keyword__FILE__,
+		*Keyword__DIR__,
 		*Comment,
 		*StringContent:
 		// nothing to do

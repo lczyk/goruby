@@ -30,7 +30,6 @@ parse rake/lib/rake/application.rb: parser: various edge cases (elsif in blocks,
 parse rake/lib/rake/loaders/makefile.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/lib/rake/packagetask.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/lib/rake/task.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
-parse rake/lib/rake/testtask.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/lib/rake/thread_pool.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/support/file_creation.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/test_private_reader.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
@@ -60,7 +59,6 @@ walk rake/lib/rake/application.rb: parse failed; walk skipped
 walk rake/lib/rake/loaders/makefile.rb: parse failed; walk skipped
 walk rake/lib/rake/packagetask.rb: parse failed; walk skipped
 walk rake/lib/rake/task.rb: parse failed; walk skipped
-walk rake/lib/rake/testtask.rb: parse failed; walk skipped
 walk rake/lib/rake/thread_pool.rb: parse failed; walk skipped
 walk rake/test/support/file_creation.rb: parse failed; walk skipped
 walk rake/test/test_private_reader.rb: parse failed; walk skipped
@@ -92,12 +90,10 @@ parse mri-tests/sentence.rb: MRI language test - parser failure
 parse mri-tests/test_alias.rb: MRI language test - parser failure
 parse mri-tests/test_arithmetic_sequence.rb: MRI language test - parser failure
 parse mri-tests/test_array.rb: MRI language test - parser failure
-parse mri-tests/test_autoload.rb: MRI language test - parser failure
 parse mri-tests/test_backtrace.rb: MRI language test - parser failure
 parse mri-tests/test_basicinstructions.rb: MRI language test - parser failure
 parse mri-tests/test_beginendblock.rb: MRI language test - parser failure
 parse mri-tests/test_bignum.rb: MRI language test - parser failure
-parse mri-tests/test_box.rb: MRI language test - parser failure
 parse mri-tests/test_call.rb: MRI language test - parser failure
 parse mri-tests/test_class.rb: MRI language test - parser failure
 parse mri-tests/test_compile_prism.rb: MRI language test - parser failure
@@ -125,7 +121,6 @@ parse mri-tests/test_literal.rb: MRI language test - parser failure
 parse mri-tests/test_m17n.rb: MRI language test - parser failure
 parse mri-tests/test_method.rb: MRI language test - parser failure
 parse mri-tests/test_module.rb: MRI language test - parser failure
-parse mri-tests/test_name_error.rb: MRI language test - parser failure
 parse mri-tests/test_numeric.rb: MRI language test - parser failure
 parse mri-tests/test_objectspace.rb: MRI language test - parser failure
 parse mri-tests/test_optimization.rb: MRI language test - parser failure
@@ -156,8 +151,6 @@ parse mri-tests/test_zjit.rb: MRI language test - parser failure
 parse mri-tests/ut_eof.rb: MRI language test - parser failure
 
 # walk phase (parse fails)
-walk mri-tests/box/autoloading.rb: parse failed; walk skipped
-walk mri-tests/enc/test_case_comprehensive.rb: parse failed; walk skipped
 walk mri-tests/enc/test_cesu8.rb: parse failed; walk skipped
 walk mri-tests/enc/test_regex_casefold.rb: parse failed; walk skipped
 walk mri-tests/enc/test_utf16.rb: parse failed; walk skipped
@@ -168,12 +161,10 @@ walk mri-tests/test_alias.rb: parse failed; walk skipped
 walk mri-tests/test_arithmetic_sequence.rb: parse failed; walk skipped
 walk mri-tests/test_array.rb: parse failed; walk skipped
 walk mri-tests/test_assignment.rb: parse failed; walk skipped
-walk mri-tests/test_autoload.rb: parse failed; walk skipped
 walk mri-tests/test_backtrace.rb: parse failed; walk skipped
 walk mri-tests/test_basicinstructions.rb: parse failed; walk skipped
 walk mri-tests/test_beginendblock.rb: parse failed; walk skipped
 walk mri-tests/test_bignum.rb: parse failed; walk skipped
-walk mri-tests/test_box.rb: parse failed; walk skipped
 walk mri-tests/test_call.rb: parse failed; walk skipped
 walk mri-tests/test_class.rb: parse failed; walk skipped
 walk mri-tests/test_compile_prism.rb: parse failed; walk skipped
@@ -210,7 +201,6 @@ walk mri-tests/test_m17n.rb: parse failed; walk skipped
 walk mri-tests/test_marshal.rb: parse failed; walk skipped
 walk mri-tests/test_method.rb: parse failed; walk skipped
 walk mri-tests/test_module.rb: parse failed; walk skipped
-walk mri-tests/test_name_error.rb: parse failed; walk skipped
 walk mri-tests/test_numeric.rb: parse failed; walk skipped
 walk mri-tests/test_object.rb: parse failed; walk skipped
 walk mri-tests/test_objectspace.rb: parse failed; walk skipped
@@ -226,7 +216,6 @@ walk mri-tests/test_rational.rb: parse failed; walk skipped
 walk mri-tests/test_readpartial.rb: parse failed; walk skipped
 walk mri-tests/test_refinement.rb: parse failed; walk skipped
 walk mri-tests/test_regexp.rb: parse failed; walk skipped
-walk mri-tests/test_require_lib.rb: parse failed; walk skipped
 walk mri-tests/test_require.rb: parse failed; walk skipped
 walk mri-tests/test_rubyoptions.rb: parse failed; walk skipped
 walk mri-tests/test_set.rb: parse failed; walk skipped
@@ -271,7 +260,6 @@ parse mri-tests/test_time_tz.rb: MRI language test - parser failure
 parse mri-tests/test_stringchar.rb: MRI language test - parser failure
 parse mri-tests/test_regexp.rb: MRI language test - parser failure
 parse mri-tests/test_file_exhaustive.rb: MRI language test - parser failure
-parse mri-tests/enc/test_case_comprehensive.rb: MRI language test - parser failure
 parse mri-tests/test_syntax.rb: MRI language test - parser failure
 
 parse mri-tests/test_argf.rb: MRI language test - parser failure
@@ -304,11 +292,10 @@ walk ropy/ruby/ropy.rb: parse failed; walk skipped
 walk wumpus/interpreter.rb: parse failed; walk skipped
 walk mri-tests/test_thread_queue.rb: nil pointer in IndexExpression.String (pre-existing)
 walk rake/test/test_rake_definitions.rb: walk failure (parse now passes)
-walk mri-tests/enc/test_grapheme_breaks.rb: walk failure (parse now passes)
-walk mri-tests/enc/test_emoji_breaks.rb: walk failure (parse now passes)
 parse bouncy-lang/bouncy/instruction.rb: parser regression from grouped expression fix
 walk bouncy-lang/bouncy/instruction.rb: parse failed; walk skipped
 walk rake/test/test_rake_backtrace.rb: walk failure (parse now passes)
 walk rake/test/test_rake_task_manager.rb: walk failure (parse now passes)
 walk mri-tests/test_inlinecache.rb: walk failure (parse now passes)
 walk mri-tests/test_weakkeymap.rb: walk failure (parse now passes)
+walk mri-tests/test_box.rb: walk failure (parse now passes)
