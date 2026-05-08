@@ -710,14 +710,9 @@ func (p *parser) parseExpressions(left ast.Expression) ast.Expression {
 	next := p.parseExpression(precAssignment)
 	elements = append(elements, next)
 	for p.peekTokenIs(token.COMMA) {
-		p.accept(token.COMMA)
-		p.nextToken()
+		p.consume(token.COMMA)
 		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 			p.nextToken()
-		}
-		// Trailing comma: a, b, = 1 -- stop if curToken is closing or =
-		if p.currentTokenOneOf(token.RPAREN, token.RBRACKET, token.RBRACE, token.ASSIGN) {
-			break
 		}
 		next = p.parseExpression(precAssignment)
 		elements = append(elements, next)
