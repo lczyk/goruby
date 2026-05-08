@@ -850,6 +850,10 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 	case *ast.IndexExpression:
 	case *ast.InstanceVariable:
 	case *ast.ScopedIdentifier:
+	case *ast.PrefixExpression:
+		_ = leftNode
+	case *ast.SplatExpression:
+		_ = leftNode
 	case ast.ExpressionList:
 	case *ast.Keyword__FILE__:
 		epos := p.file.Position(p.pos)
@@ -2952,6 +2956,14 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 		args := p.parseExpressionList(token.RBRACKET)
 		contextCallExpression.Function = &ast.Identifier{Token: p.curToken, Value: "[]"}
 		contextCallExpression.Arguments = args
+		return contextCallExpression
+	}
+
+	// .() call syntax (implicit .call)
+	if p.currentTokenIs(token.LPAREN) {
+		contextCallExpression.Function = &ast.Identifier{Token: p.curToken, Value: "call"}
+		p.nextToken()
+		contextCallExpression.Arguments = p.parseExpressionList(token.RPAREN)
 		return contextCallExpression
 	}
 

@@ -72,7 +72,6 @@ parse mri-tests/marshaltestlib.rb: MRI language test - parser failure
 parse mri-tests/sentence.rb: MRI language test - parser failure
 parse mri-tests/test_alias.rb: MRI language test - parser failure
 parse mri-tests/test_array.rb: MRI language test - parser failure
-parse mri-tests/test_backtrace.rb: MRI language test - parser failure
 parse mri-tests/test_basicinstructions.rb: MRI language test - parser failure
 parse mri-tests/test_beginendblock.rb: MRI language test - parser failure
 parse mri-tests/test_bignum.rb: MRI language test - parser failure
@@ -135,7 +134,6 @@ walk mri-tests/sentence.rb: parse failed; walk skipped
 walk mri-tests/test_alias.rb: parse failed; walk skipped
 walk mri-tests/test_array.rb: parse failed; walk skipped
 walk mri-tests/test_assignment.rb: parse failed; walk skipped
-walk mri-tests/test_backtrace.rb: parse failed; walk skipped
 walk mri-tests/test_basicinstructions.rb: parse failed; walk skipped
 walk mri-tests/test_beginendblock.rb: parse failed; walk skipped
 walk mri-tests/test_bignum.rb: parse failed; walk skipped
@@ -154,7 +152,6 @@ walk mri-tests/test_eval.rb: parse failed; walk skipped
 walk mri-tests/test_exception.rb: parse failed; walk skipped
 walk mri-tests/test_fiber.rb: parse failed; walk skipped
 walk mri-tests/test_file_exhaustive.rb: parse failed; walk skipped
-walk mri-tests/test_file.rb: parse failed; walk skipped
 walk mri-tests/test_float.rb: parse failed; walk skipped
 walk mri-tests/test_gc_compact.rb: parse failed; walk skipped
 walk mri-tests/test_gc.rb: parse failed; walk skipped
@@ -214,7 +211,6 @@ parse mri-tests/test_object.rb: MRI language test - parser failure
 parse mri-tests/test_parse.rb: MRI language test - parser failure
 parse mri-tests/test_iseq.rb: MRI language test - parser failure
 parse mri-tests/test_lazy_enumerator.rb: MRI language test - parser failure
-parse mri-tests/test_file.rb: MRI language test - parser failure
 parse mri-tests/test_dir_m17n.rb: MRI language test - parser failure
 parse mri-tests/test_m17n_comb.rb: MRI language test - parser failure
 parse mri-tests/test_assignment.rb: MRI language test - parser failure
