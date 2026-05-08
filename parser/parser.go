@@ -579,7 +579,7 @@ func (p *parser) parseReturnStatement() *ast.ReturnStatement {
 		stmt.ReturnValue = &ast.ArrayLiteral{Elements: list}
 	}
 
-	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.ELSE, token.KW_ELSIF, token.END) {
+	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.ELSE, token.KW_ELSIF, token.END, token.RBRACE, token.EOF) {
 		if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 			p.nextToken()
 		}
@@ -2758,7 +2758,12 @@ func (p *parser) parseOneParameter(endToken token.Type) []*ast.FunctionParameter
 	ident := &ast.FunctionParameter{Name: &ast.Identifier{Token: p.curToken, Value: name}, IsKeyword: isKeyword}
 	if isKeyword {
 		if !p.peekTokenOneOf(token.COMMA, token.NEWLINE, token.SEMICOLON, token.PIPE, token.RPAREN, token.EOF) {
-			ident.Default = p.parseExpression(precAssignment)
+			kwDefPrec := precAssignment
+			if endToken == token.PIPE {
+				kwDefPrec = precOr
+			}
+			p.nextToken()
+			ident.Default = p.parseExpression(kwDefPrec)
 		}
 	} else if p.peekTokenIs(token.ASSIGN) {
 		p.consume(token.ASSIGN)
