@@ -242,8 +242,9 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.Context)
 		Walk(v, n.Function)
 		walkExprList(v, n.Arguments)
-		// TODO: examine why it is not working
-		// Walk(v, n.Block)
+		if n.Block != nil {
+			Walk(v, n.Block)
+		}
 
 	case *ModuleExpression:
 		Walk(v, n.Name)
