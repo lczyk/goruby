@@ -1568,13 +1568,62 @@ func (p *parser) parseInterpolatedRegex() ast.Expression {
 	return rl
 }
 
+var symbolOperatorTokens = []token.Type{
+	token.PLUS, token.MINUS, token.ASTERISK, token.SLASH, token.MODULO,
+	token.POWER, token.LSHIFT, token.RSHIFT,
+	token.SPACESHIP, token.EQ, token.NOTEQ, token.MATCH, token.NMATCH,
+	token.CASEEQ,
+	token.LT, token.GT, token.LTE, token.GTE,
+	token.XOR, token.PIPE, token.AND, token.TILDE,
+	token.BANG,
+}
+
+var symbolKeywordTokens = []token.Type{
+	token.DEF, token.SELF, token.END, token.IF, token.THEN, token.ELSE,
+	token.UNLESS, token.TRUE, token.FALSE, token.RETURN, token.NIL,
+	token.MODULE, token.CLASS, token.DO, token.YIELD,
+	token.BEGIN, token.RESCUE, token.WHILE, token.UNTIL, token.CASE, token.WHEN,
+	token.BREAK, token.NEXT,
+	token.KW_UNDEF, token.KW_SUPER, token.KW_RETRY, token.KW_REDO,
+	token.KW_OR, token.KW_NOT, token.KW_IN, token.KW_FOR,
+	token.KW_ENSURE, token.KW_ELSIF, token.KW_DEFINED, token.KW_AND, token.KW_ALIAS,
+	token.KW_BEGIN, token.KW_END, token.KW_USING, token.KW_REFINE,
+}
+
 func (p *parser) parseSymbolLiteral() ast.Expression {
 	if p.trace {
 		defer un(trace(p, "parseSymbolLiteral"))
 	}
 	symbol := &ast.SymbolLiteral{Token: p.curToken}
-	if !p.acceptOneOf(token.IDENT, token.CONST, token.AT, token.STRING, token.STRING_BEG, token.CLASS_VAR, token.GLOBAL) {
+
+	accepted := []token.Type{
+		token.IDENT, token.CONST, token.AT, token.STRING, token.STRING_BEG,
+		token.CLASS_VAR, token.GLOBAL, token.LBRACKET,
+	}
+	accepted = append(accepted, symbolOperatorTokens...)
+	accepted = append(accepted, symbolKeywordTokens...)
+	if !p.acceptOneOf(accepted...) {
 		return nil
+	}
+	if p.currentTokenOneOf(symbolOperatorTokens...) {
+		symbol.Value = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		return symbol
+	}
+	if p.currentTokenOneOf(symbolKeywordTokens...) {
+		symbol.Value = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		return symbol
+	}
+	if p.currentTokenIs(token.LBRACKET) {
+		lit := "[]"
+		if p.peekTokenIs(token.RBRACKET) {
+			p.nextToken()
+			if p.peekTokenIs(token.ASSIGN) {
+				p.nextToken()
+				lit = "[]="
+			}
+		}
+		symbol.Value = &ast.Identifier{Token: p.curToken, Value: lit}
+		return symbol
 	}
 	val := p.parseExpression(precHighest)
 	symbol.Value = val
