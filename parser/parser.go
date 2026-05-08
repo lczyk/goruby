@@ -1540,19 +1540,32 @@ func (p *parser) parseSuper() ast.Expression {
 	return sup
 }
 
+func (p *parser) parseAliasName() *ast.Identifier {
+	if p.currentTokenOneOf(token.IDENT, token.CONST) || p.curToken.Type.IsKeyword() || p.curToken.Type.IsOperator() {
+		return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	}
+	if p.currentTokenIs(token.SYMBEG) {
+		sym := p.parseSymbolLiteral()
+		if sym != nil {
+			return &ast.Identifier{Token: p.curToken, Value: sym.String()}
+		}
+	}
+	return nil
+}
+
 func (p *parser) parseAlias() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	expr := &ast.AliasExpression{Token: p.curToken}
 	p.nextToken()
-	if !p.currentTokenIs(token.IDENT) {
+	expr.NewName = p.parseAliasName()
+	if expr.NewName == nil {
 		return nil
 	}
-	expr.NewName = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 	p.nextToken()
-	if !p.currentTokenIs(token.IDENT) {
+	expr.OldName = p.parseAliasName()
+	if expr.OldName == nil {
 		return nil
 	}
-	expr.OldName = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 	p.nextToken()
 	return expr
 }

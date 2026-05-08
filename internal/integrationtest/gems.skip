@@ -47,7 +47,6 @@ parse mri-tests/enc/test_regex_casefold.rb: MRI language test - parser failure
 parse mri-tests/marshaltestlib.rb: MRI language test - parser failure
 parse mri-tests/test_class.rb: MRI language test - parser failure
 parse mri-tests/test_compile_prism.rb: MRI language test - parser failure
-parse mri-tests/test_complex.rb: MRI language test - parser failure
 parse mri-tests/test_defined.rb: MRI language test - parser failure
 parse mri-tests/test_enumerator.rb: MRI language test - parser failure
 parse mri-tests/test_env.rb: MRI language test - parser failure
@@ -65,7 +64,6 @@ parse mri-tests/test_optimization.rb: MRI language test - parser failure
 parse mri-tests/test_pattern_matching.rb: MRI language test - parser failure
 parse mri-tests/test_proc.rb: MRI language test - parser failure
 parse mri-tests/test_process.rb: MRI language test - parser failure
-parse mri-tests/test_rational.rb: MRI language test - parser failure
 parse mri-tests/test_refinement.rb: MRI language test - parser failure
 parse mri-tests/test_rubyoptions.rb: MRI language test - parser failure
 parse mri-tests/test_settracefunc.rb: MRI language test - parser failure
@@ -81,7 +79,6 @@ walk mri-tests/marshaltestlib.rb: parse failed; walk skipped
 walk mri-tests/test_assignment.rb: parse failed; walk skipped
 walk mri-tests/test_class.rb: parse failed; walk skipped
 walk mri-tests/test_compile_prism.rb: parse failed; walk skipped
-walk mri-tests/test_complex.rb: parse failed; walk skipped
 walk mri-tests/test_defined.rb: parse failed; walk skipped
 walk mri-tests/test_enumerator.rb: parse failed; walk skipped
 walk mri-tests/test_env.rb: parse failed; walk skipped
@@ -104,7 +101,6 @@ walk mri-tests/test_optimization.rb: parse failed; walk skipped
 walk mri-tests/test_pattern_matching.rb: parse failed; walk skipped
 walk mri-tests/test_proc.rb: parse failed; walk skipped
 walk mri-tests/test_process.rb: parse failed; walk skipped
-walk mri-tests/test_rational.rb: parse failed; walk skipped
 walk mri-tests/test_refinement.rb: parse failed; walk skipped
 walk mri-tests/test_regexp.rb: parse failed; walk skipped
 walk mri-tests/test_rubyoptions.rb: parse failed; walk skipped
