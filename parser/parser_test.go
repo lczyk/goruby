@@ -5613,13 +5613,8 @@ func checkParserErrors(t *testing.T, err error, withStack ...bool) {
 }
 
 var rubyExtraExpectFail = map[string]string{
-	// regression: foo() parses in isolation but fails in file context
-	"call.rb": "call.rb line 24: unexpected ), expecting IDENT",
-
 	// case/in pattern matching
 	"case.rb": "case/in pattern matching",
-	// beginless/endless ranges
-	"ranges.rb": "beginless (..5) and endless (1..) ranges",
 	// refine/using keywords
 	"refine.rb": "refine/using keyword support",
 	// stress test combining many features

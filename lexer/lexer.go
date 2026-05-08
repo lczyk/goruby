@@ -289,7 +289,9 @@ func startLexer(l *Lexer) StateFn {
 			}
 			pos++
 		}
-		if pos < len(l.input) && l.input[pos] == '.' {
+		// Suppress NEWLINE before .method or &.method, but NOT before
+		// .. or ... (range literals).
+		if pos < len(l.input) && l.input[pos] == '.' && pos+1 < len(l.input) && l.input[pos+1] != '.' {
 			l.ignore()
 			return startLexer
 		}

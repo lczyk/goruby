@@ -714,6 +714,10 @@ func (p *parser) parseExpressions(left ast.Expression) ast.Expression {
 		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 			p.nextToken()
 		}
+		// Trailing comma: after consume, curToken is past the comma.
+		if p.currentTokenOneOf(token.RPAREN, token.RBRACKET, token.RBRACE, token.ASSIGN) {
+			break
+		}
 		next = p.parseExpression(precAssignment)
 		elements = append(elements, next)
 	}
