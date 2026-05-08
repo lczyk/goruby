@@ -1,3 +1,5 @@
+github.com/MarcinKonowalczyk/trace v0.2.0 h1:f4RAzYxN/szxt1uZ9EeOTzMngprkjEVfUkU2v7848ew=
+github.com/MarcinKonowalczyk/trace v0.2.0/go.mod h1:nN0+ru6kYhalahPASZY3bwmthphtqmKbNLqLEigwsuE=
 github.com/lczyk/assert v0.6.0 h1:V8MxjKrBU37Z/RXCxxwLhpCLH5zQQlZTStG3mSJpXtk=
 github.com/lczyk/assert v0.6.0/go.mod h1:Vv3LWPfjC/FbJ3IXb22YNWxZWicc1x6R7hzDCf+RARc=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=

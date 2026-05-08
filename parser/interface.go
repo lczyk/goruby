@@ -2,11 +2,16 @@ package parser
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	gotoken "go/token"
 	"io"
 	"io/ioutil"
+	"os"
+	"strings"
 
+	"github.com/MarcinKonowalczyk/trace"
+	"github.com/MarcinKonowalczyk/trace/printer"
 	"github.com/lczyk/goruby/ast"
 	"github.com/lczyk/goruby/token"
 	"github.com/pkg/errors"
@@ -87,7 +92,6 @@ func ParseFile(fset *gotoken.FileSet, filename string, src interface{}, mode Mod
 		panic("parser.ParseFile: no token.FileSet provided (fset == nil)")
 	}
 
-	// get source
 	text, err := readSource(filename, src)
 	if err != nil {
 		return nil, err
@@ -99,7 +103,28 @@ func ParseFile(fset *gotoken.FileSet, filename string, src interface{}, mode Mod
 	}
 	p.init(fset, filename, text, mode)
 
-	return p.ParseProgram()
+	program, parseErr := p.ParseProgram()
+
+	if mode&Trace != 0 {
+		if tracer := trace.GetTracer(p.ctx); tracer != nil {
+			tracer.Done()
+			walkable, err := tracer.ToWalkable()
+			if err == nil {
+				var out strings.Builder
+				_ = walkable.Walk(printer.NewTracePrinter(&out, true))
+				os.Stderr.Write([]byte(out.String()))
+			}
+		}
+	}
+
+	return program, parseErr
+}
+
+// WithContext sets a custom context on the parser, allowing callers to
+// provide their own tracer. When a context with a tracer is provided,
+// the Trace mode flag is not needed.
+func WithContext(ctx context.Context) Option {
+	return func(p *parser) { p.ctx = ctx }
 }
 
 // ParseExprFrom is a convenience function for parsing an expression.
