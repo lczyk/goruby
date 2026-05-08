@@ -157,6 +157,8 @@ var tokensNotPossibleInCallArgs = []token.Type{
 	token.QMARK,
 	token.RBRACKET,
 	token.COMMA,
+	token.THEN,
+	token.HASHROCKET,
 }
 
 type (
@@ -2581,7 +2583,7 @@ func (p *parser) parseContextCallExpression(context ast.Expression) ast.Expressi
 	ident := function.(*ast.Identifier)
 	contextCallExpression.Function = ident
 
-	if p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE, token.DOT, token.SCOPE, token.END) {
+	if p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE, token.EOF, token.DOT, token.SCOPE, token.END, token.HASHROCKET) {
 		contextCallExpression.Arguments = []ast.Expression{}
 		return contextCallExpression
 	}
