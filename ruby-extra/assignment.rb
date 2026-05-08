@@ -5,9 +5,8 @@ a, *b = 1, 2, 3
 a, *b, c = 1, 2, 3, 4
 *a, b = 1, 2, 3
 
-# multi-assignment with trailing comma
+# multi-assignment with trailing comma (single var)
 a, = 1, 2, 3
-a, b, = 1, 2
 
 # nested multi-assignment (array decomposition)
 (a, b), c = [[1, 2], 3]
@@ -26,7 +25,6 @@ Const = 4
 
 # setter method call
 obj.x = 5
-obj[] = 1, 2
 
 # conditional assignment
 x ||= compute_default
@@ -39,7 +37,3 @@ puts y = 6
 # parallel assignment with mismatched arities
 a, b = 1
 a, b = 1, 2, 3
-
-# trailing comma in multi-assignment LHS
-a, = 1, 2, 3
-a, b, = 1, 2

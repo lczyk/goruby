@@ -78,11 +78,11 @@ x = risky rescue safe
 # case/when with splat
 case x
 when 1, 2, 3
-  "few"
+  'few'
 when *[4, 5]
-  "from array"
+  'from array'
 else
-  "other"
+  'other'
 end
 
 # defined? all forms

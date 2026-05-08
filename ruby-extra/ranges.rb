@@ -8,11 +8,11 @@ r2 = 1...10
 x = 5
 case x
 when 1..3
-  "low"
+  'low'
 when 4..7
-  "mid"
+  'mid'
 when 8..10
-  "high"
+  'high'
 end
 
 # range with variables

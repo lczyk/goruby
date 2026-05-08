@@ -5616,8 +5616,6 @@ var rubyExtraExpectFail = map[string]string{
 	// regression: foo() parses in isolation but fails in file context
 	"call.rb": "call.rb line 24: unexpected ), expecting IDENT",
 
-	// nested multi-assignment with parenthesised LHS
-	"assignment.rb": "nested parenthesised LHS in multi-assignment",
 	// case/in pattern matching
 	"case.rb": "case/in pattern matching",
 	// beginless/endless ranges
@@ -5650,7 +5648,7 @@ func TestRubyExtraFixtures(t *testing.T) {
 			}
 			done := make(chan result, 1)
 			go func() {
-				prog, err := ParseFile(fset, path, nil, parseMode)
+				prog, err := ParseFile(fset, path, nil, AllErrors|ParseComments)
 				done <- result{prog, err}
 			}()
 
