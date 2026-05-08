@@ -2898,6 +2898,15 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 			p.accept(endToken)
 			return identifiers
 		}
+		// Forwarding: def foo(a, ...)
+		if p.peekTokenIs(token.RANGEEX) {
+			p.accept(token.RANGEEX)
+			identifiers = append(identifiers, &ast.FunctionParameter{IsForwarding: true})
+			if hasDelimiters {
+				p.accept(endToken)
+			}
+			return identifiers
+		}
 		if p.peekTokenIs(token.POWER) {
 			p.accept(token.POWER)
 			if p.peekTokenIs(token.NIL) {
