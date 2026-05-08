@@ -1138,7 +1138,7 @@ func TestLexerModulo(t *testing.T) {
 func TestLexerStringHashAt(t *testing.T) {
 	l := New("\"#@foo\"")
 	tok := l.NextToken() // STRING_BEG
-	tok = l.NextToken() // AT
+	tok = l.NextToken()  // AT
 	if tok.Type != token.AT {
 		t.Fatalf("expected AT, got %s (%q)", tok.Type, tok.Literal)
 	}
@@ -1153,7 +1153,7 @@ func TestLexerStringHashAt(t *testing.T) {
 func TestLexerStringHashClassVar(t *testing.T) {
 	l := New("\"#@@cvar\"")
 	tok := l.NextToken() // STRING_BEG
-	tok = l.NextToken() // CLASS_VAR
+	tok = l.NextToken()  // CLASS_VAR
 	if tok.Type != token.CLASS_VAR {
 		t.Fatalf("expected CLASS_VAR, got %s (%q)", tok.Type, tok.Literal)
 	}
@@ -1168,8 +1168,8 @@ func TestLexerStringHashClassVar(t *testing.T) {
 func TestLexerPercentContentHashClassVar(t *testing.T) {
 	l := New("%Q{hello #@@cvar}")
 	tok := l.NextToken() // STRING_BEG "Q"
-	tok = l.NextToken() // STRING_CONTENT "hello "
-	tok = l.NextToken() // CLASS_VAR
+	tok = l.NextToken()  // STRING_CONTENT "hello "
+	tok = l.NextToken()  // CLASS_VAR
 	if tok.Type != token.CLASS_VAR {
 		t.Fatalf("expected CLASS_VAR, got %s (%q)", tok.Type, tok.Literal)
 	}
@@ -1180,8 +1180,8 @@ func TestLexerPercentContentHashClassVar(t *testing.T) {
 func TestLexerPercentRegexHashAt(t *testing.T) {
 	l := New("%r{foo #@bar}")
 	tok := l.NextToken() // REGEX_BEG
-	tok = l.NextToken() // STRING_CONTENT "foo "
-	tok = l.NextToken() // AT
+	tok = l.NextToken()  // STRING_CONTENT "foo "
+	tok = l.NextToken()  // AT
 	if tok.Type != token.AT {
 		t.Fatalf("expected AT, got %s (%q)", tok.Type, tok.Literal)
 	}
@@ -1196,8 +1196,8 @@ func TestLexerPercentRegexHashAt(t *testing.T) {
 func TestLexerPercentRegexHashClassVar(t *testing.T) {
 	l := New("%r{foo #@@bar}")
 	tok := l.NextToken() // REGEX_BEG
-	tok = l.NextToken() // STRING_CONTENT
-	tok = l.NextToken() // CLASS_VAR
+	tok = l.NextToken()  // STRING_CONTENT
+	tok = l.NextToken()  // CLASS_VAR
 	if tok.Type != token.CLASS_VAR {
 		t.Fatalf("expected CLASS_VAR, got %s (%q)", tok.Type, tok.Literal)
 	}
@@ -1212,8 +1212,8 @@ func TestLexerPercentRegexHashClassVar(t *testing.T) {
 func TestLexerRegexHashDollar(t *testing.T) {
 	l := New("/foo #$bar/")
 	tok := l.NextToken() // REGEX_BEG
-	tok = l.NextToken() // STRING_CONTENT "foo "
-	tok = l.NextToken() // GLOBAL
+	tok = l.NextToken()  // STRING_CONTENT "foo "
+	tok = l.NextToken()  // GLOBAL
 	if tok.Type != token.GLOBAL {
 		t.Fatalf("expected GLOBAL, got %s (%q)", tok.Type, tok.Literal)
 	}
@@ -1227,8 +1227,8 @@ func TestLexerRegexHashDollar(t *testing.T) {
 func TestLexerRegexHashAt(t *testing.T) {
 	l := New("/foo #@bar/")
 	tok := l.NextToken() // REGEX_BEG
-	tok = l.NextToken() // STRING_CONTENT "foo "
-	tok = l.NextToken() // AT
+	tok = l.NextToken()  // STRING_CONTENT "foo "
+	tok = l.NextToken()  // AT
 	if tok.Type != token.AT {
 		t.Fatalf("expected AT, got %s", tok.Type)
 	}
@@ -1241,8 +1241,8 @@ func TestLexerRegexHashAt(t *testing.T) {
 func TestLexerRegexHashClassVar(t *testing.T) {
 	l := New("/foo #@@bar/")
 	tok := l.NextToken() // REGEX_BEG
-	tok = l.NextToken() // STRING_CONTENT "foo "
-	tok = l.NextToken() // CLASS_VAR
+	tok = l.NextToken()  // STRING_CONTENT "foo "
+	tok = l.NextToken()  // CLASS_VAR
 	if tok.Type != token.CLASS_VAR {
 		t.Fatalf("expected CLASS_VAR, got %s (%q)", tok.Type, tok.Literal)
 	}
@@ -1253,7 +1253,7 @@ func TestLexerRegexHashClassVar(t *testing.T) {
 func TestLexerRegexEscaped(t *testing.T) {
 	l := New("/\\//")
 	tok := l.NextToken() // REGEX_BEG
-	tok = l.NextToken() // STRING_CONTENT "\\/"
+	tok = l.NextToken()  // STRING_CONTENT "\\/"
 	if tok.Type != token.STRING_CONTENT {
 		t.Fatalf("expected STRING_CONTENT, got %s", tok.Type)
 	}
@@ -1268,8 +1268,8 @@ func TestLexerRegexEscaped(t *testing.T) {
 func TestLexerPercentAfterNewline(t *testing.T) {
 	// After NEWLINE, isRegexBeginContext returns true, so % starts a percent literal
 	l := New("x\n%(bar)")
-	l.NextToken() // IDENT x
-	l.NextToken() // NEWLINE
+	l.NextToken()        // IDENT x
+	l.NextToken()        // NEWLINE
 	tok := l.NextToken() // STRING_BEG "Q"
 	if tok.Type != token.STRING_BEG {
 		t.Fatalf("expected STRING_BEG, got %s (%q)", tok.Type, tok.Literal)
@@ -1322,7 +1322,7 @@ func TestLexerHeredocContentPartialDelimMatch(t *testing.T) {
 	// "EOST" starts with "EOS" -- matching loop stops at the prefix, treats it as delim.
 	l := New("<<EOS\nline\nEOST\nEOS\n")
 	tok := l.NextToken() // STRING_BEG
-	tok = l.NextToken() // STRING_CONTENT "line\n"
+	tok = l.NextToken()  // STRING_CONTENT "line\n"
 	if tok.Literal != "line\n" {
 		t.Errorf("expected 'line\\n', got %q", tok.Literal)
 	}
@@ -1342,7 +1342,7 @@ func TestLexerHeredocContentPartialDelimMatch(t *testing.T) {
 func TestLexerHeredocContentEscape(t *testing.T) {
 	l := New("<<EOS\nline with \\x41 hex\nEOS\n")
 	tok := l.NextToken() // STRING_BEG
-	tok = l.NextToken() // STRING_CONTENT
+	tok = l.NextToken()  // STRING_CONTENT
 	if tok.Literal != "line with \\x41 hex\n" {
 		t.Errorf("expected 'line with \\\\x41 hex\\n', got %q", tok.Literal)
 	}
@@ -1391,7 +1391,7 @@ func TestLexerMatchHeredocDelimLine(t *testing.T) {
 func TestLexerHeredocContentUnterminated(t *testing.T) {
 	l := New("<<EOS\nbody without end")
 	tok := l.NextToken() // STRING_BEG
-	tok = l.NextToken() // STRING_CONTENT ... or ILLEGAL
+	tok = l.NextToken()  // STRING_CONTENT ... or ILLEGAL
 	// Should eventually produce ILLEGAL
 	for l.HasNext() && tok.Type != token.ILLEGAL && tok.Type != token.EOF {
 		tok = l.NextToken()
@@ -1405,7 +1405,7 @@ func TestLexerHeredocContentUnterminated(t *testing.T) {
 
 func TestLexerHeredocContentHashClassVar(t *testing.T) {
 	l := New("<<EOS\nhello #@@var\nEOS\n")
-	l.NextToken() // STRING_BEG
+	l.NextToken()        // STRING_BEG
 	tok := l.NextToken() // STRING_CONTENT "hello "
 	if tok.Type != token.STRING_CONTENT || tok.Literal != "hello " {
 		t.Fatalf("expected STRING_CONTENT 'hello ', got %s %q", tok.Type, tok.Literal)
@@ -1420,7 +1420,7 @@ func TestLexerHeredocContentHashClassVar(t *testing.T) {
 
 func TestLexerHeredocContentHashAt(t *testing.T) {
 	l := New("<<EOS\nhello #@name\nEOS\n")
-	l.NextToken() // STRING_BEG
+	l.NextToken()        // STRING_BEG
 	tok := l.NextToken() // STRING_CONTENT "hello "
 	if tok.Type != token.STRING_CONTENT || tok.Literal != "hello " {
 		t.Fatalf("expected STRING_CONTENT 'hello ', got %s %q", tok.Type, tok.Literal)
@@ -1455,7 +1455,7 @@ func TestLexerEscapeControlBackslash(t *testing.T) {
 	// \C-\\ in string: control escapes target a backslash
 	l := New("\"\\C-\\\\\"")
 	tok := l.NextToken() // STRING_BEG
-	tok = l.NextToken() // STRING_CONTENT
+	tok = l.NextToken()  // STRING_CONTENT
 	if tok.Literal != "\\C-\\\\" {
 		t.Errorf("expected '\\\\C-\\\\\\\\', got %q", tok.Literal)
 	}
@@ -1466,7 +1466,7 @@ func TestLexerEscapeControlBackslash(t *testing.T) {
 func TestLexerEscapeMetaBackslash(t *testing.T) {
 	l := New("\"\\M-\\\\\"")
 	tok := l.NextToken() // STRING_BEG
-	tok = l.NextToken() // STRING_CONTENT
+	tok = l.NextToken()  // STRING_CONTENT
 	if tok.Literal != "\\M-\\\\" {
 		t.Errorf("expected '\\\\M-\\\\\\\\', got %q", tok.Literal)
 	}
@@ -1570,7 +1570,7 @@ func TestLexerHeredocBodyNoTrailingNewline(t *testing.T) {
 
 func TestLexerHeredocMatchIndentedTabs(t *testing.T) {
 	l := New("<<-EOS\nline\n\t\tEOS\n")
-	l.NextToken() // STRING_BEG
+	l.NextToken()        // STRING_BEG
 	tok := l.NextToken() // STRING_CONTENT
 	if tok.Literal != "line\n" {
 		t.Errorf("expected 'line\\n', got %q", tok.Literal)
@@ -1603,7 +1603,7 @@ func TestLexerStripSquigInterpBodyNoDelim(t *testing.T) {
 func TestLexerStripSquigAllBlank(t *testing.T) {
 	// All lines blank except last - min indent comes from non-blank
 	l := New("<<~EOS\n\n\n  line\n  EOS\n")
-	l.NextToken() // STRING_BEG
+	l.NextToken()        // STRING_BEG
 	tok := l.NextToken() // STRING_CONTENT
 	if tok.Literal != "\n\nline\n" {
 		t.Errorf("expected '\\n\\nline\\n', got %q", tok.Literal)
@@ -1747,7 +1747,7 @@ func TestLexerCharLiteralUnterminatedOctal(t *testing.T) {
 func TestLexerUnterminatedString(t *testing.T) {
 	l := New("\"no closing quote")
 	tok := l.NextToken() // STRING_BEG
-	tok = l.NextToken() // scan until error
+	tok = l.NextToken()  // scan until error
 	for l.HasNext() && tok.Type != token.ILLEGAL {
 		tok = l.NextToken()
 	}
@@ -1784,7 +1784,7 @@ func TestLexerPercentLiteralUnterminated(t *testing.T) {
 func TestLexerPercentBodyEndUnterminated(t *testing.T) {
 	l := New("%w(no closing")
 	tok := l.NextToken() // STRING_BEG
-	tok = l.NextToken() // scan until ILLEGAL
+	tok = l.NextToken()  // scan until ILLEGAL
 	for l.HasNext() && tok.Type != token.ILLEGAL {
 		tok = l.NextToken()
 	}
@@ -1798,7 +1798,7 @@ func TestLexerPercentBodyEndUnterminated(t *testing.T) {
 func TestLexerPercentContentUnterminated(t *testing.T) {
 	l := New("%Q{no closing")
 	tok := l.NextToken() // STRING_BEG
-	tok = l.NextToken() // scan until ILLEGAL
+	tok = l.NextToken()  // scan until ILLEGAL
 	for l.HasNext() && tok.Type != token.ILLEGAL {
 		tok = l.NextToken()
 	}
@@ -1812,7 +1812,7 @@ func TestLexerPercentContentUnterminated(t *testing.T) {
 func TestLexerBacktickUnterminated(t *testing.T) {
 	l := New("`no closing backtick")
 	tok := l.NextToken() // XSTR_BEG
-	tok = l.NextToken() // scan until ILLEGAL
+	tok = l.NextToken()  // scan until ILLEGAL
 	for l.HasNext() && tok.Type != token.ILLEGAL {
 		tok = l.NextToken()
 	}
@@ -1879,7 +1879,7 @@ func TestLexerHeredocBodyEOFDuringDelim(t *testing.T) {
 func TestLexerHeredocContentIndentedUnterminated(t *testing.T) {
 	l := New("<<-EOS\nline\n  ")
 	tok := l.NextToken() // STRING_BEG
-	tok = l.NextToken() // scan
+	tok = l.NextToken()  // scan
 	for l.HasNext() && tok.Type != token.ILLEGAL {
 		tok = l.NextToken()
 	}
@@ -1893,7 +1893,7 @@ func TestLexerHeredocContentIndentedUnterminated(t *testing.T) {
 func TestLexerHeredocContentEOFDuringDelim(t *testing.T) {
 	l := New("<<-EOS\nline\nE")
 	tok := l.NextToken() // STRING_BEG
-	tok = l.NextToken() // scan
+	tok = l.NextToken()  // scan
 	for l.HasNext() && tok.Type != token.ILLEGAL {
 		tok = l.NextToken()
 	}
@@ -1906,7 +1906,7 @@ func TestLexerHeredocContentEOFDuringDelim(t *testing.T) {
 
 func TestLexerHeredocContentMatchAtLineStart(t *testing.T) {
 	l := New("<<EOS\nEOS\n")
-	l.NextToken() // STRING_BEG
+	l.NextToken()        // STRING_BEG
 	tok := l.NextToken() // STRING_CONTENT (empty) or STRING_END
 	if tok.Type != token.STRING_CONTENT && tok.Type != token.STRING_END {
 		t.Fatalf("expected STRING_CONTENT or STRING_END, got %s (%q)", tok.Type, tok.Literal)
@@ -1937,7 +1937,7 @@ func TestLexerStripHeredocIndentZero(t *testing.T) {
 func TestLexerRegexUnterminated(t *testing.T) {
 	l := New("/no closing slash")
 	tok := l.NextToken() // REGEX_BEG
-	tok = l.NextToken() // scan until ILLEGAL
+	tok = l.NextToken()  // scan until ILLEGAL
 	for l.HasNext() && tok.Type != token.ILLEGAL {
 		tok = l.NextToken()
 	}
@@ -2029,4 +2029,3 @@ func TestLexerSquigBodyAllBlankBeforeDelim(t *testing.T) {
 		t.Errorf("expected '\\n\\n', got %q", tok.Literal)
 	}
 }
-
