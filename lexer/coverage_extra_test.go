@@ -1276,3 +1276,199 @@ func TestLexerPercentAfterNewline(t *testing.T) {
 	}
 }
 
+// --- lexHeredocBody: squiggy literal heredoc ---
+
+func TestLexerHeredocBodySquigLiteral(t *testing.T) {
+	// <<~'EOS' is a literal squiggy heredoc - single STRING token with stripped indent
+	l := New("<<~'EOS'\n  hello\n  EOS\n")
+	tok := l.NextToken()
+	if tok.Type != token.STRING {
+		t.Fatalf("expected STRING, got %s", tok.Type)
+	}
+	if tok.Literal != "hello\n" {
+		t.Errorf("expected 'hello\\n', got %q", tok.Literal)
+	}
+}
+
+// --- lexHeredocBody: partial delimiter match ---
+
+func TestLexerHeredocBodyPartialDelimMatch(t *testing.T) {
+	// "ENDING" starts with "END" -- matching loop stops at the prefix, treating it as delim.
+	// The "ING" part is consumed as a trailer on the delim line.
+	l := New("<<'END'\ndata\nENDING\nEND\n")
+	tok := l.NextToken()
+	if tok.Type != token.STRING {
+		t.Fatalf("expected STRING, got %s", tok.Type)
+	}
+	// "data\n" is content. "ENDING" matches "END" prefix, rest is trailer.
+	if tok.Literal != "data\n" {
+		t.Errorf("expected 'data\\n', got %q", tok.Literal)
+	}
+}
+
+// --- lexHeredocBody: unterminated ---
+
+func TestLexerHeredocBodyUnterminated(t *testing.T) {
+	l := New("<<'EOS'\nbody without closing delim")
+	tok := l.NextToken()
+	if tok.Type != token.ILLEGAL {
+		t.Errorf("expected ILLEGAL for unterminated heredoc, got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+// --- lexHeredocContent: partial delimiter match in interpolating heredoc ---
+
+func TestLexerHeredocContentPartialDelimMatch(t *testing.T) {
+	// "EOST" starts with "EOS" -- matching loop stops at the prefix, treats it as delim.
+	l := New("<<EOS\nline\nEOST\nEOS\n")
+	tok := l.NextToken() // STRING_BEG
+	tok = l.NextToken() // STRING_CONTENT "line\n"
+	if tok.Literal != "line\n" {
+		t.Errorf("expected 'line\\n', got %q", tok.Literal)
+	}
+	// "EOST" matches as delim, "T\n" consumed as trailer. Then EOS\n matches properly.
+	tok = l.NextToken() // STRING_CONTENT or STRING_END
+	// The lexer emits STRING_CONTENT "" then STRING_END
+	if tok.Type == token.STRING_CONTENT && tok.Literal == "" {
+		tok = l.NextToken() // skip empty content
+	}
+	if tok.Type != token.STRING_END {
+		t.Fatalf("expected STRING_END, got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+// --- lexHeredocContent: escape in interpolating heredoc ---
+
+func TestLexerHeredocContentEscape(t *testing.T) {
+	l := New("<<EOS\nline with \\x41 hex\nEOS\n")
+	tok := l.NextToken() // STRING_BEG
+	tok = l.NextToken() // STRING_CONTENT
+	if tok.Literal != "line with \\x41 hex\n" {
+		t.Errorf("expected 'line with \\\\x41 hex\\n', got %q", tok.Literal)
+	}
+}
+
+// --- lexHeredocStart: <<~ with indent but no squig (indent mode without squig) ---
+
+func TestLexerHeredocStartIndentOnly(t *testing.T) {
+	// <<- without squig but with indent
+	l := New("<<-EOS\n  body\n  EOS\n")
+	tok := l.NextToken() // STRING_BEG
+	if tok.Type != token.STRING_BEG {
+		t.Fatalf("expected STRING_BEG, got %s", tok.Type)
+	}
+	tok = l.NextToken() // STRING_CONTENT
+	if tok.Literal != "  body\n" {
+		t.Errorf("expected '  body\\n', got %q", tok.Literal)
+	}
+}
+
+// --- matchHeredocDelimLine: edge cases ---
+
+func TestLexerMatchHeredocDelimLine(t *testing.T) {
+	// Constructor creates lexer, but matchHeredocDelimLine works on positions.
+	// We test indirectly via heredoc lexing.
+
+	// Non-indented heredoc: delimiter at line start after other content
+	l := New("<<EOS\nline\nEOS\n")
+	l.NextToken() // STRING_BEG
+	tok := l.NextToken()
+	if tok.Literal != "line\n" {
+		t.Errorf("expected 'line\\n', got %q", tok.Literal)
+	}
+
+	// Indented heredoc with tabs
+	l2 := New("<<-EOS\n\tcontent\n\tEOS\n")
+	l2.NextToken() // STRING_BEG
+	tok = l2.NextToken()
+	if tok.Literal != "\tcontent\n" {
+		t.Errorf("expected '\\tcontent\\n', got %q", tok.Literal)
+	}
+}
+
+// --- lexHeredocContent: unterminated ---
+
+func TestLexerHeredocContentUnterminated(t *testing.T) {
+	l := New("<<EOS\nbody without end")
+	tok := l.NextToken() // STRING_BEG
+	tok = l.NextToken() // STRING_CONTENT ... or ILLEGAL
+	// Should eventually produce ILLEGAL
+	for l.HasNext() && tok.Type != token.ILLEGAL && tok.Type != token.EOF {
+		tok = l.NextToken()
+	}
+	if tok.Type != token.ILLEGAL {
+		t.Errorf("expected ILLEGAL for unterminated interpolating heredoc, got %s", tok.Type)
+	}
+}
+
+// --- lexHeredocContent: #@@var in heredoc ---
+
+func TestLexerHeredocContentHashClassVar(t *testing.T) {
+	l := New("<<EOS\nhello #@@var\nEOS\n")
+	l.NextToken() // STRING_BEG
+	tok := l.NextToken() // STRING_CONTENT "hello "
+	if tok.Type != token.STRING_CONTENT || tok.Literal != "hello " {
+		t.Fatalf("expected STRING_CONTENT 'hello ', got %s %q", tok.Type, tok.Literal)
+	}
+	tok = l.NextToken() // CLASS_VAR
+	if tok.Type != token.CLASS_VAR {
+		t.Fatalf("expected CLASS_VAR, got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+// --- lexHeredocContent: #@var in heredoc ---
+
+func TestLexerHeredocContentHashAt(t *testing.T) {
+	l := New("<<EOS\nhello #@name\nEOS\n")
+	l.NextToken() // STRING_BEG
+	tok := l.NextToken() // STRING_CONTENT "hello "
+	if tok.Type != token.STRING_CONTENT || tok.Literal != "hello " {
+		t.Fatalf("expected STRING_CONTENT 'hello ', got %s %q", tok.Type, tok.Literal)
+	}
+	tok = l.NextToken() // AT
+	if tok.Type != token.AT {
+		t.Fatalf("expected AT, got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+// --- lexPercentLiteral: %s with non-paired delimiter ---
+
+func TestLexerPercentS(t *testing.T) {
+	l := New("%s/sym/")
+	tok := l.NextToken() // STRING_BEG "s"
+	if tok.Type != token.STRING_BEG {
+		t.Fatalf("expected STRING_BEG, got %s", tok.Type)
+	}
+	tok = l.NextToken() // STRING_CONTENT
+	if tok.Type != token.STRING_CONTENT {
+		t.Fatalf("expected STRING_CONTENT, got %s", tok.Type)
+	}
+	tok = l.NextToken() // STRING_END
+	if tok.Type != token.STRING_END {
+		t.Fatalf("expected STRING_END, got %s", tok.Type)
+	}
+}
+
+// --- consumeEscape: \C-\\ in string ---
+
+func TestLexerEscapeControlBackslash(t *testing.T) {
+	// \C-\\ in string: control escapes target a backslash
+	l := New("\"\\C-\\\\\"")
+	tok := l.NextToken() // STRING_BEG
+	tok = l.NextToken() // STRING_CONTENT
+	if tok.Literal != "\\C-\\\\" {
+		t.Errorf("expected '\\\\C-\\\\\\\\', got %q", tok.Literal)
+	}
+}
+
+// --- consumeEscape: \M-\\ in string ---
+
+func TestLexerEscapeMetaBackslash(t *testing.T) {
+	l := New("\"\\M-\\\\\"")
+	tok := l.NextToken() // STRING_BEG
+	tok = l.NextToken() // STRING_CONTENT
+	if tok.Literal != "\\M-\\\\" {
+		t.Errorf("expected '\\\\M-\\\\\\\\', got %q", tok.Literal)
+	}
+}
+
