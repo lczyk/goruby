@@ -333,6 +333,11 @@ func startLexer(l *Lexer) StateFn {
 			l.ignore()
 			return startLexer
 		}
+		// Trailing `or`/`and` keywords suppress NEWLINE: `x or\ny` -> `x or y`.
+		if l.lastToken.Type == token.KW_AND || l.lastToken.Type == token.KW_OR {
+			l.ignore()
+			return startLexer
+		}
 		// Ruby 4.0+: leading logical operators as line continuation.
 		// Only when version is explicitly set -- this changes existing behaviour.
 		if l.version.IsSet() && l.version.AtLeast(ruby40) && pos < len(l.input) {

@@ -706,6 +706,9 @@ func (p *parser) parseExpressions(left ast.Expression) ast.Expression {
 	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 		p.nextToken()
 	}
+	if p.currentTokenOneOf(token.RPAREN, token.RBRACKET, token.RBRACE) {
+		return ast.ExpressionList{left}
+	}
 	elements := []ast.Expression{left}
 	next := p.parseExpression(precAssignment)
 	elements = append(elements, next)
@@ -1428,6 +1431,9 @@ func (p *parser) parseSuper() ast.Expression {
 		p.nextToken()
 		sup.Arguments = p.parseCallArguments(token.RPAREN)
 		p.nextToken()
+		if p.currentTokenOneOf(token.LBRACE, token.DO) {
+			sup.Block = p.parseBlock().(*ast.BlockExpression)
+		}
 		return sup
 	}
 	sup.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE, token.EOF, token.LBRACE, token.DO, token.RPAREN, token.RBRACKET)
