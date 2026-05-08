@@ -701,8 +701,15 @@ func (p *parser) parseRescueBlock() *ast.RescueBlock {
 	defer trace.TraceCtx(p.ctx)()
 	block := &ast.RescueBlock{Token: p.curToken}
 	classes := []*ast.Identifier{}
-	for p.peekTokenIs(token.CONST) {
-		p.accept(token.CONST)
+	for p.peekTokenOneOf(token.CONST, token.ASTERISK) {
+		isSplat := false
+		if p.peekTokenIs(token.ASTERISK) {
+			isSplat = true
+			p.accept(token.ASTERISK)
+		}
+		if !p.accept(token.CONST) {
+			break
+		}
 		name := p.curToken.Literal
 		for p.peekTokenIs(token.SCOPE) {
 			p.accept(token.SCOPE)
@@ -710,6 +717,9 @@ func (p *parser) parseRescueBlock() *ast.RescueBlock {
 				break
 			}
 			name += "::" + p.curToken.Literal
+		}
+		if isSplat {
+			name = "*" + name
 		}
 		class := &ast.Identifier{Token: p.curToken, Value: name}
 		classes = append(classes, class)
@@ -1452,7 +1462,7 @@ func (p *parser) parseYield() ast.Expression {
 		p.nextToken()
 		return yield
 	}
-	if p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE) {
+	if p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE, token.RPAREN, token.RBRACKET) {
 		return yield
 	}
 	yield.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE, token.LBRACE, token.DO)
