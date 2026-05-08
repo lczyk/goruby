@@ -735,6 +735,15 @@ func (p *parser) parseBlockCapture() ast.Expression {
 		capture.Expr = p.parseLambda()
 		return capture
 	}
+	if p.peekTokenIs(token.SYMBEG) {
+		p.nextToken()
+		sym := p.parseSymbolLiteral()
+		if sym == nil {
+			return nil
+		}
+		capture.Expr = sym
+		return capture
+	}
 	if !p.accept(token.IDENT) {
 		return nil
 	}
