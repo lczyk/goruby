@@ -2478,6 +2478,25 @@ func TestFunctionLiteralParsing(t *testing.T) {
 			[]funcParam{},
 			"(x + y)",
 		},
+		{
+			"single-line body after parens",
+			"def right() x + y end",
+			"",
+			"right",
+			[]funcParam{},
+			"(x + y)",
+		},
+		{
+			"single-line body after parens with args",
+			"def add(x, y) x + y end",
+			"",
+			"add",
+			[]funcParam{
+				{name: "x", defaultValue: nil},
+				{name: "y", defaultValue: nil},
+			},
+			"(x + y)",
+		},
 	}
 
 	for _, tt := range tests {

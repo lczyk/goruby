@@ -2218,7 +2218,12 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 		return lit
 	}
 
-	p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+		p.nextToken()
+	} else if !p.currentTokenOneOf(token.RPAREN, token.PIPE) {
+		p.peekError(token.NEWLINE, token.SEMICOLON)
+		return nil
+	}
 	lit.Body = p.parseBlockStatement(token.END, token.RESCUE, token.KW_ENSURE)
 	lit.Rescues = []*ast.RescueBlock{}
 	for p.peekTokenIs(token.RESCUE) {
@@ -2492,7 +2497,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 	function := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 	contextCallExpression.Function = function
 
-	if p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE, token.EOF, token.DOT, token.SCOPE, token.LONELY) {
+	if p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE, token.EOF, token.DOT, token.SCOPE, token.LONELY, token.END) {
 		contextCallExpression.Arguments = []ast.Expression{}
 		return contextCallExpression
 	}
