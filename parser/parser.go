@@ -2995,10 +2995,19 @@ func (p *parser) parseBlockStatement(t ...token.Type) *ast.BlockStatement {
 			p.peekError(token.EOF)
 			return block
 		}
-		// Modifier if/unless/while/until after return: `return unless cond`
+		// Modifier if/unless/while/until after return/break/next: `return unless cond`
 		// Skip the modifier condition to avoid parsing it as standalone block.
 		if p.currentTokenOneOf(token.IF, token.UNLESS, token.WHILE, token.UNTIL) && len(block.Statements) > 0 {
-			if _, ok := block.Statements[len(block.Statements)-1].(*ast.ReturnStatement); ok {
+			lastStmt := block.Statements[len(block.Statements)-1]
+			isJump := false
+			if _, ok := lastStmt.(*ast.ReturnStatement); ok {
+				isJump = true
+			} else if es, ok := lastStmt.(*ast.ExpressionStatement); ok {
+				if _, ok := es.Expression.(*ast.JumpExpression); ok {
+					isJump = true
+				}
+			}
+			if isJump {
 				p.nextToken()
 				p.parseExpression(precLowest)
 				continue
@@ -3250,6 +3259,20 @@ func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {
 		if rhs, ok := fn.Right.(*ast.ContextCallExpression); ok {
 			rhs.Block = exp.Block
 			return fn
+		}
+	case ast.ExpressionList:
+		if len(fn) > 0 {
+			last := fn[len(fn)-1]
+			if ident, ok := last.(*ast.Identifier); ok {
+				call := &ast.ContextCallExpression{Token: ident.Token, Function: ident}
+				call.Block = exp.Block
+				fn[len(fn)-1] = call
+				return fn
+			}
+			if cc, ok := last.(*ast.ContextCallExpression); ok {
+				cc.Block = exp.Block
+				return fn
+			}
 		}
 	case *ast.ArrayLiteral:
 		// Array construction before block, e.g. `[items].each do...end`
