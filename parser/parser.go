@@ -1851,7 +1851,26 @@ func (p *parser) parseBlock() ast.Expression {
 		endToken = token.END
 	}
 
-	block.Body = p.parseBlockStatement(endToken)
+	if endToken == token.END {
+		block.Body = p.parseBlockStatement(token.END, token.RESCUE, token.KW_ENSURE)
+		for p.peekTokenIs(token.RESCUE) {
+			p.accept(token.RESCUE)
+			rescue := p.parseRescueBlock()
+			block.Rescues = append(block.Rescues, rescue)
+		}
+		if p.peekTokenIs(token.ELSE) {
+			p.accept(token.ELSE)
+			p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+			block.ElseBody = p.parseBlockStatement(token.END, token.KW_ENSURE)
+		}
+		if p.peekTokenIs(token.KW_ENSURE) {
+			p.accept(token.KW_ENSURE)
+			p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+			block.EnsureBody = p.parseBlockStatement(token.END)
+		}
+	} else {
+		block.Body = p.parseBlockStatement(endToken)
+	}
 	p.nextToken()
 	block.EndToken = p.curToken
 	return block
@@ -1880,13 +1899,13 @@ func (p *parser) parseInfixExpression(left ast.Expression) ast.Expression {
 		Left:     left,
 	}
 	precedence := p.curPrecedence()
-	p.nextToken()
 	if expression.Operator == ".." || expression.Operator == "..." {
-		if p.currentTokenOneOf(token.EOF, token.NEWLINE, token.SEMICOLON,
+		if p.peekTokenOneOf(token.EOF, token.NEWLINE, token.SEMICOLON,
 			token.RPAREN, token.RBRACKET, token.RBRACE, token.COMMA, token.PIPE) {
 			return expression
 		}
 	}
+	p.nextToken()
 	expression.Right = p.parseExpression(precedence)
 	return expression
 }
@@ -2389,6 +2408,19 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 
 	if p.peekTokenIs(token.POWER) {
 		p.accept(token.POWER)
+		if p.peekTokenIs(token.NIL) {
+			p.accept(token.NIL)
+			kp := &ast.FunctionParameter{
+				Name:          &ast.Identifier{Token: p.curToken, Value: "nil"},
+				IsKeywordRest: true,
+				IsNoKeywords:  true,
+			}
+			identifiers = append(identifiers, kp)
+			if hasDelimiters {
+				p.accept(endToken)
+			}
+			return identifiers
+		}
 		if p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.CONST) {
 			p.accept(token.IDENT)
 		}
@@ -2445,6 +2477,19 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 		p.accept(token.COMMA)
 		if p.peekTokenIs(token.POWER) {
 			p.accept(token.POWER)
+			if p.peekTokenIs(token.NIL) {
+				p.accept(token.NIL)
+				kp := &ast.FunctionParameter{
+					Name:          &ast.Identifier{Token: p.curToken, Value: "nil"},
+					IsKeywordRest: true,
+					IsNoKeywords:  true,
+				}
+				identifiers = append(identifiers, kp)
+				if hasDelimiters {
+					p.accept(endToken)
+				}
+				return identifiers
+			}
 			if p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.CONST) {
 				p.accept(token.IDENT)
 			}

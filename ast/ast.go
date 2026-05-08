@@ -1131,6 +1131,7 @@ type FunctionParameter struct {
 	IsSplat       bool
 	IsKeyword     bool
 	IsKeywordRest bool // **kwargs
+	IsNoKeywords  bool // **nil (ruby 2.7+)
 	IsForwarding  bool // ... argument forwarding
 }
 
@@ -1282,6 +1283,9 @@ type BlockExpression struct {
 	BlockLocals   []*Identifier        // block-local variables (after ; in |x; y|)
 	CapturedBlock *BlockCapture        // block capture: |..., &blk|
 	Body          *BlockStatement      // the block body
+	Rescues       []*RescueBlock       // rescue clauses (ruby 2.5+ in do/end)
+	ElseBody      *BlockStatement      // else clause (ruby 2.5+ in do/end)
+	EnsureBody    *BlockStatement      // ensure clause (ruby 2.5+ in do/end)
 }
 
 func (b *BlockExpression) expressionNode() {}
@@ -1318,6 +1322,18 @@ func (b *BlockExpression) String() string {
 		out.WriteString("\n")
 	}
 	out.WriteString(b.Body.String())
+	for _, r := range b.Rescues {
+		out.WriteString("\n")
+		out.WriteString(r.String())
+	}
+	if b.ElseBody != nil {
+		out.WriteString("\nelse\n")
+		out.WriteString(b.ElseBody.String())
+	}
+	if b.EnsureBody != nil {
+		out.WriteString("\nensure\n")
+		out.WriteString(b.EnsureBody.String())
+	}
 	out.WriteString("\n")
 	if b.Token.Type == token.LBRACE {
 		out.WriteString("}")

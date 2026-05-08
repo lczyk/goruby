@@ -189,6 +189,15 @@ func Walk(v Visitor, node Node) {
 	case *BlockExpression:
 		walkParameterList(v, n.Parameters)
 		Walk(v, n.Body)
+		for _, r := range n.Rescues {
+			Walk(v, r)
+		}
+		if n.ElseBody != nil {
+			Walk(v, n.ElseBody)
+		}
+		if n.EnsureBody != nil {
+			Walk(v, n.EnsureBody)
+		}
 
 	case *ExceptionHandlingBlock:
 		Walk(v, n.TryBody)
