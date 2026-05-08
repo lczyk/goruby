@@ -159,6 +159,10 @@ var tokensNotPossibleInCallArgs = []token.Type{
 	token.COMMA,
 	token.THEN,
 	token.HASHROCKET,
+	token.KW_AND,
+	token.KW_OR,
+	token.LOGICALAND,
+	token.LOGICALOR,
 }
 
 type (
