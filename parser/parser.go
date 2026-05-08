@@ -598,15 +598,19 @@ func (p *parser) parseReturnStatement() *ast.ReturnStatement {
 var bareCallArgTokens = []token.Type{
 	token.TRUE, token.FALSE, token.NIL,
 	token.INT, token.FLOAT,
-	token.SELF,
+	token.SELF, token.CONST,
+	token.STRING, token.STRING_BEG,
+	token.SYMBEG,
+	token.AT, token.CLASS_VAR,
+	token.GLOBAL,
 }
 
 func (p *parser) parseExpressionStatement() *ast.ExpressionStatement {
 	defer trace.TraceCtx(p.ctx)()
 	stmt := &ast.ExpressionStatement{Token: p.curToken}
 	stmt.Expression = p.parseExpression(precLowest)
-	// Bare function call with literal args: `foo true`, `bar 42`, etc.
-	if ident, ok := stmt.Expression.(*ast.Identifier); ok && p.peekTokenOneOf(bareCallArgTokens...) {
+	// Bare function call with literal args: `foo true`, `bar 42`, `raise Error`, etc.
+	if ident, ok := stmt.Expression.(*ast.Identifier); ok && !ident.IsConstant() && p.peekTokenOneOf(bareCallArgTokens...) {
 		exp := &ast.ContextCallExpression{Token: ident.Token, Function: ident}
 		p.nextToken()
 		exp.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE, token.LBRACE, token.DO)
