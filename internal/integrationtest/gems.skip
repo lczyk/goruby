@@ -383,7 +383,6 @@ parse esolang-book-sources/starry/starry.rb: parser gaps
 parse esolang-book-sources/whitespace/lib/whitespace/vm.rb: parser gaps
 parse esolangs/excela.rb: parser gaps
 parse esolangs/jr.rb: parser gaps
-parse esolangs/subskin.rb: parser gaps
 parse esolangs/tomagotcha.rb: parser gaps
 parse hexagony/hexagony.rb: parser gaps
 parse kaiser-ruby/lib/kaiser_ruby/transformer.rb: parser gaps
@@ -408,7 +407,6 @@ walk esolang-book-sources/starry/starry.rb: parse failed; walk skipped
 walk esolang-book-sources/whitespace/lib/whitespace/vm.rb: parse failed; walk skipped
 walk esolangs/excela.rb: parse failed; walk skipped
 walk esolangs/jr.rb: parse failed; walk skipped
-walk esolangs/subskin.rb: parse failed; walk skipped
 walk esolangs/tomagotcha.rb: parse failed; walk skipped
 walk hexagony/hexagony.rb: parse failed; walk skipped
 walk kaiser-ruby/lib/kaiser_ruby/transformer.rb: parse failed; walk skipped

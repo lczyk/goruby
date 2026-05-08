@@ -2111,6 +2111,11 @@ func (p *parser) parseInfixExpression(left ast.Expression) ast.Expression {
 			return expression
 		}
 	}
+	// Logical operators allow assignment on RHS: a && b = c -> a && (b = c)
+	if expression.Operator == "&&" || expression.Operator == "||" ||
+		expression.Operator == "and" || expression.Operator == "or" {
+		precedence = precAssignment - 1
+	}
 	p.nextToken()
 	expression.Right = p.parseExpression(precedence)
 	return expression
