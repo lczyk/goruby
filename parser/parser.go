@@ -3369,6 +3369,11 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 	}
 
 	next := p.parseExpression(precIfUnless)
+	// ident do...end inside expression list: proc do...end, lambda do...end
+	if _, ok := next.(*ast.Identifier); ok && p.peekTokenIs(token.DO) {
+		p.nextToken()
+		next = p.parseCallBlock(next)
+	}
 	if elist, ok := next.(ast.ExpressionList); ok {
 		list = append(list, elist...)
 	} else {
@@ -3402,6 +3407,10 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 			return list
 		}
 		next = p.parseExpression(precIfUnless)
+		if _, ok := next.(*ast.Identifier); ok && p.peekTokenIs(token.DO) {
+			p.nextToken()
+			next = p.parseCallBlock(next)
+		}
 		if elist, ok := next.(ast.ExpressionList); ok {
 			list = append(list, elist...)
 		} else {
