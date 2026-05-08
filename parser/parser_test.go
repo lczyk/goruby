@@ -5734,3 +5734,17 @@ func TestRubyExtraFixtures(t *testing.T) {
 		})
 	}
 }
+
+func TestParserWithVersion(t *testing.T) {
+	prog, err := ParseFile(gotoken.NewFileSet(), "", "x = 1", 0,
+		WithVersion(token.MustParseVersion("3.0")))
+	if err != nil {
+		t.Fatalf("ParseFile with version: %v", err)
+	}
+	if prog == nil {
+		t.Fatal("expected non-nil program")
+	}
+	if len(prog.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(prog.Statements))
+	}
+}
