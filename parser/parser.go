@@ -820,16 +820,14 @@ func (p *parser) parseBlockCapture() ast.Expression {
 	if p.peekTokenOneOf(token.RPAREN, token.COMMA, token.NEWLINE, token.SEMICOLON) {
 		return capture
 	}
-	// &expr -- block-to-proc conversion on any expression
-	if p.peekTokenOneOf(token.CONST, token.AT, token.GLOBAL, token.CLASS_VAR, token.LPAREN, token.SELF) {
-		p.nextToken()
-		capture.Expr = p.parseExpression(precPrefix)
+	p.nextToken()
+	capture.Expr = p.parseExpression(precPrefix)
+	if capture.Expr == nil {
 		return capture
 	}
-	if !p.accept(token.IDENT) {
-		return nil
+	if ident, ok := capture.Expr.(*ast.Identifier); ok {
+		capture.Name = ident
 	}
-	capture.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 	return capture
 }
 
@@ -2547,11 +2545,12 @@ parseParams:
 				p.accept(token.RPAREN)
 			}
 		} else {
-			capture := p.parseBlockCapture()
-			if capture == nil {
+			bc := &ast.BlockCapture{Token: p.curToken}
+			if !p.accept(token.IDENT) {
 				return nil
 			}
-			lit.CapturedBlock = capture.(*ast.BlockCapture)
+			bc.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+			lit.CapturedBlock = bc
 			if p.peekTokenIs(token.RPAREN) {
 				p.acceptOneOf(token.RPAREN)
 			}
