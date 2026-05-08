@@ -990,10 +990,8 @@ func (p *parser) parseDefinedExpression() ast.Expression {
 		p.accept(token.LPAREN)
 		p.nextToken()
 		expr.Expr = p.parseExpression(precLowest)
-		if p.currentTokenIs(token.RPAREN) {
-			// RPAREN already consumed by inner expression (e.g. super)
-		} else if !p.accept(token.RPAREN) {
-			return nil
+		if p.peekTokenIs(token.RPAREN) {
+			p.accept(token.RPAREN)
 		}
 	} else {
 		p.nextToken()
