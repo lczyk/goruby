@@ -70,6 +70,42 @@ _verify() {
     return 0
 }
 
+# -- apply quilt patches for old rubies ----------------------------
+_apply_patches() {
+    local src="$1" version="$2"
+    local major_minor
+
+    # Derive major.minor (e.g. "1.9" from "1.9.3-p551", "2.0" from "2.0.0-p648").
+    major_minor="${version%.*}"
+    major_minor="${major_minor%-*}"
+
+    # Look for a patches directory matching this version.
+    local patch_dir="$script_dir/patches/$major_minor"
+    if [[ ! -d "$patch_dir" ]]; then
+        return 0
+    fi
+
+    local series="$patch_dir/series"
+    if [[ ! -f "$series" ]]; then
+        return 0
+    fi
+
+    echo "    applying patches from patches/$major_minor/"
+    while IFS= read -r patchfile; do
+        case "$patchfile" in ''|\#*) continue ;; esac
+        local pf="$patch_dir/$patchfile"
+        if [[ ! -f "$pf" ]]; then
+            echo "    WARNING: patch file $pf not found, skipping" >&2
+            continue
+        fi
+        if ! patch -d "$src" -p1 --quiet < "$pf"; then
+            echo "    ERROR: failed to apply $patchfile" >&2
+            exit 1
+        fi
+        echo "      applied $patchfile"
+    done < "$series"
+}
+
 # -- main --------------------------------------------------------
 total=0
 skipped=0
@@ -131,6 +167,9 @@ while IFS=$'\t' read -r version url checksum || [[ -n "${version:-}" ]]; do
         echo "    could not find ruby-$version/ in tarball" >&2
         exit 1
     fi
+
+    # Apply quilt-style patches for old rubies on modern toolchains.
+    _apply_patches "$src" "$version"
 
     # Compile a minimal ruby -- we only need `ruby -c` for syntax checks.
     # Disable extensions that don't build on modern platforms (fiddle, openssl).

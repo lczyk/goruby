@@ -5,5 +5,15 @@
 # Format: version<TAB>source-url<TAB>sha256
 # Lines starting with '#' and blank lines are ignored.
 
+1.9.3-p551	https://cache.ruby-lang.org/pub/ruby/1.9/ruby-1.9.3-p551.tar.gz	sha256:bb5be55cd1f49c95bb05b6f587701376b53d310eb1bb7c76fbd445a1c75b51e8
+2.0.0-p648	https://cache.ruby-lang.org/pub/ruby/2.0/ruby-2.0.0-p648.tar.gz	sha256:8690bd6b4949c333b3919755c4e48885dbfed6fd055fe9ef89930bde0d2376f8
+2.1.10	https://cache.ruby-lang.org/pub/ruby/2.1/ruby-2.1.10.tar.gz	sha256:fb2e454d7a5e5a39eb54db0ec666f53eeb6edc593d1d2b970ae4d150b831dd20
+2.3.8	https://cache.ruby-lang.org/pub/ruby/2.3/ruby-2.3.8.tar.gz	sha256:b5016d61440e939045d4e22979e04708ed6c8e1c52e7edb2553cf40b73c59abf
+2.5.9	https://cache.ruby-lang.org/pub/ruby/2.5/ruby-2.5.9.tar.gz	sha256:f5894e05f532b748c3347894a5efa42066fd11cc8d261d4d9788ff71da00be68
 2.6.0	https://cache.ruby-lang.org/pub/ruby/2.6/ruby-2.6.0.tar.gz	sha256:f3c35b924a11c88ff111f0956ded3cdc12c90c04b72b266ac61076d3697fc072
+2.7.8	https://cache.ruby-lang.org/pub/ruby/2.7/ruby-2.7.8.tar.gz	sha256:c2dab63cbc8f2a05526108ad419efa63a67ed4074dbbcf9fc2b1ca664cb45ba0
 3.0.0	https://cache.ruby-lang.org/pub/ruby/3.0/ruby-3.0.0.tar.gz	sha256:a13ed141a1c18eb967aac1e33f4d6ad5f21be1ac543c344e0d6feeee54af8e28
+3.1.6	https://cache.ruby-lang.org/pub/ruby/3.1/ruby-3.1.6.tar.gz	sha256:0d0dafb859e76763432571a3109d1537d976266be3083445651dc68deed25c22
+3.2.7	https://cache.ruby-lang.org/pub/ruby/3.2/ruby-3.2.7.tar.gz	sha256:8488fa620ff0333c16d437f2b890bba3b67f8745fdecb1472568a6114aad9741
+3.4.4	https://cache.ruby-lang.org/pub/ruby/3.4/ruby-3.4.4.tar.gz	sha256:a0597bfdf312e010efd1effaa8d7f1d7833146fdc17950caa8158ffa3dcbfa85
+4.0.3	https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.3.tar.gz	sha256:77964acc370d5c8375b9502e5ba6c13c03ef91ab9eb9f521c84fb42b9c9a6b0f

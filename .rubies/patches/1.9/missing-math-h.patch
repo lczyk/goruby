@@ -1,0 +1,16 @@
+missing/finite.c: add <math.h> for isnan/isinf declarations.
+
+Modern clang (16+) on macOS 15+ treats implicit function declarations
+as errors.  The missing/ stubs reference isnan() and isinf() without
+including <math.h>.
+
+--- a/missing/finite.c
++++ b/missing/finite.c
+@@ -1,6 +1,7 @@
+ /* public domain rewrite of finite(3) */
+
+ #include "ruby/missing.h"
++#include <math.h>
+
+ int
+ finite(double n)

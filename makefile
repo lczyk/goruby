@@ -57,19 +57,19 @@ gems-clean:  ## Remove fetched gem fixtures
 
 .PHONY: integration
 integration: gems  ## Run integration smoke suite (requires fetched fixtures)
-	$(GOTEST) -tags=integration -race -timeout 10m ./internal/integrationtest/...
+	$(GOTEST) -v -tags=integration -race -timeout 10m ./internal/integrationtest/...
 
 .PHONY: rubies
 rubies:  ## Fetch and compile MRI ruby binaries for syntax verification
-	@bash .rubies/fetch_rubies.sh
+	@$(MAKE) -C .rubies rubies
 
 .PHONY: rubies-clean
 rubies-clean:  ## Remove compiled ruby binaries and build artifacts
-	rm -rf .rubies/versions/ .rubies/build/ .rubies/cache/
+	@$(MAKE) -C .rubies clean
 
 .PHONY: rubies-verify
 rubies-verify: rubies gems  ## Verify all test fixtures against downloaded ruby binaries
-	@bash .rubies/verify.sh
+	@$(MAKE) -C .rubies verify
 
 .PHONY: clean
 clean:  ## Remove generated files

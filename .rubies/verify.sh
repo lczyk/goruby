@@ -61,10 +61,29 @@ fixture_dirs=(
     "$repo_root/internal/integrationtest/testdata/ruby-extra/parser"
 )
 
+# Load skip list (paths relative to repo root).
+skip_file="$script_dir/verify-skip.list"
+_skip_list=""
+if [[ -f "$skip_file" ]]; then
+    while IFS= read -r line; do
+        case "$line" in ''|\#*) continue ;; esac
+        _skip_list="${_skip_list}${repo_root}/${line}"$'\n'
+    done < "$skip_file"
+fi
+_is_skipped() {
+    case "$_skip_list" in *"$1"*) return 0 ;; esac
+    return 1
+}
+
 rb_files=()
+skipped_files=0
 for dir in "${fixture_dirs[@]}"; do
     if [[ -d "$dir" ]]; then
         while IFS= read -r -d '' f; do
+            if _is_skipped "$f"; then
+                ((skipped_files++))
+                continue
+            fi
             rb_files+=("$f")
         done < <(find "$dir" -name '*.rb' -print0 2>/dev/null)
     fi
@@ -75,7 +94,7 @@ if ((${#rb_files[@]} == 0)); then
     exit 1
 fi
 
-echo "fixtures: ${#rb_files[@]} .rb files"
+echo "fixtures: ${#rb_files[@]} .rb files ($skipped_files skipped via verify-skip.list)"
 echo ""
 
 # -- verify each file against all rubies ----------------------------
@@ -107,7 +126,7 @@ for f in "${rb_files[@]}"; do
     for i in "${!rubies[@]}"; do
         ruby_path="${rubies[$i]}"
         ((ruby_check_counts[$i]++))
-        if output=$("$ruby_path" -c "$f" 2>&1); then
+        if output=$("$ruby_path" --disable-gems -c "$f" 2>&1); then
             statuses+=("${GREEN}OK${RST}")
             ((pass_count++))
         else

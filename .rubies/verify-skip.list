@@ -1,0 +1,10 @@
+# fixtures that are intentionally not valid ruby under any version.
+# one path per line (relative to repo root). blank lines and # comments ignored.
+
+# esolang book code fragments -- excerpts from a book, not standalone programs
+internal/integrationtest/testdata/gems/esolang-book-sources/1-2/03.rb
+internal/integrationtest/testdata/gems/esolang-book-sources/1-2/05.rb
+internal/integrationtest/testdata/gems/esolang-book-sources/1-4/07.rb
+
+# mri test that exercises error reporting for invalid `&nil` syntax
+internal/integrationtest/testdata/mri-tests/test_method.rb
