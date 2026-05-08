@@ -856,7 +856,7 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 func (p *parser) parseInstanceVariable() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	instanceVariable := &ast.InstanceVariable{Token: p.curToken}
-	if !p.accept(token.IDENT) {
+	if !p.acceptOneOf(token.IDENT, token.CONST) {
 		return nil
 	}
 	instanceVariable.Name = p.parseIdentifier().(*ast.Identifier)
@@ -866,7 +866,7 @@ func (p *parser) parseInstanceVariable() ast.Expression {
 func (p *parser) parseClassVariable() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	cv := &ast.ClassVariable{Token: p.curToken}
-	if !p.accept(token.IDENT) {
+	if !p.acceptOneOf(token.IDENT, token.CONST) {
 		return nil
 	}
 	cv.Name = p.parseIdentifier().(*ast.Identifier)
@@ -2899,11 +2899,30 @@ func (p *parser) parseContextCallExpression(context ast.Expression) ast.Expressi
 
 func (p *parser) parseCallArgument(function ast.Expression) ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	ident, ok := function.(*ast.Identifier)
-	if !ok {
-		// method call on any other object
+	switch fn := function.(type) {
+	case *ast.Identifier:
+		// plain function call: foo arg1, arg2
+	case *ast.ScopedIdentifier:
+		// Scoped call like Foo::bar arg1, arg2 -- treat as context call.
+		innerIdent, ok := fn.Inner.(*ast.Identifier)
+		if !ok {
+			return p.parseContextCallExpression(function)
+		}
+		exp := &ast.ContextCallExpression{
+			Token:    innerIdent.Token,
+			Context:  fn.Outer,
+			Function: innerIdent,
+		}
+		exp.Arguments = p.parseExpressionList(token.SEMICOLON, token.NEWLINE, token.SCOPE)
+		if p.peekTokenOneOf(token.LBRACE, token.DO) {
+			p.acceptOneOf(token.LBRACE, token.DO)
+			exp.Block = p.parseBlock().(*ast.BlockExpression)
+		}
+		return exp
+	default:
 		return p.parseContextCallExpression(function)
 	}
+	ident := function.(*ast.Identifier)
 	exp := &ast.ContextCallExpression{Token: ident.Token, Function: ident}
 	if p.currentTokenOneOf(token.LBRACE, token.DO) {
 		exp.Block = p.parseBlock().(*ast.BlockExpression)
