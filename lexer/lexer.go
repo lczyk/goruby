@@ -435,7 +435,7 @@ func startLexer(l *Lexer) StateFn {
 		return startLexer
 	case '?':
 		p := l.peek()
-		if isWhitespace(p) {
+		if isWhitespace(p) || isTernaryContext(l.lastToken.Type) {
 			l.emit(token.QMARK)
 			return startLexer
 		}
@@ -453,6 +453,12 @@ func startLexer(l *Lexer) StateFn {
 			l.next()
 			l.emit(token.DIVASSIGN)
 			return startLexer
+		}
+		if hadWhitespace && isMethodCallTarget(l.lastToken.Type) {
+			p := l.peek()
+			if p != ' ' && p != '\t' && p != '\n' && p != '\r' && p != eof {
+				return lexRegexBegin
+			}
 		}
 		l.emit(token.SLASH)
 		return startLexer
@@ -480,16 +486,24 @@ func startLexer(l *Lexer) StateFn {
 			l.emit(token.MODASSIGN)
 			return startLexer
 		}
-		// %q, %Q, %w, %W, %i, %I, %r, %x, %s always start percent literals.
+		// %q, %Q, %w, %W, %i, %I, %r, %x, %s start percent literals
+		// when followed by a valid delimiter (not alphanumeric/whitespace).
 		if p := l.peek(); isPercentTypeChar(p) {
+			delim := l.peekSecond()
+			if !isLetter(delim) && !isDigit(delim) && !isWhitespace(delim) && delim != eof {
+				return lexPercentLiteral
+			}
+		}
+		// bare % literal (e.g. %{...}, %(...)) in regex-begin context
+		// or as method argument (method %{str}).
+		if isRegexBeginContext(l.lastToken.Type) {
 			return lexPercentLiteral
 		}
-		// % literal: %w[...], %q{...}, %r/.../, %x|...|, %{...}
-		// Same context as regex, or after whitespace following IDENT/CONST
-		// (method call syntax: `foo %w[a b]`)
-		if isRegexBeginContext(l.lastToken.Type) ||
-			(hadWhitespace && isMethodCallTarget(l.lastToken.Type)) {
-			return lexPercentLiteral
+		if hadWhitespace && isMethodCallTarget(l.lastToken.Type) {
+			p := l.peek()
+			if isPercentDelimiter(p) {
+				return lexPercentLiteral
+			}
 		}
 		l.emit(token.MODULO)
 		return startLexer
@@ -540,7 +554,14 @@ func startLexer(l *Lexer) StateFn {
 			}
 			// Check for heredoc: <<, <<-, <<~
 			// class << expr is singleton class syntax, not a heredoc.
-			if l.lastToken.Type == token.CLASS {
+			// After value-producing tokens that can't be method names,
+			// << is always left-shift. After IDENT/CONST without
+			// whitespace (e.g. @ar<<X), it's also left-shift.
+			if l.lastToken.Type == token.CLASS || isHeredocBlockedContext(l.lastToken.Type) {
+				l.emit(token.LSHIFT)
+				return startLexer
+			}
+			if !hadWhitespace && isMethodCallTarget(l.lastToken.Type) {
 				l.emit(token.LSHIFT)
 				return startLexer
 			}
@@ -1953,6 +1974,36 @@ func isRegexBeginContext(tok token.Type) bool {
 		token.KW_IN, token.KW_FOR,
 		token.RANGE, token.RANGEEX,
 		token.HASHROCKET, token.EMBEXPR_BEG:
+		return true
+	}
+	return false
+}
+
+func isTernaryContext(tok token.Type) bool {
+	switch tok {
+	case token.IDENT, token.CONST, token.GLOBAL, token.CLASS_VAR,
+		token.INT, token.FLOAT, token.STRING, token.REGEX,
+		token.XSTR,
+		token.RPAREN, token.RBRACKET, token.RBRACE,
+		token.SELF, token.NIL, token.TRUE, token.FALSE,
+		token.STRING_END, token.REGEX_END, token.END:
+		return true
+	}
+	return false
+}
+
+func isPercentDelimiter(r rune) bool {
+	return r != eof && !isLetter(r) && !isDigit(r) && !isWhitespace(r)
+}
+
+func isHeredocBlockedContext(tok token.Type) bool {
+	switch tok {
+	case token.GLOBAL, token.CLASS_VAR,
+		token.INT, token.FLOAT, token.STRING, token.REGEX,
+		token.XSTR,
+		token.RPAREN, token.RBRACKET, token.RBRACE,
+		token.SELF, token.NIL, token.TRUE, token.FALSE,
+		token.STRING_END, token.REGEX_END:
 		return true
 	}
 	return false
