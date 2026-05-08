@@ -196,6 +196,8 @@ type parser struct {
 
 	prefixParseFns map[token.Type]prefixParseFn
 	infixParseFns  map[token.Type]infixParseFn
+
+	inPattern bool // true when parsing a pattern matching clause
 }
 
 func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode Mode) {
@@ -774,6 +776,10 @@ func (p *parser) parseBlockCapture() ast.Expression {
 		capture.Expr = sym
 		return capture
 	}
+	// Anonymous block forwarding: &) or &, (ruby 3.1+)
+	if p.peekTokenOneOf(token.RPAREN, token.COMMA, token.NEWLINE, token.SEMICOLON) {
+		return capture
+	}
 	if !p.accept(token.IDENT) {
 		return nil
 	}
@@ -990,6 +996,190 @@ func (p *parser) parseJumpExpression() ast.Expression {
 	return jmp
 }
 
+func (p *parser) parsePattern() ast.Expression {
+	if p.trace {
+		defer un(trace(p, "parsePattern"))
+	}
+	pat := p.parsePatternOr()
+	if pat == nil {
+		return nil
+	}
+	// Guard clause: pattern if condition
+	if p.peekTokenIs(token.IF) {
+		p.accept(token.IF)
+		p.nextToken()
+		p.inPattern = false
+		guard := p.parseExpression(precLowest)
+		p.inPattern = true
+		pat = &ast.InfixExpression{
+			Token:    token.NewToken(token.IF, "if", 0),
+			Left:     pat,
+			Operator: "if",
+			Right:    guard,
+		}
+	}
+	return pat
+}
+
+func (p *parser) parsePatternOr() ast.Expression {
+	left := p.parsePatternBinding()
+	for p.peekTokenIs(token.PIPE) {
+		p.accept(token.PIPE)
+		p.nextToken()
+		right := p.parsePatternBinding()
+		left = &ast.InfixExpression{
+			Token:    token.NewToken(token.PIPE, "|", 0),
+			Left:     left,
+			Operator: "|",
+			Right:    right,
+		}
+	}
+	return left
+}
+
+func (p *parser) parsePatternBinding() ast.Expression {
+	left := p.parsePatternAtom()
+	if p.peekTokenIs(token.HASHROCKET) {
+		p.accept(token.HASHROCKET)
+		p.nextToken()
+		right := p.parsePatternAtom()
+		left = &ast.InfixExpression{
+			Token:    token.NewToken(token.HASHROCKET, "=>", 0),
+			Left:     left,
+			Operator: "=>",
+			Right:    right,
+		}
+	}
+	return left
+}
+
+func (p *parser) parsePatternAtom() ast.Expression {
+	switch p.curToken.Type {
+	case token.XOR:
+		// Pin operator: ^var or ^(expr)
+		op := p.curToken
+		p.nextToken()
+		if p.currentTokenIs(token.LPAREN) {
+			p.nextToken()
+			p.inPattern = false
+			expr := p.parseExpression(precLowest)
+			p.inPattern = true
+			p.accept(token.RPAREN)
+			return &ast.PrefixExpression{Token: op, Operator: "^", Right: expr}
+		}
+		right := p.parseExpression(precHighest)
+		return &ast.PrefixExpression{Token: op, Operator: "^", Right: right}
+	case token.ASTERISK:
+		// Splat in array pattern: *rest or bare *
+		op := p.curToken
+		if p.peekTokenOneOf(token.COMMA, token.RBRACKET, token.RBRACE,
+			token.NEWLINE, token.SEMICOLON, token.THEN, token.EOF) {
+			return &ast.PrefixExpression{Token: op, Operator: "*", Right: nil}
+		}
+		p.nextToken()
+		right := p.parsePatternAtom()
+		return &ast.PrefixExpression{Token: op, Operator: "*", Right: right}
+	case token.POWER:
+		// Double splat in hash pattern: **rest or bare **
+		op := p.curToken
+		if p.peekTokenOneOf(token.COMMA, token.RBRACKET, token.RBRACE,
+			token.NEWLINE, token.SEMICOLON, token.THEN, token.EOF) {
+			return &ast.PrefixExpression{Token: op, Operator: "**", Right: nil}
+		}
+		p.nextToken()
+		right := p.parsePatternAtom()
+		return &ast.PrefixExpression{Token: op, Operator: "**", Right: right}
+	case token.LBRACKET:
+		// Array pattern
+		return p.parsePatternArray()
+	case token.LBRACE:
+		// Hash pattern
+		return p.parsePatternHash()
+	default:
+		// Use normal expression parsing for literals, constants, identifiers, etc.
+		p.inPattern = false
+		expr := p.parseExpression(precLessGreater)
+		p.inPattern = true
+		return expr
+	}
+}
+
+func (p *parser) parsePatternArray() ast.Expression {
+	tok := p.curToken
+	elements := []ast.Expression{}
+	if p.peekTokenIs(token.RBRACKET) {
+		p.accept(token.RBRACKET)
+		return &ast.ArrayLiteral{Token: tok, Elements: elements}
+	}
+	p.nextToken()
+	elements = append(elements, p.parsePatternBinding())
+	for p.peekTokenIs(token.COMMA) {
+		p.accept(token.COMMA)
+		p.nextToken()
+		elements = append(elements, p.parsePatternBinding())
+	}
+	if !p.accept(token.RBRACKET) {
+		return nil
+	}
+	return &ast.ArrayLiteral{Token: tok, Elements: elements}
+}
+
+func (p *parser) parsePatternHash() ast.Expression {
+	tok := p.curToken
+	pairs := map[ast.Expression]ast.Expression{}
+	if p.peekTokenIs(token.RBRACE) {
+		p.accept(token.RBRACE)
+		return &ast.HashLiteral{Token: tok, Map: pairs}
+	}
+	p.nextToken()
+	p.parsePatternHashPair(pairs)
+	for p.peekTokenIs(token.COMMA) {
+		p.accept(token.COMMA)
+		p.nextToken()
+		p.parsePatternHashPair(pairs)
+	}
+	if !p.accept(token.RBRACE) {
+		return nil
+	}
+	return &ast.HashLiteral{Token: tok, Map: pairs}
+}
+
+func (p *parser) parsePatternHashPair(pairs map[ast.Expression]ast.Expression) {
+	if p.currentTokenIs(token.POWER) {
+		// **rest or bare **
+		op := p.curToken
+		if p.peekTokenOneOf(token.COMMA, token.RBRACE) {
+			pairs[&ast.PrefixExpression{Token: op, Operator: "**"}] = nil
+			return
+		}
+		p.nextToken()
+		rest := p.parsePatternAtom()
+		pairs[&ast.PrefixExpression{Token: op, Operator: "**", Right: rest}] = nil
+		return
+	}
+	// label: pattern  (symbol key with pattern value)
+	if p.currentTokenIs(token.LABEL) {
+		key := &ast.SymbolLiteral{
+			Token: p.curToken,
+			Value: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
+		}
+		p.nextToken()
+		val := p.parsePatternBinding()
+		pairs[key] = val
+		return
+	}
+	// key => pattern  (hash rocket style)
+	p.inPattern = false
+	key := p.parseExpression(precLowest)
+	p.inPattern = true
+	if !p.accept(token.HASHROCKET) {
+		return
+	}
+	p.nextToken()
+	val := p.parsePatternBinding()
+	pairs[key] = val
+}
+
 func (p *parser) parseCaseExpression() ast.Expression {
 	if p.trace {
 		defer un(trace(p, "parseCaseExpression"))
@@ -1043,11 +1233,9 @@ func (p *parser) parseCaseExpression() ast.Expression {
 		}
 		ic := &ast.WhenClause{Token: p.curToken}
 		p.nextToken()
-		ic.Conditions = []ast.Expression{p.parseExpression(precLowest)}
-		for p.peekTokenIs(token.COMMA) {
-			p.consume(token.COMMA)
-			ic.Conditions = append(ic.Conditions, p.parseExpression(precLowest))
-		}
+		p.inPattern = true
+		ic.Conditions = []ast.Expression{p.parsePattern()}
+		p.inPattern = false
 		if p.peekTokenIs(token.THEN) {
 			p.accept(token.THEN)
 		} else {
@@ -1275,6 +1463,11 @@ func (p *parser) parseSplatExpression() ast.Expression {
 		defer un(trace(p, "parseSplatExpression"))
 	}
 	expr := &ast.SplatExpression{Token: p.curToken, Operator: p.curToken.Literal}
+	// Anonymous forwarding: bare * or ** as argument (ruby 3.2+)
+	if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.RBRACKET, token.RBRACE,
+		token.NEWLINE, token.SEMICOLON, token.EOF) {
+		return expr
+	}
 	p.nextToken()
 	expr.Right = p.parseExpression(precPrefix)
 	return expr
@@ -1390,12 +1583,14 @@ func (p *parser) parseRightwardAssignment(left ast.Expression) ast.Expression {
 		defer un(trace(p, "parseRightwardAssignment"))
 	}
 	tok := p.curToken
-	precedence := p.curPrecedence()
 	p.nextToken()
+	p.inPattern = true
+	right := p.parsePattern()
+	p.inPattern = false
 	return &ast.RightwardAssignment{
 		Token: tok,
 		Left:  left,
-		Right: p.parseExpression(precedence),
+		Right: right,
 	}
 }
 
@@ -1759,8 +1954,14 @@ func (p *parser) parseHash() ast.Expression {
 		for p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 			p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
 		}
-		// Handle **expr keyword splat in hash
+		// Handle **expr keyword splat in hash (or bare ** for anonymous forwarding)
 		if p.currentTokenIs(token.POWER) {
+			if p.peekTokenOneOf(token.RBRACE, token.COMMA, token.NEWLINE) {
+				hash.Splats = append(hash.Splats, &ast.SplatExpression{
+					Token: p.curToken, Operator: "**",
+				})
+				continue
+			}
 			p.nextToken()
 			hash.Splats = append(hash.Splats, p.parseExpression(precAssignment))
 			continue
@@ -1789,6 +1990,11 @@ func (p *parser) parseKeyValue() (ast.Expression, ast.Expression, bool) {
 		key := &ast.SymbolLiteral{
 			Token: p.curToken,
 			Value: &ast.StringLiteral{Value: name},
+		}
+		// Hash value omission (ruby 3.1+): {x:, y:} == {x: x, y: y}
+		if p.peekTokenOneOf(token.COMMA, token.RBRACE, token.RPAREN, token.NEWLINE) {
+			val := &ast.Identifier{Token: p.curToken, Value: name}
+			return key, val, true
 		}
 		p.nextToken()
 		val := p.parseExpression(precAssignment)
@@ -2359,6 +2565,42 @@ func (p *parser) parseOperatorMethodName() *ast.Identifier {
 	return &ast.Identifier{Token: p.curToken, Value: name}
 }
 
+func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDelimiters bool, endToken token.Type) []*ast.FunctionParameter {
+	for p.peekTokenIs(token.COMMA) {
+		p.accept(token.COMMA)
+		if p.peekTokenIs(token.POWER) {
+			p.accept(token.POWER)
+			if p.peekTokenIs(token.NIL) {
+				p.accept(token.NIL)
+				identifiers = append(identifiers, &ast.FunctionParameter{
+					Name: &ast.Identifier{Token: p.curToken, Value: "nil"}, IsKeywordRest: true, IsNoKeywords: true,
+				})
+			} else if p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.CONST) {
+				p.accept(token.IDENT)
+				identifiers = append(identifiers, &ast.FunctionParameter{
+					Name: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}, IsKeywordRest: true,
+				})
+			} else {
+				identifiers = append(identifiers, &ast.FunctionParameter{
+					Name: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}, IsKeywordRest: true,
+				})
+			}
+			continue
+		}
+		if p.peekTokenOneOf(token.CAPTURE, token.AND) {
+			p.acceptOneOf(token.CAPTURE, token.AND)
+			if hasDelimiters {
+				p.accept(endToken)
+			}
+			return identifiers
+		}
+	}
+	if hasDelimiters {
+		p.accept(endToken)
+	}
+	return identifiers
+}
+
 func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.FunctionParameter {
 	if p.trace {
 		defer un(trace(p, "parseParameters"))
@@ -2437,6 +2679,11 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 
 	if p.peekTokenIs(token.ASTERISK) {
 		p.accept(token.ASTERISK)
+		// Anonymous rest: bare * as first param (ruby 3.2+)
+		if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.PIPE, token.NEWLINE, token.SEMICOLON, token.EOF) {
+			identifiers = append(identifiers, &ast.FunctionParameter{IsSplat: true})
+			return p.parseParametersTail(identifiers, hasDelimiters, endToken)
+		}
 	}
 	if p.peekTokenOneOf(token.CAPTURE, token.AND) {
 		p.acceptOneOf(token.CAPTURE, token.AND)
@@ -2479,32 +2726,34 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 			p.accept(token.POWER)
 			if p.peekTokenIs(token.NIL) {
 				p.accept(token.NIL)
-				kp := &ast.FunctionParameter{
+				identifiers = append(identifiers, &ast.FunctionParameter{
 					Name:          &ast.Identifier{Token: p.curToken, Value: "nil"},
 					IsKeywordRest: true,
 					IsNoKeywords:  true,
+				})
+			} else {
+				if p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.CONST) {
+					p.accept(token.IDENT)
 				}
-				identifiers = append(identifiers, kp)
+				identifiers = append(identifiers, &ast.FunctionParameter{
+					Name:          &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
+					IsKeywordRest: true,
+				})
+			}
+			if !p.peekTokenIs(token.COMMA) {
 				if hasDelimiters {
 					p.accept(endToken)
 				}
 				return identifiers
 			}
-			if p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.CONST) {
-				p.accept(token.IDENT)
-			}
-			kp := &ast.FunctionParameter{
-				Name:          &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
-				IsKeywordRest: true,
-			}
-			identifiers = append(identifiers, kp)
-			if hasDelimiters {
-				p.accept(endToken)
-			}
-			return identifiers
+			continue
 		}
 		if p.peekTokenIs(token.ASTERISK) {
 			p.accept(token.ASTERISK)
+			if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.PIPE, token.NEWLINE, token.SEMICOLON, token.EOF) {
+				identifiers = append(identifiers, &ast.FunctionParameter{IsSplat: true})
+				continue
+			}
 		}
 		if p.peekTokenOneOf(token.CAPTURE, token.AND) {
 			p.acceptOneOf(token.CAPTURE, token.AND)

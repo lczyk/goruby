@@ -19,6 +19,7 @@ var (
 	ruby23 = token.MustParseVersion("2.3")
 	ruby26 = token.MustParseVersion("2.6")
 	ruby27 = token.MustParseVersion("2.7")
+	ruby40 = token.MustParseVersion("4.0")
 )
 
 // LexStartFn represents the entrypoint the Lexer uses to start processing the
@@ -330,6 +331,18 @@ func startLexer(l *Lexer) StateFn {
 		if pos < len(l.input) && l.input[pos] == '&' && pos+1 < len(l.input) && l.input[pos+1] == '.' {
 			l.ignore()
 			return startLexer
+		}
+		// Ruby 4.0+: leading logical operators as line continuation.
+		// Only when version is explicitly set -- this changes existing behavior.
+		if l.version.IsSet() && l.version.AtLeast(ruby40) && pos < len(l.input) {
+			rest := l.input[pos:]
+			if (len(rest) >= 2 && rest[:2] == "||") ||
+				(len(rest) >= 2 && rest[:2] == "&&") ||
+				(len(rest) >= 3 && rest[:3] == "or " || len(rest) >= 3 && rest[:3] == "or\t") ||
+				(len(rest) >= 4 && rest[:4] == "and " || len(rest) >= 4 && rest[:4] == "and\t") {
+				l.ignore()
+				return startLexer
+			}
 		}
 		l.emit(token.NEWLINE)
 		// =begin block comment at line start.
@@ -1973,7 +1986,8 @@ func isRegexBeginContext(tok token.Type) bool {
 		token.KW_AND, token.KW_OR, token.KW_NOT, token.KW_DEFINED, token.KW_SUPER,
 		token.KW_IN, token.KW_FOR,
 		token.RANGE, token.RANGEEX,
-		token.HASHROCKET, token.EMBEXPR_BEG:
+		token.HASHROCKET, token.EMBEXPR_BEG,
+		token.LABEL:
 		return true
 	}
 	return false

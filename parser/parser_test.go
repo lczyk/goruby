@@ -5662,9 +5662,7 @@ func checkParserErrors(t *testing.T, err error, withStack ...bool) {
 	t.FailNow()
 }
 
-var rubyExtraExpectFail = map[string]string{
-	"case.rb": "case/in pattern matching (Ruby 2.7+)",
-}
+var rubyExtraExpectFail = map[string]string{}
 
 func TestRubyExtraFixtures(t *testing.T) {
 	extraDir := "../internal/integrationtest/testdata/ruby-extra/parser"
