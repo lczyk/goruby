@@ -2525,7 +2525,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 	function := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 	contextCallExpression.Function = function
 
-	if p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE, token.EOF, token.DOT, token.SCOPE, token.LONELY, token.END) {
+	if p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE, token.EOF, token.DOT, token.SCOPE, token.LONELY, token.END, token.HASHROCKET) {
 		contextCallExpression.Arguments = []ast.Expression{}
 		return contextCallExpression
 	}

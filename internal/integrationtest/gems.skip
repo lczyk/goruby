@@ -328,7 +328,6 @@ walk mri-tests/test_set.rb: parse failed; walk skipped
 walk mri-tests/test_settracefunc.rb: parse failed; walk skipped
 walk mri-tests/test_signal.rb: parse failed; walk skipped
 walk mri-tests/test_sprintf_comb.rb: parse failed; walk skipped
-walk mri-tests/test_sprintf.rb: parse failed; walk skipped
 walk mri-tests/test_stack.rb: parse failed; walk skipped
 walk mri-tests/test_string_memory.rb: parse failed; walk skipped
 walk mri-tests/test_string.rb: parse failed; walk skipped
@@ -367,7 +366,6 @@ parse mri-tests/test_marshal.rb: MRI language test - parser failure
 parse mri-tests/test_m17n_comb.rb: MRI language test - parser failure
 parse mri-tests/test_assignment.rb: MRI language test - parser failure
 parse mri-tests/test_exception.rb: MRI language test - parser failure
-parse mri-tests/test_sprintf.rb: MRI language test - parser failure
 parse mri-tests/test_io_m17n.rb: MRI language test - parser failure
 parse mri-tests/test_string.rb: MRI language test - parser failure
 parse mri-tests/test_yield.rb: MRI language test - parser failure
