@@ -660,6 +660,12 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 		p.nextToken()
 		leftExp = infix(leftExp)
 	}
+	// Leading-dot continuation: expr\n.method
+	for p.peekTokenIs(token.NEWLINE) && p.peek2TokenIs(token.DOT) {
+		p.nextToken() // consume NEWLINE
+		p.nextToken() // consume DOT (now curToken)
+		leftExp = p.parseMethodCall(leftExp)
+	}
 	// After an identifier, { is always a block (not a hash).
 	if _, ok := leftExp.(*ast.Identifier); ok && p.peekTokenIs(token.LBRACE) {
 		p.nextToken()
