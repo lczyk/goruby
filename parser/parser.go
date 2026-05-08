@@ -204,6 +204,7 @@ type parser struct {
 	infixParseFns  map[token.Type]infixParseFn
 
 	inPattern bool // true when parsing a pattern matching clause
+	comments  []*ast.Comment
 }
 
 func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode Mode) {
@@ -383,7 +384,6 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.nextToken()
 }
 
-
 func (p *parser) registerPrefix(tokenType token.Type, fn prefixParseFn) {
 	p.prefixParseFns[tokenType] = fn
 }
@@ -413,18 +413,21 @@ func (p *parser) nextToken() {
 	}
 	if p.l.HasNext() {
 		p.peekToken = p.l.NextToken()
-		// Skip comment tokens when not in ParseComments mode.
-		if p.mode&ParseComments == 0 {
-			for p.peekToken.Type == token.HASH {
-				if p.l.HasNext() {
-					p.l.NextToken() // consume STRING content
-				}
-				if p.l.HasNext() {
-					p.peekToken = p.l.NextToken()
-				} else {
-					p.peekToken = token.NewToken(token.EOF, "", -1)
-					break
-				}
+		for p.peekToken.Type == token.HASH {
+			hashTok := p.peekToken
+			var value string
+			if p.l.HasNext() {
+				strTok := p.l.NextToken()
+				value = strTok.Literal
+			}
+			if p.mode&ParseComments != 0 {
+				p.comments = append(p.comments, &ast.Comment{Token: hashTok, Value: value})
+			}
+			if p.l.HasNext() {
+				p.peekToken = p.l.NextToken()
+			} else {
+				p.peekToken = token.NewToken(token.EOF, "", -1)
+				break
 			}
 		}
 	} else {
@@ -486,10 +489,36 @@ func (p *parser) ParseProgram() (*ast.Program, error) {
 		}
 		p.nextToken()
 	}
+	if p.mode&ParseComments != 0 && len(p.comments) > 0 {
+		program.Statements = mergeComments(program.Statements, p.comments)
+	}
 	if len(p.errors) != 0 {
 		return program, NewErrors("Parsing errors", p.errors...)
 	}
 	return program, nil
+}
+
+func stmtPos(s ast.Statement) int {
+	defer func() { recover() }()
+	return s.Pos()
+}
+
+func mergeComments(stmts []ast.Statement, comments []*ast.Comment) []ast.Statement {
+	merged := make([]ast.Statement, 0, len(stmts)+len(comments))
+	ci := 0
+	for _, stmt := range stmts {
+		sp := stmtPos(stmt)
+		for ci < len(comments) && comments[ci].Pos() < sp {
+			merged = append(merged, comments[ci])
+			ci++
+		}
+		merged = append(merged, stmt)
+	}
+	for ci < len(comments) {
+		merged = append(merged, comments[ci])
+		ci++
+	}
+	return merged
 }
 
 func (p *parser) parseStatement() ast.Statement {
@@ -514,8 +543,6 @@ func (p *parser) parseStatement() ast.Statement {
 		return nil
 	case token.RETURN:
 		return p.parseReturnStatement()
-	case token.HASH:
-		return p.parseComment()
 	default:
 		return p.parseExpressionStatement()
 	}
@@ -600,26 +627,6 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 		leftExp = infix(leftExp)
 	}
 	return leftExp
-}
-
-func (p *parser) parseComment() ast.Statement {
-	defer trace.TraceCtx(p.ctx)()
-	comment := &ast.Comment{Token: p.curToken}
-	if !p.accept(token.STRING) {
-		return nil
-	}
-	comment.Value = p.curToken.Literal
-	if !p.peekTokenOneOf(token.NEWLINE, token.EOF) {
-		epos := p.file.Position(p.pos)
-		msg := fmt.Errorf("%s: Expected newline or eof after comment", epos.String())
-		p.errors = append(p.errors, msg)
-		return nil
-	}
-
-	if p.mode&ParseComments == 0 {
-		return nil
-	}
-	return comment
 }
 
 func (p *parser) parseExceptionHandlingBlock() ast.Expression {
@@ -2216,13 +2223,29 @@ func (p *parser) parseLoopExpression() ast.Expression {
 	return loop
 }
 
-func (p *parser) parseModule() ast.Expression {
-	defer trace.TraceCtx(p.ctx)()
-	expr := &ast.ModuleExpression{Token: p.curToken}
+func (p *parser) parseScopedConstName() *ast.Identifier {
 	if !p.accept(token.CONST) {
 		return nil
 	}
-	expr.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	nameTok := p.curToken
+	name := p.curToken.Literal
+	for p.peekTokenIs(token.SCOPE) {
+		p.nextToken() // consume ::
+		if !p.accept(token.CONST) {
+			return nil
+		}
+		name += "::" + p.curToken.Literal
+	}
+	return &ast.Identifier{Token: nameTok, Value: name}
+}
+
+func (p *parser) parseModule() ast.Expression {
+	defer trace.TraceCtx(p.ctx)()
+	expr := &ast.ModuleExpression{Token: p.curToken}
+	expr.Name = p.parseScopedConstName()
+	if expr.Name == nil {
+		return nil
+	}
 
 	if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
 		return nil
@@ -2249,10 +2272,10 @@ func (p *parser) parseClass() ast.Expression {
 		return p.parseSingletonClass()
 	}
 	expr := &ast.ClassExpression{Token: p.curToken}
-	if !p.accept(token.CONST) {
+	expr.Name = p.parseScopedConstName()
+	if expr.Name == nil {
 		return nil
 	}
-	expr.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 
 	if p.peekTokenIs(token.LT) {
 		p.consume(token.LT)

@@ -18,8 +18,6 @@ parse minitest/lib/minitest.rb: parser: various edge cases (elsif in blocks, com
 parse minitest/lib/minitest/assertions.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse minitest/lib/minitest/benchmark.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse minitest/lib/minitest/compress.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
-parse minitest/lib/minitest/expectations.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
-parse minitest/lib/minitest/hell.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse minitest/lib/minitest/mock.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse minitest/lib/minitest/parallel.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse minitest/lib/minitest/pride_plugin.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
@@ -27,7 +25,7 @@ parse minitest/lib/minitest/spec.rb: parser: various edge cases (elsif in blocks
 parse minitest/lib/minitest/test_task.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse minitest/lib/minitest/test.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 
-parse minitest/test/minitest/metametameta.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
+
 parse minitest/test/minitest/test_minitest_assertions.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse minitest/test/minitest/test_minitest_mock.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse minitest/test/minitest/test_minitest_spec.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
@@ -43,7 +41,6 @@ parse rake/lib/rake/file_utils_ext.rb: parser: various edge cases (elsif in bloc
 parse rake/lib/rake/file_utils.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 
 parse rake/lib/rake/loaders/makefile.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
-parse rake/lib/rake/name_space.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/lib/rake/packagetask.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/lib/rake/promise.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/lib/rake/task_manager.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
@@ -51,7 +48,6 @@ parse rake/lib/rake/task.rb: parser: various edge cases (elsif in blocks, commen
 parse rake/lib/rake/testtask.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/lib/rake/thread_pool.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/lib/rake/win32.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
-parse rake/test/helper.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/support/file_creation.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/test_private_reader.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/test_rake_application_options.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
@@ -73,8 +69,6 @@ walk minitest/lib/minitest.rb: parse failed; walk skipped
 walk minitest/lib/minitest/assertions.rb: parse failed; walk skipped
 walk minitest/lib/minitest/benchmark.rb: parse failed; walk skipped
 walk minitest/lib/minitest/compress.rb: parse failed; walk skipped
-walk minitest/lib/minitest/expectations.rb: parse failed; walk skipped
-walk minitest/lib/minitest/hell.rb: parse failed; walk skipped
 walk minitest/lib/minitest/mock.rb: parse failed; walk skipped
 walk minitest/lib/minitest/parallel.rb: parse failed; walk skipped
 walk minitest/lib/minitest/pride_plugin.rb: parse failed; walk skipped
@@ -82,7 +76,6 @@ walk minitest/lib/minitest/spec.rb: parse failed; walk skipped
 walk minitest/lib/minitest/test_task.rb: parse failed; walk skipped
 walk minitest/lib/minitest/test.rb: parse failed; walk skipped
 
-walk minitest/test/minitest/metametameta.rb: parse failed; walk skipped
 walk minitest/test/minitest/test_minitest_assertions.rb: parse failed; walk skipped
 walk minitest/test/minitest/test_minitest_benchmark.rb: parse failed; walk skipped
 walk minitest/test/minitest/test_minitest_mock.rb: parse failed; walk skipped
@@ -98,7 +91,6 @@ walk rake/lib/rake/file_utils_ext.rb: parse failed; walk skipped
 walk rake/lib/rake/file_utils.rb: parse failed; walk skipped
 
 walk rake/lib/rake/loaders/makefile.rb: parse failed; walk skipped
-walk rake/lib/rake/name_space.rb: parse failed; walk skipped
 walk rake/lib/rake/packagetask.rb: parse failed; walk skipped
 walk rake/lib/rake/promise.rb: parse failed; walk skipped
 walk rake/lib/rake/task_manager.rb: parse failed; walk skipped
@@ -106,7 +98,6 @@ walk rake/lib/rake/task.rb: parse failed; walk skipped
 walk rake/lib/rake/testtask.rb: parse failed; walk skipped
 walk rake/lib/rake/thread_pool.rb: parse failed; walk skipped
 walk rake/lib/rake/win32.rb: parse failed; walk skipped
-walk rake/test/helper.rb: parse failed; walk skipped
 walk rake/test/support/file_creation.rb: parse failed; walk skipped
 walk rake/test/test_private_reader.rb: parse failed; walk skipped
 walk rake/test/test_rake_application_options.rb: parse failed; walk skipped
@@ -183,7 +174,6 @@ parse mri-tests/test_numeric.rb: MRI language test - parser failure
 parse mri-tests/test_objectspace.rb: MRI language test - parser failure
 parse mri-tests/test_optimization.rb: MRI language test - parser failure
 parse mri-tests/test_pattern_matching.rb: MRI language test - parser failure
-parse mri-tests/test_primitive.rb: MRI language test - parser failure
 parse mri-tests/test_proc.rb: MRI language test - parser failure
 parse mri-tests/test_process.rb: MRI language test - parser failure
 parse mri-tests/test_rand.rb: MRI language test - parser failure
@@ -280,7 +270,6 @@ walk mri-tests/test_objectspace.rb: parse failed; walk skipped
 walk mri-tests/test_optimization.rb: parse failed; walk skipped
 walk mri-tests/test_parse.rb: parse failed; walk skipped
 walk mri-tests/test_pattern_matching.rb: parse failed; walk skipped
-walk mri-tests/test_primitive.rb: parse failed; walk skipped
 walk mri-tests/test_proc.rb: parse failed; walk skipped
 walk mri-tests/test_process.rb: parse failed; walk skipped
 walk mri-tests/test_rand.rb: parse failed; walk skipped
