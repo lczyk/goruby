@@ -39,3 +39,5 @@ internal/integrationtest/testdata/gems/
 internal/integrationtest/testdata/rubies/
 
 goruby/
+bin/
+.claude/
