@@ -334,7 +334,7 @@ func startLexer(l *Lexer) StateFn {
 			return startLexer
 		}
 		// Ruby 4.0+: leading logical operators as line continuation.
-		// Only when version is explicitly set -- this changes existing behavior.
+		// Only when version is explicitly set -- this changes existing behaviour.
 		if l.version.IsSet() && l.version.AtLeast(ruby40) && pos < len(l.input) {
 			rest := l.input[pos:]
 			if (len(rest) >= 2 && rest[:2] == "||") ||
