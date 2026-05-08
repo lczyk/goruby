@@ -612,7 +612,7 @@ func (p *parser) parseExpressionStatement() *ast.ExpressionStatement {
 		exp.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE, token.LBRACE, token.DO)
 		if p.peekTokenOneOf(token.LBRACE, token.DO) {
 			p.acceptOneOf(token.LBRACE, token.DO)
-			exp.Block = p.parseBlock().(*ast.BlockExpression)
+			exp.Block = p.parseBlockExpr()
 		}
 		stmt.Expression = exp
 		// Re-enter the expression loop for modifier if/unless/while/until.
@@ -1467,7 +1467,7 @@ func (p *parser) parseYield() ast.Expression {
 	yield := &ast.YieldExpression{Token: p.curToken}
 	p.nextToken()
 	if p.currentTokenOneOf(token.LBRACE, token.DO) {
-		yield.Block = p.parseBlock().(*ast.BlockExpression)
+		yield.Block = p.parseBlockExpr()
 		return yield
 	}
 	if p.currentTokenIs(token.LPAREN) {
@@ -1488,7 +1488,7 @@ func (p *parser) parseSuper() ast.Expression {
 	sup := &ast.SuperExpression{Token: p.curToken}
 	p.nextToken()
 	if p.currentTokenOneOf(token.LBRACE, token.DO) {
-		sup.Block = p.parseBlock().(*ast.BlockExpression)
+		sup.Block = p.parseBlockExpr()
 		return sup
 	}
 	if p.currentTokenIs(token.LPAREN) {
@@ -1496,7 +1496,7 @@ func (p *parser) parseSuper() ast.Expression {
 		sup.Arguments = p.parseCallArguments(token.RPAREN)
 		p.nextToken()
 		if p.currentTokenOneOf(token.LBRACE, token.DO) {
-			sup.Block = p.parseBlock().(*ast.BlockExpression)
+			sup.Block = p.parseBlockExpr()
 		}
 		return sup
 	}
@@ -1981,6 +1981,14 @@ func (p *parser) parseKeyValue() (ast.Expression, ast.Expression, bool) {
 	return key, val, true
 }
 
+func (p *parser) parseBlockExpr() *ast.BlockExpression {
+	blk := p.parseBlock()
+	if blk == nil {
+		return nil
+	}
+	return blk.(*ast.BlockExpression)
+}
+
 func (p *parser) parseBlock() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	block := &ast.BlockExpression{Token: p.curToken}
@@ -2105,7 +2113,9 @@ func (p *parser) parseIndexExpression(left ast.Expression) ast.Expression {
 	exp.Index = p.parseExpression(precLowest)
 	if elist, ok := exp.Index.(ast.ExpressionList); ok {
 		exp.Index = elist[0]
-		exp.Length = elist[1]
+		if len(elist) > 1 {
+			exp.Length = elist[1]
+		}
 	}
 
 	// Endless range like x[3..] leaves ] as curToken.
@@ -2923,7 +2933,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 		contextCallExpression.Arguments = p.parseExpressionList(token.RPAREN)
 		if p.peekTokenOneOf(token.LBRACE, token.DO) {
 			p.acceptOneOf(token.LBRACE, token.DO)
-			contextCallExpression.Block = p.parseBlock().(*ast.BlockExpression)
+			contextCallExpression.Block = p.parseBlockExpr()
 		}
 		return contextCallExpression
 	}
@@ -2944,7 +2954,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 		token.LBRACE, token.DO,
 	)
 	if p.currentTokenOneOf(token.LBRACE, token.DO) {
-		contextCallExpression.Block = p.parseBlock().(*ast.BlockExpression)
+		contextCallExpression.Block = p.parseBlockExpr()
 	}
 	return contextCallExpression
 }
@@ -2983,7 +2993,7 @@ func (p *parser) parseContextCallExpression(context ast.Expression) ast.Expressi
 		contextCallExpression.Arguments = p.parseExpressionList(token.RPAREN)
 		if p.peekTokenOneOf(token.LBRACE, token.DO) {
 			p.acceptOneOf(token.LBRACE, token.DO)
-			contextCallExpression.Block = p.parseBlock().(*ast.BlockExpression)
+			contextCallExpression.Block = p.parseBlockExpr()
 		}
 		return contextCallExpression
 	}
@@ -2997,7 +3007,7 @@ func (p *parser) parseContextCallExpression(context ast.Expression) ast.Expressi
 		token.LBRACE, token.DO,
 	)
 	if p.currentTokenOneOf(token.LBRACE, token.DO) {
-		contextCallExpression.Block = p.parseBlock().(*ast.BlockExpression)
+		contextCallExpression.Block = p.parseBlockExpr()
 	}
 	return contextCallExpression
 }
@@ -3021,7 +3031,7 @@ func (p *parser) parseCallArgument(function ast.Expression) ast.Expression {
 		exp.Arguments = p.parseExpressionList(token.SEMICOLON, token.NEWLINE, token.SCOPE)
 		if p.peekTokenOneOf(token.LBRACE, token.DO) {
 			p.acceptOneOf(token.LBRACE, token.DO)
-			exp.Block = p.parseBlock().(*ast.BlockExpression)
+			exp.Block = p.parseBlockExpr()
 		}
 		return exp
 	default:
@@ -3030,14 +3040,14 @@ func (p *parser) parseCallArgument(function ast.Expression) ast.Expression {
 	ident := function.(*ast.Identifier)
 	exp := &ast.ContextCallExpression{Token: ident.Token, Function: ident}
 	if p.currentTokenOneOf(token.LBRACE, token.DO) {
-		exp.Block = p.parseBlock().(*ast.BlockExpression)
+		exp.Block = p.parseBlockExpr()
 		return exp
 	}
 
 	exp.Arguments = p.parseExpressionList(token.SEMICOLON, token.NEWLINE, token.SCOPE)
 	if p.peekTokenOneOf(token.LBRACE, token.DO) {
 		p.acceptOneOf(token.LBRACE, token.DO)
-		exp.Block = p.parseBlock().(*ast.BlockExpression)
+		exp.Block = p.parseBlockExpr()
 	}
 	return exp
 }
@@ -3076,7 +3086,7 @@ func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 
 	exp := &ast.ContextCallExpression{Token: p.curToken}
-	exp.Block = p.parseBlock().(*ast.BlockExpression)
+	exp.Block = p.parseBlockExpr()
 	switch fn := function.(type) {
 	case *ast.Identifier:
 		exp.Function = fn
@@ -3136,7 +3146,7 @@ func (p *parser) parseCallExpressionWithParens(function ast.Expression) ast.Expr
 	exp.Arguments = p.parseExpressionList(token.RPAREN)
 	if p.peekTokenOneOf(token.LBRACE, token.DO) {
 		p.acceptOneOf(token.LBRACE, token.DO)
-		exp.Block = p.parseBlock().(*ast.BlockExpression)
+		exp.Block = p.parseBlockExpr()
 	}
 	return exp
 }
