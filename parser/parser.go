@@ -2415,7 +2415,7 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	lit := &ast.FunctionLiteral{Token: p.curToken}
 
-	if !p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL, token.LBRACKET, token.AT, token.CLASS_VAR) && !p.peekToken.Type.IsOperator() {
+	if !p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL, token.LBRACKET, token.AT, token.CLASS_VAR) && !p.peekToken.Type.IsOperator() && !p.peekToken.Type.IsKeyword() {
 		p.peekError(token.IDENT, token.CONST)
 		return nil
 	}
@@ -2936,7 +2936,16 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 		p.nextToken()
 	}
 
-	if !p.currentTokenOneOf(token.IDENT, token.CONST, token.CLASS) && !p.curToken.Type.IsOperator() {
+	// .[] method call
+	if p.currentTokenIs(token.LBRACKET) {
+		p.nextToken()
+		args := p.parseExpressionList(token.RBRACKET)
+		contextCallExpression.Function = &ast.Identifier{Token: p.curToken, Value: "[]"}
+		contextCallExpression.Arguments = args
+		return contextCallExpression
+	}
+
+	if !p.currentTokenOneOf(token.IDENT, token.CONST) && !p.curToken.Type.IsKeyword() && !p.curToken.Type.IsOperator() {
 		p.expectError(token.IDENT, token.CONST, token.CLASS)
 		return nil
 	}
