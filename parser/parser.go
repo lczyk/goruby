@@ -992,7 +992,8 @@ func (p *parser) parseJumpExpression() ast.Expression {
 	// break/next can take an optional value: break expr, next expr
 	// redo/retry take no value
 	if p.currentTokenIs(token.BREAK) || p.currentTokenIs(token.NEXT) {
-		if !p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.EOF, token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.RESCUE) {
+		if !p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.EOF, token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.RESCUE,
+			token.RPAREN, token.RBRACKET, token.RBRACE, token.END) {
 			p.nextToken()
 			jmp.Value = p.parseExpression(precLowest)
 		}
@@ -2162,7 +2163,21 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 		p.nextToken()
 	}
+	if p.currentTokenIs(token.RPAREN) {
+		return &ast.Nil{Token: p.curToken}
+	}
 	exp := p.parseExpression(precLowest)
+	for p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE) {
+		p.acceptOneOf(token.SEMICOLON, token.NEWLINE)
+		for p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE) {
+			p.acceptOneOf(token.SEMICOLON, token.NEWLINE)
+		}
+		if p.peekTokenIs(token.RPAREN) {
+			break
+		}
+		p.nextToken()
+		exp = p.parseExpression(precLowest)
+	}
 	if !p.accept(token.RPAREN) {
 		return nil
 	}
