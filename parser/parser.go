@@ -726,13 +726,13 @@ func (p *parser) parseRescueBlock() *ast.RescueBlock {
 	defer trace.TraceCtx(p.ctx)()
 	block := &ast.RescueBlock{Token: p.curToken}
 	classes := []*ast.Identifier{}
-	for p.peekTokenOneOf(token.CONST, token.ASTERISK) {
+	for p.peekTokenOneOf(token.CONST, token.ASTERISK, token.IDENT, token.SCOPE) {
 		isSplat := false
 		if p.peekTokenIs(token.ASTERISK) {
 			isSplat = true
 			p.accept(token.ASTERISK)
 		}
-		if !p.accept(token.CONST) {
+		if !p.acceptOneOf(token.CONST, token.IDENT, token.SCOPE) {
 			break
 		}
 		name := p.curToken.Literal
