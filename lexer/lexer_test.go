@@ -1558,3 +1558,106 @@ func TestBlockComments(t *testing.T) {
 		})
 	}
 }
+
+func TestVersionGating(t *testing.T) {
+	t.Run("squiggly heredoc rejected before 2.3", func(t *testing.T) {
+		l := New("<<~EOF\n  hello\nEOF", WithVersion(token.MustParseVersion("1.9")))
+		tok := l.NextToken()
+		// Should see LSHIFT, not STRING_BEG (heredoc).
+		if tok.Type != token.LSHIFT {
+			t.Errorf("expected LSHIFT for <<~ on Ruby 1.9, got %s %q", tok.Type, tok.Literal)
+		}
+	})
+
+	t.Run("squiggly heredoc allowed on 2.3", func(t *testing.T) {
+		l := New("<<~EOF\n  hello\nEOF", WithVersion(token.MustParseVersion("2.3")))
+		tok := l.NextToken()
+		if tok.Type != token.STRING_BEG {
+			t.Errorf("expected STRING_BEG for <<~ on Ruby 2.3, got %s %q", tok.Type, tok.Literal)
+		}
+	})
+
+	t.Run("safe navigation rejected before 2.3", func(t *testing.T) {
+		l := New("x&.foo", WithVersion(token.MustParseVersion("2.0")))
+		l.NextToken() // IDENT "x"
+		tok := l.NextToken()
+		// Should be AND, not LONELY.
+		if tok.Type != token.AND {
+			t.Errorf("expected AND for &. on Ruby 2.0, got %s %q", tok.Type, tok.Literal)
+		}
+	})
+
+	t.Run("safe navigation allowed on 2.3", func(t *testing.T) {
+		l := New("x&.foo", WithVersion(token.MustParseVersion("2.3")))
+		l.NextToken() // IDENT "x"
+		tok := l.NextToken()
+		if tok.Type != token.LONELY {
+			t.Errorf("expected LONELY for &. on Ruby 2.3, got %s %q", tok.Type, tok.Literal)
+		}
+	})
+
+	t.Run("percent-i rejected before 2.0", func(t *testing.T) {
+		l := New("%i[a b]", WithVersion(token.MustParseVersion("1.9")))
+		tok := l.NextToken()
+		if tok.Type != token.ILLEGAL {
+			t.Errorf("expected ILLEGAL for %%i on Ruby 1.9, got %s %q", tok.Type, tok.Literal)
+		}
+	})
+
+	t.Run("percent-i allowed on 2.0", func(t *testing.T) {
+		l := New("%i[a b]", WithVersion(token.MustParseVersion("2.0")))
+		tok := l.NextToken()
+		if tok.Type != token.STRING_BEG {
+			t.Errorf("expected STRING_BEG for %%i on Ruby 2.0, got %s %q", tok.Type, tok.Literal)
+		}
+	})
+
+	t.Run("rational suffix rejected before 2.1", func(t *testing.T) {
+		l := New("42r", WithVersion(token.MustParseVersion("2.0")))
+		tok := l.NextToken()
+		if tok.Type != token.INT {
+			t.Fatalf("expected INT, got %s", tok.Type)
+		}
+		// Without rational support, "42" should be consumed as INT, then "r" as IDENT.
+		if tok.Literal != "42" {
+			t.Errorf("expected literal %q, got %q", "42", tok.Literal)
+		}
+		tok = l.NextToken()
+		if tok.Type != token.IDENT || tok.Literal != "r" {
+			t.Errorf("expected IDENT %q, got %s %q", "r", tok.Type, tok.Literal)
+		}
+	})
+
+	t.Run("rational suffix allowed on 2.1", func(t *testing.T) {
+		l := New("42r", WithVersion(token.MustParseVersion("2.1")))
+		tok := l.NextToken()
+		if tok.Type != token.INT || tok.Literal != "42r" {
+			t.Errorf("expected INT %q on Ruby 2.1, got %s %q", "42r", tok.Type, tok.Literal)
+		}
+	})
+
+	t.Run("complex suffix on float rejected before 2.1", func(t *testing.T) {
+		l := New("1.5i", WithVersion(token.MustParseVersion("2.0")))
+		tok := l.NextToken()
+		if tok.Type != token.FLOAT || tok.Literal != "1.5" {
+			t.Errorf("expected FLOAT %q on Ruby 2.0, got %s %q", "1.5", tok.Type, tok.Literal)
+		}
+	})
+
+	t.Run("complex suffix on float allowed on 2.1", func(t *testing.T) {
+		l := New("1.5i", WithVersion(token.MustParseVersion("2.1")))
+		tok := l.NextToken()
+		if tok.Type != token.FLOAT || tok.Literal != "1.5i" {
+			t.Errorf("expected FLOAT %q on Ruby 2.1, got %s %q", "1.5i", tok.Type, tok.Literal)
+		}
+	})
+
+	t.Run("default version allows all features", func(t *testing.T) {
+		l := New("x&.foo")
+		l.NextToken() // IDENT
+		tok := l.NextToken()
+		if tok.Type != token.LONELY {
+			t.Errorf("expected LONELY with default version, got %s", tok.Type)
+		}
+	})
+}

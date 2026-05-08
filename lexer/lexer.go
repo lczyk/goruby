@@ -13,6 +13,14 @@ const (
 	eof = -1
 )
 
+var (
+	ruby20 = token.MustParseVersion("2.0")
+	ruby21 = token.MustParseVersion("2.1")
+	ruby23 = token.MustParseVersion("2.3")
+	ruby26 = token.MustParseVersion("2.6")
+	ruby27 = token.MustParseVersion("2.7")
+)
+
 // LexStartFn represents the entrypoint the Lexer uses to start processing the
 // input.
 var LexStartFn = startLexer
@@ -496,7 +504,7 @@ func startLexer(l *Lexer) StateFn {
 			l.emit(token.LOGICALAND)
 			return startLexer
 		}
-		if l.peek() == '.' {
+		if l.peek() == '.' && l.version.AtLeast(ruby23) {
 			l.next()
 			l.emit(token.LONELY)
 			return startLexer
@@ -538,6 +546,10 @@ func startLexer(l *Lexer) StateFn {
 			}
 			p := l.peek()
 			if p == '-' || p == '~' {
+				if p == '~' && !l.version.AtLeast(ruby23) {
+					l.emit(token.LSHIFT)
+					return startLexer
+				}
 				l.next()
 				p2 := l.peek()
 				if isLetter(p2) || p2 == '_' || p2 == '"' || p2 == '\'' || p2 == '`' {
@@ -774,9 +786,8 @@ func lexDigit(l *Lexer) StateFn {
 			return lexFloatExponent(l)
 		}
 	}
-	// Rational or complex suffix -- the suffix character was already
-	// consumed as the r that broke the integer-part loop; emit in-place.
-	if r == 'r' || r == 'i' {
+	// Rational or complex suffix (Ruby 2.1+).
+	if (r == 'r' || r == 'i') && l.version.AtLeast(ruby21) {
 		l.emit(token.INT)
 		return startLexer
 	}
@@ -811,8 +822,8 @@ func lexFloatFraction(l *Lexer) StateFn {
 			return lexFloatExponent(l)
 		}
 	}
-	// Optional rational/complex suffix.
-	if r == 'r' || r == 'i' {
+	// Optional rational/complex suffix (Ruby 2.1+).
+	if (r == 'r' || r == 'i') && l.version.AtLeast(ruby21) {
 		l.next()
 	}
 	l.backup()
@@ -825,8 +836,8 @@ func lexFloatExponent(l *Lexer) StateFn {
 	for isDigitOrUnderscore(r) {
 		r = l.next()
 	}
-	// Optional rational/complex suffix after exponent.
-	if r == 'r' || r == 'i' {
+	// Optional rational/complex suffix after exponent (Ruby 2.1+).
+	if (r == 'r' || r == 'i') && l.version.AtLeast(ruby21) {
 		l.next()
 	}
 	l.backup()
@@ -1156,6 +1167,10 @@ func lexPercentLiteral(l *Lexer) StateFn {
 
 	closer := closingDelim(opener)
 	paired := opener != closer
+
+	if (typ == 'i' || typ == 'I') && !l.version.AtLeast(ruby20) {
+		return l.errorf("%%i{} literals require Ruby 2.0+")
+	}
 
 	switch typ {
 	case 'q':
