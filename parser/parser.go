@@ -2939,6 +2939,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 		}
 		if isKw {
 			if !p.peekTokenOneOf(token.COMMA, token.NEWLINE, token.SEMICOLON, token.PIPE, token.RPAREN, token.EOF) {
+				p.nextToken()
 				pIdent.Default = p.parseExpression(defPrecLoop)
 			}
 		} else if p.peekTokenIs(token.ASSIGN) {

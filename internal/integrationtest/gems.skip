@@ -61,7 +61,6 @@ parse mri-tests/enc/test_regex_casefold.rb: MRI language test - parser failure
 parse mri-tests/marshaltestlib.rb: MRI language test - parser failure
 parse mri-tests/sentence.rb: MRI language test - parser failure
 parse mri-tests/test_bignum.rb: MRI language test - parser failure
-parse mri-tests/test_call.rb: MRI language test - parser failure
 parse mri-tests/test_class.rb: MRI language test - parser failure
 parse mri-tests/test_compile_prism.rb: MRI language test - parser failure
 parse mri-tests/test_complex.rb: MRI language test - parser failure
@@ -105,7 +104,6 @@ walk mri-tests/marshaltestlib.rb: parse failed; walk skipped
 walk mri-tests/sentence.rb: parse failed; walk skipped
 walk mri-tests/test_assignment.rb: parse failed; walk skipped
 walk mri-tests/test_bignum.rb: parse failed; walk skipped
-walk mri-tests/test_call.rb: parse failed; walk skipped
 walk mri-tests/test_class.rb: parse failed; walk skipped
 walk mri-tests/test_compile_prism.rb: parse failed; walk skipped
 walk mri-tests/test_complex.rb: parse failed; walk skipped
@@ -199,6 +197,7 @@ walk esolang-book-sources/1-4/07.rb: parse failed; walk skipped
 walk ropy/ruby/ropy.rb: parse failed; walk skipped
 walk wumpus/interpreter.rb: parse failed; walk skipped
 walk mri-tests/test_thread_queue.rb: nil pointer in IndexExpression.String (pre-existing)
+walk mri-tests/test_call.rb: walk failure (parse now passes)
 walk mri-tests/test_io_buffer.rb: walk failure (parse now passes)
 walk mri-tests/test_literal.rb: walk failure (parse now passes)
 walk rake/test/test_rake_definitions.rb: walk failure (parse now passes)
