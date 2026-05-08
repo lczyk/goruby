@@ -152,7 +152,6 @@ parse mri-tests/test_class.rb: MRI language test - parser failure
 parse mri-tests/test_comparable.rb: MRI language test - parser failure
 parse mri-tests/test_compile_prism.rb: MRI language test - parser failure
 parse mri-tests/test_complex.rb: MRI language test - parser failure
-parse mri-tests/test_complexrational.rb: MRI language test - parser failure
 parse mri-tests/test_continuation.rb: MRI language test - parser failure
 parse mri-tests/test_data.rb: MRI language test - parser failure
 parse mri-tests/test_defined.rb: MRI language test - parser failure
@@ -241,7 +240,6 @@ walk mri-tests/test_class.rb: parse failed; walk skipped
 walk mri-tests/test_comparable.rb: parse failed; walk skipped
 walk mri-tests/test_compile_prism.rb: parse failed; walk skipped
 walk mri-tests/test_complex.rb: parse failed; walk skipped
-walk mri-tests/test_complexrational.rb: parse failed; walk skipped
 walk mri-tests/test_continuation.rb: parse failed; walk skipped
 walk mri-tests/test_data.rb: parse failed; walk skipped
 walk mri-tests/test_defined.rb: parse failed; walk skipped
@@ -369,7 +367,6 @@ walk mri-tests/test_not.rb: parse fails; walk skipped
 
 # esolang/gem parse failures -- various parser gaps
 parse alice/mode.rb: parser gaps (brace-block vs hash, multiline)
-parse bouncy-lang/bouncy/instruction.rb: parser gaps (multiline expressions)
 parse bouncy-lang/bouncy/instruction/reflection_command.rb: parser gaps
 parse bouncy-lang/bouncy/instruction/reflection_table.rb: parser gaps
 parse bouncy-lang/bouncy/language/interpreter.rb: parser gaps
@@ -385,15 +382,12 @@ parse esolangs/excela.rb: parser gaps
 parse esolangs/jr.rb: parser gaps
 parse esolangs/tomagotcha.rb: parser gaps
 parse hexagony/hexagony.rb: parser gaps
-parse kaiser-ruby/lib/kaiser_ruby/transformer.rb: parser gaps
 parse labyrinth/labyrinth.rb: parser gaps
 parse puberty/interpreter.rb: parser gaps
 parse ropy/ruby/ropy.rb: parser gaps (timeout/complexity)
-parse stackcats/ruby/stackcats.rb: parser gaps
 parse wumpus/interpreter.rb: parser gaps
 
 walk alice/mode.rb: parse failed; walk skipped
-walk bouncy-lang/bouncy/instruction.rb: parse failed; walk skipped
 walk bouncy-lang/bouncy/instruction/reflection_command.rb: parse failed; walk skipped
 walk bouncy-lang/bouncy/instruction/reflection_table.rb: parse failed; walk skipped
 walk bouncy-lang/bouncy/language/interpreter.rb: parse failed; walk skipped
@@ -409,10 +403,8 @@ walk esolangs/excela.rb: parse failed; walk skipped
 walk esolangs/jr.rb: parse failed; walk skipped
 walk esolangs/tomagotcha.rb: parse failed; walk skipped
 walk hexagony/hexagony.rb: parse failed; walk skipped
-walk kaiser-ruby/lib/kaiser_ruby/transformer.rb: parse failed; walk skipped
 walk labyrinth/labyrinth.rb: parse failed; walk skipped
 walk puberty/interpreter.rb: parse failed; walk skipped
 walk rake/test/test_rake_task_manager.rb: parse failed; walk skipped
 walk ropy/ruby/ropy.rb: parse failed; walk skipped
-walk stackcats/ruby/stackcats.rb: parse failed; walk skipped
 walk wumpus/interpreter.rb: parse failed; walk skipped
