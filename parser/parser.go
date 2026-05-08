@@ -1342,9 +1342,13 @@ func (p *parser) parseLambda() ast.Expression {
 	if p.currentTokenOneOf(token.CAPTURE, token.AND) {
 		if !p.peekTokenOneOf(token.LBRACE, token.DO) {
 			capture := p.parseBlockCapture()
-			if capture == nil { return nil }
+			if capture == nil {
+				return nil
+			}
 			lit.CapturedBlock = capture.(*ast.BlockCapture)
-			if p.peekTokenIs(token.RPAREN) { p.accept(token.RPAREN) }
+			if p.peekTokenIs(token.RPAREN) {
+				p.accept(token.RPAREN)
+			}
 		}
 	}
 	// Body must be a block: { ... } or do ... end
@@ -1710,9 +1714,13 @@ func (p *parser) parseBlock() ast.Expression {
 	if p.currentTokenOneOf(token.CAPTURE, token.AND) {
 		if !p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.EOF) {
 			capture := p.parseBlockCapture()
-			if capture == nil { return nil }
+			if capture == nil {
+				return nil
+			}
 			block.CapturedBlock = capture.(*ast.BlockCapture)
-			if p.peekTokenIs(token.PIPE) { p.accept(token.PIPE) }
+			if p.peekTokenIs(token.PIPE) {
+				p.accept(token.PIPE)
+			}
 		}
 	}
 
@@ -1755,7 +1763,7 @@ func (p *parser) parseInfixExpression(left ast.Expression) ast.Expression {
 	}
 	precedence := p.curPrecedence()
 	p.nextToken()
-	if (expression.Operator == ".." || expression.Operator == "...") {
+	if expression.Operator == ".." || expression.Operator == "..." {
 		if p.currentTokenOneOf(token.EOF, token.NEWLINE, token.SEMICOLON,
 			token.RPAREN, token.RBRACKET, token.RBRACE, token.COMMA, token.PIPE) {
 			return expression
@@ -2223,7 +2231,10 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 
 	identifiers := []*ast.FunctionParameter{}
 
-	if hasDelimiters && p.peekTokenIs(token.SEMICOLON) { p.accept(token.SEMICOLON); return identifiers }
+	if hasDelimiters && p.peekTokenIs(token.SEMICOLON) {
+		p.accept(token.SEMICOLON)
+		return identifiers
+	}
 
 	if !hasDelimiters && p.peekTokenIs(endToken) {
 		p.peekError(token.NEWLINE, token.SEMICOLON)
