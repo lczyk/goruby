@@ -163,6 +163,7 @@ var tokensNotPossibleInCallArgs = []token.Type{
 	token.KW_OR,
 	token.LOGICALAND,
 	token.LOGICALOR,
+	token.SLASH,
 }
 
 type (
