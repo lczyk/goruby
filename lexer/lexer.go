@@ -73,6 +73,7 @@ type Lexer struct {
 	tokens        chan token.Token // channel of scanned tokens.
 	lastToken     token.Token      // lastToken stores the last token emitted by the lexer
 	hadWhitespace bool             // true if whitespace was skipped before current token
+	ternaryDepth  int              // pending ternary ? without matching :
 	version       token.RubyVersion
 
 	// Heredoc state.
@@ -371,6 +372,14 @@ func startLexer(l *Lexer) StateFn {
 			return startLexer
 		}
 		if isWhitespace(p) {
+			if l.ternaryDepth > 0 {
+				l.ternaryDepth--
+			}
+			l.emit(token.COLON)
+			return startLexer
+		}
+		if l.ternaryDepth > 0 && isTernaryContext(l.lastToken.Type) {
+			l.ternaryDepth--
 			l.emit(token.COLON)
 			return startLexer
 		}
@@ -449,6 +458,7 @@ func startLexer(l *Lexer) StateFn {
 	case '?':
 		p := l.peek()
 		if isWhitespace(p) || isTernaryContext(l.lastToken.Type) {
+			l.ternaryDepth++
 			l.emit(token.QMARK)
 			return startLexer
 		}
