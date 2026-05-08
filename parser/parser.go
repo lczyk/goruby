@@ -2514,8 +2514,8 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 
 	p.nextToken()
 
-	if !p.currentTokenOneOf(token.IDENT, token.CLASS) && !p.curToken.Type.IsOperator() {
-		p.expectError(token.IDENT, token.CLASS)
+	if !p.currentTokenOneOf(token.IDENT, token.CONST, token.CLASS) && !p.curToken.Type.IsOperator() {
+		p.expectError(token.IDENT, token.CONST, token.CLASS)
 		return nil
 	}
 
@@ -2566,8 +2566,8 @@ func (p *parser) parseContextCallExpression(context ast.Expression) ast.Expressi
 		p.nextToken()
 	}
 
-	if !p.currentTokenOneOf(token.IDENT, token.CLASS) {
-		p.expectError(token.IDENT, token.CLASS)
+	if !p.currentTokenOneOf(token.IDENT, token.CONST, token.CLASS) {
+		p.expectError(token.IDENT, token.CONST, token.CLASS)
 		return nil
 	}
 
