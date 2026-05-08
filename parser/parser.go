@@ -2686,6 +2686,60 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 	return identifiers
 }
 
+func (p *parser) parseOneParameter(endToken token.Type) []*ast.FunctionParameter {
+	// Destructured param: (a, b) or ((a, b), c)
+	if p.peekTokenIs(token.LPAREN) {
+		// Don't use parseParameters -- it would try to accept LPAREN again.
+		// Manually parse the destructured params.
+		p.accept(token.LPAREN)
+		inner := []*ast.FunctionParameter{}
+		for !p.peekTokenIs(token.RPAREN) && !p.peekTokenIs(token.EOF) {
+			if len(inner) > 0 {
+				if !p.accept(token.COMMA) {
+					break
+				}
+			}
+			one := p.parseOneParameter(token.RPAREN)
+			inner = append(inner, one...)
+		}
+		p.accept(token.RPAREN)
+		names := []string{}
+		for _, ip := range inner {
+			if ip.Name != nil {
+				names = append(names, ip.Name.Value)
+			}
+		}
+		destructName := "(" + strings.Join(names, ", ") + ")"
+		return []*ast.FunctionParameter{{
+			Name: &ast.Identifier{Token: p.curToken, Value: destructName},
+		}}
+	}
+	if p.peekTokenIs(token.LABEL) {
+		p.accept(token.LABEL)
+	} else if !p.acceptOneOf(token.IDENT, token.CONST) {
+		return nil
+	}
+	name := p.curToken.Literal
+	isKeyword := strings.HasSuffix(name, ":")
+	if isKeyword {
+		name = strings.TrimSuffix(name, ":")
+	}
+	ident := &ast.FunctionParameter{Name: &ast.Identifier{Token: p.curToken, Value: name}, IsKeyword: isKeyword}
+	if isKeyword {
+		if !p.peekTokenOneOf(token.COMMA, token.NEWLINE, token.SEMICOLON, token.PIPE, token.RPAREN, token.EOF) {
+			ident.Default = p.parseExpression(precAssignment)
+		}
+	} else if p.peekTokenIs(token.ASSIGN) {
+		p.consume(token.ASSIGN)
+		defPrec := precAssignment
+		if endToken == token.PIPE {
+			defPrec = precOr
+		}
+		ident.Default = p.parseExpression(defPrec)
+	}
+	return []*ast.FunctionParameter{ident}
+}
+
 func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.FunctionParameter {
 	defer trace.TraceCtx(p.ctx)()
 	hasDelimiters := false
@@ -2780,32 +2834,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 		// Named block capture: let parseFunctionLiteral handle it
 		return identifiers
 	}
-	// First param: accept IDENT or LABEL (def foo(a:))
-	if p.peekTokenIs(token.LABEL) {
-		p.accept(token.LABEL)
-	} else {
-		p.accept(token.IDENT)
-	}
-
-	name := p.curToken.Literal
-	isKeyword := strings.HasSuffix(name, ":")
-	if isKeyword {
-		name = strings.TrimSuffix(name, ":")
-	}
-	ident := &ast.FunctionParameter{Name: &ast.Identifier{Token: p.curToken, Value: name}, IsKeyword: isKeyword}
-	if isKeyword {
-		if !p.peekTokenOneOf(token.COMMA, token.NEWLINE, token.SEMICOLON, token.PIPE, token.RPAREN, token.EOF) {
-			ident.Default = p.parseExpression(precAssignment)
-		}
-	} else if p.peekTokenIs(token.ASSIGN) {
-		p.consume(token.ASSIGN)
-		defPrec := precAssignment
-		if endToken == token.PIPE {
-			defPrec = precOr
-		}
-		ident.Default = p.parseExpression(defPrec)
-	}
-	identifiers = append(identifiers, ident)
+	identifiers = append(identifiers, p.parseOneParameter(endToken)...)
 
 	for p.peekTokenIs(token.COMMA) {
 		p.accept(token.COMMA)
@@ -2853,6 +2882,11 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 			}
 			// Named block capture: let parseFunctionLiteral handle it
 			return identifiers
+		}
+		// Destructured or regular param
+		if p.peekTokenIs(token.LPAREN) {
+			identifiers = append(identifiers, p.parseOneParameter(endToken)...)
+			continue
 		}
 		isKw := false
 		if p.peekTokenIs(token.LABEL) {
