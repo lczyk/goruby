@@ -169,7 +169,6 @@ parse mri-tests/test_gc.rb: MRI language test - parser failure
 parse mri-tests/test_hash.rb: MRI language test - parser failure
 parse mri-tests/test_inlinecache.rb: MRI language test - parser failure
 parse mri-tests/test_insns_leaf.rb: MRI language test - parser failure
-parse mri-tests/test_integer_comb.rb: MRI language test - parser failure
 parse mri-tests/test_integer.rb: MRI language test - parser failure
 parse mri-tests/test_io_buffer.rb: MRI language test - parser failure
 parse mri-tests/test_iterator.rb: MRI language test - parser failure
@@ -261,7 +260,6 @@ walk mri-tests/test_gc.rb: parse failed; walk skipped
 walk mri-tests/test_hash.rb: parse failed; walk skipped
 walk mri-tests/test_inlinecache.rb: parse failed; walk skipped
 walk mri-tests/test_insns_leaf.rb: parse failed; walk skipped
-walk mri-tests/test_integer_comb.rb: parse failed; walk skipped
 walk mri-tests/test_integer.rb: parse failed; walk skipped
 walk mri-tests/test_io_buffer.rb: parse failed; walk skipped
 walk mri-tests/test_io_m17n.rb: parse failed; walk skipped
@@ -372,7 +370,6 @@ parse esolang-book-sources/2-1/02.rb: parser gaps
 parse esolang-book-sources/starry/starry.rb: parser gaps
 parse esolang-book-sources/whitespace/lib/whitespace/vm.rb: parser gaps
 parse esolangs/jr.rb: parser gaps
-parse esolangs/tomagotcha.rb: parser gaps
 parse hexagony/hexagony.rb: parser gaps
 parse labyrinth/labyrinth.rb: parser gaps
 parse ropy/ruby/ropy.rb: parser gaps (timeout/complexity)
@@ -390,7 +387,6 @@ walk esolang-book-sources/2-1/02.rb: parse failed; walk skipped
 walk esolang-book-sources/starry/starry.rb: parse failed; walk skipped
 walk esolang-book-sources/whitespace/lib/whitespace/vm.rb: parse failed; walk skipped
 walk esolangs/jr.rb: parse failed; walk skipped
-walk esolangs/tomagotcha.rb: parse failed; walk skipped
 walk hexagony/hexagony.rb: parse failed; walk skipped
 walk labyrinth/labyrinth.rb: parse failed; walk skipped
 walk rake/test/test_rake_task_manager.rb: parse failed; walk skipped
