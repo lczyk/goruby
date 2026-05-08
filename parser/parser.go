@@ -797,6 +797,9 @@ func (p *parser) parseAssignmentOperator(left ast.Expression) ast.Expression {
 		Left:  left,
 	}
 	p.nextToken()
+	for p.currentTokenIs(token.NEWLINE) {
+		p.nextToken()
+	}
 	newInf.Right = p.parseExpression(precAssignment)
 	assign.Right = newInf
 	return assign
@@ -837,6 +840,9 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 		Left:  left,
 	}
 	p.nextToken()
+	for p.currentTokenIs(token.NEWLINE) {
+		p.nextToken()
+	}
 	expr := p.parseExpression(precLowest)
 	right, ok := expr.(*ast.ConditionalExpression)
 	if !ok {
