@@ -656,6 +656,11 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 		p.nextToken()
 		leftExp = infix(leftExp)
 	}
+	// After an identifier, { is always a block (not a hash).
+	if _, ok := leftExp.(*ast.Identifier); ok && p.peekTokenIs(token.LBRACE) {
+		p.nextToken()
+		leftExp = p.parseCallBlock(leftExp)
+	}
 	return leftExp
 }
 
