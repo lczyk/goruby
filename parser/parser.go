@@ -2083,7 +2083,6 @@ func (p *parser) parseIndexExpression(left ast.Expression) ast.Expression {
 	p.nextToken()
 	// Empty index: x[] -- ] immediately follows [
 	if p.currentTokenIs(token.RBRACKET) {
-		p.nextToken() // consume ]
 		return exp
 	}
 	exp.Index = p.parseExpression(precLowest)
