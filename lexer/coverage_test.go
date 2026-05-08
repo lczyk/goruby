@@ -164,6 +164,85 @@ func TestLexerBacktickInterpolation(t *testing.T) {
 	}
 }
 
+func TestHelperIsExpressionEnd(t *testing.T) {
+	for _, tt := range []struct {
+		tok  token.Type
+		want bool
+	}{
+		{token.IDENT, true},
+		{token.CONST, true},
+		{token.GLOBAL, true},
+		{token.CLASS_VAR, true},
+		{token.INT, true},
+		{token.STRING, true},
+		{token.REGEX, true},
+		{token.XSTR, true},
+		{token.RPAREN, true},
+		{token.RBRACKET, true},
+		{token.RBRACE, true},
+		{token.TRUE, true},
+		{token.FALSE, true},
+		{token.NIL, true},
+		{token.SELF, true},
+		{token.END, true},
+		{token.LPAREN, false},
+		{token.EOF, false},
+		{token.ASSIGN, false},
+	} {
+		if got := isExpressionEnd(tt.tok); got != tt.want {
+			t.Errorf("isExpressionEnd(%s) = %v, want %v", tt.tok, got, tt.want)
+		}
+	}
+}
+
+func TestHelperIsMethodCallTarget(t *testing.T) {
+	for _, tt := range []struct {
+		tok  token.Type
+		want bool
+	}{
+		{token.IDENT, true},
+		{token.CONST, true},
+		{token.GLOBAL, true},
+		{token.RPAREN, true},
+		{token.RBRACKET, true},
+		{token.RBRACE, true},
+		{token.END, true},
+		{token.LPAREN, false},
+		{token.EOF, false},
+		{token.ASSIGN, false},
+		{token.INT, false},
+	} {
+		if got := isMethodCallTarget(tt.tok); got != tt.want {
+			t.Errorf("isMethodCallTarget(%s) = %v, want %v", tt.tok, got, tt.want)
+		}
+	}
+}
+
+func TestHelperPeekPastWhitespace(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want rune
+	}{
+		{"empty", "", -1},
+		{"only spaces", "   ", -1},
+		{"only tabs", "\t\t", -1},
+		{"mixed whitespace", " \t ", -1},
+		{"char after space", "  a", 'a'},
+		{"char at start", "x", 'x'},
+		{"char after newline", "\nx", '\n'}, // newline is NOT skipped
+		{"char after tab", "\tx", 'x'},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := New(tt.in)
+			if got := l.peekPastWhitespace(); got != tt.want {
+				t.Errorf("peekPastWhitespace() = %c (%d), want %c (%d)", got, got, tt.want, tt.want)
+			}
+		})
+	}
+}
+
 func TestLexerWithVersion(t *testing.T) {
 	tests := []struct {
 		name    string
