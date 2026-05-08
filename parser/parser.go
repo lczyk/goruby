@@ -2837,9 +2837,13 @@ func (p *parser) parseBlockStatement(t ...token.Type) *ast.BlockStatement {
 		// before advancing. This handles nested case/when where the inner
 		// when would otherwise terminate the outer when-body.
 		if p.currentTokenOneOf(token.CASE, token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.BEGIN, token.CLASS, token.MODULE, token.DEF, token.STRING_BEG) {
+			saved := p.curToken
 			stmt := p.parseStatement()
 			if stmt != nil {
 				block.Statements = append(block.Statements, stmt)
+			}
+			if p.curToken == saved {
+				p.nextToken()
 			}
 			continue
 		}
