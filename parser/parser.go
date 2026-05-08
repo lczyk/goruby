@@ -195,10 +195,11 @@ type parser struct {
 	mode Mode // parsing mode
 	ctx  context.Context
 
-	pos       gotoken.Pos
-	lastLine  string
-	curToken  token.Token
-	peekToken token.Token
+	pos        gotoken.Pos
+	lastLine   string
+	curToken   token.Token
+	peekToken  token.Token
+	peek2Token token.Token
 
 	prefixParseFns map[token.Type]prefixParseFn
 	infixParseFns  map[token.Type]infixParseFn
@@ -379,8 +380,9 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	p.registerInfix(token.ANDASSIGN, p.parseAssignmentOperator)
 	p.registerInfix(token.SCOPE, p.parseScopedIdentifierExpression)
 
-	// Read two tokens, so curToken and peekToken are both set
-	p.nextToken()
+	// Bootstrap three-token lookahead window.
+	p.peekToken = p.nextNonCommentToken()
+	p.peek2Token = p.nextNonCommentToken()
 	p.nextToken()
 }
 
@@ -390,6 +392,30 @@ func (p *parser) registerPrefix(tokenType token.Type, fn prefixParseFn) {
 
 func (p *parser) registerInfix(tokenType token.Type, fn infixParseFn) {
 	p.infixParseFns[tokenType] = fn
+}
+
+func (p *parser) nextNonCommentToken() token.Token {
+	if !p.l.HasNext() {
+		return token.NewToken(token.EOF, "", -1)
+	}
+	tok := p.l.NextToken()
+	for tok.Type == token.HASH {
+		hashTok := tok
+		var value string
+		if p.l.HasNext() {
+			strTok := p.l.NextToken()
+			value = strTok.Literal
+		}
+		if p.mode&ParseComments != 0 {
+			p.comments = append(p.comments, &ast.Comment{Token: hashTok, Value: value})
+		}
+		if p.l.HasNext() {
+			tok = p.l.NextToken()
+		} else {
+			return token.NewToken(token.EOF, "", -1)
+		}
+	}
+	return tok
 }
 
 func (p *parser) nextToken() {
@@ -405,34 +431,14 @@ func (p *parser) nextToken() {
 		}
 	}
 	p.curToken = p.peekToken
+	p.peekToken = p.peek2Token
 	p.pos = gotoken.Pos(p.curToken.Pos)
 	p.lastLine += p.curToken.Literal
 	if p.curToken.Type == token.NEWLINE {
 		p.file.AddLine(int(p.pos))
 		p.lastLine = ""
 	}
-	if p.l.HasNext() {
-		p.peekToken = p.l.NextToken()
-		for p.peekToken.Type == token.HASH {
-			hashTok := p.peekToken
-			var value string
-			if p.l.HasNext() {
-				strTok := p.l.NextToken()
-				value = strTok.Literal
-			}
-			if p.mode&ParseComments != 0 {
-				p.comments = append(p.comments, &ast.Comment{Token: hashTok, Value: value})
-			}
-			if p.l.HasNext() {
-				p.peekToken = p.l.NextToken()
-			} else {
-				p.peekToken = token.NewToken(token.EOF, "", -1)
-				break
-			}
-		}
-	} else {
-		p.peekToken = token.NewToken(token.EOF, "", -1)
-	}
+	p.peek2Token = p.nextNonCommentToken()
 }
 
 // Errors returns all errors which happened during the parsing of the input.
@@ -2026,6 +2032,9 @@ func (p *parser) parseInfixExpression(left ast.Expression) ast.Expression {
 		precedence = precAssignment - 1
 	}
 	p.nextToken()
+	for p.currentTokenIs(token.NEWLINE) {
+		p.nextToken()
+	}
 	expression.Right = p.parseExpression(precedence)
 	return expression
 }
@@ -2187,6 +2196,9 @@ func (p *parser) parseModifierConditionalExpression(left ast.Expression) ast.Exp
 	defer trace.TraceCtx(p.ctx)()
 	expression := &ast.ConditionalExpression{Token: p.curToken}
 	p.nextToken()
+	for p.currentTokenIs(token.NEWLINE) {
+		p.nextToken()
+	}
 	expression.Condition = p.parseExpression(precLowest)
 
 	expression.Consequence = &ast.BlockStatement{
@@ -2201,6 +2213,9 @@ func (p *parser) parseModifierLoopExpression(left ast.Expression) ast.Expression
 	defer trace.TraceCtx(p.ctx)()
 	loop := &ast.LoopExpression{Token: p.curToken}
 	p.nextToken()
+	for p.currentTokenIs(token.NEWLINE) {
+		p.nextToken()
+	}
 	loop.Condition = p.parseExpression(precLowest)
 	loop.Block = &ast.BlockStatement{
 		Statements: []ast.Statement{
@@ -2812,6 +2827,12 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 		return contextCallExpression
 	}
 
+	// Binary +/- at end of line: not a call argument.
+	if p.peekTokenOneOf(token.PLUS, token.MINUS) && p.peek2TokenIs(token.NEWLINE) {
+		contextCallExpression.Arguments = []ast.Expression{}
+		return contextCallExpression
+	}
+
 	p.nextToken()
 
 	contextCallExpression.Arguments = p.parseCallArguments(
@@ -3208,6 +3229,10 @@ func (p *parser) peekTokenOneOf(types ...token.Type) bool {
 
 func (p *parser) peekTokenIs(t token.Type) bool {
 	return p.peekToken.Type == t
+}
+
+func (p *parser) peek2TokenIs(t token.Type) bool {
+	return p.peek2Token.Type == t
 }
 
 // accept moves to the next Token
