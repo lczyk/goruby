@@ -1515,6 +1515,11 @@ func (p *parser) parseSuper() ast.Expression {
 	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE, token.RPAREN, token.RBRACKET, token.EMBEXPR_END, token.DOT, token.LONELY) {
 		return sup
 	}
+	// If peekToken has no prefix handler, it can't start an argument.
+	// Return bare super so the expression loop handles it as infix.
+	if p.prefixParseFns[p.peekToken.Type] == nil && !p.peekTokenOneOf(token.LBRACE, token.DO, token.LPAREN) {
+		return sup
+	}
 	p.nextToken()
 	if p.currentTokenOneOf(token.LBRACE, token.DO) {
 		sup.Block = p.parseBlockExpr()
@@ -2549,7 +2554,7 @@ parseParams:
 			}
 		} else {
 			bc := &ast.BlockCapture{Token: p.curToken}
-			if !p.accept(token.IDENT) {
+			if !p.acceptOneOf(token.IDENT, token.NIL) {
 				return nil
 			}
 			bc.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}

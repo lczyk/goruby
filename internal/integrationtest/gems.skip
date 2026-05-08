@@ -60,7 +60,6 @@ walk rake/test/test_rake_test_task.rb: parse failed; walk skipped
 parse mri-tests/enc/test_regex_casefold.rb: MRI language test - parser failure
 parse mri-tests/marshaltestlib.rb: MRI language test - parser failure
 parse mri-tests/sentence.rb: MRI language test - parser failure
-parse mri-tests/test_alias.rb: MRI language test - parser failure
 parse mri-tests/test_bignum.rb: MRI language test - parser failure
 parse mri-tests/test_call.rb: MRI language test - parser failure
 parse mri-tests/test_class.rb: MRI language test - parser failure
@@ -105,7 +104,6 @@ parse mri-tests/ut_eof.rb: MRI language test - parser failure
 walk mri-tests/enc/test_regex_casefold.rb: parse failed; walk skipped
 walk mri-tests/marshaltestlib.rb: parse failed; walk skipped
 walk mri-tests/sentence.rb: parse failed; walk skipped
-walk mri-tests/test_alias.rb: parse failed; walk skipped
 walk mri-tests/test_assignment.rb: parse failed; walk skipped
 walk mri-tests/test_bignum.rb: parse failed; walk skipped
 walk mri-tests/test_call.rb: parse failed; walk skipped

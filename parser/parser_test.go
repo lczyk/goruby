@@ -76,7 +76,7 @@ func TestBlockCapture(t *testing.T) {
 			input:  "def foo &2; end",
 			result: nil,
 			err: &unexpectedTokenError{
-				expectedTokens: []token.Type{token.IDENT},
+				expectedTokens: []token.Type{token.IDENT, token.NIL},
 				actualToken:    token.INT,
 			},
 		},
