@@ -569,10 +569,12 @@ func (p *parser) parseReturnStatement() *ast.ReturnStatement {
 	stmt := &ast.ReturnStatement{Token: p.curToken}
 	p.nextToken()
 
-	if p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.IF, token.UNLESS, token.WHILE, token.UNTIL) {
+	if p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF) {
 		return stmt
 	}
-
+	if p.currentTokenOneOf(token.IF, token.UNLESS, token.WHILE, token.UNTIL) {
+		return stmt
+	}
 	valToken := p.curToken
 	stmt.ReturnValue = p.parseExpression(precLowest)
 	if list, ok := stmt.ReturnValue.(ast.ExpressionList); ok {
@@ -2992,6 +2994,15 @@ func (p *parser) parseBlockStatement(t ...token.Type) *ast.BlockStatement {
 		if p.peekTokenIs(token.EOF) {
 			p.peekError(token.EOF)
 			return block
+		}
+		// Modifier if/unless/while/until after return: `return unless cond`
+		// Skip the modifier condition to avoid parsing it as standalone block.
+		if p.currentTokenOneOf(token.IF, token.UNLESS, token.WHILE, token.UNTIL) && len(block.Statements) > 0 {
+			if _, ok := block.Statements[len(block.Statements)-1].(*ast.ReturnStatement); ok {
+				p.nextToken()
+				p.parseExpression(precLowest)
+				continue
+			}
 		}
 		// If curToken starts a compound expression, parse it first
 		// before advancing. This handles nested case/when where the inner
