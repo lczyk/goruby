@@ -383,6 +383,6 @@ walk mri-tests/enc/test_emoji_breaks.rb: parse failed; walk skipped
 walk mri-tests/test_io.rb: parse failed; walk skipped
 
 # Heredoc-heavy files (formerly lexer failures; lex now passes, parse still fails)
-parse mri-tests/test_not.rb: parser regression from keyword/operator additions
-walk mri-tests/test_not.rb: parse fails; walk skipped
 
+parse mri-tests/test_not.rb: not () empty-paren expression not supported
+walk mri-tests/test_not.rb: parse fails; walk skipped
