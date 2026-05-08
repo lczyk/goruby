@@ -2513,6 +2513,9 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 	contextCallExpression := &ast.ContextCallExpression{Token: p.curToken, Context: context}
 
 	p.nextToken()
+	for p.currentTokenIs(token.NEWLINE) {
+		p.nextToken()
+	}
 
 	if !p.currentTokenOneOf(token.IDENT, token.CONST, token.CLASS) && !p.curToken.Type.IsOperator() {
 		p.expectError(token.IDENT, token.CONST, token.CLASS)
