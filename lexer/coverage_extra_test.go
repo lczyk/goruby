@@ -1636,3 +1636,397 @@ func TestLexerCharLiteralMetaBackslashTarget(t *testing.T) {
 	}
 }
 
+// --- startLexer: ** operator (POWER) ---
+
+func TestLexerPowerOperator(t *testing.T) {
+	l := New("a ** b")
+	l.NextToken() // IDENT a
+	tok := l.NextToken()
+	if tok.Type != token.POWER {
+		t.Fatalf("expected POWER, got %s (%q)", tok.Type, tok.Literal)
+	}
+	if tok.Literal != "**" {
+		t.Errorf("expected '**', got %q", tok.Literal)
+	}
+}
+
+// --- startLexer: &&= (ANDASSIGN) ---
+
+func TestLexerAndAssign(t *testing.T) {
+	l := New("x &&= y")
+	l.NextToken() // IDENT x
+	tok := l.NextToken()
+	if tok.Type != token.ANDASSIGN {
+		t.Fatalf("expected ANDASSIGN, got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+// --- startLexer: ||= (ORASSIGN) ---
+
+func TestLexerOrAssign(t *testing.T) {
+	l := New("x ||= y")
+	l.NextToken() // IDENT x
+	tok := l.NextToken()
+	if tok.Type != token.ORASSIGN {
+		t.Fatalf("expected ORASSIGN, got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+// --- lexDigit: 0.5 (zero-prefix float fraction) ---
+
+func TestLexerZeroDotDigit(t *testing.T) {
+	l := New("0.5")
+	tok := l.NextToken()
+	if tok.Type != token.FLOAT {
+		t.Fatalf("expected FLOAT, got %s", tok.Type)
+	}
+	if tok.Literal != "0.5" {
+		t.Errorf("expected '0.5', got %q", tok.Literal)
+	}
+}
+
+// --- lexDigit: integer exponent with sign ---
+
+func TestLexerIntExpWithSign(t *testing.T) {
+	l := New("1e+10")
+	tok := l.NextToken()
+	if tok.Type != token.FLOAT {
+		t.Fatalf("expected FLOAT, got %s", tok.Type)
+	}
+	if tok.Literal != "1e+10" {
+		t.Errorf("expected '1e+10', got %q", tok.Literal)
+	}
+}
+
+func TestLexerIntExpNegWithSign(t *testing.T) {
+	l := New("1e-10")
+	tok := l.NextToken()
+	if tok.Type != token.FLOAT {
+		t.Fatalf("expected FLOAT, got %s", tok.Type)
+	}
+	if tok.Literal != "1e-10" {
+		t.Errorf("expected '1e-10', got %q", tok.Literal)
+	}
+}
+
+// --- lexCharacterLiteral: space as character (error) ---
+
+func TestLexerCharLiteralSpace(t *testing.T) {
+	// ? followed by space emits QMARK (via startLexer), not reaching lexCharacterLiteral.
+	// The error branch in lexCharacterLiteral is unreachable through normal lexing
+	// because startLexer catches all whitespace before delegating.
+	l := New("? ")
+	tok := l.NextToken()
+	if tok.Type != token.QMARK {
+		t.Errorf("expected QMARK, got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+// --- lexCharacterLiteral: unterminated unicode escape ---
+
+func TestLexerCharLiteralUnterminatedUnicode(t *testing.T) {
+	l := New("?\\u{41")
+	tok := l.NextToken()
+	if tok.Type != token.ILLEGAL {
+		t.Errorf("expected ILLEGAL for unterminated unicode escape, got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+// --- lexCharacterLiteral: unterminated octal escape ---
+
+func TestLexerCharLiteralUnterminatedOctal(t *testing.T) {
+	l := New("?\\o{77")
+	tok := l.NextToken()
+	if tok.Type != token.ILLEGAL {
+		t.Errorf("expected ILLEGAL for unterminated octal escape, got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+// --- lexStringContent: unterminated string ---
+
+func TestLexerUnterminatedString(t *testing.T) {
+	l := New("\"no closing quote")
+	tok := l.NextToken() // STRING_BEG
+	tok = l.NextToken() // scan until error
+	for l.HasNext() && tok.Type != token.ILLEGAL {
+		tok = l.NextToken()
+	}
+	if tok.Type != token.ILLEGAL {
+		t.Errorf("expected ILLEGAL for unterminated string, got %s", tok.Type)
+	}
+}
+
+// --- lexPercentLiteral: unknown type ---
+
+func TestLexerPercentUnknownType(t *testing.T) {
+	// %z: 'z' is not a percent-type char, treated as bare % with 'z' as delimiter.
+	// The default case in lexPercentLiteral's switch is unreachable because
+	// isPercentTypeChar covers all valid types and bare-% maps to typ=0.
+	l := New("%z{content}")
+	tok := l.NextToken()
+	if tok.Type != token.STRING_BEG {
+		t.Errorf("expected STRING_BEG (bare %% treated as %%Q), got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+// --- lexPercentLiteralBody: unterminated ---
+
+func TestLexerPercentLiteralUnterminated(t *testing.T) {
+	l := New("%q(no closing")
+	tok := l.NextToken()
+	if tok.Type != token.ILLEGAL {
+		t.Errorf("expected ILLEGAL for unterminated percent literal, got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+// --- lexPercentLiteralBodyEnd: unterminated ---
+
+func TestLexerPercentBodyEndUnterminated(t *testing.T) {
+	l := New("%w(no closing")
+	tok := l.NextToken() // STRING_BEG
+	tok = l.NextToken() // scan until ILLEGAL
+	for l.HasNext() && tok.Type != token.ILLEGAL {
+		tok = l.NextToken()
+	}
+	if tok.Type != token.ILLEGAL {
+		t.Errorf("expected ILLEGAL, got %s", tok.Type)
+	}
+}
+
+// --- lexPercentContent: unterminated ---
+
+func TestLexerPercentContentUnterminated(t *testing.T) {
+	l := New("%Q{no closing")
+	tok := l.NextToken() // STRING_BEG
+	tok = l.NextToken() // scan until ILLEGAL
+	for l.HasNext() && tok.Type != token.ILLEGAL {
+		tok = l.NextToken()
+	}
+	if tok.Type != token.ILLEGAL {
+		t.Errorf("expected ILLEGAL, got %s", tok.Type)
+	}
+}
+
+// --- lexBacktickContent: unterminated command literal ---
+
+func TestLexerBacktickUnterminated(t *testing.T) {
+	l := New("`no closing backtick")
+	tok := l.NextToken() // XSTR_BEG
+	tok = l.NextToken() // scan until ILLEGAL
+	for l.HasNext() && tok.Type != token.ILLEGAL {
+		tok = l.NextToken()
+	}
+	if tok.Type != token.ILLEGAL {
+		t.Errorf("expected ILLEGAL for unterminated command, got %s", tok.Type)
+	}
+}
+
+// --- lexHeredocStart: heredoc without trailing newline ---
+
+func TestLexerHeredocNoTrailingNewline(t *testing.T) {
+	l := New("<<EOS")
+	tok := l.NextToken() // STRING_BEG
+	if tok.Type != token.STRING_BEG {
+		t.Fatalf("expected STRING_BEG, got %s", tok.Type)
+	}
+}
+
+// --- lexHeredocBody: empty body with squiggy ---
+
+func TestLexerHeredocBodyEmptySquiggy(t *testing.T) {
+	l := New("<<~'EOS'\nEOS\n")
+	tok := l.NextToken()
+	if tok.Type != token.STRING {
+		t.Fatalf("expected STRING, got %s", tok.Type)
+	}
+	if tok.Literal != "" {
+		t.Errorf("expected empty string, got %q", tok.Literal)
+	}
+}
+
+// --- lexHeredocBody: unterminated at contentEnd ---
+
+func TestLexerHeredocBodyUnterminatedMidBody(t *testing.T) {
+	l := New("<<'EOS'\nline\n")
+	tok := l.NextToken()
+	if tok.Type != token.ILLEGAL {
+		t.Errorf("expected ILLEGAL, got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+// --- lexHeredocBody: indented unterminated ---
+
+func TestLexerHeredocBodyIndentedUnterminated(t *testing.T) {
+	l := New("<<-'EOS'\nline\n  ")
+	tok := l.NextToken()
+	if tok.Type != token.ILLEGAL {
+		t.Errorf("expected ILLEGAL, got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+// --- lexHeredocBody: eof during delim char matching ---
+
+func TestLexerHeredocBodyEOFDuringDelim(t *testing.T) {
+	l := New("<<'EOS'\nline\nE")
+	tok := l.NextToken()
+	if tok.Type != token.ILLEGAL {
+		t.Errorf("expected ILLEGAL, got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+// --- lexHeredocContent: eof during indented check ---
+
+func TestLexerHeredocContentIndentedUnterminated(t *testing.T) {
+	l := New("<<-EOS\nline\n  ")
+	tok := l.NextToken() // STRING_BEG
+	tok = l.NextToken() // scan
+	for l.HasNext() && tok.Type != token.ILLEGAL {
+		tok = l.NextToken()
+	}
+	if tok.Type != token.ILLEGAL {
+		t.Errorf("expected ILLEGAL, got %s", tok.Type)
+	}
+}
+
+// --- lexHeredocContent: eof during delim char matching ---
+
+func TestLexerHeredocContentEOFDuringDelim(t *testing.T) {
+	l := New("<<-EOS\nline\nE")
+	tok := l.NextToken() // STRING_BEG
+	tok = l.NextToken() // scan
+	for l.HasNext() && tok.Type != token.ILLEGAL {
+		tok = l.NextToken()
+	}
+	if tok.Type != token.ILLEGAL {
+		t.Errorf("expected ILLEGAL, got %s", tok.Type)
+	}
+}
+
+// --- lexHeredocContent: matched delim at lineStart (empty content) ---
+
+func TestLexerHeredocContentMatchAtLineStart(t *testing.T) {
+	l := New("<<EOS\nEOS\n")
+	l.NextToken() // STRING_BEG
+	tok := l.NextToken() // STRING_CONTENT (empty) or STRING_END
+	if tok.Type != token.STRING_CONTENT && tok.Type != token.STRING_END {
+		t.Fatalf("expected STRING_CONTENT or STRING_END, got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+// --- matchHeredocDelimLine: extra chars after delim ---
+
+func TestLexerMatchHeredocDelimLineExtraChars(t *testing.T) {
+	l := New("<<'EOS'\nEOSextra\nEOS\n")
+	tok := l.NextToken() // STRING
+	if tok.Literal != "EOSextra\n" {
+		t.Errorf("expected 'EOSextra\\n', got %q", tok.Literal)
+	}
+}
+
+// --- stripHeredocIndent: minIndent == 0 returns original ---
+
+func TestLexerStripHeredocIndentZero(t *testing.T) {
+	got := stripHeredocIndent("a\n  b\n  c")
+	if got != "a\n  b\n  c" {
+		t.Errorf("expected no change, got %q", got)
+	}
+}
+
+// --- lexRegexContent: unterminated regex ---
+
+func TestLexerRegexUnterminated(t *testing.T) {
+	l := New("/no closing slash")
+	tok := l.NextToken() // REGEX_BEG
+	tok = l.NextToken() // scan until ILLEGAL
+	for l.HasNext() && tok.Type != token.ILLEGAL {
+		tok = l.NextToken()
+	}
+	if tok.Type != token.ILLEGAL {
+		t.Errorf("expected ILLEGAL for unterminated regex, got %s", tok.Type)
+	}
+}
+
+// --- consumeEscape: unterminated \u{ returns on eof ---
+
+func TestLexerEscapeUnterminatedUnicode(t *testing.T) {
+	// \u{ without closing } consumes everything including the closing "
+	// consumeEscape returns via eof branch, then string scanner reports unterminated.
+	l := New("\"\\u{41\"")
+	tok := l.NextToken() // STRING_BEG
+	if tok.Type != token.STRING_BEG {
+		t.Fatalf("expected STRING_BEG, got %s", tok.Type)
+	}
+	tok = l.NextToken() // ILLEGAL (unterminated string)
+	if tok.Type != token.ILLEGAL {
+		t.Fatalf("expected ILLEGAL, got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+func TestLexerEscapeUnterminatedOctal(t *testing.T) {
+	// Same as above for \o{ without closing }
+	l := New("\"\\o{77\"")
+	tok := l.NextToken() // STRING_BEG
+	if tok.Type != token.STRING_BEG {
+		t.Fatalf("expected STRING_BEG, got %s", tok.Type)
+	}
+	tok = l.NextToken() // ILLEGAL (unterminated string)
+	if tok.Type != token.ILLEGAL {
+		t.Fatalf("expected ILLEGAL, got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+// --- stripSquigInterpBody: eol at end of input (last line no \n) ---
+
+func TestLexerSquigBodyLastLineNoNL(t *testing.T) {
+	// Body has a line without trailing \n and no closing delim.
+	// stripSquigInterpBody hits eol >= len(l.input) and returns early.
+	l := New("<<~EOS\n  line")
+	tok := l.NextToken() // STRING_BEG
+	if tok.Type != token.STRING_BEG {
+		t.Fatalf("expected STRING_BEG, got %s", tok.Type)
+	}
+	// Body content is "  line" (no newline at end, no matching delim).
+	// The lexer keeps scanning and eventually errors.
+	tok = l.NextToken()
+	if tok.Type != token.ILLEGAL {
+		t.Fatalf("expected ILLEGAL, got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+// --- stripSquigInterpBody: all-blank lines before delim (minIndent < 0) ---
+
+// --- direct call to lexCharacterLiteral to hit whitespace error path ---
+
+func TestLexerCharLiteralWhitespaceErrorDirect(t *testing.T) {
+	// The whitespace error in lexCharacterLiteral (line 884) is unreachable
+	// through normal lexing because startLexer catches all whitespace before
+	// delegating. Call lexCharacterLiteral directly with a lexer whose next
+	// character is a space.
+	l := New(" ")
+	// Simulate: ? has been consumed and ignored, now at the space.
+	l.ignore() // skip ?
+	l.state = nil
+	// Directly call lexCharacterLiteral
+	state := lexCharacterLiteral(l)
+	if state != nil {
+		t.Error("expected nil state (error)")
+	}
+}
+
+func TestLexerSquigBodyAllBlankBeforeDelim(t *testing.T) {
+	// All lines before the delimiter are blank, so minIndent stays at -1.
+	// stripSquigInterpBody sets minIndent = 0.
+	l := New("<<~EOS\n\n\nEOS\n")
+	tok := l.NextToken() // STRING_BEG
+	if tok.Type != token.STRING_BEG {
+		t.Fatalf("expected STRING_BEG, got %s", tok.Type)
+	}
+	tok = l.NextToken() // STRING_CONTENT
+	if tok.Type != token.STRING_CONTENT {
+		t.Fatalf("expected STRING_CONTENT, got %s (%q)", tok.Type, tok.Literal)
+	}
+	if tok.Literal != "\n\n" {
+		t.Errorf("expected '\\n\\n', got %q", tok.Literal)
+	}
+}
+
