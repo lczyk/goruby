@@ -1472,3 +1472,167 @@ func TestLexerEscapeMetaBackslash(t *testing.T) {
 	}
 }
 
+// --- lexDigit: trailing underscore and zero-underscore forms ---
+
+func TestLexerDigitTrailingUnderscore(t *testing.T) {
+	// Integer with trailing underscore includes it in the literal.
+	l := New("1_")
+	tok := l.NextToken()
+	if tok.Type != token.INT {
+		t.Fatalf("expected INT, got %s", tok.Type)
+	}
+	if tok.Literal != "1_" {
+		t.Errorf("expected '1_', got %q", tok.Literal)
+	}
+}
+
+func TestLexerDigitZeroUnderscore(t *testing.T) {
+	// 0_1: zero followed by underscore then digit (octal-like but decimal).
+	l := New("0_1")
+	tok := l.NextToken()
+	if tok.Type != token.INT {
+		t.Fatalf("expected INT, got %s", tok.Type)
+	}
+	if tok.Literal != "0_1" {
+		t.Errorf("expected '0_1', got %q", tok.Literal)
+	}
+}
+
+func TestLexerDigitFloatTrailingUnderscore(t *testing.T) {
+	// Float with trailing underscore includes it.
+	l := New("1.5_")
+	tok := l.NextToken()
+	if tok.Type != token.FLOAT {
+		t.Fatalf("expected FLOAT, got %s", tok.Type)
+	}
+	if tok.Literal != "1.5_" {
+		t.Errorf("expected '1.5_', got %q", tok.Literal)
+	}
+}
+
+func TestLexerDigitFloatExpNegativeNoDigit(t *testing.T) {
+	// 1.5e- : negative exponent sign without digit still enters exponent path
+	// because lexFloatFraction has `|| p == '-'`
+	l := New("1.5e-")
+	tok := l.NextToken()
+	if tok.Type != token.FLOAT {
+		t.Fatalf("expected FLOAT, got %s (%q)", tok.Type, tok.Literal)
+	}
+	if tok.Literal != "1.5e-" {
+		t.Errorf("expected '1.5e-', got %q", tok.Literal)
+	}
+}
+
+func TestLexerDigitFloatExpThenNonDigit(t *testing.T) {
+	// 1e10x: exponent with digit then non-digit
+	l := New("1e10x")
+	tok := l.NextToken()
+	if tok.Type != token.FLOAT {
+		t.Fatalf("expected FLOAT, got %s (%q)", tok.Type, tok.Literal)
+	}
+	if tok.Literal != "1e10" {
+		t.Errorf("expected '1e10', got %q", tok.Literal)
+	}
+	tok = l.NextToken()
+	if tok.Type != token.IDENT || tok.Literal != "x" {
+		t.Errorf("expected IDENT x, got %s %q", tok.Type, tok.Literal)
+	}
+}
+
+// --- lexHeredocBody: squiggy literal with indented delim ---
+
+func TestLexerHeredocBodySquigIndentedDelim(t *testing.T) {
+	// <<~'EOS' with indented closing delimiter
+	l := New("<<~'EOS'\n  line\n  EOS\n")
+	tok := l.NextToken()
+	if tok.Type != token.STRING {
+		t.Fatalf("expected STRING, got %s", tok.Type)
+	}
+	if tok.Literal != "line\n" {
+		t.Errorf("expected 'line\\n', got %q", tok.Literal)
+	}
+}
+
+// --- lexHeredocBody: unterminated at delim line without newline ---
+
+func TestLexerHeredocBodyNoTrailingNewline(t *testing.T) {
+	l := New("<<'EOS'\nbody\nEOS")
+	tok := l.NextToken()
+	if tok.Type != token.STRING {
+		t.Fatalf("expected STRING, got %s", tok.Type)
+	}
+	if tok.Literal != "body\n" {
+		t.Errorf("expected 'body\\n', got %q", tok.Literal)
+	}
+}
+
+// --- matchHeredocDelimLine: indented with tabs ---
+
+func TestLexerHeredocMatchIndentedTabs(t *testing.T) {
+	l := New("<<-EOS\nline\n\t\tEOS\n")
+	l.NextToken() // STRING_BEG
+	tok := l.NextToken() // STRING_CONTENT
+	if tok.Literal != "line\n" {
+		t.Errorf("expected 'line\\n', got %q", tok.Literal)
+	}
+	tok = l.NextToken() // STRING_END
+	if tok.Type != token.STRING_END {
+		t.Fatalf("expected STRING_END, got %s", tok.Type)
+	}
+}
+
+// --- stripSquigInterpBody: delim not found (no closing delim) ---
+
+func TestLexerStripSquigInterpBodyNoDelim(t *testing.T) {
+	// stripSquigInterpBody with no matching delim returns early.
+	// Since no delim is found, content is never emitted - just errors.
+	l := New("<<~EOS\n  line\n  NOMATCH\n")
+	tok := l.NextToken() // STRING_BEG
+	if tok.Type != token.STRING_BEG {
+		t.Fatalf("expected STRING_BEG, got %s", tok.Type)
+	}
+	// No closing delim found, so content accumulates and then errors.
+	tok = l.NextToken()
+	if tok.Type != token.ILLEGAL {
+		t.Fatalf("expected ILLEGAL (unterminated), got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+// --- stripSquigInterpBody: min indent from blank lines ---
+
+func TestLexerStripSquigAllBlank(t *testing.T) {
+	// All lines blank except last - min indent comes from non-blank
+	l := New("<<~EOS\n\n\n  line\n  EOS\n")
+	l.NextToken() // STRING_BEG
+	tok := l.NextToken() // STRING_CONTENT
+	if tok.Literal != "\n\nline\n" {
+		t.Errorf("expected '\\n\\nline\\n', got %q", tok.Literal)
+	}
+}
+
+// --- lexCharacterLiteral: control char with backslash target ---
+
+func TestLexerCharLiteralControlBackslashTarget(t *testing.T) {
+	l := New("?\\C-\\\\")
+	tok := l.NextToken()
+	if tok.Type != token.STRING {
+		t.Fatalf("expected STRING, got %s", tok.Type)
+	}
+	if tok.Literal != "\\C-\\\\" {
+		t.Errorf("expected '\\\\C-\\\\\\\\', got %q", tok.Literal)
+	}
+}
+
+// --- lexCharacterLiteral: meta char with backslash target ---
+
+func TestLexerCharLiteralMetaBackslashTarget(t *testing.T) {
+	l := New("?\\M-\\\\")
+	tok := l.NextToken()
+	if tok.Type != token.STRING {
+		t.Fatalf("expected STRING, got %s", tok.Type)
+	}
+	if tok.Literal != "\\M-\\\\" {
+		t.Errorf("expected '\\\\M-\\\\\\\\', got %q", tok.Literal)
+	}
+}
+
