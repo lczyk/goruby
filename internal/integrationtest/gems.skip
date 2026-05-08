@@ -214,7 +214,6 @@ parse mri-tests/test_keyword.rb: MRI language test - parser failure
 parse mri-tests/test_lambda.rb: MRI language test - parser failure
 parse mri-tests/test_literal.rb: MRI language test - parser failure
 parse mri-tests/test_m17n.rb: MRI language test - parser failure
-parse mri-tests/test_math.rb: MRI language test - parser failure
 parse mri-tests/test_memory_view.rb: MRI language test - parser failure
 parse mri-tests/test_method_cache.rb: MRI language test - parser failure
 parse mri-tests/test_method.rb: MRI language test - parser failure
@@ -223,7 +222,6 @@ parse mri-tests/test_name_error.rb: MRI language test - parser failure
 parse mri-tests/test_numeric.rb: MRI language test - parser failure
 parse mri-tests/test_objectspace.rb: MRI language test - parser failure
 parse mri-tests/test_optimization.rb: MRI language test - parser failure
-parse mri-tests/test_pack.rb: MRI language test - parser failure
 parse mri-tests/test_pattern_matching.rb: MRI language test - parser failure
 parse mri-tests/test_primitive.rb: MRI language test - parser failure
 parse mri-tests/test_proc.rb: MRI language test - parser failure
@@ -240,7 +238,6 @@ parse mri-tests/test_set.rb: MRI language test - parser failure
 parse mri-tests/test_settracefunc.rb: MRI language test - parser failure
 parse mri-tests/test_shapes.rb: MRI language test - parser failure
 parse mri-tests/test_signal.rb: MRI language test - parser failure
-parse mri-tests/test_sleep.rb: MRI language test - parser failure
 parse mri-tests/test_sprintf_comb.rb: MRI language test - parser failure
 parse mri-tests/test_stack.rb: MRI language test - parser failure
 parse mri-tests/test_string_memory.rb: MRI language test - parser failure
@@ -331,7 +328,6 @@ walk mri-tests/test_literal.rb: parse failed; walk skipped
 walk mri-tests/test_m17n_comb.rb: parse failed; walk skipped
 walk mri-tests/test_m17n.rb: parse failed; walk skipped
 walk mri-tests/test_marshal.rb: parse failed; walk skipped
-walk mri-tests/test_math.rb: parse failed; walk skipped
 walk mri-tests/test_memory_view.rb: parse failed; walk skipped
 walk mri-tests/test_method_cache.rb: parse failed; walk skipped
 walk mri-tests/test_method.rb: parse failed; walk skipped
@@ -341,7 +337,6 @@ walk mri-tests/test_numeric.rb: parse failed; walk skipped
 walk mri-tests/test_object.rb: parse failed; walk skipped
 walk mri-tests/test_objectspace.rb: parse failed; walk skipped
 walk mri-tests/test_optimization.rb: parse failed; walk skipped
-walk mri-tests/test_pack.rb: parse failed; walk skipped
 walk mri-tests/test_parse.rb: parse failed; walk skipped
 walk mri-tests/test_pattern_matching.rb: parse failed; walk skipped
 walk mri-tests/test_primitive.rb: parse failed; walk skipped
@@ -362,7 +357,6 @@ walk mri-tests/test_set.rb: parse failed; walk skipped
 walk mri-tests/test_settracefunc.rb: parse failed; walk skipped
 walk mri-tests/test_shapes.rb: parse failed; walk skipped
 walk mri-tests/test_signal.rb: parse failed; walk skipped
-walk mri-tests/test_sleep.rb: parse failed; walk skipped
 walk mri-tests/test_sprintf_comb.rb: parse failed; walk skipped
 walk mri-tests/test_sprintf.rb: parse failed; walk skipped
 walk mri-tests/test_stack.rb: parse failed; walk skipped
