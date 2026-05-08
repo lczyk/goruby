@@ -1,0 +1,9 @@
+# MRI Ruby versions fetched and compiled by .rubies/fetch_rubies.sh.
+# Each version is compiled from source and installed into:
+#   .rubies/versions/<version>/bin/ruby
+#
+# Format: version<TAB>source-url<TAB>sha256
+# Lines starting with '#' and blank lines are ignored.
+
+2.6.0	https://cache.ruby-lang.org/pub/ruby/2.6/ruby-2.6.0.tar.gz	sha256:f3c35b924a11c88ff111f0956ded3cdc12c90c04b72b266ac61076d3697fc072
+3.0.0	https://cache.ruby-lang.org/pub/ruby/3.0/ruby-3.0.0.tar.gz	sha256:a13ed141a1c18eb967aac1e33f4d6ad5f21be1ac543c344e0d6feeee54af8e28

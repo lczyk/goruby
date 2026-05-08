@@ -30,8 +30,12 @@ cover.html
 # Integration-test fixtures fetched by `make gems`
 internal/integrationtest/testdata/gems/
 
-# MRI ruby source tarball cache + extracted test suites (fetched by `make rubies`)
-internal/integrationtest/testdata/.rubies-cache/
+# MRI ruby builds for syntax verification (fetched by `make rubies`)
+.rubies/versions/
+.rubies/cache/
+.rubies/build/
+
+# MRI ruby source fixtures for integration tests
 internal/integrationtest/testdata/rubies/
 
 goruby/

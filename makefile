@@ -60,12 +60,16 @@ integration: gems  ## Run integration smoke suite (requires fetched fixtures)
 	$(GOTEST) -tags=integration -race -timeout 10m ./internal/integrationtest/...
 
 .PHONY: rubies
-rubies:  ## Fetch MRI ruby source fixtures for multi-version smoke tests
-	@bash internal/integrationtest/testdata/fetch_rubies.sh
+rubies:  ## Fetch and compile MRI ruby binaries for syntax verification
+	@bash .rubies/fetch_rubies.sh
 
 .PHONY: rubies-clean
-rubies-clean:  ## Remove fetched ruby source fixtures
-	rm -rf internal/integrationtest/testdata/rubies/
+rubies-clean:  ## Remove compiled ruby binaries and build artifacts
+	rm -rf .rubies/versions/ .rubies/build/ .rubies/cache/
+
+.PHONY: rubies-verify
+rubies-verify: rubies gems  ## Verify all test fixtures against downloaded ruby binaries
+	@bash .rubies/verify.sh
 
 .PHONY: clean
 clean:  ## Remove generated files

@@ -36,7 +36,7 @@ arr[1...3]
 ..5
 ...5
 
-# endless range (left operand only)
+# endless range -- only .. works (Ruby 2.6+); ... (exclusive-end) is
+# not valid for endless ranges -- there is no end to exclude.
 1..
-1...
 
