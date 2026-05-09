@@ -1013,7 +1013,11 @@ func (hl *HashLiteral) String() string {
 	var out bytes.Buffer
 	elements := []string{}
 	for key, val := range hl.Map {
-		elements = append(elements, fmt.Sprintf("%q => %q", key.String(), val.String()))
+		if val != nil {
+			elements = append(elements, fmt.Sprintf("%q => %q", key.String(), val.String()))
+		} else {
+			elements = append(elements, key.String())
+		}
 	}
 	for _, s := range hl.Splats {
 		elements = append(elements, "**"+s.String())

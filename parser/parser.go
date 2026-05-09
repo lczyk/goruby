@@ -205,9 +205,10 @@ type parser struct {
 	prefixParseFns map[token.Type]prefixParseFn
 	infixParseFns  map[token.Type]infixParseFn
 
-	inPattern       bool // true when parsing a pattern matching clause
-	suppressDoBlock bool // true inside while/until/for conditions
-	comments        []*ast.Comment
+	inPattern          bool // true when parsing a pattern matching clause
+	suppressDoBlock    bool // true inside while/until/for conditions
+	suppressHashrocket bool // true in call-arg lists to prevent => as rightward assignment
+	comments           []*ast.Comment
 }
 
 func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode Mode) {
@@ -615,6 +616,7 @@ var bareCallArgTokens = []token.Type{
 	token.SYMBEG,
 	token.AT, token.CLASS_VAR,
 	token.GLOBAL,
+	token.REGEX_BEG, token.REGEX,
 }
 
 func (p *parser) parseExpressionStatement() *ast.ExpressionStatement {
@@ -675,6 +677,9 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 			return leftExp
 		}
 		if p.suppressDoBlock && p.peekTokenIs(token.DO) {
+			return leftExp
+		}
+		if p.suppressHashrocket && p.peekTokenIs(token.HASHROCKET) {
 			return leftExp
 		}
 		infix := p.infixParseFns[p.peekToken.Type]
@@ -3469,19 +3474,34 @@ func (p *parser) parseCallExpressionWithParens(function ast.Expression) ast.Expr
 
 func (p *parser) parseCallArguments(end ...token.Type) []ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
+	prevSuppressHR := p.suppressHashrocket
+	p.suppressHashrocket = true
+	defer func() { p.suppressHashrocket = prevSuppressHR }()
 	list := []ast.Expression{}
 	if p.currentTokenOneOf(end...) {
 		return list
 	}
 
-	list = append(list, p.parseExpression(precAssignment))
+	first := p.parseExpression(precAssignment)
+	if p.peekTokenIs(token.HASHROCKET) {
+		hash := p.parseImplicitHash(first, end...)
+		list = append(list, hash)
+		return list
+	}
+	list = append(list, first)
 
 	for p.peekTokenIs(token.COMMA) {
 		p.consume(token.COMMA)
 		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 			p.nextToken()
 		}
-		list = append(list, p.parseExpression(precAssignment))
+		arg := p.parseExpression(precAssignment)
+		if p.peekTokenIs(token.HASHROCKET) {
+			hash := p.parseImplicitHash(arg, end...)
+			list = append(list, hash)
+			return list
+		}
+		list = append(list, arg)
 	}
 
 	if p.peekTokenOneOf(end...) {
@@ -3491,8 +3511,60 @@ func (p *parser) parseCallArguments(end ...token.Type) []ast.Expression {
 	return list
 }
 
+func (p *parser) parseImplicitHash(firstKey ast.Expression, end ...token.Type) ast.Expression {
+	hash := &ast.HashLiteral{Token: p.curToken, Map: map[ast.Expression]ast.Expression{}}
+	p.accept(token.HASHROCKET)
+	p.nextToken()
+	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+		p.nextToken()
+	}
+	val := p.parseExpression(precAssignment)
+	hash.Map[firstKey] = val
+	for {
+		for p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			if p.peekTokenOneOf(end...) {
+				break
+			}
+			p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+		}
+		if p.peekTokenOneOf(end...) {
+			p.acceptOneOf(end...)
+			return hash
+		}
+		if !p.peekTokenIs(token.COMMA) {
+			break
+		}
+		p.consume(token.COMMA)
+		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.nextToken()
+		}
+		if p.currentTokenOneOf(end...) {
+			return hash
+		}
+		key := p.parseExpression(precAssignment)
+		if p.peekTokenIs(token.HASHROCKET) {
+			p.accept(token.HASHROCKET)
+			p.nextToken()
+			for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+				p.nextToken()
+			}
+			v := p.parseExpression(precAssignment)
+			hash.Map[key] = v
+		} else {
+			hash.Map[key] = nil
+		}
+	}
+	if p.peekTokenOneOf(end...) {
+		p.acceptOneOf(end...)
+	}
+	return hash
+}
+
 func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
+	prevSuppressHR := p.suppressHashrocket
+	p.suppressHashrocket = true
+	defer func() { p.suppressHashrocket = prevSuppressHR }()
 	list := []ast.Expression{}
 	// Skip leading newlines/semicolons inside parens/brackets.
 	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
@@ -3507,6 +3579,11 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 	if _, ok := next.(*ast.Identifier); ok && p.peekTokenIs(token.DO) {
 		p.nextToken()
 		next = p.parseCallBlock(next)
+	}
+	if p.peekTokenIs(token.HASHROCKET) {
+		hash := p.parseImplicitHash(next, end...)
+		list = append(list, hash)
+		return list
 	}
 	list = append(list, next)
 
@@ -3540,6 +3617,11 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 		if _, ok := next.(*ast.Identifier); ok && p.peekTokenIs(token.DO) {
 			p.nextToken()
 			next = p.parseCallBlock(next)
+		}
+		if p.peekTokenIs(token.HASHROCKET) {
+			hash := p.parseImplicitHash(next, end...)
+			list = append(list, hash)
+			return list
 		}
 		list = append(list, next)
 	}

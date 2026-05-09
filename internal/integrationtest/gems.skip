@@ -15,11 +15,9 @@
 
 
 parse rake/test/test_rake_file_utils.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
-parse rake/test/test_rake_rules.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 
 
 walk rake/test/test_rake_file_utils.rb: parse failed; walk skipped
-walk rake/test/test_rake_rules.rb: parse failed; walk skipped
 
 # Ruby language tests from MRI test/ruby
 #
