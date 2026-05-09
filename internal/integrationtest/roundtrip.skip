@@ -25,7 +25,6 @@ ast * internal/integrationtest/testdata/gems/kaiser-ruby/lib/kaiser_ruby/transfo
 ast * internal/integrationtest/testdata/gems/kaiser-ruby/spec/general/other_spec.rb
 ast * internal/integrationtest/testdata/gems/kaiser-ruby/spec/language/comparison_spec.rb
 ast * internal/integrationtest/testdata/gems/kaiser-ruby/spec/language/flow_control_spec.rb
-ast * internal/integrationtest/testdata/gems/kaiser-ruby/spec/language/general_statements_spec.rb
 ast * internal/integrationtest/testdata/gems/kaiser-ruby/spec/variables/poetic_spec.rb
 ast * internal/integrationtest/testdata/gems/labyrinth/labyrinth.rb
 ast * internal/integrationtest/testdata/gems/mariolang-rb/mariolang.rb
@@ -142,7 +141,6 @@ ast * internal/integrationtest/testdata/mri-tests/test_refinement.rb
 ast * internal/integrationtest/testdata/mri-tests/test_regexp.rb
 ast * internal/integrationtest/testdata/mri-tests/test_require.rb
 ast * internal/integrationtest/testdata/mri-tests/test_rubyoptions.rb
-ast * internal/integrationtest/testdata/mri-tests/test_set.rb
 ast * internal/integrationtest/testdata/mri-tests/test_settracefunc.rb
 ast * internal/integrationtest/testdata/mri-tests/test_signal.rb
 ast * internal/integrationtest/testdata/mri-tests/test_sprintf_comb.rb
@@ -288,6 +286,7 @@ src * internal/integrationtest/testdata/gems/kaiser-ruby/spec/general/cli_spec.r
 src * internal/integrationtest/testdata/gems/kaiser-ruby/spec/general/integration_spec.rb
 src * internal/integrationtest/testdata/gems/kaiser-ruby/spec/language/expression_spec.rb
 src * internal/integrationtest/testdata/gems/kaiser-ruby/spec/language/functions_spec.rb
+src * internal/integrationtest/testdata/gems/kaiser-ruby/spec/language/general_statements_spec.rb
 src * internal/integrationtest/testdata/gems/kaiser-ruby/spec/language/precedence_spec.rb
 src * internal/integrationtest/testdata/gems/kaiser-ruby/spec/old_reference_tests/correct_spec.rb
 src * internal/integrationtest/testdata/gems/kaiser-ruby/spec/old_reference_tests/parsing_errors_spec.rb
@@ -501,6 +500,7 @@ src * internal/integrationtest/testdata/mri-tests/test_rational2.rb
 src * internal/integrationtest/testdata/mri-tests/test_readpartial.rb
 src * internal/integrationtest/testdata/mri-tests/test_require_lib.rb
 src * internal/integrationtest/testdata/mri-tests/test_rubyvm.rb
+src * internal/integrationtest/testdata/mri-tests/test_set.rb
 src * internal/integrationtest/testdata/mri-tests/test_shapes.rb
 src * internal/integrationtest/testdata/mri-tests/test_sleep.rb
 src * internal/integrationtest/testdata/mri-tests/test_sprintf.rb
@@ -561,7 +561,6 @@ src * internal/integrationtest/testdata/gems/kaiser-ruby/lib/kaiser_ruby/transfo
 src * internal/integrationtest/testdata/gems/kaiser-ruby/spec/general/other_spec.rb
 src * internal/integrationtest/testdata/gems/kaiser-ruby/spec/language/comparison_spec.rb
 src * internal/integrationtest/testdata/gems/kaiser-ruby/spec/language/flow_control_spec.rb
-src * internal/integrationtest/testdata/gems/kaiser-ruby/spec/language/general_statements_spec.rb
 src * internal/integrationtest/testdata/gems/kaiser-ruby/spec/variables/poetic_spec.rb
 src * internal/integrationtest/testdata/gems/labyrinth/labyrinth.rb
 src * internal/integrationtest/testdata/gems/mariolang-rb/mariolang.rb
@@ -678,7 +677,6 @@ src * internal/integrationtest/testdata/mri-tests/test_refinement.rb
 src * internal/integrationtest/testdata/mri-tests/test_regexp.rb
 src * internal/integrationtest/testdata/mri-tests/test_require.rb
 src * internal/integrationtest/testdata/mri-tests/test_rubyoptions.rb
-src * internal/integrationtest/testdata/mri-tests/test_set.rb
 src * internal/integrationtest/testdata/mri-tests/test_settracefunc.rb
 src * internal/integrationtest/testdata/mri-tests/test_signal.rb
 src * internal/integrationtest/testdata/mri-tests/test_sprintf_comb.rb

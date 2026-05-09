@@ -757,7 +757,11 @@ func (sl *StringLiteral) String() string {
 	case token.XSTR, token.XSTR_BEG:
 		open, close = "`", "`"
 	case token.STRING:
-		open, close = "'", "'"
+		if strings.Contains(sl.Value, "'") {
+			open, close = "\"", "\""
+		} else {
+			open, close = "'", "'"
+		}
 	default:
 		open, close = "\"", "\""
 	}
