@@ -65,7 +65,6 @@ ast * internal/integrationtest/testdata/mri-tests/test_thread_queue.rb
 ast * internal/integrationtest/testdata/mri-tests/test_time_tz.rb
 ast * internal/integrationtest/testdata/mri-tests/test_transcode.rb
 ast * internal/integrationtest/testdata/mri-tests/test_yjit.rb
-ast * internal/integrationtest/testdata/gems/kaiser-ruby/lib/kaiser_ruby/refinements.rb
 ast * internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_3_1.rb
 src * internal/integrationtest/testdata/esolangs/a_semicolon.rb
 src * internal/integrationtest/testdata/esolangs/alarm_clock_radio.rb

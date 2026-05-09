@@ -1411,7 +1411,7 @@ func (ce *ContextCallExpression) String() string {
 	if ce.Function != nil {
 		// Setter call obj.x = 5 -- output as assignment, not obj.x=(5)
 		name := ce.Function.Value
-		if strings.HasSuffix(name, "=") && len(ce.Arguments) == 1 {
+		if isSetterName(name) && len(ce.Arguments) == 1 {
 			out.WriteString(strings.TrimSuffix(name, "="))
 			out.WriteString(" = ")
 			out.WriteString(ce.Arguments[0].String())
@@ -1954,6 +1954,18 @@ func escapeRegexSlash(s string) string {
 		return s
 	}
 	return strings.ReplaceAll(s, "/", "\\/")
+}
+
+// isSetterName reports whether name is an identifier-style setter (foo=),
+// not an operator method that happens to end with = (==, !=, <=, >=, ===, =~).
+func isSetterName(name string) bool {
+	if !strings.HasSuffix(name, "=") || len(name) < 2 {
+		return false
+	}
+	// The character before the trailing = must be a letter, digit, or underscore.
+	prev := name[len(name)-2]
+	return (prev >= 'a' && prev <= 'z') || (prev >= 'A' && prev <= 'Z') ||
+		(prev >= '0' && prev <= '9') || prev == '_'
 }
 
 func encloseInParensIfNeeded(expr Expression) string {
