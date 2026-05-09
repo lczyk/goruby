@@ -2919,6 +2919,9 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 		p.accept(token.COMMA)
 		p.skipNewlines()
 		if p.peekTokenIs(token.POWER) {
+			if !p.version.AtLeast(ruby20) {
+				p.versionError(ruby20, "keyword rest parameter")
+			}
 			p.accept(token.POWER)
 			if p.peekTokenIs(token.NIL) {
 				if !p.version.AtLeast(ruby27) {
@@ -3117,6 +3120,9 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 	}
 
 	if p.peekTokenIs(token.POWER) {
+		if !p.version.AtLeast(ruby20) {
+			p.versionError(ruby20, "keyword rest parameter")
+		}
 		p.accept(token.POWER)
 		if p.peekTokenIs(token.NIL) {
 			if !p.version.AtLeast(ruby27) {
@@ -3186,6 +3192,9 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 			return identifiers
 		}
 		if p.peekTokenIs(token.POWER) {
+			if !p.version.AtLeast(ruby20) {
+				p.versionError(ruby20, "keyword rest parameter")
+			}
 			p.accept(token.POWER)
 			if p.peekTokenIs(token.NIL) {
 				if !p.version.AtLeast(ruby27) {
