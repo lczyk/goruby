@@ -1034,7 +1034,7 @@ func (p *parser) parseJumpExpression() ast.Expression {
 	// redo/retry take no value
 	if p.currentTokenIs(token.BREAK) || p.currentTokenIs(token.NEXT) {
 		if !p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.EOF, token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.RESCUE,
-			token.RPAREN, token.RBRACKET, token.RBRACE, token.END) {
+			token.RPAREN, token.RBRACKET, token.RBRACE, token.END, token.DOT, token.EMBEXPR_END) {
 			p.nextToken()
 			jmp.Value = p.parseExpression(precLowest)
 		}
