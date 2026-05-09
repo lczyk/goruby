@@ -762,22 +762,17 @@ func (p *parser) parseRescueBlock() *ast.RescueBlock {
 	defer trace.TraceCtx(p.ctx)()
 	block := &ast.RescueBlock{Token: p.curToken}
 	classes := []*ast.Identifier{}
-	for p.peekTokenOneOf(token.CONST, token.ASTERISK, token.IDENT, token.SCOPE) {
+	for !p.peekTokenOneOf(token.HASHROCKET, token.NEWLINE, token.SEMICOLON, token.EOF, token.END, token.THEN) {
 		isSplat := false
 		if p.peekTokenIs(token.ASTERISK) {
 			isSplat = true
 			p.accept(token.ASTERISK)
 		}
-		if !p.acceptOneOf(token.CONST, token.IDENT, token.SCOPE) {
-			break
-		}
-		name := p.curToken.Literal
-		for p.peekTokenIs(token.SCOPE) {
-			p.accept(token.SCOPE)
-			if !p.accept(token.CONST) {
-				break
-			}
-			name += "::" + p.curToken.Literal
+		p.nextToken()
+		expr := p.parseExpression(precAssignment)
+		name := ""
+		if expr != nil {
+			name = expr.String()
 		}
 		if isSplat {
 			name = "*" + name
@@ -786,6 +781,8 @@ func (p *parser) parseRescueBlock() *ast.RescueBlock {
 		classes = append(classes, class)
 		if p.peekTokenIs(token.COMMA) {
 			p.accept(token.COMMA)
+		} else {
+			break
 		}
 	}
 	block.ExceptionClasses = classes
