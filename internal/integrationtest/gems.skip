@@ -33,11 +33,9 @@ parse mri-tests/marshaltestlib.rb: MRI language test - parser failure
 parse mri-tests/test_class.rb: MRI language test - parser failure
 parse mri-tests/test_compile_prism.rb: MRI language test - parser failure
 parse mri-tests/test_defined.rb: MRI language test - parser failure
-parse mri-tests/test_enumerator.rb: MRI language test - parser failure
 parse mri-tests/test_env.rb: MRI language test - parser failure
 parse mri-tests/test_eval.rb: MRI language test - parser failure
 parse mri-tests/test_hash.rb: MRI language test - parser failure
-parse mri-tests/test_insns_leaf.rb: MRI language test - parser failure
 parse mri-tests/test_iterator.rb: MRI language test - parser failure
 parse mri-tests/test_keyword.rb: MRI language test - parser failure
 parse mri-tests/test_lambda.rb: MRI language test - parser failure
@@ -65,13 +63,11 @@ walk mri-tests/test_assignment.rb: parse failed; walk skipped
 walk mri-tests/test_class.rb: parse failed; walk skipped
 walk mri-tests/test_compile_prism.rb: parse failed; walk skipped
 walk mri-tests/test_defined.rb: parse failed; walk skipped
-walk mri-tests/test_enumerator.rb: parse failed; walk skipped
 walk mri-tests/test_env.rb: parse failed; walk skipped
 walk mri-tests/test_eval.rb: parse failed; walk skipped
 walk mri-tests/test_exception.rb: parse failed; walk skipped
 walk mri-tests/test_file_exhaustive.rb: parse failed; walk skipped
 walk mri-tests/test_hash.rb: parse failed; walk skipped
-walk mri-tests/test_insns_leaf.rb: parse failed; walk skipped
 walk mri-tests/test_iterator.rb: parse failed; walk skipped
 walk mri-tests/test_keyword.rb: parse failed; walk skipped
 walk mri-tests/test_lambda.rb: parse failed; walk skipped
