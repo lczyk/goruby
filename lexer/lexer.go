@@ -676,7 +676,7 @@ func startLexer(l *Lexer) StateFn {
 		l.emit(token.XOR)
 		return startLexer
 	case '`':
-		if l.lastToken.Type == token.DEF || l.lastToken.Type == token.DOT {
+		if l.lastToken.Type == token.DEF || l.lastToken.Type == token.DOT || l.lastToken.Type == token.SYMBEG {
 			l.emitLiteral(token.IDENT, "`")
 			return startLexer
 		}

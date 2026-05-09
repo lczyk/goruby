@@ -2668,6 +2668,12 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 	}
 
 parseParams:
+	if lit.Name != nil && p.peekTokenIs(token.ASSIGN) &&
+		p.curToken.Type == token.IDENT &&
+		p.peekToken.Pos == p.curToken.Pos+len(p.curToken.Literal) {
+		p.accept(token.ASSIGN)
+		lit.Name.Value += "="
+	}
 	lit.Parameters = p.parseParameters(token.LPAREN, token.RPAREN)
 
 	if p.currentTokenOneOf(token.CAPTURE, token.AND) {
