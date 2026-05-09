@@ -204,8 +204,9 @@ type parser struct {
 	prefixParseFns map[token.Type]prefixParseFn
 	infixParseFns  map[token.Type]infixParseFn
 
-	inPattern bool // true when parsing a pattern matching clause
-	comments  []*ast.Comment
+	inPattern       bool // true when parsing a pattern matching clause
+	suppressDoBlock bool // true inside while/until/for conditions
+	comments        []*ast.Comment
 }
 
 func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode Mode) {
@@ -668,6 +669,9 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 			return nil // fail early and stop parsing
 		}
 		if p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			return leftExp
+		}
+		if p.suppressDoBlock && p.peekTokenIs(token.DO) {
 			return leftExp
 		}
 		infix := p.infixParseFns[p.peekToken.Type]
@@ -2373,7 +2377,10 @@ func (p *parser) parseLoopExpression() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	loop := &ast.LoopExpression{Token: p.curToken}
 	p.nextToken()
+	prev := p.suppressDoBlock
+	p.suppressDoBlock = true
 	loop.Condition = p.parseExpression(precIfUnless)
+	p.suppressDoBlock = prev
 	if p.peekTokenIs(token.DO) {
 		p.accept(token.DO)
 	}
@@ -3105,11 +3112,19 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 		return contextCallExpression
 	}
 
+	if p.suppressDoBlock && p.peekTokenIs(token.DO) {
+		contextCallExpression.Arguments = []ast.Expression{}
+		return contextCallExpression
+	}
+
 	if p.peekTokenIs(token.LPAREN) {
 		p.accept(token.LPAREN)
 		p.nextToken()
 		contextCallExpression.Arguments = p.parseExpressionList(token.RPAREN)
 		if p.peekTokenOneOf(token.LBRACE, token.DO) {
+			if p.suppressDoBlock && p.peekTokenIs(token.DO) {
+				return contextCallExpression
+			}
 			p.acceptOneOf(token.LBRACE, token.DO)
 			contextCallExpression.Block = p.parseBlockExpr()
 		}
@@ -3128,10 +3143,14 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 
 	p.nextToken()
 
+	blockStops := []token.Type{token.LBRACE, token.DO}
+	if p.suppressDoBlock {
+		blockStops = []token.Type{token.LBRACE}
+	}
 	contextCallExpression.Arguments = p.parseCallArguments(
-		token.LBRACE, token.DO,
+		blockStops...,
 	)
-	if p.currentTokenOneOf(token.LBRACE, token.DO) {
+	if p.currentTokenOneOf(blockStops...) {
 		contextCallExpression.Block = p.parseBlockExpr()
 	}
 	return contextCallExpression
