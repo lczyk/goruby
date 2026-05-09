@@ -1807,7 +1807,7 @@ func TestConditionalExpression(t *testing.T) {
 			y
 			end
 			x
-			end`, "x", "<", "y", "if(x == 3) y endx"},
+			end`, "x", "<", "y", "if (x == 3)\ny\nendx"},
 			{`if x < y
 			x = Object x
 			end`, "x", "<", "y", "x = (Object(x))"},
@@ -1828,7 +1828,7 @@ func TestConditionalExpression(t *testing.T) {
 			y
 			end
 			x
-			end`, "x", "<", "y", "if(x == 3) y endx"},
+			end`, "x", "<", "y", "if (x == 3)\ny\nendx"},
 			{`unless x < y
 			x = Object x
 			end`, "x", "<", "y", "x = (Object(x))"},
@@ -3140,7 +3140,7 @@ func TestCallExpressionParameterParsing(t *testing.T) {
 		{
 			input:         `add "foo";`,
 			expectedIdent: "add",
-			expectedArgs:  []string{"foo"},
+			expectedArgs:  []string{`"foo"`},
 		},
 		{
 			input:         `add :foo;`,
@@ -4039,11 +4039,11 @@ func TestSymbolExpression(t *testing.T) {
 		},
 		{
 			`:"symbol";`,
-			"symbol",
+			`"symbol"`,
 		},
 		{
 			`:'symbol';`,
-			"symbol",
+			`'symbol'`,
 		},
 		{`:+;`, "+"},
 		{`:*;`, "*"},
@@ -5399,28 +5399,28 @@ func TestPercentLiterals(t *testing.T) {
 		expected string
 	}{
 		// %q -- single-quoted string (non-interpolating)
-		{"%q parens", "%q(hello)", `hello`},
-		{"%q braces", "%q{hello world}", `hello world`},
+		{"%q parens", "%q(hello)", `'hello'`},
+		{"%q braces", "%q{hello world}", `'hello world'`},
 		// %Q -- double-quoted string (interpolating)
-		{"%Q simple", "%Q(hello)", `hello`},
+		{"%Q simple", "%Q(hello)", `"hello"`},
 		// bare % -- same as %Q
-		{"bare % simple", "%(hello)", `hello`},
+		{"bare % simple", "%(hello)", `"hello"`},
 		// %w -- word array (non-interpolating)
-		{"%w words", "%w[a b c]", `[a, b, c]`},
+		{"%w words", "%w[a b c]", `["a", "b", "c"]`},
 		{"%w empty", "%w[]", `[]`},
-		{"%w extra whitespace", "%w[  a  b  ]", `[a, b]`},
+		{"%w extra whitespace", "%w[  a  b  ]", `["a", "b"]`},
 		// %W -- word array (interpolating)
-		{"%W words", "%W[a b c]", `[a, b, c]`},
+		{"%W words", "%W[a b c]", `["a", "b", "c"]`},
 		// %i -- symbol array (non-interpolating)
-		{"%i symbols", "%i[foo bar]", `[:foo, :bar]`},
+		{"%i symbols", "%i[foo bar]", `[:"foo", :"bar"]`},
 		// %I -- symbol array (interpolating)
-		{"%I symbols", "%I[foo bar]", `[:foo, :bar]`},
+		{"%I symbols", "%I[foo bar]", `[:"foo", :"bar"]`},
 		// %s -- symbol literal
-		{"%s symbol", "%s(foo)", `:foo`},
+		{"%s symbol", "%s(foo)", `:"foo"`},
 		// %r -- regex
 		{"%r regex", "%r{pattern}", `/pattern/`},
 		// %x -- command
-		{"%x command", "%x(ls -la)", `ls -la`},
+		{"%x command", "%x(ls -la)", "`ls -la`"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

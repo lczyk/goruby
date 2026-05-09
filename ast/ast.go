@@ -155,13 +155,13 @@ func (bs *BlockStatement) End() int { return bs.EndToken.Pos }
 // TokenLiteral returns '{' or the first token from the first statement
 func (bs *BlockStatement) TokenLiteral() string { return bs.Token.Literal }
 func (bs *BlockStatement) String() string {
-	var out bytes.Buffer
+	stmts := make([]string, 0, len(bs.Statements))
 	for _, s := range bs.Statements {
 		if s != nil {
-			out.WriteString(s.String())
+			stmts = append(stmts, s.String())
 		}
 	}
-	return out.String()
+	return strings.Join(stmts, "\n")
 }
 
 // ExceptionHandlingBlock represents a begin/end block where exceptions are rescued
@@ -255,7 +255,13 @@ type Assignment struct {
 func (a *Assignment) String() string {
 	var out bytes.Buffer
 	out.WriteString(encloseInParensIfNeeded(a.Left))
-	out.WriteString(" = ")
+	op := a.Token.Literal
+	if op == "" {
+		op = "="
+	}
+	out.WriteString(" ")
+	out.WriteString(op)
+	out.WriteString(" ")
 	out.WriteString(encloseInParensIfNeeded(a.Right))
 	return out.String()
 }
@@ -739,14 +745,31 @@ func (sl *StringLiteral) End() int {
 // TokenLiteral returns the literal from the string token
 func (sl *StringLiteral) TokenLiteral() string { return sl.Token.Literal }
 func (sl *StringLiteral) String() string {
-	if sl.Parts != nil {
-		var parts []string
-		for _, p := range sl.Parts {
-			parts = append(parts, p.String())
-		}
-		return strings.Join(parts, "")
+	var open, close string
+	switch sl.Token.Type {
+	case token.XSTR, token.XSTR_BEG:
+		open, close = "`", "`"
+	case token.STRING:
+		open, close = "'", "'"
+	default:
+		open, close = "\"", "\""
 	}
-	return sl.Value
+	if sl.Parts != nil {
+		var out bytes.Buffer
+		out.WriteString(open)
+		for _, p := range sl.Parts {
+			if sc, ok := p.(*StringContent); ok {
+				out.WriteString(sc.Value)
+			} else {
+				out.WriteString("#{")
+				out.WriteString(p.String())
+				out.WriteString("}")
+			}
+		}
+		out.WriteString(close)
+		return out.String()
+	}
+	return open + sl.Value + close
 }
 
 // StringContent represents a literal text segment within an interpolated string.
@@ -878,15 +901,26 @@ func (ce *ConditionalExpression) End() int {
 func (ce *ConditionalExpression) TokenLiteral() string { return ce.Token.Literal }
 func (ce *ConditionalExpression) String() string {
 	var out bytes.Buffer
-	out.WriteString(ce.Token.Literal)
-	out.WriteString(ce.Condition.String())
-	out.WriteString(" ")
-	out.WriteString(ce.Consequence.String())
-	if ce.Alternative != nil {
-		out.WriteString("else ")
-		out.WriteString(ce.Alternative.String())
+	if ce.EndToken.Type == token.ILLEGAL {
+		out.WriteString(ce.Consequence.String())
+		out.WriteString(" ")
+		out.WriteString(ce.Token.Literal)
+		out.WriteString(" ")
+		out.WriteString(ce.Condition.String())
+		return out.String()
 	}
-	out.WriteString(" end")
+	out.WriteString(ce.Token.Literal)
+	out.WriteString(" ")
+	out.WriteString(ce.Condition.String())
+	out.WriteString("\n")
+	out.WriteString(ce.Consequence.String())
+	out.WriteString("\n")
+	if ce.Alternative != nil {
+		out.WriteString("else\n")
+		out.WriteString(ce.Alternative.String())
+		out.WriteString("\n")
+	}
+	out.WriteString("end")
 	return out.String()
 }
 
@@ -915,10 +949,14 @@ func (ce *LoopExpression) TokenLiteral() string { return ce.Token.Literal }
 func (ce *LoopExpression) String() string {
 	var out bytes.Buffer
 	out.WriteString(ce.Token.Literal)
+	out.WriteString(" ")
 	out.WriteString(ce.Condition.String())
-	out.WriteString(" do ")
-	out.WriteString(ce.Block.String())
-	out.WriteString(" end")
+	if ce.Block != nil {
+		out.WriteString("\n")
+		out.WriteString(ce.Block.String())
+		out.WriteString("\n")
+	}
+	out.WriteString("end")
 	return out.String()
 }
 
@@ -1115,10 +1153,16 @@ func (fl *FunctionLiteral) String() string {
 	}
 	out.WriteString("(")
 	out.WriteString(strings.Join(params, ", "))
-	out.WriteString(") ")
+	out.WriteString(")")
+	body := ""
 	if fl.Body != nil {
-		out.WriteString(fl.Body.String())
+		body = fl.Body.String()
 	}
+	if body != "" {
+		out.WriteString("\n")
+		out.WriteString(body)
+	}
+	out.WriteString("\n")
 	for _, r := range fl.Rescues {
 		out.WriteString(r.String())
 	}
@@ -1133,9 +1177,9 @@ func (fl *FunctionLiteral) String() string {
 		out.WriteString("\n")
 	}
 	if fl.IsLambda {
-		out.WriteString(" }")
+		out.WriteString("}")
 	} else {
-		out.WriteString(" end")
+		out.WriteString("end")
 	}
 	return out.String()
 }
@@ -1283,20 +1327,19 @@ func (ce *ContextCallExpression) String() string {
 		out.WriteString(ce.Context.String())
 		out.WriteString(".")
 	}
+	if ce.Function != nil {
+		out.WriteString(ce.Function.String())
+	}
 	args := []string{}
 	for _, a := range ce.Arguments {
 		if a != nil {
 			args = append(args, a.String())
 		}
 	}
-	if ce.Function != nil {
-		out.WriteString(ce.Function.String())
-	}
 	out.WriteString("(")
 	out.WriteString(strings.Join(args, ", "))
 	out.WriteString(")")
 	if ce.Block != nil {
-		out.WriteString("\n")
 		out.WriteString(ce.Block.String())
 	}
 	return out.String()
@@ -1329,13 +1372,20 @@ func (b *BlockExpression) TokenLiteral() string { return b.Token.Literal }
 // String returns a string representation of the block statement
 func (b *BlockExpression) String() string {
 	var out bytes.Buffer
-	out.WriteString(b.Token.Literal)
-	if len(b.Parameters) != 0 || len(b.BlockLocals) != 0 {
+	if b.Token.Type == token.LBRACE {
+		out.WriteString("{")
+	} else {
+		out.WriteString(" do")
+	}
+	if len(b.Parameters) != 0 || len(b.BlockLocals) != 0 || b.CapturedBlock != nil {
 		args := []string{}
 		for _, a := range b.Parameters {
 			args = append(args, a.String())
 		}
-		out.WriteString("|")
+		if b.CapturedBlock != nil {
+			args = append(args, b.CapturedBlock.String())
+		}
+		out.WriteString(" |")
 		out.WriteString(strings.Join(args, ", "))
 		if len(b.BlockLocals) != 0 {
 			out.WriteString("; ")
@@ -1346,8 +1396,8 @@ func (b *BlockExpression) String() string {
 			out.WriteString(strings.Join(locals, ", "))
 		}
 		out.WriteString("|")
-		out.WriteString("\n")
 	}
+	out.WriteString("\n")
 	out.WriteString(b.Body.String())
 	for _, r := range b.Rescues {
 		out.WriteString("\n")
@@ -1442,8 +1492,7 @@ func (m *ClassExpression) String() string {
 		out.WriteString("\n")
 		out.WriteString(r.String())
 	}
-	out.WriteString("\n")
-	out.WriteString(" end")
+	out.WriteString("\nend")
 	return out.String()
 }
 
