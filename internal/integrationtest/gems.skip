@@ -20,7 +20,6 @@
 # lex phase: all files pass (lexer bugs resolved 2026-05-07).
 #
 # parse phase failures (lex passes) -- all remaining entries are parser gaps.
-parse mri-tests/test_class.rb: MRI language test - parser failure
 parse mri-tests/test_module.rb: setter fix reveals block-counting mismatch with endless methods
 parse mri-tests/test_hash.rb: MRI language test - parser failure
 parse mri-tests/test_keyword.rb: MRI language test - parser failure
@@ -30,7 +29,6 @@ parse mri-tests/test_refinement.rb: MRI language test - parser failure
 parse mri-tests/test_super.rb: MRI language test - parser failure
 
 # walk phase (parse fails)
-walk mri-tests/test_class.rb: parse failed; walk skipped
 walk mri-tests/test_module.rb: parse failed; walk skipped
 walk mri-tests/test_exception.rb: parse failed; walk skipped
 walk mri-tests/test_hash.rb: parse failed; walk skipped
