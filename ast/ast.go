@@ -563,7 +563,7 @@ func (r *RefineExpression) String() string {
 	if r.Body == nil {
 		return "refine " + r.Expr.String()
 	}
-	return "refine " + r.Expr.String() + " do " + r.Body.String() + " end"
+	return "refine " + r.Expr.String() + " do\n" + r.Body.String() + "\nend"
 }
 
 // An Identifier represents an identifier in the program
