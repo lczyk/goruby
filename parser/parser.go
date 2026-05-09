@@ -2148,6 +2148,19 @@ func (p *parser) parseKeyValue() (ast.Expression, ast.Expression, bool) {
 	}
 	// Classic hashrocket syntax: key => value
 	key := p.parseExpression(precAssignment)
+	// Quoted label syntax (ruby 3.1+): "key": value
+	if p.peekTokenOneOf(token.SYMBEG, token.COLON) {
+		if _, ok := key.(*ast.StringLiteral); ok {
+			p.nextToken()
+			if p.peekTokenOneOf(token.COMMA, token.RBRACE, token.RPAREN, token.NEWLINE) {
+				val := key
+				return &ast.SymbolLiteral{Token: p.curToken, Value: key.(*ast.StringLiteral)}, val, true
+			}
+			p.nextToken()
+			val := p.parseExpression(precAssignment)
+			return &ast.SymbolLiteral{Token: p.curToken, Value: key.(*ast.StringLiteral)}, val, true
+		}
+	}
 	if !p.consume(token.HASHROCKET) {
 		return nil, nil, false
 	}
