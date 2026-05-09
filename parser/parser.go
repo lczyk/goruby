@@ -985,6 +985,14 @@ func (p *parser) parseLabelExpression() ast.Expression {
 		Token: p.curToken,
 		Value: &ast.StringLiteral{Value: name},
 	}
+	if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.RBRACE, token.NEWLINE, token.SEMICOLON, token.PIPE) {
+		return &ast.InfixExpression{
+			Token:    key.Token,
+			Left:     key,
+			Operator: ":",
+			Right:    &ast.Identifier{Token: p.curToken, Value: name},
+		}
+	}
 	p.nextToken()
 	val := p.parseExpression(precAssignment)
 	return &ast.InfixExpression{
