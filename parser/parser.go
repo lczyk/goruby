@@ -17,6 +17,7 @@ import (
 
 var (
 	ruby20 = token.MustParseVersion("2.0")
+	ruby21 = token.MustParseVersion("2.1")
 	ruby25 = token.MustParseVersion("2.5")
 	ruby26 = token.MustParseVersion("2.6")
 	ruby27 = token.MustParseVersion("2.7")
@@ -2971,6 +2972,8 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 			if !p.peekTokenOneOf(token.COMMA, endToken, token.NEWLINE, token.SEMICOLON, token.PIPE, token.EOF) {
 				p.nextToken()
 				param.Default = p.parseExpression(tailDefPrec)
+			} else if !p.version.AtLeast(ruby21) {
+				p.versionError(ruby21, "required keyword argument")
 			}
 			identifiers = append(identifiers, param)
 			continue
@@ -3058,6 +3061,8 @@ func (p *parser) parseOneParameter(endToken token.Type) []*ast.FunctionParameter
 			}
 			p.nextToken()
 			ident.Default = p.parseExpression(kwDefPrec)
+		} else if !p.version.AtLeast(ruby21) {
+			p.versionError(ruby21, "required keyword argument")
 		}
 	} else if p.peekTokenIs(token.ASSIGN) {
 		p.consume(token.ASSIGN)
@@ -3273,6 +3278,8 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 			if !p.peekTokenOneOf(token.COMMA, token.NEWLINE, token.SEMICOLON, token.PIPE, token.RPAREN, token.EOF) {
 				p.nextToken()
 				pIdent.Default = p.parseExpression(defPrecLoop)
+			} else if !p.version.AtLeast(ruby21) {
+				p.versionError(ruby21, "required keyword argument")
 			}
 		} else if p.peekTokenIs(token.ASSIGN) {
 			p.consume(token.ASSIGN)
