@@ -2817,10 +2817,8 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 }
 
 func (p *parser) parseOneParameter(endToken token.Type) []*ast.FunctionParameter {
-	// Destructured param: (a, b) or ((a, b), c)
+	// Destructured param: (a, b) or ((a, b), c) or (a, *b)
 	if p.peekTokenIs(token.LPAREN) {
-		// Don't use parseParameters -- it would try to accept LPAREN again.
-		// Manually parse the destructured params.
 		p.accept(token.LPAREN)
 		inner := []*ast.FunctionParameter{}
 		for !p.peekTokenIs(token.RPAREN) && !p.peekTokenIs(token.EOF) {
@@ -2828,6 +2826,19 @@ func (p *parser) parseOneParameter(endToken token.Type) []*ast.FunctionParameter
 				if !p.accept(token.COMMA) {
 					break
 				}
+			}
+			if p.peekTokenIs(token.ASTERISK) {
+				p.accept(token.ASTERISK)
+				name := "*"
+				if p.peekTokenOneOf(token.IDENT, token.CONST) {
+					p.acceptOneOf(token.IDENT, token.CONST)
+					name += p.curToken.Literal
+				}
+				inner = append(inner, &ast.FunctionParameter{
+					Name:    &ast.Identifier{Token: p.curToken, Value: name},
+					IsSplat: true,
+				})
+				continue
 			}
 			one := p.parseOneParameter(token.RPAREN)
 			inner = append(inner, one...)
