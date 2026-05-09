@@ -1202,7 +1202,12 @@ func (ie *IndexExpression) expressionNode() {}
 func (ie *IndexExpression) Pos() int { return ie.Token.Pos }
 
 // End returns the position of the last character belonging to the node
-func (ie *IndexExpression) End() int { return ie.Index.End() }
+func (ie *IndexExpression) End() int {
+	if ie.Index != nil {
+		return ie.Index.End()
+	}
+	return ie.Token.Pos
+}
 
 // TokenLiteral returns the literal from token.LBRACKET
 func (ie *IndexExpression) TokenLiteral() string { return ie.Token.Literal }
@@ -1211,10 +1216,12 @@ func (ie *IndexExpression) String() string {
 	out.WriteString("(")
 	out.WriteString(ie.Left.String())
 	out.WriteString("[")
-	out.WriteString(ie.Index.String())
+	if ie.Index != nil {
+		out.WriteString(ie.Index.String())
+	}
 	if ie.Length != nil {
 		out.WriteString(", ")
-		out.WriteString(ie.Index.String())
+		out.WriteString(ie.Length.String())
 	}
 	out.WriteString("])")
 	return out.String()
@@ -1464,7 +1471,9 @@ type SplatExpression struct {
 func (s *SplatExpression) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.Operator)
-	out.WriteString(s.Right.String())
+	if s.Right != nil {
+		out.WriteString(s.Right.String())
+	}
 	return out.String()
 }
 func (s *SplatExpression) expressionNode() {}
@@ -1473,7 +1482,12 @@ func (s *SplatExpression) expressionNode() {}
 func (s *SplatExpression) Pos() int { return s.Token.Pos }
 
 // End returns the position of first character immediately after the node
-func (s *SplatExpression) End() int { return s.Right.End() }
+func (s *SplatExpression) End() int {
+	if s.Right != nil {
+		return s.Right.End()
+	}
+	return s.Token.Pos
+}
 
 // TokenLiteral returns the literal from the * token
 func (s *SplatExpression) TokenLiteral() string { return s.Token.Literal }
