@@ -1821,7 +1821,9 @@ func (pe *PrefixExpression) End() int { return pe.Right.End() }
 func (pe *PrefixExpression) TokenLiteral() string { return pe.Token.Literal }
 func (pe *PrefixExpression) String() string {
 	var out bytes.Buffer
-	out.WriteString("(")
+	if pe.Operator != "^" {
+		out.WriteString("(")
+	}
 	out.WriteString(pe.Operator)
 	if pe.Right != nil {
 		if pe.Operator == "not" || pe.Operator == "defined?" {
@@ -1829,7 +1831,9 @@ func (pe *PrefixExpression) String() string {
 		}
 		out.WriteString(pe.Right.String())
 	}
-	out.WriteString(")")
+	if pe.Operator != "^" {
+		out.WriteString(")")
+	}
 	return out.String()
 }
 
