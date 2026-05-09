@@ -2067,7 +2067,7 @@ func isTernaryContext(tok token.Type) bool {
 }
 
 func isPercentDelimiter(r rune) bool {
-	return r != eof && !isLetter(r) && !isDigit(r) && !isWhitespace(r)
+	return r != eof && r != '\n' && !isLetter(r) && !isDigit(r) && !isWhitespace(r)
 }
 
 func isHeredocBlockedContext(tok token.Type) bool {

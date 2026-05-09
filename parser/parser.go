@@ -2630,8 +2630,8 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 		} else if p.curToken.Type.IsOperator() {
 			lit.Name = p.parseOperatorMethodName()
 		}
-	} else if p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL) {
-		p.acceptOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL)
+	} else if p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL, token.NIL, token.TRUE, token.FALSE) {
+		p.acceptOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL, token.NIL, token.TRUE, token.FALSE)
 		if p.peekTokenIs(token.DOT) {
 			lit.Receiver = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 			p.accept(token.DOT)
