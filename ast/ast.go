@@ -1050,7 +1050,10 @@ func (b *BlockCapture) String() string {
 	if b.Expr != nil {
 		return "&" + b.Expr.String()
 	}
-	return "&" + b.Name.Value
+	if b.Name != nil {
+		return "&" + b.Name.Value
+	}
+	return "&"
 }
 
 // TokenLiteral returns the literal of the token
@@ -1282,9 +1285,13 @@ func (ce *ContextCallExpression) String() string {
 	}
 	args := []string{}
 	for _, a := range ce.Arguments {
-		args = append(args, a.String())
+		if a != nil {
+			args = append(args, a.String())
+		}
 	}
-	out.WriteString(ce.Function.String())
+	if ce.Function != nil {
+		out.WriteString(ce.Function.String())
+	}
 	out.WriteString("(")
 	out.WriteString(strings.Join(args, ", "))
 	out.WriteString(")")

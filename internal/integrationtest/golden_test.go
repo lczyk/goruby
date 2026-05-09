@@ -105,7 +105,7 @@ type goldenSkipList struct {
 	entries []goldenSkipEntry
 }
 
-func loadGoldenSkips(path string) (*goldenSkipList, error) {
+func loadGoldenSkips(path string, validPhases ...string) (*goldenSkipList, error) {
 	data, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		return &goldenSkipList{}, nil
@@ -125,10 +125,17 @@ func loadGoldenSkips(path string) (*goldenSkipList, error) {
 			return nil, fmt.Errorf("%s:%d: need at least 3 fields: %q", path, lineNo+1, line)
 		}
 		phase := parts[0]
-		switch phase {
-		case "lex", "parse":
-		default:
-			return nil, fmt.Errorf("%s:%d: unknown phase %q", path, lineNo+1, phase)
+		if len(validPhases) > 0 {
+			valid := false
+			for _, vp := range validPhases {
+				if phase == vp {
+					valid = true
+					break
+				}
+			}
+			if !valid {
+				return nil, fmt.Errorf("%s:%d: unknown phase %q", path, lineNo+1, phase)
+			}
 		}
 		vr, err := parseVersionRange(parts[1])
 		if err != nil {
@@ -193,7 +200,7 @@ func (sl *goldenSkipList) match(phase, relpath string, ver token.RubyVersion) *g
 
 func TestMRIGoldenLex(t *testing.T) {
 	versions, rows := loadGoldenTSV(t)
-	goldenSkips, err := loadGoldenSkips(goldenSkipFile)
+	goldenSkips, err := loadGoldenSkips(goldenSkipFile, "lex", "parse")
 	if err != nil {
 		t.Fatalf("load %s: %v", goldenSkipFile, err)
 	}
@@ -235,7 +242,7 @@ func TestMRIGoldenLex(t *testing.T) {
 
 func TestMRIGoldenParse(t *testing.T) {
 	versions, rows := loadGoldenTSV(t)
-	goldenSkips, err := loadGoldenSkips(goldenSkipFile)
+	goldenSkips, err := loadGoldenSkips(goldenSkipFile, "lex", "parse")
 	if err != nil {
 		t.Fatalf("load %s: %v", goldenSkipFile, err)
 	}
