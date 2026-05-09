@@ -255,7 +255,7 @@ type Assignment struct {
 
 func (a *Assignment) String() string {
 	var out bytes.Buffer
-	out.WriteString(encloseInParensIfNeeded(a.Left))
+	out.WriteString(a.Left.String())
 	op := a.Token.Literal
 	if op == "" {
 		op = "="
@@ -1048,6 +1048,9 @@ func (el ExpressionList) String() string {
 		elements = append(elements, e.String())
 	}
 	out.WriteString(strings.Join(elements, ", "))
+	if len(el) == 1 {
+		out.WriteString(",")
+	}
 	return out.String()
 }
 
@@ -1352,7 +1355,6 @@ func (ie *IndexExpression) End() int {
 func (ie *IndexExpression) TokenLiteral() string { return ie.Token.Literal }
 func (ie *IndexExpression) String() string {
 	var out bytes.Buffer
-	out.WriteString("(")
 	out.WriteString(ie.Left.String())
 	out.WriteString("[")
 	if ie.Index != nil {
@@ -1362,7 +1364,7 @@ func (ie *IndexExpression) String() string {
 		out.WriteString(", ")
 		out.WriteString(ie.Length.String())
 	}
-	out.WriteString("])")
+	out.WriteString("]")
 	return out.String()
 }
 
@@ -1407,6 +1409,14 @@ func (ce *ContextCallExpression) String() string {
 		out.WriteString(".")
 	}
 	if ce.Function != nil {
+		// Setter call obj.x = 5 -- output as assignment, not obj.x=(5)
+		name := ce.Function.Value
+		if strings.HasSuffix(name, "=") && len(ce.Arguments) == 1 {
+			out.WriteString(strings.TrimSuffix(name, "="))
+			out.WriteString(" = ")
+			out.WriteString(ce.Arguments[0].String())
+			return out.String()
+		}
 		out.WriteString(ce.Function.String())
 	}
 	args := []string{}
@@ -1916,6 +1926,27 @@ func (ra *RightwardAssignment) String() string {
 	out.WriteString(" => ")
 	out.WriteString(ra.Right.String())
 	return out.String()
+}
+
+// ParenExpression wraps a parenthesised expression, preserving the parens
+// for source roundtrip fidelity.
+type ParenExpression struct {
+	Token  token.Token // the '(' token
+	Rparen token.Token // the ')' token
+	Expr   Expression
+}
+
+func (pe *ParenExpression) expressionNode()      {}
+func (pe *ParenExpression) Pos() int             { return pe.Token.Pos }
+func (pe *ParenExpression) End() int             { return pe.Rparen.Pos }
+func (pe *ParenExpression) TokenLiteral() string { return pe.Token.Literal }
+func (pe *ParenExpression) String() string {
+	s := pe.Expr.String()
+	// Don't double-wrap an expression that already produces outer parens.
+	if strings.HasPrefix(s, "(") && strings.HasSuffix(s, ")") {
+		return s
+	}
+	return "(" + s + ")"
 }
 
 func escapeRegexSlash(s string) string {

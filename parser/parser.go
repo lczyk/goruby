@@ -927,6 +927,8 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 	case *ast.SplatExpression:
 		_ = leftNode
 	case ast.ExpressionList:
+	case *ast.ParenExpression:
+		_ = leftNode
 	case *ast.Keyword__FILE__:
 		epos := p.file.Position(p.pos)
 		msg := fmt.Errorf("%s: Can't assign to __FILE__", epos.String())
@@ -2422,12 +2424,13 @@ func (p *parser) parseIndexExpression(left ast.Expression) ast.Expression {
 
 func (p *parser) parseGroupedExpression() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
+	lparen := p.curToken
 	p.nextToken()
 	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 		p.nextToken()
 	}
 	if p.currentTokenIs(token.RPAREN) {
-		return &ast.Nil{Token: p.curToken}
+		return &ast.ParenExpression{Token: lparen, Rparen: p.curToken, Expr: &ast.Nil{Token: p.curToken}}
 	}
 	exp := p.parseExpression(precLowest)
 	for p.currentTokenOneOf(token.SEMICOLON, token.NEWLINE) ||
@@ -2451,7 +2454,7 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 	if !p.accept(token.RPAREN) {
 		return nil
 	}
-	return exp
+	return &ast.ParenExpression{Token: lparen, Rparen: p.curToken, Expr: exp}
 }
 
 func (p *parser) parseIfExpression() ast.Expression {

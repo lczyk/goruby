@@ -284,6 +284,9 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.Left)
 		Walk(v, n.Right)
 
+	case *ParenExpression:
+		Walk(v, n.Expr)
+
 	case *ArgumentForwarding:
 		// leaf node, no children
 

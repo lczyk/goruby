@@ -526,7 +526,7 @@ func TestParseMultiAssignment(t *testing.T) {
 		},
 		{
 			input:     "x[0], @y, $z, A = 3, 4, 5, 6;",
-			variables: []string{"(x[0])", "@y", "$z", "A"},
+			variables: []string{"x[0]", "@y", "$z", "A"},
 			values:    []string{"3", "4", "5", "6"},
 		},
 	}
@@ -1594,11 +1594,11 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 		},
 		{
 			"a * [1, 2, 3, 4][b * c] * d",
-			"((a * ([1, 2, 3, 4][(b * c)])) * d)",
+			"((a * [1, 2, 3, 4][(b * c)]) * d)",
 		},
 		{
 			"add(a * b[2], b[1], 2 * [1, 2][1])",
-			"add((a * (b[2])), (b[1]), (2 * ([1, 2][1])))",
+			"add((a * b[2]), b[1], (2 * [1, 2][1]))",
 		},
 	}
 
