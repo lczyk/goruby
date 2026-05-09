@@ -500,6 +500,10 @@ func (p *parser) versionError(minVer token.RubyVersion, feature string) {
 	p.errors = append(p.errors, errors.New(msg))
 }
 
+func (p *parser) spacedOperator(op, next token.Token) bool {
+	return op.Pos+len(op.Literal) < next.Pos
+}
+
 // ParseProgram returns the parsed program AST and all errors which occured
 // during the parse process. If the error is not nil the AST may be incomplete
 // and callers should always check if they can handle the error with providing
@@ -3448,6 +3452,12 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 		return contextCallExpression
 	}
 
+	// ** with whitespace after it is exponentiation, not keyword splat.
+	if p.peekTokenIs(token.POWER) && p.spacedOperator(p.peekToken, p.peek2Token) {
+		contextCallExpression.Arguments = []ast.Expression{}
+		return contextCallExpression
+	}
+
 	p.nextToken()
 
 	blockStops := []token.Type{token.LBRACE, token.DO}
@@ -3503,6 +3513,11 @@ func (p *parser) parseContextCallExpression(context ast.Expression) ast.Expressi
 	}
 
 	if p.peekTokenOneOf(append(tokensNotPossibleInCallArgs, token.RBRACE, token.RPAREN, token.EMBEXPR_END, token.SEMICOLON, token.EOF)...) {
+		return contextCallExpression
+	}
+
+	if p.peekTokenIs(token.POWER) && p.spacedOperator(p.peekToken, p.peek2Token) {
+		contextCallExpression.Arguments = []ast.Expression{}
 		return contextCallExpression
 	}
 
