@@ -570,6 +570,9 @@ func (p *parser) parseReturnExpression() ast.Expression {
 func (p *parser) parseReturnStatement() *ast.ReturnStatement {
 	defer trace.TraceCtx(p.ctx)()
 	stmt := &ast.ReturnStatement{Token: p.curToken}
+	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE) {
+		return stmt
+	}
 	p.nextToken()
 
 	if p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF) {
