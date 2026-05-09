@@ -1516,7 +1516,7 @@ func (p *parser) parseSplatExpression() ast.Expression {
 	expr := &ast.SplatExpression{Token: p.curToken, Operator: p.curToken.Literal}
 	// Anonymous forwarding: bare * or ** as argument (ruby 3.2+)
 	if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.RBRACKET, token.RBRACE,
-		token.NEWLINE, token.SEMICOLON, token.EOF) {
+		token.NEWLINE, token.SEMICOLON, token.EOF, token.ASSIGN) {
 		return expr
 	}
 	p.nextToken()
@@ -3406,6 +3406,17 @@ func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {
 		exp.Function = ident
 		fn.Right = exp
 		return fn
+	case *ast.SplatExpression:
+		if inner, ok := fn.Right.(*ast.Identifier); ok {
+			call := &ast.ContextCallExpression{Token: inner.Token, Function: inner}
+			call.Block = exp.Block
+			fn.Right = call
+			return fn
+		}
+		if inner, ok := fn.Right.(*ast.ContextCallExpression); ok {
+			inner.Block = exp.Block
+			return fn
+		}
 	}
 	msg := fmt.Errorf("could not parse call expression: expected identifier, got token '%T'", function)
 	p.errors = append(p.errors, msg)

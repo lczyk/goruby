@@ -13,12 +13,10 @@
 #   parse minitest/lib/minitest/spec.rb: heredoc not supported
 #   parse minitest/test/*: rspec-style metaprogramming
 
-parse minitest/test/minitest/test_minitest_spec.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 
 parse rake/test/test_rake_file_utils.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/test_rake_rules.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 
-walk minitest/test/minitest/test_minitest_spec.rb: parse failed; walk skipped
 
 walk rake/test/test_rake_file_utils.rb: parse failed; walk skipped
 walk rake/test/test_rake_rules.rb: parse failed; walk skipped
@@ -54,7 +52,6 @@ parse mri-tests/test_zjit.rb: MRI language test - parser failure
 # walk phase (parse fails)
 walk mri-tests/enc/test_regex_casefold.rb: parse failed; walk skipped
 walk mri-tests/marshaltestlib.rb: parse failed; walk skipped
-walk mri-tests/test_assignment.rb: parse failed; walk skipped
 walk mri-tests/test_class.rb: parse failed; walk skipped
 walk mri-tests/test_defined.rb: parse failed; walk skipped
 walk mri-tests/test_env.rb: parse failed; walk skipped
@@ -86,7 +83,6 @@ walk mri-tests/test_zjit.rb: parse failed; walk skipped
 # additional parse-phase failures (formerly lexer failures; lex now passes, parse still fails)
 parse mri-tests/test_object.rb: MRI language test - parser failure
 parse mri-tests/test_lazy_enumerator.rb: MRI language test - parser failure
-parse mri-tests/test_assignment.rb: MRI language test - parser failure
 parse mri-tests/test_exception.rb: MRI language test - parser failure
 parse mri-tests/test_string.rb: MRI language test - parser failure
 parse mri-tests/test_unicode_escape.rb: MRI language test - parser failure
