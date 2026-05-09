@@ -5731,3 +5731,69 @@ func TestParserWithVersion(t *testing.T) {
 		t.Fatalf("expected 1 statement, got %d", len(prog.Statements))
 	}
 }
+
+func TestParserRegressions(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+	}{
+		{"multiline def params", "def foo(a,\n  b,\n  c)\n  1\nend"},
+		{"multiline lambda params", "x = ->(a,\n  b) { a + b }"},
+		{"multiline block params", "x.each {|a,\n  b| puts a }"},
+		{"bare def params multiline", "def foo a,\n  b\n  1\nend"},
+		{"backtick method def", "class Foo\n  def `(cmd)\n    cmd\n  end\nend"},
+		{"backtick symbol", "x = :`"},
+		{"def on nil", "def nil.foo; 1; end"},
+		{"def on true", "def true.bar; 2; end"},
+		{"setter method", "class Foo\n  def bar=(v)\n    @bar = v\n  end\nend"},
+		{"setter method inline", "def n.count=(v); @count=v; end"},
+		{"endless vs setter", "def foo = 42"},
+		{"bang label key", "x = {save!: true}"},
+		{"question label key", "x = {valid?: false}"},
+		{"string label in hash", "x = {\"key\": 1}"},
+		{"string label in call", "foo(\"key\": 1)"},
+		{"string label after regular", "foo(a: 1, \"b\": 2)"},
+		{"shovel assignment rhs", "ary << x = 1"},
+		{"return in brace block", "loop{return}"},
+		{"return in brace block value", "loop{return 42}"},
+		{"block in expression list", "foo(bar(x) {1}, y)"},
+		{"keyword method name after dot", "def FOO.class; end"},
+		{"inline case when", "case x when Integer\n  true\nend"},
+		{"inline case in", "case x\nin 1 then :a\nend"},
+		{"rescue with int", "begin; raise; rescue 1; end"},
+		{"rescue with splat", "begin; raise; rescue *arr; end"},
+		{"alias in brace block", "x { alias foo bar }"},
+		{"super() in brace block", "x { super() }"},
+		{"super() with block", "super() do; end"},
+		{"refine without block", "Module.new do\n  refine Foo\nend"},
+		{"explicit .[]= with block", "x.[]=(nil, 1){}"},
+		{"label after dot", "x.const_set:RUBY, val"},
+		{"multi-digit global", "x = $11"},
+		{"global symbol", "x = :$11"},
+		{"char literal unicode", "x = ?\\u0041"},
+		{"char literal octal", "x = ?\\000"},
+		{"percent brace interp depth", "foo(%{{#{x} => y}}, z)"},
+		{"percent newline not delim", "x = S(\"%%bar\") %\n[1]"},
+		{"empty %s()", "x = %s()"},
+		{"implicit array pattern", "case [1,2]\nin a, b\n  true\nend"},
+		{"implicit array trailing comma", "case [0]\nin 0,;\n  true\nend"},
+		{"pattern trailing comma array", "case [0]\nin [0,]\n  true\nend"},
+		{"pattern hash trailing comma", "case {a: 0}\nin {a: 0,}\n  true\nend"},
+		{"pattern label omission", "case {a: 0}\nin {a:,}\n  true\nend"},
+		{"pattern string label", "case {\"a\" => 0}\nin \"a\": 0\n  true\nend"},
+		{"pattern string label omission", "case {\"a\" => 0}\nin \"a\":;\n  true\nend"},
+		{"pattern range", "case 5\nin 0..10\n  true\nend"},
+		{"pattern hash multiline value", "case {a: 2}\nin {a:\n  2}\n  true\nend"},
+		{"label omission in brackets", "x = Foo[a:]"},
+		{"if bare call", "if oob? x\n  1\nend"},
+		{"if not bare call", "if !oob? x\n  1\nend"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := parseSource(tt.src)
+			if err != nil {
+				t.Errorf("failed to parse %q: %v", tt.name, err)
+			}
+		})
+	}
+}

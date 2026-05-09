@@ -2029,3 +2029,96 @@ func TestLexerSquigBodyAllBlankBeforeDelim(t *testing.T) {
 		t.Errorf("expected '\\n\\n', got %q", tok.Literal)
 	}
 }
+
+func TestLexerRegressions(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		checks []struct {
+			typ token.Type
+			lit string
+		}
+	}{
+		{
+			"backtick after def",
+			"def `(cmd)",
+			[]struct {
+				typ token.Type
+				lit string
+			}{
+				{token.DEF, "def"},
+				{token.IDENT, "`"},
+				{token.LPAREN, "("},
+				{token.IDENT, "cmd"},
+				{token.RPAREN, ")"},
+			},
+		},
+		{
+			"backtick as symbol",
+			":`",
+			[]struct {
+				typ token.Type
+				lit string
+			}{
+				{token.SYMBEG, ":"},
+				{token.IDENT, "`"},
+			},
+		},
+		{
+			"multi-digit global",
+			"$12",
+			[]struct {
+				typ token.Type
+				lit string
+			}{
+				{token.GLOBAL, "$12"},
+			},
+		},
+		{
+			"bang label",
+			"save!:",
+			[]struct {
+				typ token.Type
+				lit string
+			}{
+				{token.LABEL, "save!:"},
+			},
+		},
+		{
+			"question label",
+			"valid?:",
+			[]struct {
+				typ token.Type
+				lit string
+			}{
+				{token.LABEL, "valid?:"},
+			},
+		},
+		{
+			"no label after dot",
+			".foo:",
+			[]struct {
+				typ token.Type
+				lit string
+			}{
+				{token.DOT, "."},
+				{token.IDENT, "foo"},
+				{token.SYMBEG, ":"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := New(tt.input)
+			for _, check := range tt.checks {
+				tok := l.NextToken()
+				if tok.Type != check.typ {
+					t.Errorf("expected %s, got %s (%q)", check.typ, tok.Type, tok.Literal)
+				}
+				if tok.Literal != check.lit {
+					t.Errorf("expected literal %q, got %q", check.lit, tok.Literal)
+				}
+			}
+		})
+	}
+}
