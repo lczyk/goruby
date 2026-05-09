@@ -304,7 +304,9 @@ func Walk(v Visitor, node Node) {
 
 	case *RefineExpression:
 		Walk(v, n.Expr)
-		Walk(v, n.Body)
+		if n.Body != nil {
+			Walk(v, n.Body)
+		}
 
 	case *SuperExpression:
 		walkExprList(v, n.Arguments)

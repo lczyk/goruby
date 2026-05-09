@@ -547,6 +547,9 @@ func (r *RefineExpression) Pos() int             { return r.Token.Pos }
 func (r *RefineExpression) End() int             { return r.EndToken.Pos }
 func (r *RefineExpression) TokenLiteral() string { return r.Token.Literal }
 func (r *RefineExpression) String() string {
+	if r.Body == nil {
+		return "refine " + r.Expr.String()
+	}
 	return "refine " + r.Expr.String() + " do " + r.Body.String() + " end"
 }
 

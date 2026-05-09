@@ -1500,8 +1500,11 @@ func (p *parser) parseRefine() ast.Expression {
 	p.nextToken()
 	if p.currentTokenIs(token.LBRACE) {
 		endToken = token.RBRACE
-	} else if !p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON, token.DO) {
-		return nil
+	} else if p.currentTokenIs(token.DO) {
+		// do...end block
+	} else {
+		// No block (e.g. `refine c1` without do/{ -- bare call)
+		return expr
 	}
 	expr.Body = p.parseBlockStatement(endToken)
 	if !p.accept(endToken) {
