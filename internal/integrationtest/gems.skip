@@ -39,7 +39,6 @@ parse mri-tests/test_optimization.rb: MRI language test - parser failure
 parse mri-tests/test_pattern_matching.rb: MRI language test - parser failure
 parse mri-tests/test_proc.rb: MRI language test - parser failure
 parse mri-tests/test_refinement.rb: MRI language test - parser failure
-parse mri-tests/test_rubyoptions.rb: MRI language test - parser failure
 parse mri-tests/test_settracefunc.rb: MRI language test - parser failure
 parse mri-tests/test_super.rb: MRI language test - parser failure
 parse mri-tests/test_variable.rb: MRI language test - parser failure
@@ -61,7 +60,6 @@ walk mri-tests/test_optimization.rb: parse failed; walk skipped
 walk mri-tests/test_pattern_matching.rb: parse failed; walk skipped
 walk mri-tests/test_proc.rb: parse failed; walk skipped
 walk mri-tests/test_refinement.rb: parse failed; walk skipped
-walk mri-tests/test_rubyoptions.rb: parse failed; walk skipped
 walk mri-tests/test_settracefunc.rb: parse failed; walk skipped
 walk mri-tests/test_string.rb: parse failed; walk skipped
 walk mri-tests/test_super.rb: parse failed; walk skipped
@@ -79,8 +77,6 @@ parse mri-tests/test_unicode_escape.rb: MRI language test - parser failure
 parse mri-tests/test_time_tz.rb: MRI language test - parser failure
 parse mri-tests/test_syntax.rb: MRI language test - parser failure
 
-parse mri-tests/test_io.rb: MRI language test - parser failure
-walk mri-tests/test_io.rb: parse failed; walk skipped
 
 # esolang/gem parse failures -- various parser gaps
 parse esolang-book-sources/1-2/03.rb: parser gaps

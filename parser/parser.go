@@ -2141,6 +2141,9 @@ func (p *parser) parseBlockExpr() *ast.BlockExpression {
 func (p *parser) parseBlock() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	block := &ast.BlockExpression{Token: p.curToken}
+	if p.peekTokenIs(token.NEWLINE) && p.peek2TokenIs(token.PIPE) {
+		p.nextToken()
+	}
 	if p.peekTokenIs(token.PIPE) {
 		block.Parameters = p.parseParameters(token.PIPE, token.PIPE)
 		// Block-local variables: |params; locals|
