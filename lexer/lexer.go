@@ -780,7 +780,8 @@ func lexIdentifier(l *Lexer) StateFn {
 	// not valid label keys), when the : is part of :: (scope resolution),
 	// or when the identifier follows @ or @@ (instance/class variables).
 	if l.peek() == ':' && l.input[l.pos-1] != '?' && l.input[l.pos-1] != '!' &&
-		l.lastToken.Type != token.AT && l.lastToken.Type != token.CLASS_VAR {
+		l.lastToken.Type != token.AT && l.lastToken.Type != token.CLASS_VAR &&
+		l.lastToken.Type != token.DOT && l.lastToken.Type != token.LONELY {
 		// Check for :: scope resolution -- peekSecond returns the rune after next.
 		if l.peekSecond() == ':' {
 			// This is :: -- emit normally, don't treat as label.

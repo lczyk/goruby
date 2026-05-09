@@ -14,10 +14,6 @@
 #   parse minitest/test/*: rspec-style metaprogramming
 
 
-parse rake/test/test_rake_file_utils.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
-
-
-walk rake/test/test_rake_file_utils.rb: parse failed; walk skipped
 
 # Ruby language tests from MRI test/ruby
 #
