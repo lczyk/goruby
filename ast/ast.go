@@ -227,8 +227,9 @@ func (rb *RescueBlock) End() int { return rb.Body.End() }
 func (rb *RescueBlock) TokenLiteral() string { return rb.Token.Literal }
 func (rb *RescueBlock) String() string {
 	var out bytes.Buffer
-	out.WriteString(rb.Token.Literal)
+	out.WriteString("rescue")
 	if len(rb.ExceptionClasses) != 0 {
+		out.WriteString(" ")
 		classes := make([]string, len(rb.ExceptionClasses))
 		for i, c := range rb.ExceptionClasses {
 			classes[i] = c.String()
@@ -911,7 +912,7 @@ func (ce *ConditionalExpression) String() string {
 		}
 		return out.String()
 	}
-	if ce.EndToken.Type == token.ILLEGAL {
+	if ce.EndToken.Type == token.ILLEGAL && ce.Token.Type != token.KW_ELSIF && ce.Alternative == nil {
 		out.WriteString(ce.Consequence.String())
 		out.WriteString(" ")
 		out.WriteString(ce.Token.Literal)
@@ -1084,7 +1085,11 @@ func (hl *HashLiteral) String() string {
 	elements := []string{}
 	for key, val := range hl.Map {
 		if val != nil {
-			elements = append(elements, key.String()+" => "+val.String())
+			if sym, ok := key.(*SymbolLiteral); ok && sym.Token.Type == token.LABEL {
+				elements = append(elements, sym.Token.Literal+" "+val.String())
+			} else {
+				elements = append(elements, key.String()+" => "+val.String())
+			}
 		} else {
 			elements = append(elements, key.String())
 		}
@@ -1261,6 +1266,10 @@ func (f *FunctionParameter) String() string {
 	if f.IsSplat {
 		out.WriteString("*")
 	}
+	if f.IsNoKeywords {
+		out.WriteString("**nil")
+		return out.String()
+	}
 	if f.IsKeywordRest {
 		out.WriteString("**")
 	}
@@ -1268,9 +1277,11 @@ func (f *FunctionParameter) String() string {
 		out.WriteString(f.Name.String())
 	}
 	if f.IsKeyword {
-		out.WriteString(":")
-	}
-	if f.Default != nil {
+		out.WriteString(": ")
+		if f.Default != nil {
+			out.WriteString(encloseInParensIfNeeded(f.Default))
+		}
+	} else if f.Default != nil {
 		out.WriteString(" = ")
 		out.WriteString(encloseInParensIfNeeded(f.Default))
 	}
@@ -1770,6 +1781,9 @@ func (pe *PrefixExpression) String() string {
 	out.WriteString("(")
 	out.WriteString(pe.Operator)
 	if pe.Right != nil {
+		if pe.Operator == "not" || pe.Operator == "defined?" {
+			out.WriteString(" ")
+		}
 		out.WriteString(pe.Right.String())
 	}
 	out.WriteString(")")
@@ -1817,6 +1831,11 @@ func (oe *InfixExpression) End() int {
 // TokenLiteral returns the literal from the infix operator token
 func (oe *InfixExpression) TokenLiteral() string { return oe.Token.Literal }
 func (oe *InfixExpression) String() string {
+	if oe.Operator == ":" {
+		if sym, ok := oe.Left.(*SymbolLiteral); ok && sym.Token.Type == token.LABEL {
+			return sym.Token.Literal + " " + oe.Right.String()
+		}
+	}
 	var out bytes.Buffer
 	out.WriteString("(")
 	if oe.Left != nil {
