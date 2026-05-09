@@ -1793,9 +1793,28 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 			parts = append(parts, &ast.StringContent{Token: p.curToken, Value: p.curToken.Literal})
 		case token.EMBEXPR_BEG:
 			p.nextToken() // advance past EMBEXPR_BEG to first expression token
-			exp := p.parseExpression(precLowest)
-			if exp != nil {
-				parts = append(parts, exp)
+			for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+				p.nextToken()
+			}
+			if p.currentTokenIs(token.EMBEXPR_END) {
+				break
+			}
+			var lastExp ast.Expression
+			for !p.currentTokenIs(token.EMBEXPR_END) && !p.currentTokenIs(token.EOF) {
+				exp := p.parseExpression(precLowest)
+				if exp != nil {
+					lastExp = exp
+				}
+				for p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+					p.nextToken()
+				}
+				if p.peekTokenIs(token.EMBEXPR_END) {
+					break
+				}
+				p.nextToken()
+			}
+			if lastExp != nil {
+				parts = append(parts, lastExp)
 			}
 			if !p.peekTokenIs(token.EMBEXPR_END) {
 				p.peekError(token.EMBEXPR_END)

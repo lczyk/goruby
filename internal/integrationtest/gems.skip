@@ -83,7 +83,6 @@ walk mri-tests/test_regexp.rb: parse failed; walk skipped
 walk mri-tests/test_rubyoptions.rb: parse failed; walk skipped
 walk mri-tests/test_settracefunc.rb: parse failed; walk skipped
 walk mri-tests/test_string.rb: parse failed; walk skipped
-walk mri-tests/test_stringchar.rb: parse failed; walk skipped
 walk mri-tests/test_struct.rb: parse failed; walk skipped
 walk mri-tests/test_super.rb: parse failed; walk skipped
 walk mri-tests/test_syntax.rb: parse failed; walk skipped
@@ -101,7 +100,6 @@ parse mri-tests/test_exception.rb: MRI language test - parser failure
 parse mri-tests/test_string.rb: MRI language test - parser failure
 parse mri-tests/test_unicode_escape.rb: MRI language test - parser failure
 parse mri-tests/test_time_tz.rb: MRI language test - parser failure
-parse mri-tests/test_stringchar.rb: MRI language test - parser failure
 parse mri-tests/test_regexp.rb: MRI language test - parser failure
 parse mri-tests/test_syntax.rb: MRI language test - parser failure
 
