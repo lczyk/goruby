@@ -3453,6 +3453,9 @@ func (p *parser) parseCallArguments(end ...token.Type) []ast.Expression {
 
 	for p.peekTokenIs(token.COMMA) {
 		p.consume(token.COMMA)
+		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.nextToken()
+		}
 		list = append(list, p.parseExpression(precAssignment))
 	}
 

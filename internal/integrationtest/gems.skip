@@ -26,7 +26,6 @@ walk rake/test/test_rake_rules.rb: parse failed; walk skipped
 # lex phase: all files pass (lexer bugs resolved 2026-05-07).
 #
 # parse phase failures (lex passes) -- all remaining entries are parser gaps.
-parse mri-tests/enc/test_regex_casefold.rb: MRI language test - parser failure
 parse mri-tests/marshaltestlib.rb: MRI language test - parser failure
 parse mri-tests/test_class.rb: MRI language test - parser failure
 parse mri-tests/test_defined.rb: MRI language test - parser failure
@@ -50,7 +49,6 @@ parse mri-tests/test_yjit.rb: MRI language test - parser failure
 parse mri-tests/test_zjit.rb: MRI language test - parser failure
 
 # walk phase (parse fails)
-walk mri-tests/enc/test_regex_casefold.rb: parse failed; walk skipped
 walk mri-tests/marshaltestlib.rb: parse failed; walk skipped
 walk mri-tests/test_class.rb: parse failed; walk skipped
 walk mri-tests/test_defined.rb: parse failed; walk skipped
