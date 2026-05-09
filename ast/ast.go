@@ -780,7 +780,11 @@ func (sl *StringLiteral) String() string {
 		out.WriteString(close)
 		return out.String()
 	}
-	return open + sl.Value + close
+	val := sl.Value
+	if open == "\"" && strings.Contains(val, "\"") && !strings.Contains(val, "\\\"") {
+		val = strings.ReplaceAll(val, "\"", "\\\"")
+	}
+	return open + val + close
 }
 
 // StringContent represents a literal text segment within an interpolated string.
@@ -1197,6 +1201,18 @@ func (fl *FunctionLiteral) String() string {
 			out.WriteString(".")
 		}
 		out.WriteString(fl.Name.String())
+	}
+	if !fl.IsLambda && fl.EndToken.Type != token.END && fl.EndToken.Type != token.ILLEGAL {
+		if len(params) > 0 {
+			out.WriteString("(")
+			out.WriteString(strings.Join(params, ", "))
+			out.WriteString(")")
+		}
+		out.WriteString(" = ")
+		if fl.Body != nil {
+			out.WriteString(fl.Body.String())
+		}
+		return out.String()
 	}
 	out.WriteString("(")
 	out.WriteString(strings.Join(params, ", "))
