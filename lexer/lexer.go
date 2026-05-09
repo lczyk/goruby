@@ -676,6 +676,10 @@ func startLexer(l *Lexer) StateFn {
 		l.emit(token.XOR)
 		return startLexer
 	case '`':
+		if l.lastToken.Type == token.DEF || l.lastToken.Type == token.DOT {
+			l.emitLiteral(token.IDENT, "`")
+			return startLexer
+		}
 		return lexBacktick
 	case ',':
 		l.emit(token.COMMA)

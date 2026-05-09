@@ -2583,7 +2583,7 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	lit := &ast.FunctionLiteral{Token: p.curToken}
 
-	if !p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL, token.LBRACKET, token.AT, token.CLASS_VAR, token.LPAREN) && !p.peekToken.Type.IsOperator() && !p.peekToken.Type.IsKeyword() {
+	if !p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL, token.LBRACKET, token.AT, token.CLASS_VAR, token.LPAREN, token.XSTR_BEG) && !p.peekToken.Type.IsOperator() && !p.peekToken.Type.IsKeyword() {
 		p.peekError(token.IDENT, token.CONST)
 		return nil
 	}
@@ -2777,6 +2777,9 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 	}
 	for p.peekTokenIs(token.COMMA) {
 		p.accept(token.COMMA)
+		if hasDelimiters {
+			p.skipNewlines()
+		}
 		if p.peekTokenIs(token.POWER) {
 			p.accept(token.POWER)
 			if p.peekTokenIs(token.NIL) {
@@ -2841,6 +2844,7 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 		}
 	}
 	if hasDelimiters {
+		p.skipNewlines()
 		p.accept(endToken)
 	}
 	return identifiers
@@ -2922,6 +2926,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 	if p.peekTokenIs(startToken) {
 		hasDelimiters = true
 		p.accept(startToken)
+		p.skipNewlines()
 	}
 
 	identifiers := []*ast.FunctionParameter{}
@@ -3006,6 +3011,9 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 
 	for p.peekTokenIs(token.COMMA) {
 		p.accept(token.COMMA)
+		if hasDelimiters {
+			p.skipNewlines()
+		}
 		// Trailing comma: |a,| or (a,)
 		if hasDelimiters && p.peekTokenIs(endToken) {
 			p.accept(endToken)
@@ -3096,6 +3104,10 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 			pIdent.Default = p.parseExpression(defPrecLoop)
 		}
 		identifiers = append(identifiers, pIdent)
+	}
+
+	if hasDelimiters {
+		p.skipNewlines()
 	}
 
 	if !hasDelimiters && p.peekTokenIs(endToken) {
@@ -3824,4 +3836,10 @@ func (p *parser) consume(t token.Type) bool {
 		p.nextToken()
 	}
 	return isRightToken
+}
+
+func (p *parser) skipNewlines() {
+	for p.peekTokenIs(token.NEWLINE) {
+		p.nextToken()
+	}
 }
