@@ -63,11 +63,7 @@ parse mri-tests/test_time_tz.rb: MRI language test - parser failure
 # esolang/gem parse failures -- various parser gaps
 parse esolang-book-sources/1-2/03.rb: parser gaps
 parse esolang-book-sources/1-4/07.rb: parser gaps
-parse ropy/ruby/ropy.rb: parser gaps (timeout/complexity)
-parse wumpus/interpreter.rb: parser gaps
 
 walk esolang-book-sources/1-2/03.rb: parse failed; walk skipped
 walk esolang-book-sources/1-4/07.rb: parse failed; walk skipped
-walk ropy/ruby/ropy.rb: parse failed; walk skipped
-walk wumpus/interpreter.rb: parse failed; walk skipped
 

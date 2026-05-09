@@ -2335,7 +2335,7 @@ func (p *parser) parseIfExpression() ast.Expression {
 		p.accept(token.THEN)
 	}
 
-	if !hasThen && !p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+	if !hasThen && !p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) && !p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 		msg := fmt.Sprintf(
 			"could not parse if expression: unexpected token %s: '%s'",
 			p.peekToken.Type,
@@ -2351,7 +2351,9 @@ func (p *parser) parseIfExpression() ast.Expression {
 		p.errors = append(p.errors, err)
 		return nil
 	}
-	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+	if p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+		// Already on the newline (consumed by call-argument parsing in condition).
+	} else if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 		p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
 	}
 	// Parse the consequence body. Terminators include ELSE, ELSIF, and END.

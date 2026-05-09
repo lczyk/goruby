@@ -4919,10 +4919,10 @@ func TestParseStatementErrorPaths(t *testing.T) {
 		t.Errorf("expected error for incomplete return")
 	}
 
-	// If expression error: missing newline/semicolon after condition
+	// if x y is a valid bare call: if x(y)
 	_, err3 := parseSource("if x y\nend")
-	if err3 == nil {
-		t.Errorf("expected error for if without separator after condition")
+	if err3 != nil {
+		t.Errorf("bare call in if condition should parse: %v", err3)
 	}
 }
 
