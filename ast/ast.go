@@ -1059,6 +1059,7 @@ type FunctionLiteral struct {
 	CapturedBlock *BlockCapture
 	Body          *BlockStatement
 	Rescues       []*RescueBlock
+	ElseBody      *BlockStatement
 	EnsureBody    *BlockStatement
 	IsLambda      bool // true for -> lambda literals
 }
@@ -1110,6 +1111,11 @@ func (fl *FunctionLiteral) String() string {
 	}
 	for _, r := range fl.Rescues {
 		out.WriteString(r.String())
+	}
+	if fl.ElseBody != nil {
+		out.WriteString("else\n")
+		out.WriteString(fl.ElseBody.String())
+		out.WriteString("\n")
 	}
 	if fl.EnsureBody != nil {
 		out.WriteString("ensure\n")

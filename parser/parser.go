@@ -2644,6 +2644,11 @@ parseParams:
 		rescue := p.parseRescueBlock()
 		lit.Rescues = append(lit.Rescues, rescue)
 	}
+	if p.peekTokenIs(token.ELSE) {
+		p.accept(token.ELSE)
+		p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
+		lit.ElseBody = p.parseBlockStatement(token.END, token.KW_ENSURE)
+	}
 	if p.peekTokenIs(token.KW_ENSURE) {
 		p.accept(token.KW_ENSURE)
 		p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
