@@ -1995,7 +1995,12 @@ func (p *parser) parseSymbolLiteral() ast.Expression {
 		return nil
 	}
 	if p.currentTokenOneOf(symbolOperatorTokens...) {
-		symbol.Value = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		name := p.curToken.Literal
+		if (name == "+" || name == "-") && p.peekTokenIs(token.AT) {
+			name += "@"
+			p.nextToken()
+		}
+		symbol.Value = &ast.Identifier{Token: p.curToken, Value: name}
 		return symbol
 	}
 	if p.currentTokenOneOf(symbolKeywordTokens...) {
