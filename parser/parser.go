@@ -1588,8 +1588,8 @@ func (p *parser) parseSuper() ast.Expression {
 	if p.currentTokenIs(token.LPAREN) {
 		p.nextToken()
 		sup.Arguments = p.parseCallArguments(token.RPAREN)
-		p.nextToken()
-		if p.currentTokenOneOf(token.LBRACE, token.DO) {
+		if p.peekTokenOneOf(token.LBRACE, token.DO) {
+			p.nextToken()
 			sup.Block = p.parseBlockExpr()
 		}
 		return sup
@@ -1629,7 +1629,6 @@ func (p *parser) parseAlias() ast.Expression {
 	if expr.OldName == nil {
 		return nil
 	}
-	p.nextToken()
 	return expr
 }
 
