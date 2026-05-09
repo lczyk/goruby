@@ -263,7 +263,13 @@ func (a *Assignment) String() string {
 	out.WriteString(" ")
 	out.WriteString(op)
 	out.WriteString(" ")
-	out.WriteString(encloseInParensIfNeeded(a.Right))
+	rhs := a.Right
+	if op != "=" {
+		if inf, ok := rhs.(*InfixExpression); ok && inf.Left != nil && inf.Left.String() == a.Left.String() {
+			rhs = inf.Right
+		}
+	}
+	out.WriteString(rhs.String())
 	return out.String()
 }
 func (a *Assignment) expressionNode() {}

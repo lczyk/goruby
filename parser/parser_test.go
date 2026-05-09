@@ -1590,7 +1590,7 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 		},
 		{
 			"a = b = 0;",
-			"a = (b = 0)",
+			"a = b = 0",
 		},
 		{
 			"a * [1, 2, 3, 4][b * c] * d",
@@ -1810,7 +1810,7 @@ func TestConditionalExpression(t *testing.T) {
 			end`, "x", "<", "y", "if (x == 3)\ny\nendx"},
 			{`if x < y
 			x = Object x
-			end`, "x", "<", "y", "x = (Object(x))"},
+			end`, "x", "<", "y", "x = Object(x)"},
 			{"x 3 if x < y", "x", "<", "y", "x(3)"},
 			{"x.add 3 if x < y", "x", "<", "y", "x.add(3)"},
 			{"yield 3 if x < y", "x", "<", "y", "yield 3"},
@@ -1831,7 +1831,7 @@ func TestConditionalExpression(t *testing.T) {
 			end`, "x", "<", "y", "if (x == 3)\ny\nendx"},
 			{`unless x < y
 			x = Object x
-			end`, "x", "<", "y", "x = (Object(x))"},
+			end`, "x", "<", "y", "x = Object(x)"},
 			{"x = 3 if x < y", "x", "<", "y", "x = 3"},
 			{"@x = 3 if x < y", "x", "<", "y", "@x = 3"},
 			{"x = 3 unless x < y", "x", "<", "y", "x = 3"},
