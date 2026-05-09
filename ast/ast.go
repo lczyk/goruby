@@ -1415,9 +1415,11 @@ func (ce *ContextCallExpression) String() string {
 			args = append(args, a.String())
 		}
 	}
-	out.WriteString("(")
-	out.WriteString(strings.Join(args, ", "))
-	out.WriteString(")")
+	if len(args) > 0 || ce.Block == nil {
+		out.WriteString("(")
+		out.WriteString(strings.Join(args, ", "))
+		out.WriteString(")")
+	}
 	if ce.Block != nil {
 		out.WriteString(ce.Block.String())
 	}
