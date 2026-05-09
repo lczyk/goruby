@@ -1491,7 +1491,8 @@ func (p *parser) parseSplatExpression() ast.Expression {
 func (p *parser) parseYield() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	yield := &ast.YieldExpression{Token: p.curToken}
-	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE, token.RPAREN, token.RBRACKET, token.EMBEXPR_END) {
+	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE, token.RPAREN, token.RBRACKET, token.EMBEXPR_END,
+		token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.RESCUE, token.DOT) {
 		return yield
 	}
 	p.nextToken()
