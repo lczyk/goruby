@@ -2373,6 +2373,9 @@ func (p *parser) parseTenaryIfExpression(condition ast.Expression) ast.Expressio
 	defer trace.TraceCtx(p.ctx)()
 	expression := &ast.ConditionalExpression{Token: p.curToken}
 	p.nextToken()
+	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+		p.nextToken()
+	}
 	expression.Condition = condition
 	expression.Consequence = &ast.BlockStatement{
 		Statements: []ast.Statement{
@@ -2382,6 +2385,9 @@ func (p *parser) parseTenaryIfExpression(condition ast.Expression) ast.Expressio
 		},
 	}
 	p.consume(token.COLON)
+	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+		p.nextToken()
+	}
 	expression.Alternative = &ast.BlockStatement{
 		Statements: []ast.Statement{
 			&ast.ExpressionStatement{
