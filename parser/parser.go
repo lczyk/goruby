@@ -955,27 +955,22 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 	}
 	expr := p.parseExpression(precLowest)
 	right, ok := expr.(*ast.ConditionalExpression)
-	if !ok {
+	if !ok || right.Token.Type == token.QMARK {
 		assign.Right = expr
 		return assign
 	}
 	expStmt, ok := right.Consequence.Statements[0].(*ast.ExpressionStatement)
 	if !ok {
-		p.errors = append(p.errors, fmt.Errorf("malformed AST in assignment"))
-		return nil
+		assign.Right = expr
+		return assign
 	}
 	assign.Right = expStmt.Expression
-	cond := &ast.ConditionalExpression{
-		Token:     right.Token,
-		Condition: right.Condition,
-		Consequence: &ast.BlockStatement{
-			Statements: []ast.Statement{
-				&ast.ExpressionStatement{Expression: assign},
-			},
+	right.Consequence = &ast.BlockStatement{
+		Statements: []ast.Statement{
+			&ast.ExpressionStatement{Expression: assign},
 		},
 	}
-
-	return cond
+	return right
 }
 
 func (p *parser) acceptIvarName() bool {
