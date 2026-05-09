@@ -16,12 +16,12 @@ import (
 )
 
 var (
+	ruby20 = token.MustParseVersion("2.0")
 	ruby25 = token.MustParseVersion("2.5")
 	ruby26 = token.MustParseVersion("2.6")
 	ruby27 = token.MustParseVersion("2.7")
 	ruby30 = token.MustParseVersion("3.0")
 	ruby31 = token.MustParseVersion("3.1")
-	ruby32 = token.MustParseVersion("3.2")
 )
 
 // Possible precendece values
@@ -2239,6 +2239,9 @@ func (p *parser) parseKeyValue() (ast.Expression, ast.Expression, bool) {
 		}
 		// Hash value omission (ruby 3.1+): {x:, y:} == {x: x, y: y}
 		if p.peekTokenOneOf(token.COMMA, token.RBRACE, token.RPAREN, token.NEWLINE) {
+			if !p.version.AtLeast(ruby31) {
+				p.versionError(ruby31, "hash value omission")
+			}
 			val := &ast.Identifier{Token: p.curToken, Value: name}
 			return key, val, true
 		}
@@ -3035,6 +3038,9 @@ func (p *parser) parseOneParameter(endToken token.Type) []*ast.FunctionParameter
 	name := p.curToken.Literal
 	isKeyword := strings.HasSuffix(name, ":")
 	if isKeyword {
+		if !p.version.AtLeast(ruby20) {
+			p.versionError(ruby20, "keyword argument")
+		}
 		name = strings.TrimSuffix(name, ":")
 	}
 	ident := &ast.FunctionParameter{Name: &ast.Identifier{Token: p.curToken, Value: name}, IsKeyword: isKeyword}
