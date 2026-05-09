@@ -2777,9 +2777,7 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 	}
 	for p.peekTokenIs(token.COMMA) {
 		p.accept(token.COMMA)
-		if hasDelimiters {
-			p.skipNewlines()
-		}
+		p.skipNewlines()
 		if p.peekTokenIs(token.POWER) {
 			p.accept(token.POWER)
 			if p.peekTokenIs(token.NIL) {
@@ -3011,9 +3009,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 
 	for p.peekTokenIs(token.COMMA) {
 		p.accept(token.COMMA)
-		if hasDelimiters {
-			p.skipNewlines()
-		}
+		p.skipNewlines()
 		// Trailing comma: |a,| or (a,)
 		if hasDelimiters && p.peekTokenIs(endToken) {
 			p.accept(endToken)

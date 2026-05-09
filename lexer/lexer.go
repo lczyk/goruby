@@ -1362,12 +1362,18 @@ func lexPercentLiteralBodyEnd(l *Lexer, opener, closer rune, paired bool, conten
 func lexPercentContent(l *Lexer, opener, closer rune, paired bool,
 	contentTok, endTok token.Type) StateFn {
 
-	depth := 0
+	pDepth := new(int)
 	if paired {
-		depth = 1
+		*pDepth = 1
 	}
+	return lexPercentContentInner(l, opener, closer, paired, contentTok, endTok, pDepth)
+}
+
+func lexPercentContentInner(l *Lexer, opener, closer rune, paired bool,
+	contentTok, endTok token.Type, pDepth *int) StateFn {
+
 	resumeFn := func(_ *Lexer) StateFn {
-		return lexPercentContent(l, opener, closer, paired, contentTok, endTok)
+		return lexPercentContentInner(l, opener, closer, paired, contentTok, endTok, pDepth)
 	}
 
 	for {
@@ -1381,12 +1387,12 @@ func lexPercentContent(l *Lexer, opener, closer rune, paired bool,
 		}
 		if paired {
 			if r == opener {
-				depth++
+				*pDepth++
 				continue
 			}
 			if r == closer {
-				depth--
-				if depth == 0 {
+				*pDepth--
+				if *pDepth == 0 {
 					if l.pos-l.width > l.start {
 						l.backup()
 						l.emit(contentTok)
