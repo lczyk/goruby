@@ -832,10 +832,16 @@ func (rl *RegexLiteral) String() string {
 	out.WriteString("/")
 	if rl.Parts != nil {
 		for _, p := range rl.Parts {
-			out.WriteString(p.String())
+			if sc, ok := p.(*StringContent); ok {
+				out.WriteString(escapeRegexSlash(sc.Value))
+			} else {
+				out.WriteString("#{")
+				out.WriteString(p.String())
+				out.WriteString("}")
+			}
 		}
 	} else {
-		out.WriteString(rl.Value)
+		out.WriteString(escapeRegexSlash(rl.Value))
 	}
 	out.WriteString("/")
 	out.WriteString(rl.Options)
@@ -1904,6 +1910,13 @@ func (ra *RightwardAssignment) String() string {
 	out.WriteString(" => ")
 	out.WriteString(ra.Right.String())
 	return out.String()
+}
+
+func escapeRegexSlash(s string) string {
+	if !strings.Contains(s, "/") || strings.Contains(s, "\\/") {
+		return s
+	}
+	return strings.ReplaceAll(s, "/", "\\/")
 }
 
 func encloseInParensIfNeeded(expr Expression) string {
