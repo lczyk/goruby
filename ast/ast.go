@@ -1286,7 +1286,7 @@ func (f *FunctionParameter) String() string {
 	if f.IsKeywordRest {
 		out.WriteString("**")
 	}
-	if f.Name != nil {
+	if f.Name != nil && !(f.IsKeywordRest && f.Name.Value == "**") && !(f.IsSplat && f.Name.Value == "*") {
 		out.WriteString(f.Name.String())
 	}
 	if f.IsKeyword {
@@ -1647,7 +1647,6 @@ func (c *CaseExpression) String() string {
 		out.WriteString(w.String())
 	}
 	for _, in := range c.InClauses {
-		out.WriteString("in ")
 		out.WriteString(in.String())
 	}
 	if c.ElseBody != nil {
@@ -1673,7 +1672,12 @@ type WhenClause struct {
 
 func (w *WhenClause) String() string {
 	var out bytes.Buffer
-	out.WriteString("when ")
+	keyword := "when"
+	if w.Token.Literal != "" {
+		keyword = w.Token.Literal
+	}
+	out.WriteString(keyword)
+	out.WriteString(" ")
 	for i, cond := range w.Conditions {
 		if i > 0 {
 			out.WriteString(", ")
