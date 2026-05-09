@@ -1217,6 +1217,9 @@ func (fl *FunctionLiteral) String() string {
 	out.WriteString("(")
 	out.WriteString(strings.Join(params, ", "))
 	out.WriteString(")")
+	if fl.IsLambda {
+		out.WriteString(" {")
+	}
 	body := ""
 	if fl.Body != nil {
 		body = fl.Body.String()
