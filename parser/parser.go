@@ -2637,7 +2637,7 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 		if p.peekTokenIs(token.DOT) {
 			lit.Receiver = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 			p.accept(token.DOT)
-			if !p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL, token.LBRACKET) && !p.peekToken.Type.IsOperator() {
+			if !p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL, token.LBRACKET) && !p.peekToken.Type.IsOperator() && !p.peekToken.Type.IsKeyword() {
 				p.peekError(token.IDENT, token.CONST)
 				return nil
 			}
@@ -3610,6 +3610,10 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 		p.nextToken()
 		next = p.parseCallBlock(next)
 	}
+	if call, ok := next.(*ast.ContextCallExpression); ok && call.Block == nil && p.peekTokenIs(token.LBRACE) {
+		p.accept(token.LBRACE)
+		call.Block = p.parseBlockExpr()
+	}
 	if p.peekTokenIs(token.HASHROCKET) {
 		hash := p.parseImplicitHash(next, end...)
 		list = append(list, hash)
@@ -3647,6 +3651,10 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 		if _, ok := next.(*ast.Identifier); ok && p.peekTokenIs(token.DO) {
 			p.nextToken()
 			next = p.parseCallBlock(next)
+		}
+		if call, ok := next.(*ast.ContextCallExpression); ok && call.Block == nil && p.peekTokenIs(token.LBRACE) {
+			p.accept(token.LBRACE)
+			call.Block = p.parseBlockExpr()
 		}
 		if p.peekTokenIs(token.HASHROCKET) {
 			hash := p.parseImplicitHash(next, end...)
