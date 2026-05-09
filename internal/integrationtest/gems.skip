@@ -13,11 +13,6 @@
 #   parse minitest/lib/minitest/spec.rb: heredoc not supported
 #   parse minitest/test/*: rspec-style metaprogramming
 
-# Ruby language tests from MRI test/ruby -- remaining parser gaps
-parse mri-tests/test_pattern_matching.rb: cascading from complex %q{} patterns
-
-walk mri-tests/test_pattern_matching.rb: parse failed; walk skipped
-
 # esolang book code fragments -- excerpts, not standalone programs (intentionally invalid)
 parse esolang-book-sources/1-2/03.rb: parser gaps
 parse esolang-book-sources/1-4/07.rb: parser gaps

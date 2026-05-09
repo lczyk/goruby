@@ -990,7 +990,7 @@ func (p *parser) parseLabelExpression() ast.Expression {
 		Token: p.curToken,
 		Value: &ast.StringLiteral{Value: name},
 	}
-	if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.RBRACE, token.NEWLINE, token.SEMICOLON, token.PIPE) {
+	if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.RBRACE, token.RBRACKET, token.NEWLINE, token.SEMICOLON, token.PIPE) {
 		return &ast.InfixExpression{
 			Token:    key.Token,
 			Left:     key,
@@ -1111,6 +1111,9 @@ func (p *parser) parsePattern() ast.Expression {
 		elements := []ast.Expression{pat}
 		for p.peekTokenIs(token.COMMA) {
 			p.accept(token.COMMA)
+			if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.THEN, token.IF, token.UNLESS, token.EOF) {
+				break
+			}
 			p.nextToken()
 			elements = append(elements, p.parsePatternOr())
 		}

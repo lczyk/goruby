@@ -375,7 +375,9 @@ func Walk(v Visitor, node Node) {
 	case *HashLiteral:
 		for k, val := range n.Map {
 			Walk(v, k)
-			Walk(v, val)
+			if val != nil {
+				Walk(v, val)
+			}
 		}
 		walkExprList(v, n.Splats)
 

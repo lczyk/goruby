@@ -1684,7 +1684,9 @@ func (pe *PrefixExpression) String() string {
 	var out bytes.Buffer
 	out.WriteString("(")
 	out.WriteString(pe.Operator)
-	out.WriteString(pe.Right.String())
+	if pe.Right != nil {
+		out.WriteString(pe.Right.String())
+	}
 	out.WriteString(")")
 	return out.String()
 }
