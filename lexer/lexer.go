@@ -1559,14 +1559,47 @@ func lexHeredocStart(l *Lexer, indent, squig bool) StateFn {
 	// the body lexer sees the heredoc body immediately after a single \n.
 	// The captured bytes are re-injected after STRING_END / STRING -- this
 	// handles trailers (<<EOS.chop) and chained heredocs (<<A, <<B) uniformly.
+	//
+	// Inside interpolation (#{}), the rest-of-line may contain the closing }
+	// and further interpolation. We must stop the capture at the unmatched }
+	// so the interpolation state can process it.
 	restStart := l.pos
 	nlPos := restStart
+	braces := 0
+	inInterp := len(l.interpStack) > 0
 	for nlPos < len(l.input) && l.input[nlPos] != '\n' {
+		if inInterp {
+			switch l.input[nlPos] {
+			case '{':
+				braces++
+			case '}':
+				if braces == 0 {
+					goto foundEnd
+				}
+				braces--
+			}
+		}
 		nlPos++
 	}
-	if nlPos < len(l.input) {
+foundEnd:
+	if nlPos < len(l.input) && l.input[nlPos] == '\n' {
 		l.heredocPostBody = l.input[restStart : nlPos+1]
 		l.input = l.input[:restStart] + "\n" + l.input[nlPos+1:]
+	} else if inInterp && nlPos < len(l.input) && l.input[nlPos] == '}' {
+		// Inside interpolation: capture up to (not including) } so the
+		// interpolation handler can process }. Find the real newline for
+		// the heredoc body boundary.
+		realNl := nlPos
+		for realNl < len(l.input) && l.input[realNl] != '\n' {
+			realNl++
+		}
+		l.heredocPostBody = l.input[restStart:realNl]
+		if realNl < len(l.input) {
+			l.heredocPostBody += string(l.input[realNl]) // include \n
+			l.input = l.input[:restStart] + "\n" + l.input[realNl+1:]
+		} else {
+			l.input = l.input[:restStart]
+		}
 	} else {
 		l.heredocPostBody = l.input[restStart:nlPos]
 		l.input = l.input[:restStart]
