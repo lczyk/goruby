@@ -1259,8 +1259,19 @@ func (p *parser) parsePatternHash() ast.Expression {
 	}
 	p.nextToken()
 	p.parsePatternHashPair(pairs)
-	for p.peekTokenIs(token.COMMA) {
+	for {
+		p.skipNewlines()
+		if p.peekTokenIs(token.RBRACE) {
+			break
+		}
+		if !p.peekTokenIs(token.COMMA) {
+			break
+		}
 		p.accept(token.COMMA)
+		p.skipNewlines()
+		if p.peekTokenIs(token.RBRACE) {
+			break
+		}
 		p.nextToken()
 		p.parsePatternHashPair(pairs)
 	}
@@ -1286,9 +1297,14 @@ func (p *parser) parsePatternHashPair(pairs map[ast.Expression]ast.Expression) {
 	}
 	// label: pattern  (symbol key with pattern value)
 	if p.currentTokenIs(token.LABEL) {
+		name := strings.TrimSuffix(p.curToken.Literal, ":")
 		key := &ast.SymbolLiteral{
 			Token: p.curToken,
 			Value: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
+		}
+		if p.peekTokenOneOf(token.COMMA, token.RBRACE, token.NEWLINE, token.SEMICOLON, token.THEN) {
+			pairs[key] = &ast.Identifier{Token: p.curToken, Value: name}
+			return
 		}
 		p.nextToken()
 		val := p.parsePatternBinding()
