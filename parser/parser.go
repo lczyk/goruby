@@ -3639,6 +3639,11 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 		list = append(list, hash)
 		return list
 	}
+	if _, isStr := next.(*ast.StringLiteral); isStr && p.peekTokenIs(token.COLON) {
+		hash := p.parseStringLabelHash(next, end...)
+		list = append(list, hash)
+		return list
+	}
 	list = append(list, next)
 
 	// Handle comma-separated elements with newlines between them.
@@ -3681,6 +3686,11 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 			list = append(list, hash)
 			return list
 		}
+		if _, isStr := next.(*ast.StringLiteral); isStr && p.peekTokenIs(token.COLON) {
+			hash := p.parseStringLabelHash(next, end...)
+			list = append(list, hash)
+			return list
+		}
 		list = append(list, next)
 	}
 
@@ -3689,6 +3699,36 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 	}
 
 	return list
+}
+
+func (p *parser) parseStringLabelHash(firstKey ast.Expression, end ...token.Type) ast.Expression {
+	hash := &ast.HashLiteral{Token: p.curToken, Map: map[ast.Expression]ast.Expression{}}
+	p.accept(token.COLON)
+	key := &ast.SymbolLiteral{Token: p.curToken, Value: firstKey.(*ast.StringLiteral)}
+	if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.RBRACE, token.NEWLINE) {
+		hash.Map[key] = firstKey
+	} else {
+		p.nextToken()
+		hash.Map[key] = p.parseExpression(precAssignment)
+	}
+	for p.peekTokenIs(token.COMMA) {
+		p.consume(token.COMMA)
+		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.nextToken()
+		}
+		if p.currentTokenOneOf(end...) {
+			break
+		}
+		k, v, ok := p.parseKeyValue()
+		if !ok {
+			break
+		}
+		hash.Map[k] = v
+	}
+	if p.peekTokenOneOf(end...) {
+		p.acceptOneOf(end...)
+	}
+	return hash
 }
 
 // buildWordArray produces an ArrayLiteral from the parts of a %w/%W (word list)
