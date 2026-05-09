@@ -638,6 +638,13 @@ func (p *parser) parseExpressionStatement() *ast.ExpressionStatement {
 			}
 		}
 	}
+	// Block attachment: expr do...end or expr { ... }
+	if p.peekTokenOneOf(token.DO, token.LBRACE) {
+		if _, isIdent := stmt.Expression.(*ast.Identifier); !isIdent {
+			p.nextToken()
+			stmt.Expression = p.parseCallBlock(stmt.Expression)
+		}
+	}
 	for p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE) {
 		p.nextToken()
 		if p.peekTokenIs(token.DOT) {
