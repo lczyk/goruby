@@ -626,7 +626,9 @@ func (p *parser) parseExpressionStatement() *ast.ExpressionStatement {
 		exp := &ast.ContextCallExpression{Token: ident.Token, Function: ident}
 		p.nextToken()
 		exp.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE, token.LBRACE, token.DO)
-		if p.peekTokenOneOf(token.LBRACE, token.DO) {
+		if p.currentTokenOneOf(token.LBRACE, token.DO) {
+			exp.Block = p.parseBlockExpr()
+		} else if p.peekTokenOneOf(token.LBRACE, token.DO) {
 			p.acceptOneOf(token.LBRACE, token.DO)
 			exp.Block = p.parseBlockExpr()
 		}

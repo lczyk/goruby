@@ -13,13 +13,11 @@
 #   parse minitest/lib/minitest/spec.rb: heredoc not supported
 #   parse minitest/test/*: rspec-style metaprogramming
 
-parse minitest/test/minitest/test_minitest_assertions.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse minitest/test/minitest/test_minitest_spec.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 
 parse rake/test/test_rake_file_utils.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 parse rake/test/test_rake_rules.rb: parser: various edge cases (elsif in blocks, comments in if-conds, class-var ||=)
 
-walk minitest/test/minitest/test_minitest_assertions.rb: parse failed; walk skipped
 walk minitest/test/minitest/test_minitest_spec.rb: parse failed; walk skipped
 
 walk rake/test/test_rake_file_utils.rb: parse failed; walk skipped
