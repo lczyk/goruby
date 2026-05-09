@@ -22,6 +22,7 @@ const (
 	precBlockDo     // do
 	precBlockBraces // { |x| }
 	precIfUnless    // modifier-if, modifier-unless
+	precComma       // , in expression lists
 	precAssignment  // x = 5
 	precTenary      // ?, :
 	precLogicalOr   // ||
@@ -95,7 +96,7 @@ var precedences = map[token.Type]int{
 	token.SCOPE:             precScope,
 	token.SYMBEG:            precSymbol,
 	token.HASHROCKET:        precAssignment,
-	token.COMMA:             precAssignment,
+	token.COMMA:             precComma,
 	token.KW_IN:             precAssignment,
 	token.THEN:              precHighest,
 	token.NEWLINE:           precHighest,
@@ -691,6 +692,20 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 	if _, ok := leftExp.(*ast.Identifier); ok && p.peekTokenIs(token.LBRACE) {
 		p.nextToken()
 		leftExp = p.parseCallBlock(leftExp)
+		for precedence < p.peekPrecedence() {
+			if p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+				return leftExp
+			}
+			if p.suppressDoBlock && p.peekTokenIs(token.DO) {
+				return leftExp
+			}
+			infix := p.infixParseFns[p.peekToken.Type]
+			if infix == nil {
+				return leftExp
+			}
+			p.nextToken()
+			leftExp = infix(leftExp)
+		}
 	}
 	return leftExp
 }
@@ -3394,17 +3409,13 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 		return list
 	}
 
-	next := p.parseExpression(precIfUnless)
+	next := p.parseExpression(precComma)
 	// ident do...end inside expression list: proc do...end, lambda do...end
 	if _, ok := next.(*ast.Identifier); ok && p.peekTokenIs(token.DO) {
 		p.nextToken()
 		next = p.parseCallBlock(next)
 	}
-	if elist, ok := next.(ast.ExpressionList); ok {
-		list = append(list, elist...)
-	} else {
-		list = append(list, next)
-	}
+	list = append(list, next)
 
 	// Handle comma-separated elements with newlines between them.
 	for {
@@ -3432,16 +3443,12 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 		if p.currentTokenOneOf(end...) {
 			return list
 		}
-		next = p.parseExpression(precIfUnless)
+		next = p.parseExpression(precComma)
 		if _, ok := next.(*ast.Identifier); ok && p.peekTokenIs(token.DO) {
 			p.nextToken()
 			next = p.parseCallBlock(next)
 		}
-		if elist, ok := next.(ast.ExpressionList); ok {
-			list = append(list, elist...)
-		} else {
-			list = append(list, next)
-		}
+		list = append(list, next)
 	}
 
 	if p.peekTokenOneOf(end...) {
