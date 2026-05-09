@@ -10,8 +10,6 @@
 ast * internal/integrationtest/testdata/esolangs/ora.rb
 ast * internal/integrationtest/testdata/esolangs/subskin.rb
 ast * internal/integrationtest/testdata/esolangs/tomagotcha.rb
-ast * internal/integrationtest/testdata/gems/brain-flak/Interpreter.rb
-ast * internal/integrationtest/testdata/gems/hexagony/grid.rb
 ast * internal/integrationtest/testdata/gems/mariolang-rb/mariolang.rb
 ast * internal/integrationtest/testdata/gems/minitest/lib/minitest.rb
 ast * internal/integrationtest/testdata/gems/minitest/lib/minitest/assertions.rb
@@ -23,14 +21,12 @@ ast * internal/integrationtest/testdata/gems/minitest/test/minitest/test_minites
 ast * internal/integrationtest/testdata/gems/rake/doc/jamis.rb
 ast * internal/integrationtest/testdata/gems/rake/lib/rake/backtrace.rb
 ast * internal/integrationtest/testdata/gems/rake/lib/rake/task_manager.rb
-ast * internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb
 ast * internal/integrationtest/testdata/gems/rake/test/support/rakefile_definitions.rb
 ast * internal/integrationtest/testdata/gems/rake/test/test_rake_backtrace.rb
 ast * internal/integrationtest/testdata/gems/rake/test/test_rake_file_list.rb
 ast * internal/integrationtest/testdata/gems/rake/test/test_rake_functional.rb
 ast * internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb
 ast * internal/integrationtest/testdata/gems/thue/src/thue.rb
-ast * internal/integrationtest/testdata/gems/wumpus/direction.rb
 ast * internal/integrationtest/testdata/mri-tests/test_alias.rb
 ast * internal/integrationtest/testdata/mri-tests/test_allocation.rb
 ast * internal/integrationtest/testdata/mri-tests/test_array.rb
@@ -57,7 +53,6 @@ ast * internal/integrationtest/testdata/mri-tests/test_lazy_enumerator.rb
 ast * internal/integrationtest/testdata/mri-tests/test_literal.rb
 ast * internal/integrationtest/testdata/mri-tests/test_m17n.rb
 ast * internal/integrationtest/testdata/mri-tests/test_module.rb
-ast * internal/integrationtest/testdata/mri-tests/test_numeric.rb
 ast * internal/integrationtest/testdata/mri-tests/test_object.rb
 ast * internal/integrationtest/testdata/mri-tests/test_objectspace.rb
 ast * internal/integrationtest/testdata/mri-tests/test_optimization.rb
@@ -67,7 +62,6 @@ ast * internal/integrationtest/testdata/mri-tests/test_pattern_matching.rb
 ast * internal/integrationtest/testdata/mri-tests/test_proc.rb
 ast * internal/integrationtest/testdata/mri-tests/test_process.rb
 ast * internal/integrationtest/testdata/mri-tests/test_rand.rb
-ast * internal/integrationtest/testdata/mri-tests/test_range.rb
 ast * internal/integrationtest/testdata/mri-tests/test_refinement.rb
 ast * internal/integrationtest/testdata/mri-tests/test_regexp.rb
 ast * internal/integrationtest/testdata/mri-tests/test_require.rb
@@ -144,6 +138,7 @@ src * internal/integrationtest/testdata/gems/brain-flak/BrainFlakInterpreter.rb
 src * internal/integrationtest/testdata/gems/brain-flak/BrainFlueueInterpreter.rb
 src * internal/integrationtest/testdata/gems/brain-flak/ClassicInterpreter.rb
 src * internal/integrationtest/testdata/gems/brain-flak/Flag.rb
+src * internal/integrationtest/testdata/gems/brain-flak/Interpreter.rb
 src * internal/integrationtest/testdata/gems/brain-flak/brain_flak.rb
 src * internal/integrationtest/testdata/gems/brain-flak/stack.rb
 src * internal/integrationtest/testdata/gems/brainfint/src/brainfuck.rb
@@ -199,6 +194,7 @@ src * internal/integrationtest/testdata/gems/forter/lib/forter.rb
 src * internal/integrationtest/testdata/gems/hexagony/brute-forcer.rb
 src * internal/integrationtest/testdata/gems/hexagony/coords.rb
 src * internal/integrationtest/testdata/gems/hexagony/direction.rb
+src * internal/integrationtest/testdata/gems/hexagony/grid.rb
 src * internal/integrationtest/testdata/gems/hexagony/hexagony.rb
 src * internal/integrationtest/testdata/gems/hexagony/interpreter.rb
 src * internal/integrationtest/testdata/gems/hexagony/memory.rb
@@ -305,6 +301,7 @@ src * internal/integrationtest/testdata/gems/rake/lib/rake/task.rb
 src * internal/integrationtest/testdata/gems/rake/lib/rake/task_argument_error.rb
 src * internal/integrationtest/testdata/gems/rake/lib/rake/task_arguments.rb
 src * internal/integrationtest/testdata/gems/rake/lib/rake/tasklib.rb
+src * internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb
 src * internal/integrationtest/testdata/gems/rake/lib/rake/thread_history_display.rb
 src * internal/integrationtest/testdata/gems/rake/lib/rake/thread_pool.rb
 src * internal/integrationtest/testdata/gems/rake/lib/rake/trace_output.rb
@@ -362,6 +359,7 @@ src * internal/integrationtest/testdata/gems/stackcats/ruby/interpreter.rb
 src * internal/integrationtest/testdata/gems/stackcats/ruby/stack.rb
 src * internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb
 src * internal/integrationtest/testdata/gems/stackcats/ruby/tape.rb
+src * internal/integrationtest/testdata/gems/wumpus/direction.rb
 src * internal/integrationtest/testdata/gems/wumpus/icosahedron.rb
 src * internal/integrationtest/testdata/gems/wumpus/interpreter.rb
 src * internal/integrationtest/testdata/gems/wumpus/point2d.rb
@@ -476,12 +474,14 @@ src * internal/integrationtest/testdata/mri-tests/test_mixed_unicode_escapes.rb
 src * internal/integrationtest/testdata/mri-tests/test_name_error.rb
 src * internal/integrationtest/testdata/mri-tests/test_nomethod_error.rb
 src * internal/integrationtest/testdata/mri-tests/test_not.rb
+src * internal/integrationtest/testdata/mri-tests/test_numeric.rb
 src * internal/integrationtest/testdata/mri-tests/test_object_id.rb
 src * internal/integrationtest/testdata/mri-tests/test_pack.rb
 src * internal/integrationtest/testdata/mri-tests/test_pipe.rb
 src * internal/integrationtest/testdata/mri-tests/test_primitive.rb
 src * internal/integrationtest/testdata/mri-tests/test_ractor.rb
 src * internal/integrationtest/testdata/mri-tests/test_random_formatter.rb
+src * internal/integrationtest/testdata/mri-tests/test_range.rb
 src * internal/integrationtest/testdata/mri-tests/test_rational.rb
 src * internal/integrationtest/testdata/mri-tests/test_rational2.rb
 src * internal/integrationtest/testdata/mri-tests/test_readpartial.rb
@@ -546,8 +546,6 @@ src * internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/rub
 src * internal/integrationtest/testdata/esolangs/ora.rb
 src * internal/integrationtest/testdata/esolangs/subskin.rb
 src * internal/integrationtest/testdata/esolangs/tomagotcha.rb
-src * internal/integrationtest/testdata/gems/brain-flak/Interpreter.rb
-src * internal/integrationtest/testdata/gems/hexagony/grid.rb
 src * internal/integrationtest/testdata/gems/mariolang-rb/mariolang.rb
 src * internal/integrationtest/testdata/gems/minitest/lib/minitest.rb
 src * internal/integrationtest/testdata/gems/minitest/lib/minitest/assertions.rb
@@ -559,14 +557,12 @@ src * internal/integrationtest/testdata/gems/minitest/test/minitest/test_minites
 src * internal/integrationtest/testdata/gems/rake/doc/jamis.rb
 src * internal/integrationtest/testdata/gems/rake/lib/rake/backtrace.rb
 src * internal/integrationtest/testdata/gems/rake/lib/rake/task_manager.rb
-src * internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb
 src * internal/integrationtest/testdata/gems/rake/test/support/rakefile_definitions.rb
 src * internal/integrationtest/testdata/gems/rake/test/test_rake_backtrace.rb
 src * internal/integrationtest/testdata/gems/rake/test/test_rake_file_list.rb
 src * internal/integrationtest/testdata/gems/rake/test/test_rake_functional.rb
 src * internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb
 src * internal/integrationtest/testdata/gems/thue/src/thue.rb
-src * internal/integrationtest/testdata/gems/wumpus/direction.rb
 src * internal/integrationtest/testdata/mri-tests/test_alias.rb
 src * internal/integrationtest/testdata/mri-tests/test_allocation.rb
 src * internal/integrationtest/testdata/mri-tests/test_array.rb
@@ -593,7 +589,6 @@ src * internal/integrationtest/testdata/mri-tests/test_lazy_enumerator.rb
 src * internal/integrationtest/testdata/mri-tests/test_literal.rb
 src * internal/integrationtest/testdata/mri-tests/test_m17n.rb
 src * internal/integrationtest/testdata/mri-tests/test_module.rb
-src * internal/integrationtest/testdata/mri-tests/test_numeric.rb
 src * internal/integrationtest/testdata/mri-tests/test_object.rb
 src * internal/integrationtest/testdata/mri-tests/test_objectspace.rb
 src * internal/integrationtest/testdata/mri-tests/test_optimization.rb
@@ -603,7 +598,6 @@ src * internal/integrationtest/testdata/mri-tests/test_pattern_matching.rb
 src * internal/integrationtest/testdata/mri-tests/test_proc.rb
 src * internal/integrationtest/testdata/mri-tests/test_process.rb
 src * internal/integrationtest/testdata/mri-tests/test_rand.rb
-src * internal/integrationtest/testdata/mri-tests/test_range.rb
 src * internal/integrationtest/testdata/mri-tests/test_refinement.rb
 src * internal/integrationtest/testdata/mri-tests/test_regexp.rb
 src * internal/integrationtest/testdata/mri-tests/test_require.rb
