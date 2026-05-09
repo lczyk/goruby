@@ -30,7 +30,6 @@ parse mri-tests/test_proc.rb: MRI language test - parser failure
 parse mri-tests/test_refinement.rb: MRI language test - parser failure
 parse mri-tests/test_settracefunc.rb: MRI language test - parser failure
 parse mri-tests/test_super.rb: MRI language test - parser failure
-parse mri-tests/test_variable.rb: MRI language test - parser failure
 
 # walk phase (parse fails)
 walk mri-tests/test_class.rb: parse failed; walk skipped
@@ -46,7 +45,6 @@ walk mri-tests/test_settracefunc.rb: parse failed; walk skipped
 walk mri-tests/test_super.rb: parse failed; walk skipped
 walk mri-tests/test_time_tz.rb: parse failed; walk skipped
 walk mri-tests/test_unicode_escape.rb: parse failed; walk skipped
-walk mri-tests/test_variable.rb: parse failed; walk skipped
 
 # additional parse-phase failures (formerly lexer failures; lex now passes, parse still fails)
 parse mri-tests/test_exception.rb: MRI language test - parser failure

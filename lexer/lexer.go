@@ -982,8 +982,13 @@ func lexCharacterLiteral(l *Lexer) StateFn {
 						break
 					}
 				}
+			} else {
+				for i := 0; i < 4; i++ {
+					if isHexDigit(l.peek()) {
+						l.next()
+					}
+				}
 			}
-			// else: \u without {} is invalid; already consumed u
 		case 'x':
 			// \xNN -- one or two hex digits
 			for i := 0; i < 2; i++ {
@@ -1125,6 +1130,12 @@ func lexGlobal(l *Lexer) StateFn {
 		if r == '-' {
 			p := l.peek()
 			if isLetter(p) || isDigit(p) {
+				l.next()
+			}
+		}
+		// Numbered capture globals: $1, $12, $123 -- consume all digits.
+		if isDigit(r) {
+			for isDigit(l.peek()) {
 				l.next()
 			}
 		}

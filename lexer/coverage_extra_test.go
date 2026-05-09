@@ -35,7 +35,7 @@ func TestLexerCharLiteralRemainingEscapes(t *testing.T) {
 		{"meta-control backslash", "?\\M-\\C-a", "\\M-\\C-a"},
 		{"octal without braces", "?\\o101", "\\o101"},
 		{"control lowercase c", "?\\ca", "\\ca"},
-		{"unicode without braces", "?\\u0041", "\\u"},
+		{"unicode without braces", "?\\u0041", "\\u0041"},
 		{"meta of backslashed newline", "?\\M-\\n", "\\M-\\n"},
 		{"control of backslashed tab", "?\\C-\\t", "\\C-\\t"},
 	}
