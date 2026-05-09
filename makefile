@@ -71,6 +71,10 @@ rubies-clean:  ## Remove compiled ruby binaries and build artifacts
 rubies-verify: rubies gems  ## Verify all test fixtures against downloaded ruby binaries
 	@$(MAKE) -C .rubies verify
 
+.PHONY: rubies-golden
+rubies-golden: rubies gems  ## Regenerate MRI golden TSV for version-aware integration tests
+	@$(MAKE) -C .rubies golden
+
 .PHONY: clean
 clean:  ## Remove generated files
 	rm -f cover.out cover.html

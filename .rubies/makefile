@@ -12,6 +12,10 @@ clean:  ## Remove compiled ruby binaries and build artifacts
 verify:  ## Verify all test fixtures against downloaded ruby binaries (assumes rubies + gems built)
 	@bash verify.sh
 
+.PHONY: golden
+golden:  ## Generate MRI golden TSV for integration tests (assumes rubies + gems built)
+	@bash generate-golden.sh
+
 .PHONY: help
 help:  ## Show this help
 	@echo "Available targets:"

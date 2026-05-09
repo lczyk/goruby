@@ -120,14 +120,21 @@ func bootstrap() error {
 
 func printSummary() {
 	fmt.Fprintln(os.Stderr, "integration test summary:")
-	for _, row := range []struct {
+	rows := []struct {
 		name string
 		c    *counters
 	}{
 		{"TestGemsLex  ", &lexCounters},
 		{"TestGemsParse", &parseCounters},
 		{"TestGemsWalk ", &walkCounters},
-	} {
+	}
+	for _, extra := range extraSummaries {
+		rows = append(rows, struct {
+			name string
+			c    *counters
+		}{extra.name, extra.c})
+	}
+	for _, row := range rows {
 		fmt.Fprintf(os.Stderr, "  %s: %d passed, %d failed, %d skipped (%d total)\n",
 			row.name, row.c.pass.Load(), row.c.fail.Load(), row.c.skip.Load(), row.c.total.Load())
 	}
