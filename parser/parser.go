@@ -1088,6 +1088,24 @@ func (p *parser) parsePattern() ast.Expression {
 	if pat == nil {
 		return nil
 	}
+	// Implicit hash with string label key: in "key": val
+	if _, isStr := pat.(*ast.StringLiteral); isStr && p.peekTokenOneOf(token.COLON, token.SYMBEG) {
+		p.acceptOneOf(token.COLON, token.SYMBEG)
+		pairs := map[ast.Expression]ast.Expression{}
+		key := &ast.SymbolLiteral{Token: p.curToken, Value: pat.(*ast.StringLiteral)}
+		var val ast.Expression
+		if !p.peekTokenOneOf(token.COMMA, token.RBRACE, token.NEWLINE, token.SEMICOLON, token.THEN, token.EOF) {
+			p.nextToken()
+			val = p.parsePatternBinding()
+		}
+		pairs[key] = val
+		for p.peekTokenIs(token.COMMA) {
+			p.accept(token.COMMA)
+			p.nextToken()
+			p.parsePatternHashPair(pairs)
+		}
+		pat = &ast.HashLiteral{Token: p.curToken, Map: pairs}
+	}
 	// Implicit array pattern: in a, b, c == in [a, b, c]
 	if p.peekTokenIs(token.COMMA) {
 		elements := []ast.Expression{pat}
@@ -1192,6 +1210,11 @@ func (p *parser) parsePatternAtom() ast.Expression {
 	case token.LBRACE:
 		// Hash pattern
 		return p.parsePatternHash()
+	case token.STRING, token.STRING_BEG:
+		p.inPattern = false
+		expr := p.parseExpression(precHighest)
+		p.inPattern = true
+		return expr
 	default:
 		// Use normal expression parsing for literals, constants, identifiers, etc.
 		// Parse at precLessGreater-1 so range operators (.. / ...) are included.
@@ -1214,6 +1237,9 @@ func (p *parser) parsePatternArray() ast.Expression {
 	elements = append(elements, p.parsePatternBinding())
 	for p.peekTokenIs(token.COMMA) {
 		p.accept(token.COMMA)
+		if p.peekTokenIs(token.RBRACKET) {
+			break
+		}
 		p.nextToken()
 		elements = append(elements, p.parsePatternBinding())
 	}
@@ -1269,10 +1295,18 @@ func (p *parser) parsePatternHashPair(pairs map[ast.Expression]ast.Expression) {
 		pairs[key] = val
 		return
 	}
-	// key => pattern  (hash rocket style)
+	// key => pattern or "string": pattern
 	p.inPattern = false
 	key := p.parseExpression(precLowest)
 	p.inPattern = true
+	if _, isStr := key.(*ast.StringLiteral); isStr && p.peekTokenOneOf(token.COLON, token.SYMBEG) {
+		p.acceptOneOf(token.COLON, token.SYMBEG)
+		symKey := &ast.SymbolLiteral{Token: p.curToken, Value: key.(*ast.StringLiteral)}
+		p.nextToken()
+		val := p.parsePatternBinding()
+		pairs[symKey] = val
+		return
+	}
 	if !p.accept(token.HASHROCKET) {
 		return
 	}
@@ -3650,7 +3684,7 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 		list = append(list, hash)
 		return list
 	}
-	if _, isStr := next.(*ast.StringLiteral); isStr && p.peekTokenIs(token.COLON) {
+	if _, isStr := next.(*ast.StringLiteral); isStr && p.peekTokenOneOf(token.COLON, token.SYMBEG) {
 		hash := p.parseStringLabelHash(next, end...)
 		list = append(list, hash)
 		return list
@@ -3697,7 +3731,7 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 			list = append(list, hash)
 			return list
 		}
-		if _, isStr := next.(*ast.StringLiteral); isStr && p.peekTokenIs(token.COLON) {
+		if _, isStr := next.(*ast.StringLiteral); isStr && p.peekTokenOneOf(token.COLON, token.SYMBEG) {
 			hash := p.parseStringLabelHash(next, end...)
 			list = append(list, hash)
 			return list
@@ -3714,7 +3748,7 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 
 func (p *parser) parseStringLabelHash(firstKey ast.Expression, end ...token.Type) ast.Expression {
 	hash := &ast.HashLiteral{Token: p.curToken, Map: map[ast.Expression]ast.Expression{}}
-	p.accept(token.COLON)
+	p.acceptOneOf(token.COLON, token.SYMBEG)
 	key := &ast.SymbolLiteral{Token: p.curToken, Value: firstKey.(*ast.StringLiteral)}
 	if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.RBRACE, token.NEWLINE) {
 		hash.Map[key] = firstKey
