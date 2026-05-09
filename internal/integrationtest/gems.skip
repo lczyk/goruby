@@ -49,7 +49,6 @@ parse mri-tests/test_proc.rb: MRI language test - parser failure
 parse mri-tests/test_refinement.rb: MRI language test - parser failure
 parse mri-tests/test_rubyoptions.rb: MRI language test - parser failure
 parse mri-tests/test_settracefunc.rb: MRI language test - parser failure
-parse mri-tests/test_struct.rb: MRI language test - parser failure
 parse mri-tests/test_super.rb: MRI language test - parser failure
 parse mri-tests/test_variable.rb: MRI language test - parser failure
 parse mri-tests/test_yjit.rb: MRI language test - parser failure
@@ -82,7 +81,6 @@ walk mri-tests/test_refinement.rb: parse failed; walk skipped
 walk mri-tests/test_rubyoptions.rb: parse failed; walk skipped
 walk mri-tests/test_settracefunc.rb: parse failed; walk skipped
 walk mri-tests/test_string.rb: parse failed; walk skipped
-walk mri-tests/test_struct.rb: parse failed; walk skipped
 walk mri-tests/test_super.rb: parse failed; walk skipped
 walk mri-tests/test_syntax.rb: parse failed; walk skipped
 walk mri-tests/test_time_tz.rb: parse failed; walk skipped

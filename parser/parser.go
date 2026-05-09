@@ -1570,7 +1570,12 @@ func (p *parser) parseSuper() ast.Expression {
 
 func (p *parser) parseAliasName() *ast.Identifier {
 	if p.currentTokenOneOf(token.IDENT, token.CONST) || p.curToken.Type.IsKeyword() || p.curToken.Type.IsOperator() {
-		return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		name := p.curToken.Literal
+		if p.peekTokenIs(token.ASSIGN) {
+			name += "="
+			p.nextToken()
+		}
+		return &ast.Identifier{Token: p.curToken, Value: name}
 	}
 	if p.currentTokenIs(token.SYMBEG) {
 		sym := p.parseSymbolLiteral()
