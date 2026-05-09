@@ -901,6 +901,16 @@ func (ce *ConditionalExpression) End() int {
 func (ce *ConditionalExpression) TokenLiteral() string { return ce.Token.Literal }
 func (ce *ConditionalExpression) String() string {
 	var out bytes.Buffer
+	if ce.Token.Type == token.QMARK {
+		out.WriteString(ce.Condition.String())
+		out.WriteString(" ? ")
+		out.WriteString(ce.Consequence.String())
+		out.WriteString(" : ")
+		if ce.Alternative != nil {
+			out.WriteString(ce.Alternative.String())
+		}
+		return out.String()
+	}
 	if ce.EndToken.Type == token.ILLEGAL {
 		out.WriteString(ce.Consequence.String())
 		out.WriteString(" ")
@@ -916,12 +926,31 @@ func (ce *ConditionalExpression) String() string {
 	out.WriteString(ce.Consequence.String())
 	out.WriteString("\n")
 	if ce.Alternative != nil {
+		if nested := extractElsif(ce.Alternative); nested != nil {
+			out.WriteString(nested.String())
+			return out.String()
+		}
 		out.WriteString("else\n")
 		out.WriteString(ce.Alternative.String())
 		out.WriteString("\n")
 	}
 	out.WriteString("end")
 	return out.String()
+}
+
+func extractElsif(alt *BlockStatement) *ConditionalExpression {
+	if len(alt.Statements) != 1 {
+		return nil
+	}
+	es, ok := alt.Statements[0].(*ExpressionStatement)
+	if !ok {
+		return nil
+	}
+	ce, ok := es.Expression.(*ConditionalExpression)
+	if !ok || ce.Token.Type != token.KW_ELSIF {
+		return nil
+	}
+	return ce
 }
 
 // A LoopExpression represents a loop
@@ -1055,7 +1084,7 @@ func (hl *HashLiteral) String() string {
 	elements := []string{}
 	for key, val := range hl.Map {
 		if val != nil {
-			elements = append(elements, fmt.Sprintf("%q => %q", key.String(), val.String()))
+			elements = append(elements, key.String()+" => "+val.String())
 		} else {
 			elements = append(elements, key.String())
 		}
