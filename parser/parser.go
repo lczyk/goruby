@@ -15,6 +15,15 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	ruby25 = token.MustParseVersion("2.5")
+	ruby26 = token.MustParseVersion("2.6")
+	ruby27 = token.MustParseVersion("2.7")
+	ruby30 = token.MustParseVersion("3.0")
+	ruby31 = token.MustParseVersion("3.1")
+	ruby32 = token.MustParseVersion("3.2")
+)
+
 // Possible precendece values
 const (
 	_ int = iota
@@ -172,6 +181,8 @@ var tokensNotPossibleInCallArgs = []token.Type{
 	token.PIPE,
 	token.AND,
 	token.XOR,
+	token.RANGE,
+	token.RANGEEX,
 }
 
 type (
@@ -472,6 +483,15 @@ func (p *parser) expectError(t ...token.Type) {
 
 func (p *parser) noPrefixParseFnError(t token.Type) {
 	msg := fmt.Sprintf("no prefix parse function for type %s found", t)
+	epos := p.file.Position(p.pos)
+	if epos.Filename != "" || epos.IsValid() {
+		msg = epos.String() + ": " + msg
+	}
+	p.errors = append(p.errors, errors.New(msg))
+}
+
+func (p *parser) versionError(minVer token.RubyVersion, feature string) {
+	msg := fmt.Sprintf("%s requires ruby %s or later", feature, minVer)
 	epos := p.file.Position(p.pos)
 	if epos.Filename != "" || epos.IsValid() {
 		msg = epos.String() + ": " + msg
@@ -1383,13 +1403,16 @@ func (p *parser) parseCaseExpression() ast.Expression {
 		wc.Body = p.parseBlockStatement(token.END, token.WHEN, token.KW_IN, token.ELSE)
 		expr.WhenClauses = append(expr.WhenClauses, wc)
 	}
-	// Parse in clauses (pattern matching).
+	// Parse in clauses (pattern matching, ruby 2.7+).
 	for p.currentTokenIs(token.KW_IN) || p.peekTokenIs(token.KW_IN) {
 		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 			p.nextToken()
 		}
 		if !p.currentTokenIs(token.KW_IN) {
 			break
+		}
+		if !p.version.AtLeast(ruby27) {
+			p.versionError(ruby27, "pattern matching")
 		}
 		ic := &ast.WhenClause{Token: p.curToken}
 		p.nextToken()
@@ -1716,8 +1739,11 @@ func (p *parser) parseUndef() ast.Expression {
 func (p *parser) parseRangeOrForwarding() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	tok := p.curToken
-	// If the next token is a terminator, ... is argument forwarding
+	// If the next token is a terminator, ... is argument forwarding (ruby 2.7+)
 	if p.peekTokenOneOf(token.RPAREN, token.COMMA, token.RBRACKET, token.NEWLINE, token.SEMICOLON, token.EOF) {
+		if !p.version.AtLeast(ruby27) {
+			p.versionError(ruby27, "argument forwarding (...)")
+		}
 		return &ast.ArgumentForwarding{Token: tok}
 	}
 	p.nextToken()
@@ -1731,6 +1757,9 @@ func (p *parser) parseRangeOrForwarding() ast.Expression {
 
 func (p *parser) parseBeginlessRange() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
+	if !p.version.AtLeast(ruby27) {
+		p.versionError(ruby27, "beginless range")
+	}
 	tok := p.curToken
 	p.nextToken()
 	return &ast.InfixExpression{
@@ -2297,18 +2326,23 @@ func (p *parser) parseBlock() ast.Expression {
 	}
 
 	if endToken == token.END {
-		block.Body = p.parseBlockStatement(token.END, token.RESCUE, token.KW_ENSURE)
-		for p.peekTokenIs(token.RESCUE) {
+		rescueInBlock := p.version.AtLeast(ruby25)
+		if rescueInBlock {
+			block.Body = p.parseBlockStatement(token.END, token.RESCUE, token.KW_ENSURE)
+		} else {
+			block.Body = p.parseBlockStatement(token.END)
+		}
+		for rescueInBlock && p.peekTokenIs(token.RESCUE) {
 			p.accept(token.RESCUE)
 			rescue := p.parseRescueBlock()
 			block.Rescues = append(block.Rescues, rescue)
 		}
-		if p.peekTokenIs(token.ELSE) {
+		if rescueInBlock && p.peekTokenIs(token.ELSE) {
 			p.accept(token.ELSE)
 			p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
 			block.ElseBody = p.parseBlockStatement(token.END, token.KW_ENSURE)
 		}
-		if p.peekTokenIs(token.KW_ENSURE) {
+		if rescueInBlock && p.peekTokenIs(token.KW_ENSURE) {
 			p.accept(token.KW_ENSURE)
 			p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
 			block.EnsureBody = p.parseBlockStatement(token.END)
@@ -2343,6 +2377,9 @@ func (p *parser) parseInfixExpression(left ast.Expression) ast.Expression {
 	if expression.Operator == ".." || expression.Operator == "..." {
 		if p.peekTokenOneOf(token.EOF, token.NEWLINE, token.SEMICOLON,
 			token.RPAREN, token.RBRACKET, token.RBRACE, token.COMMA, token.PIPE) {
+			if !p.version.AtLeast(ruby26) {
+				p.versionError(ruby26, "endless range")
+			}
 			return expression
 		}
 	}
@@ -2786,8 +2823,11 @@ parseParams:
 		}
 	}
 
-	// Endless method: def name = expr (Ruby 3.0+)
+	// Endless method: def name = expr (ruby 3.0+)
 	if p.peekTokenIs(token.ASSIGN) {
+		if !p.version.AtLeast(ruby30) {
+			p.versionError(ruby30, "endless method definition")
+		}
 		p.consume(token.ASSIGN)
 		expr := p.parseExpression(precLowest)
 		if expr == nil {
@@ -2878,6 +2918,9 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 		if p.peekTokenIs(token.POWER) {
 			p.accept(token.POWER)
 			if p.peekTokenIs(token.NIL) {
+				if !p.version.AtLeast(ruby27) {
+					p.versionError(ruby27, "**nil parameter")
+				}
 				p.accept(token.NIL)
 				identifiers = append(identifiers, &ast.FunctionParameter{
 					Name: &ast.Identifier{Token: p.curToken, Value: "nil"}, IsKeywordRest: true, IsNoKeywords: true,
@@ -3051,8 +3094,11 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 		return identifiers
 	}
 
-	// Forwarding: def foo(...)
+	// Forwarding: def foo(...) -- ruby 2.7+
 	if p.peekTokenIs(token.RANGEEX) {
+		if !p.version.AtLeast(ruby27) {
+			p.versionError(ruby27, "argument forwarding (...)")
+		}
 		p.accept(token.RANGEEX)
 		identifiers = append(identifiers, &ast.FunctionParameter{IsForwarding: true})
 		if hasDelimiters {
@@ -3064,6 +3110,9 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 	if p.peekTokenIs(token.POWER) {
 		p.accept(token.POWER)
 		if p.peekTokenIs(token.NIL) {
+			if !p.version.AtLeast(ruby27) {
+				p.versionError(ruby27, "**nil parameter")
+			}
 			p.accept(token.NIL)
 			identifiers = append(identifiers, &ast.FunctionParameter{
 				Name:          &ast.Identifier{Token: p.curToken, Value: "nil"},
@@ -3084,7 +3133,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 
 	if p.peekTokenIs(token.ASTERISK) {
 		p.accept(token.ASTERISK)
-		// Anonymous rest: bare * as first param (ruby 3.2+)
+		// Anonymous rest: bare * as first param
 		if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.PIPE, token.NEWLINE, token.SEMICOLON, token.EOF) {
 			identifiers = append(identifiers, &ast.FunctionParameter{IsSplat: true})
 			return p.parseParametersTail(identifiers, hasDelimiters, endToken)
@@ -3092,8 +3141,11 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 	}
 	if p.peekTokenOneOf(token.CAPTURE, token.AND) {
 		p.acceptOneOf(token.CAPTURE, token.AND)
-		// Anonymous block forwarding: def foo(&)
+		// Anonymous block forwarding: def foo(&) -- ruby 3.1+
 		if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.NEWLINE, token.SEMICOLON, token.EOF) {
+			if !p.version.AtLeast(ruby31) {
+				p.versionError(ruby31, "anonymous block forwarding")
+			}
 			if hasDelimiters {
 				p.accept(endToken)
 			}
@@ -3112,8 +3164,11 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 			p.accept(endToken)
 			return identifiers
 		}
-		// Forwarding: def foo(a, ...)
+		// Forwarding: def foo(a, ...) -- ruby 2.7+
 		if p.peekTokenIs(token.RANGEEX) {
+			if !p.version.AtLeast(ruby27) {
+				p.versionError(ruby27, "argument forwarding (...)")
+			}
 			p.accept(token.RANGEEX)
 			identifiers = append(identifiers, &ast.FunctionParameter{IsForwarding: true})
 			if hasDelimiters {
@@ -3124,6 +3179,9 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 		if p.peekTokenIs(token.POWER) {
 			p.accept(token.POWER)
 			if p.peekTokenIs(token.NIL) {
+				if !p.version.AtLeast(ruby27) {
+					p.versionError(ruby27, "**nil parameter")
+				}
 				p.accept(token.NIL)
 				identifiers = append(identifiers, &ast.FunctionParameter{
 					Name:          &ast.Identifier{Token: p.curToken, Value: "nil"},
@@ -3156,8 +3214,11 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 		}
 		if p.peekTokenOneOf(token.CAPTURE, token.AND) {
 			p.acceptOneOf(token.CAPTURE, token.AND)
-			// Anonymous block forwarding: & without name
+			// Anonymous block forwarding: & without name -- ruby 3.1+
 			if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.NEWLINE, token.SEMICOLON, token.EOF) {
+				if !p.version.AtLeast(ruby31) {
+					p.versionError(ruby31, "anonymous block forwarding")
+				}
 				if hasDelimiters {
 					p.accept(endToken)
 				}
