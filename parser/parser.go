@@ -1302,10 +1302,15 @@ func (p *parser) parsePatternHashPair(pairs map[ast.Expression]ast.Expression) {
 			Token: p.curToken,
 			Value: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
 		}
-		if p.peekTokenOneOf(token.COMMA, token.RBRACE, token.NEWLINE, token.SEMICOLON, token.THEN) {
+		if p.peekTokenOneOf(token.COMMA, token.RBRACE, token.THEN) {
 			pairs[key] = &ast.Identifier{Token: p.curToken, Value: name}
 			return
 		}
+		if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) && (p.peek2TokenIs(token.RBRACE) || p.peek2TokenIs(token.COMMA) || p.peek2TokenIs(token.KW_IN) || p.peek2TokenIs(token.WHEN) || p.peek2TokenIs(token.END)) {
+			pairs[key] = &ast.Identifier{Token: p.curToken, Value: name}
+			return
+		}
+		p.skipNewlines()
 		p.nextToken()
 		val := p.parsePatternBinding()
 		pairs[key] = val
@@ -3894,6 +3899,9 @@ func isSpace(r rune) bool {
 
 // buildSymbolFromPercent produces a SymbolLiteral from a %s(...) percent literal.
 func (p *parser) buildSymbolFromPercent(beg token.Token, parts []ast.Expression) ast.Expression {
+	if len(parts) == 0 {
+		return &ast.SymbolLiteral{Token: beg, Value: &ast.StringLiteral{Value: ""}}
+	}
 	if len(parts) == 1 {
 		if sc, ok := parts[0].(*ast.StringContent); ok {
 			return &ast.SymbolLiteral{
