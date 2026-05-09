@@ -35,11 +35,9 @@ walk mri-tests/test_method.rb: parse failed; walk skipped
 walk mri-tests/test_pattern_matching.rb: parse failed; walk skipped
 walk mri-tests/test_refinement.rb: parse failed; walk skipped
 walk mri-tests/test_super.rb: parse failed; walk skipped
-walk mri-tests/test_time_tz.rb: parse failed; walk skipped
 
 # additional parse-phase failures (formerly lexer failures; lex now passes, parse still fails)
 parse mri-tests/test_exception.rb: MRI language test - parser failure
-parse mri-tests/test_time_tz.rb: MRI language test - parser failure
 
 
 # esolang/gem parse failures -- various parser gaps

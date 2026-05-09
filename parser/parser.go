@@ -1282,7 +1282,10 @@ func (p *parser) parseCaseExpression() ast.Expression {
 		expr.Condition = p.parseExpression(precLowest)
 	}
 	// Allow optional newline/semicolon after case expression.
-	if !p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+	// Also allow `when`/`in` directly after expression (inline case/when).
+	if p.peekTokenOneOf(token.WHEN, token.KW_IN) {
+		p.nextToken()
+	} else if !p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 		p.acceptOneOf(token.NEWLINE, token.SEMICOLON)
 	}
 	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
