@@ -770,12 +770,7 @@ func (sl *StringLiteral) String() string {
 		out.WriteString(open)
 		for _, p := range sl.Parts {
 			if sc, ok := p.(*StringContent); ok {
-				v := sc.Value
-				if open == "\"" {
-					v = strings.ReplaceAll(v, "\\", "\\\\")
-					v = strings.ReplaceAll(v, "\"", "\\\"")
-				}
-				out.WriteString(v)
+				out.WriteString(sc.Value)
 			} else {
 				out.WriteString("#{")
 				out.WriteString(p.String())
@@ -786,8 +781,7 @@ func (sl *StringLiteral) String() string {
 		return out.String()
 	}
 	val := sl.Value
-	if open == "\"" {
-		val = strings.ReplaceAll(val, "\\", "\\\\")
+	if open == "\"" && strings.Contains(val, "\"") && !strings.Contains(val, "\\\"") {
 		val = strings.ReplaceAll(val, "\"", "\\\"")
 	}
 	return open + val + close
