@@ -1088,6 +1088,16 @@ func (p *parser) parsePattern() ast.Expression {
 	if pat == nil {
 		return nil
 	}
+	// Implicit array pattern: in a, b, c == in [a, b, c]
+	if p.peekTokenIs(token.COMMA) {
+		elements := []ast.Expression{pat}
+		for p.peekTokenIs(token.COMMA) {
+			p.accept(token.COMMA)
+			p.nextToken()
+			elements = append(elements, p.parsePatternOr())
+		}
+		pat = &ast.ArrayLiteral{Token: p.curToken, Elements: elements}
+	}
 	// Guard clause: pattern if condition
 	if p.peekTokenIs(token.IF) {
 		p.accept(token.IF)
@@ -1184,8 +1194,9 @@ func (p *parser) parsePatternAtom() ast.Expression {
 		return p.parsePatternHash()
 	default:
 		// Use normal expression parsing for literals, constants, identifiers, etc.
+		// Parse at precLessGreater-1 so range operators (.. / ...) are included.
 		p.inPattern = false
-		expr := p.parseExpression(precLessGreater)
+		expr := p.parseExpression(precLessGreater - 1)
 		p.inPattern = true
 		return expr
 	}
