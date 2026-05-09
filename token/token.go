@@ -351,14 +351,15 @@ type Type int
 // NewToken returns a new Token associated with the given Type typ, the Literal
 // literal and the Position pos
 func NewToken(typ Type, literal string, pos int) Token {
-	return Token{typ, literal, pos}
+	return Token{Type: typ, Literal: literal, Pos: pos}
 }
 
 // A Token represents a known token with its literal representation
 type Token struct {
-	Type    Type
-	Literal string
-	Pos     int
+	Type          Type
+	Literal       string
+	Pos           int
+	HadWhitespace bool // true if whitespace was skipped before this token
 }
 
 // IsLiteral returns true for tokens corresponding to identifiers

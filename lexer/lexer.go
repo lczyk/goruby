@@ -73,8 +73,9 @@ type Lexer struct {
 	tokens        chan token.Token // channel of scanned tokens.
 	lastToken     token.Token      // lastToken stores the last token emitted by the lexer
 	hadWhitespace bool             // true if whitespace was skipped before current token
-	ternaryDepth  int              // pending ternary ? without matching :
-	version       token.RubyVersion
+	ternaryDepth        int  // pending ternary ? without matching :
+	version             token.RubyVersion
+	tokenHadWhitespace  bool // whitespace before the token currently being lexed
 
 	// Heredoc state.
 	heredocDelim    string
@@ -126,6 +127,8 @@ func (l *Lexer) HasNext() bool {
 // emit passes a token back to the client.
 func (l *Lexer) emit(t token.Type) {
 	tok := token.NewToken(t, l.input[l.start:l.pos], l.start)
+	tok.HadWhitespace = l.tokenHadWhitespace
+	l.tokenHadWhitespace = false
 	l.lastToken = tok
 	l.tokens <- tok
 	l.start = l.pos
@@ -135,6 +138,8 @@ func (l *Lexer) emit(t token.Type) {
 // ignoring the input between l.start and l.pos. start is advanced to pos.
 func (l *Lexer) emitLiteral(t token.Type, literal string) {
 	tok := token.NewToken(t, literal, l.start)
+	tok.HadWhitespace = l.tokenHadWhitespace
+	l.tokenHadWhitespace = false
 	l.lastToken = tok
 	l.tokens <- tok
 	l.start = l.pos
@@ -289,6 +294,7 @@ func startLexer(l *Lexer) StateFn {
 	}
 	hadWhitespace := l.hadWhitespace
 	l.hadWhitespace = false
+	l.tokenHadWhitespace = hadWhitespace
 	// line continuation: backslash followed by newline
 	if r == '\\' {
 		if l.peek() == '\n' {
