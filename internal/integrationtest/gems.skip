@@ -32,7 +32,6 @@ parse mri-tests/test_defined.rb: MRI language test - parser failure
 parse mri-tests/test_env.rb: MRI language test - parser failure
 parse mri-tests/test_eval.rb: MRI language test - parser failure
 parse mri-tests/test_hash.rb: MRI language test - parser failure
-parse mri-tests/test_iterator.rb: MRI language test - parser failure
 parse mri-tests/test_keyword.rb: MRI language test - parser failure
 parse mri-tests/test_lambda.rb: MRI language test - parser failure
 parse mri-tests/test_m17n.rb: MRI language test - parser failure
@@ -56,13 +55,10 @@ walk mri-tests/test_env.rb: parse failed; walk skipped
 walk mri-tests/test_eval.rb: parse failed; walk skipped
 walk mri-tests/test_exception.rb: parse failed; walk skipped
 walk mri-tests/test_hash.rb: parse failed; walk skipped
-walk mri-tests/test_iterator.rb: parse failed; walk skipped
 walk mri-tests/test_keyword.rb: parse failed; walk skipped
 walk mri-tests/test_lambda.rb: parse failed; walk skipped
-walk mri-tests/test_lazy_enumerator.rb: parse failed; walk skipped
 walk mri-tests/test_m17n.rb: parse failed; walk skipped
 walk mri-tests/test_method.rb: parse failed; walk skipped
-walk mri-tests/test_object.rb: parse failed; walk skipped
 walk mri-tests/test_optimization.rb: parse failed; walk skipped
 walk mri-tests/test_pattern_matching.rb: parse failed; walk skipped
 walk mri-tests/test_proc.rb: parse failed; walk skipped
@@ -79,8 +75,6 @@ walk mri-tests/test_yjit.rb: parse failed; walk skipped
 walk mri-tests/test_zjit.rb: parse failed; walk skipped
 
 # additional parse-phase failures (formerly lexer failures; lex now passes, parse still fails)
-parse mri-tests/test_object.rb: MRI language test - parser failure
-parse mri-tests/test_lazy_enumerator.rb: MRI language test - parser failure
 parse mri-tests/test_exception.rb: MRI language test - parser failure
 parse mri-tests/test_string.rb: MRI language test - parser failure
 parse mri-tests/test_unicode_escape.rb: MRI language test - parser failure

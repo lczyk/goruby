@@ -1539,7 +1539,6 @@ func (p *parser) parseYield() ast.Expression {
 	if p.currentTokenIs(token.LPAREN) {
 		p.nextToken()
 		yield.Arguments = p.parseCallArguments(token.RPAREN)
-		p.nextToken()
 		return yield
 	}
 	yield.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE, token.LBRACE, token.DO)
