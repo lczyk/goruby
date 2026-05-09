@@ -31,7 +31,6 @@ ast * internal/integrationtest/testdata/gems/rake/test/test_rake_functional.rb
 ast * internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb
 ast * internal/integrationtest/testdata/gems/thue/src/thue.rb
 ast * internal/integrationtest/testdata/gems/wumpus/direction.rb
-ast * internal/integrationtest/testdata/mri-tests/beginmainend.rb
 ast * internal/integrationtest/testdata/mri-tests/test_alias.rb
 ast * internal/integrationtest/testdata/mri-tests/test_allocation.rb
 ast * internal/integrationtest/testdata/mri-tests/test_array.rb
@@ -84,7 +83,6 @@ ast * internal/integrationtest/testdata/mri-tests/test_transcode.rb
 ast * internal/integrationtest/testdata/mri-tests/test_yjit.rb
 ast * internal/integrationtest/testdata/ruby-extra/parser/case.rb
 ast * internal/integrationtest/testdata/ruby-extra/parser/refine.rb
-ast * internal/integrationtest/testdata/ruby-extra/parser/stress_test.rb
 ast * internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_7.rb
 ast * internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_3_0.rb
 ast * internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_3_1.rb
@@ -369,6 +367,7 @@ src * internal/integrationtest/testdata/gems/wumpus/interpreter.rb
 src * internal/integrationtest/testdata/gems/wumpus/point2d.rb
 src * internal/integrationtest/testdata/gems/wumpus/wumpus.rb
 src * internal/integrationtest/testdata/mri-tests/allpairs.rb
+src * internal/integrationtest/testdata/mri-tests/beginmainend.rb
 src * internal/integrationtest/testdata/mri-tests/box/a.1_1_0.rb
 src * internal/integrationtest/testdata/mri-tests/box/a.1_2_0.rb
 src * internal/integrationtest/testdata/mri-tests/box/a.rb
@@ -532,6 +531,7 @@ src * internal/integrationtest/testdata/ruby-extra/parser/nested.rb
 src * internal/integrationtest/testdata/ruby-extra/parser/operators.rb
 src * internal/integrationtest/testdata/ruby-extra/parser/precedence.rb
 src * internal/integrationtest/testdata/ruby-extra/parser/ranges.rb
+src * internal/integrationtest/testdata/ruby-extra/parser/stress_test.rb
 src * internal/integrationtest/testdata/ruby-extra/parser/strings.rb
 src * internal/integrationtest/testdata/ruby-extra/parser/unicode.rb
 src * internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_1_9.rb
@@ -567,7 +567,6 @@ src * internal/integrationtest/testdata/gems/rake/test/test_rake_functional.rb
 src * internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb
 src * internal/integrationtest/testdata/gems/thue/src/thue.rb
 src * internal/integrationtest/testdata/gems/wumpus/direction.rb
-src * internal/integrationtest/testdata/mri-tests/beginmainend.rb
 src * internal/integrationtest/testdata/mri-tests/test_alias.rb
 src * internal/integrationtest/testdata/mri-tests/test_allocation.rb
 src * internal/integrationtest/testdata/mri-tests/test_array.rb
@@ -620,7 +619,6 @@ src * internal/integrationtest/testdata/mri-tests/test_transcode.rb
 src * internal/integrationtest/testdata/mri-tests/test_yjit.rb
 src * internal/integrationtest/testdata/ruby-extra/parser/case.rb
 src * internal/integrationtest/testdata/ruby-extra/parser/refine.rb
-src * internal/integrationtest/testdata/ruby-extra/parser/stress_test.rb
 src * internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_7.rb
 src * internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_3_0.rb
 src * internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_3_1.rb

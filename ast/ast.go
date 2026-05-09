@@ -461,7 +461,7 @@ func (b *BeginBlock) Pos() int             { return b.Token.Pos }
 func (b *BeginBlock) End() int             { return b.Body.End() }
 func (b *BeginBlock) TokenLiteral() string { return b.Token.Literal }
 func (b *BeginBlock) String() string {
-	return "BEGIN {" + b.Body.String() + "}"
+	return "BEGIN {\n" + b.Body.String() + "\n}"
 }
 
 // EndBlock represents a top-level END { ... } block
@@ -475,7 +475,7 @@ func (e *EndBlock) Pos() int             { return e.Token.Pos }
 func (e *EndBlock) End() int             { return e.Body.End() }
 func (e *EndBlock) TokenLiteral() string { return e.Token.Literal }
 func (e *EndBlock) String() string {
-	return "END {" + e.Body.String() + "}"
+	return "END {\n" + e.Body.String() + "\n}"
 }
 
 // Keyword__FILE__ represents __FILE__ in the AST
