@@ -1023,6 +1023,12 @@ func lexCharacterLiteral(l *Lexer) StateFn {
 		case 'c':
 			// \cx -- control char (lowercase c variant)
 			l.next() // consume the character after \c
+		case '0', '1', '2', '3', '4', '5', '6', '7':
+			for i := 0; i < 2; i++ {
+				if p := l.peek(); p >= '0' && p <= '7' {
+					l.next()
+				}
+			}
 		case 'o':
 			// \o{NNN} or \oNNN
 			if l.peek() == '{' {
