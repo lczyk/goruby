@@ -909,8 +909,9 @@ func (ce *ConditionalExpression) TokenLiteral() string { return ce.Token.Literal
 func (ce *ConditionalExpression) String() string {
 	var out bytes.Buffer
 	if ce.Token.Type == token.QMARK {
+		out.WriteString("(")
 		out.WriteString(ce.Condition.String())
-		out.WriteString(" ? ")
+		out.WriteString(") ? ")
 		out.WriteString(ce.Consequence.String())
 		out.WriteString(" : ")
 		if ce.Alternative != nil {
