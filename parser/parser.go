@@ -2954,8 +2954,11 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 			})
 			continue
 		}
-		// Keyword parameter: `name: default`
+		// Keyword parameter: `name: default` (ruby 2.0+)
 		if p.peekTokenIs(token.LABEL) {
+			if !p.version.AtLeast(ruby20) {
+				p.versionError(ruby20, "keyword argument")
+			}
 			p.accept(token.LABEL)
 			name := strings.TrimSuffix(p.curToken.Literal, ":")
 			param := &ast.FunctionParameter{
@@ -3240,6 +3243,9 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 		}
 		isKw := false
 		if p.peekTokenIs(token.LABEL) {
+			if !p.version.AtLeast(ruby20) {
+				p.versionError(ruby20, "keyword argument")
+			}
 			p.accept(token.LABEL)
 			isKw = true
 		} else {
