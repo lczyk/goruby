@@ -1313,6 +1313,12 @@ func (p *parser) parseCaseExpression() ast.Expression {
 		p.inPattern = true
 		ic.Conditions = []ast.Expression{p.parsePattern()}
 		p.inPattern = false
+		if p.peekTokenOneOf(token.IF, token.UNLESS) {
+			p.nextToken()
+			p.nextToken()
+			guard := p.parseExpression(precLowest)
+			_ = guard
+		}
 		if p.peekTokenIs(token.THEN) {
 			p.accept(token.THEN)
 		} else {
