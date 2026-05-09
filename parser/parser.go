@@ -1588,6 +1588,7 @@ func (p *parser) parseRefine() ast.Expression {
 	if cc, ok := expr.Expr.(*ast.ContextCallExpression); ok && cc.Block != nil {
 		expr.Body = cc.Block.Body
 		expr.EndToken = cc.Block.EndToken
+		cc.Block = nil // Move ownership -- avoid double printing in String()
 		return expr
 	}
 	endToken := token.END
