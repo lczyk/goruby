@@ -1116,14 +1116,14 @@ func (p *parser) parsePattern() ast.Expression {
 	// Implicit hash with string label key: in "key": val
 	if _, isStr := pat.(*ast.StringLiteral); isStr && p.peekTokenOneOf(token.COLON, token.SYMBEG) {
 		p.acceptOneOf(token.COLON, token.SYMBEG)
-		pairs := map[ast.Expression]ast.Expression{}
+		pairs := ast.NewOrderedExprMap()
 		key := &ast.SymbolLiteral{Token: p.curToken, Value: pat.(*ast.StringLiteral)}
 		var val ast.Expression
 		if !p.peekTokenOneOf(token.COMMA, token.RBRACE, token.NEWLINE, token.SEMICOLON, token.THEN, token.EOF) {
 			p.nextToken()
 			val = p.parsePatternBinding()
 		}
-		pairs[key] = val
+		pairs.Set(key, val)
 		for p.peekTokenIs(token.COMMA) {
 			p.accept(token.COMMA)
 			p.nextToken()
@@ -1280,7 +1280,7 @@ func (p *parser) parsePatternArray() ast.Expression {
 func (p *parser) parsePatternHash() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	tok := p.curToken
-	pairs := map[ast.Expression]ast.Expression{}
+	pairs := ast.NewOrderedExprMap()
 	if p.peekTokenIs(token.RBRACE) {
 		p.accept(token.RBRACE)
 		return &ast.HashLiteral{Token: tok, Map: pairs}
@@ -1309,18 +1309,18 @@ func (p *parser) parsePatternHash() ast.Expression {
 	return &ast.HashLiteral{Token: tok, Map: pairs}
 }
 
-func (p *parser) parsePatternHashPair(pairs map[ast.Expression]ast.Expression) {
+func (p *parser) parsePatternHashPair(pairs *ast.OrderedExprMap) {
 	defer trace.TraceCtx(p.ctx)()
 	if p.currentTokenIs(token.POWER) {
 		// **rest or bare **
 		op := p.curToken
 		if p.peekTokenOneOf(token.COMMA, token.RBRACE) {
-			pairs[&ast.PrefixExpression{Token: op, Operator: "**"}] = nil
+			pairs.Set(&ast.PrefixExpression{Token: op, Operator: "**"}, nil)
 			return
 		}
 		p.nextToken()
 		rest := p.parsePatternAtom()
-		pairs[&ast.PrefixExpression{Token: op, Operator: "**", Right: rest}] = nil
+		pairs.Set(&ast.PrefixExpression{Token: op, Operator: "**", Right: rest}, nil)
 		return
 	}
 	// label: pattern  (symbol key with pattern value)
@@ -1331,17 +1331,17 @@ func (p *parser) parsePatternHashPair(pairs map[ast.Expression]ast.Expression) {
 			Value: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
 		}
 		if p.peekTokenOneOf(token.COMMA, token.RBRACE, token.THEN) {
-			pairs[key] = &ast.Identifier{Token: p.curToken, Value: name}
+			pairs.Set(key, &ast.Identifier{Token: p.curToken, Value: name})
 			return
 		}
 		if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) && (p.peek2TokenIs(token.RBRACE) || p.peek2TokenIs(token.COMMA) || p.peek2TokenIs(token.KW_IN) || p.peek2TokenIs(token.WHEN) || p.peek2TokenIs(token.END)) {
-			pairs[key] = &ast.Identifier{Token: p.curToken, Value: name}
+			pairs.Set(key, &ast.Identifier{Token: p.curToken, Value: name})
 			return
 		}
 		p.skipNewlines()
 		p.nextToken()
 		val := p.parsePatternBinding()
-		pairs[key] = val
+		pairs.Set(key, val)
 		return
 	}
 	// key => pattern or "string": pattern
@@ -1353,7 +1353,7 @@ func (p *parser) parsePatternHashPair(pairs map[ast.Expression]ast.Expression) {
 		symKey := &ast.SymbolLiteral{Token: p.curToken, Value: key.(*ast.StringLiteral)}
 		p.nextToken()
 		val := p.parsePatternBinding()
-		pairs[symKey] = val
+		pairs.Set(symKey, val)
 		return
 	}
 	if !p.accept(token.HASHROCKET) {
@@ -1361,7 +1361,7 @@ func (p *parser) parsePatternHashPair(pairs map[ast.Expression]ast.Expression) {
 	}
 	p.nextToken()
 	val := p.parsePatternBinding()
-	pairs[key] = val
+	pairs.Set(key, val)
 }
 
 func (p *parser) parseCaseExpression() ast.Expression {
@@ -2166,7 +2166,7 @@ func (p *parser) parseBoolean() ast.Expression {
 }
 
 func (p *parser) parseHash() ast.Expression {
-	hash := &ast.HashLiteral{Token: p.curToken, Map: make(map[ast.Expression]ast.Expression)}
+	hash := &ast.HashLiteral{Token: p.curToken, Map: ast.NewOrderedExprMap()}
 	defer trace.TraceCtx(p.ctx)()
 	p.nextToken()
 	// Skip leading newlines/semicolons inside the hash.
@@ -2188,7 +2188,7 @@ func (p *parser) parseHash() ast.Expression {
 		if !ok {
 			return nil
 		}
-		hash.Map[k] = v
+		hash.Map.Set(k, v)
 	}
 
 	for p.peekTokenIs(token.COMMA) {
@@ -2220,7 +2220,7 @@ func (p *parser) parseHash() ast.Expression {
 		if !ok {
 			return nil
 		}
-		hash.Map[k] = v
+		hash.Map.Set(k, v)
 	}
 
 	for p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
@@ -3735,14 +3735,14 @@ func (p *parser) parseCallArguments(end ...token.Type) []ast.Expression {
 }
 
 func (p *parser) parseImplicitHash(firstKey ast.Expression, end ...token.Type) ast.Expression {
-	hash := &ast.HashLiteral{Token: p.curToken, Map: map[ast.Expression]ast.Expression{}}
+	hash := &ast.HashLiteral{Token: p.curToken, Map: ast.NewOrderedExprMap()}
 	p.accept(token.HASHROCKET)
 	p.nextToken()
 	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 		p.nextToken()
 	}
 	val := p.parseExpression(precAssignment)
-	hash.Map[firstKey] = val
+	hash.Map.Set(firstKey, val)
 	for {
 		for p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 			if p.peekTokenOneOf(end...) {
@@ -3772,9 +3772,9 @@ func (p *parser) parseImplicitHash(firstKey ast.Expression, end ...token.Type) a
 				p.nextToken()
 			}
 			v := p.parseExpression(precAssignment)
-			hash.Map[key] = v
+			hash.Map.Set(key, v)
 		} else {
-			hash.Map[key] = nil
+			hash.Map.Set(key, nil)
 		}
 	}
 	if p.peekTokenOneOf(end...) {
@@ -3875,14 +3875,14 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 }
 
 func (p *parser) parseStringLabelHash(firstKey ast.Expression, end ...token.Type) ast.Expression {
-	hash := &ast.HashLiteral{Token: p.curToken, Map: map[ast.Expression]ast.Expression{}}
+	hash := &ast.HashLiteral{Token: p.curToken, Map: ast.NewOrderedExprMap()}
 	p.acceptOneOf(token.COLON, token.SYMBEG)
 	key := &ast.SymbolLiteral{Token: p.curToken, Value: firstKey.(*ast.StringLiteral)}
 	if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.RBRACE, token.NEWLINE) {
-		hash.Map[key] = firstKey
+		hash.Map.Set(key, firstKey)
 	} else {
 		p.nextToken()
-		hash.Map[key] = p.parseExpression(precAssignment)
+		hash.Map.Set(key, p.parseExpression(precAssignment))
 	}
 	for p.peekTokenIs(token.COMMA) {
 		p.consume(token.COMMA)
@@ -3896,7 +3896,7 @@ func (p *parser) parseStringLabelHash(firstKey ast.Expression, end ...token.Type
 		if !ok {
 			break
 		}
-		hash.Map[k] = v
+		hash.Map.Set(k, v)
 	}
 	if p.peekTokenOneOf(end...) {
 		p.acceptOneOf(end...)

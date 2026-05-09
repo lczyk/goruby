@@ -373,10 +373,12 @@ func Walk(v Visitor, node Node) {
 		walkExprList(v, n.Elements)
 
 	case *HashLiteral:
-		for k, val := range n.Map {
-			Walk(v, k)
-			if val != nil {
-				Walk(v, val)
+		if n.Map != nil {
+			for _, kv := range n.Map.Entries() {
+				Walk(v, kv.Key)
+				if kv.Value != nil {
+					Walk(v, kv.Value)
+				}
 			}
 		}
 		walkExprList(v, n.Splats)

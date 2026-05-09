@@ -1065,7 +1065,7 @@ func (al *ArrayLiteral) String() string {
 type HashLiteral struct {
 	Token  token.Token // the '{'
 	Rbrace token.Token // the '}'
-	Map    map[Expression]Expression
+	Map    *OrderedExprMap
 	Splats []Expression // **expr keyword-splat entries
 }
 
@@ -1083,15 +1083,17 @@ func (hl *HashLiteral) TokenLiteral() string { return hl.Token.Literal }
 func (hl *HashLiteral) String() string {
 	var out bytes.Buffer
 	elements := []string{}
-	for key, val := range hl.Map {
-		if val != nil {
-			if sym, ok := key.(*SymbolLiteral); ok && sym.Token.Type == token.LABEL {
-				elements = append(elements, sym.Token.Literal+" "+val.String())
+	if hl.Map != nil {
+		for _, kv := range hl.Map.Entries() {
+			if kv.Value != nil {
+				if sym, ok := kv.Key.(*SymbolLiteral); ok && sym.Token.Type == token.LABEL {
+					elements = append(elements, sym.Token.Literal+" "+kv.Value.String())
+				} else {
+					elements = append(elements, kv.Key.String()+" => "+kv.Value.String())
+				}
 			} else {
-				elements = append(elements, key.String()+" => "+val.String())
+				elements = append(elements, kv.Key.String())
 			}
-		} else {
-			elements = append(elements, key.String())
 		}
 	}
 	for _, s := range hl.Splats {
