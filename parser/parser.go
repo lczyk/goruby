@@ -3201,8 +3201,22 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 	if p.currentTokenIs(token.LBRACKET) {
 		p.nextToken()
 		args := p.parseExpressionList(token.RBRACKET)
-		contextCallExpression.Function = &ast.Identifier{Token: p.curToken, Value: "[]"}
+		methodName := "[]"
+		if p.peekTokenIs(token.ASSIGN) {
+			p.accept(token.ASSIGN)
+			methodName = "[]="
+		}
+		contextCallExpression.Function = &ast.Identifier{Token: p.curToken, Value: methodName}
 		contextCallExpression.Arguments = args
+		if p.peekTokenIs(token.LPAREN) {
+			p.accept(token.LPAREN)
+			p.nextToken()
+			contextCallExpression.Arguments = append(contextCallExpression.Arguments, p.parseExpressionList(token.RPAREN)...)
+		}
+		if p.peekTokenOneOf(token.LBRACE, token.DO) {
+			p.acceptOneOf(token.LBRACE, token.DO)
+			contextCallExpression.Block = p.parseBlockExpr()
+		}
 		return contextCallExpression
 	}
 
