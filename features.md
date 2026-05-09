@@ -21,7 +21,7 @@ parser-library scope. flip checkboxes as features land in `parser/`.
 	- [x] default values for parameters
 	- [x] keyword arguments
 	- [x] block arguments
-	- [ ] hash as last argument without braces
+	- [x] hash as last argument without braces
 - [x] function calls
 	- [x] with parens
 	- [x] without parens
