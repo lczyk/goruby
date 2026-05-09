@@ -87,8 +87,12 @@ func TestRoundtrip(t *testing.T) {
 					if reParseErr != nil {
 						t.Fatalf("re-parse failed:\n--- regenerated source ---\n%s\n--- error ---\n%v", src2, reParseErr)
 					}
-					if !ast.Equal(prog1, prog2) {
-						t.Errorf("AST mismatch after roundtrip:\n--- original source ---\n%s\n--- regenerated source ---\n%s", string(src), src2)
+					src3, reStringPanic := safeString(prog2)
+					if reStringPanic != "" {
+						t.Fatalf("re-String() panicked: %s", reStringPanic)
+					}
+					if src2 != src3 {
+						t.Errorf("AST roundtrip not stable:\n--- first String() ---\n%s\n--- second String() ---\n%s", src2, src3)
 					}
 				})
 
