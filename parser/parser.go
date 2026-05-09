@@ -581,10 +581,8 @@ func (p *parser) parseReturnStatement() *ast.ReturnStatement {
 		stmt.ReturnValue = &ast.ArrayLiteral{Elements: list}
 	}
 
-	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.ELSE, token.KW_ELSIF, token.END, token.RBRACE, token.EOF) {
-		if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
-			p.nextToken()
-		}
+	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.ELSE, token.KW_ELSIF, token.END, token.RBRACE, token.EOF,
+		token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.RESCUE) {
 		return stmt
 	}
 
@@ -1514,7 +1512,8 @@ func (p *parser) parseYield() ast.Expression {
 func (p *parser) parseSuper() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	sup := &ast.SuperExpression{Token: p.curToken}
-	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE, token.RPAREN, token.RBRACKET, token.EMBEXPR_END, token.DOT, token.LONELY) {
+	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE, token.RPAREN, token.RBRACKET, token.EMBEXPR_END, token.DOT, token.LONELY,
+		token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.RESCUE) {
 		return sup
 	}
 	// If peekToken has no prefix handler, it can't start an argument.
