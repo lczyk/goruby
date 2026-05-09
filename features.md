@@ -19,95 +19,95 @@ parser-library scope. flip checkboxes as features land in `parser/`.
 	- [x] without parens
 	- [x] return keyword
 	- [x] default values for parameters
-	- [ ] keyword arguments
+	- [x] keyword arguments
 	- [x] block arguments
 	- [ ] hash as last argument without braces
 - [x] function calls
 	- [x] with parens
 	- [x] without parens
 	- [x] with block arguments
-- [ ] conditionals
+- [x] conditionals
 	- [x] if
 	- [x] if/else
-	- [ ] if/elif/else
-	- [x] tenary `? :`
+	- [x] if/elsif/else
+	- [x] ternary `? :`
 	- [x] unless
 	- [x] unless/else
-	- [ ] case
+	- [x] case/when
 - [x] short-circuit operators (`||`, `&&`)
-- [ ] control flow
-	- [ ] for loop
+- [x] control flow
+	- [x] for loop
 	- [x] while loop
-	- [ ] until loop
-	- [ ] break
-	- [ ] next
-	- [ ] redo
+	- [x] until loop
+	- [x] break
+	- [x] next
+	- [x] redo
 	- [ ] flip flop
 
 ## literals
 
-- [ ] integers
+- [x] integers
 	- [x] decimal `1234`
 	- [x] underscores `1_234`
-	- [ ] explicit decimal `0d170`, `0D170`
-	- [ ] octal `0252`, `0o252`, `0O252`
-	- [ ] hexadecimal `0xaa`, `0xAa`, `0xAA`, `0Xaa`, `0XAa`, `0XaA`
-	- [ ] binary `0b10101010`, `0B10101010`
-- [ ] floats
-	- [ ] `12.34`
-	- [ ] `1234e-2`
-	- [ ] `1.234E1`
-	- [ ] underscores `2.2_22`
+	- [x] explicit decimal `0d170`, `0D170`
+	- [x] octal `0252`, `0o252`, `0O252`
+	- [x] hexadecimal `0xaa`, `0xAa`, `0xAA`, `0Xaa`, `0XAa`, `0XaA`
+	- [x] binary `0b10101010`, `0B10101010`
+- [x] floats
+	- [x] `12.34`
+	- [x] `1234e-2`
+	- [x] `1.234E1`
+	- [x] underscores `2.2_22`
 - [x] booleans (`true`, `false`)
 - [x] nil
-- [ ] strings
+- [x] strings
 	- [x] double quoted
 	- [x] single quoted
 	- [x] character literals (`?\n`, `?a`, ...)
-	- [ ] `%q{}`
-	- [ ] `%Q{}`
-	- [ ] heredoc
-		- [ ] `<<EOF`
-		- [ ] indented `<<-EOF`
-		- [ ] squiggly `<<~`
-		- [ ] quoted heredoc (single, double, backtick)
-	- [ ] escaped characters (full `\a` ... `\C-?` set)
-	- [ ] interpolation `#{}`
-	- [ ] automatic concatenation
-- [ ] arrays
+	- [x] `%q{}`
+	- [x] `%Q{}`
+	- [x] heredoc
+		- [x] `<<EOF`
+		- [x] indented `<<-EOF`
+		- [x] squiggly `<<~`
+		- [x] quoted heredoc (single, double, backtick)
+	- [x] escaped characters (full `\a` ... `\C-?` set)
+	- [x] interpolation `#{}`
+	- [x] automatic concatenation
+- [x] arrays
 	- [x] array literal `[1, 2]`
 	- [x] array indexing `arr[2]`
-	- [ ] splat `*arr`
-	- [ ] array decomposition
-	- [ ] implicit array assignment
-	- [ ] `%w{}` (string array)
-	- [ ] `%i{}` (symbol array)
-- [ ] hashes
+	- [x] splat `*arr`
+	- [x] array decomposition
+	- [x] implicit array assignment
+	- [x] `%w{}` (string array)
+	- [x] `%i{}` (symbol array)
+- [x] hashes
 	- [x] `=>` notation
-	- [ ] `key:` shorthand
+	- [x] `key:` shorthand
 	- [x] indexing `hash[:foo]`
-- [ ] symbols
+- [x] symbols
 	- [x] `:symbol`
 	- [x] `:"symbol"`
-	- [ ] `:"symbol"` with interpolation
+	- [x] `:"symbol"` with interpolation
 	- [x] `:'symbol'`
-	- [ ] `%s{symbol}`
-- [ ] regexp
-	- [ ] `/regex/`
-	- [ ] `%r{regex}`
-- [ ] ranges
-	- [ ] `..` inclusive
-	- [ ] `...` exclusive
-- [ ] procs / lambdas
+	- [x] `%s{symbol}`
+- [x] regexp
+	- [x] `/regex/`
+	- [x] `%r{regex}`
+- [x] ranges
+	- [x] `..` inclusive
+	- [x] `...` exclusive
+- [x] procs / lambdas
 	- [x] `do ... end` / `{ ... }` blocks
-	- [ ] `->` lambda literal
+	- [x] `->` lambda literal
 
 ## variables
 
 - [x] local assignments
 - [x] globals (`$var`)
 - [x] instance variables (`@var`)
-- [ ] class variables (`@@var`) -- lexer tokenises as `CLASS_VAR`; parser does not consume yet
+- [x] class variables (`@@var`)
 - [x] constants (capitalised idents)
 - [x] scope operator `::`
 
@@ -116,21 +116,21 @@ parser-library scope. flip checkboxes as features land in `parser/`.
 - [x] arithmetic: `+`, `-`, `*`, `/`, `%`
 - [x] unary: `!`, unary `-`
 - [x] comparison: `<`, `>`, `<=`, `>=`, `==`, `!=`, `<=>`
-- [ ] `**` (pow)
-- [ ] `&` (and), `|` (or), `^` (xor)
-- [ ] `>>` (right shift)
-- [ ] `<<` (left shift / append)
-- [ ] `===` (case equality)
-- [ ] `=~`, `!~` (pattern match / not match)
-- [ ] assignment operators
+- [x] `**` (pow)
+- [x] `&` (and), `|` (or), `^` (xor)
+- [x] `>>` (right shift)
+- [x] `<<` (left shift / append)
+- [x] `===` (case equality)
+- [x] `=~`, `!~` (pattern match / not match)
+- [x] assignment operators
 	- [x] `+=`, `-=`, `*=`, `/=`, `%=`
-	- [ ] `**=`, `&=`, `|=`, `^=`, `<<=`, `>>=`, `||=`, `&&=`
+	- [x] `**=`, `&=`, `|=`, `^=`, `<<=`, `>>=`, `||=`, `&&=`
 
 ## error handling
 
 - [x] begin/rescue
-- [ ] ensure
-- [ ] retry
+- [x] ensure
+- [x] retry
 
 ## classes + modules
 
@@ -139,8 +139,8 @@ parser-library scope. flip checkboxes as features land in `parser/`.
 - [x] instance methods
 - [x] class methods (`def self.foo`)
 - [x] singleton classes / eigenclass (`class << expr`)
-- [ ] visibility keywords (`private`, `protected`, `public`) -- parsed as identifiers / calls; not specially recognised
-- [ ] assignment methods (`def foo=`)
+- [x] visibility keywords (`private`, `protected`, `public`) -- parsed as identifiers / method calls
+- [x] assignment methods (`def foo=`)
 - [x] modules
 
 ## misc
