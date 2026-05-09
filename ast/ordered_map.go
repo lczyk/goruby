@@ -1,8 +1,9 @@
 package ast
 
 type keyValue struct {
-	Key   Expression
-	Value Expression
+	Key     Expression
+	Value   Expression
+	Omitted bool // hash value omission: {x:} means {x: x}
 }
 
 // OrderedExprMap is an insertion-ordered map from Expression to Expression.
@@ -21,7 +22,7 @@ func (m *OrderedExprMap) Set(key, value Expression) {
 			return
 		}
 	}
-	m.entries = append(m.entries, keyValue{key, value})
+	m.entries = append(m.entries, keyValue{Key: key, Value: value})
 }
 
 func (m *OrderedExprMap) Get(key Expression) (Expression, bool) {
@@ -31,6 +32,17 @@ func (m *OrderedExprMap) Get(key Expression) (Expression, bool) {
 		}
 	}
 	return nil, false
+}
+
+// SetOmitted marks the entry with the given key as having been a hash value
+// omission (ruby 3.1+ {x:} syntax).
+func (m *OrderedExprMap) SetOmitted(key Expression) {
+	for i := range m.entries {
+		if m.entries[i].Key == key {
+			m.entries[i].Omitted = true
+			return
+		}
+	}
 }
 
 func (m *OrderedExprMap) Len() int {

@@ -2182,11 +2182,14 @@ func (p *parser) parseHash() ast.Expression {
 		p.nextToken()
 		hash.Splats = append(hash.Splats, p.parseExpression(precAssignment))
 	} else {
-		k, v, ok := p.parseKeyValue()
+		k, v, ok, omitted := p.parseKeyValue()
 		if !ok {
 			return nil
 		}
 		hash.Map.Set(k, v)
+		if omitted {
+			hash.Map.SetOmitted(k)
+		}
 	}
 
 	for p.peekTokenIs(token.COMMA) {
@@ -2214,11 +2217,14 @@ func (p *parser) parseHash() ast.Expression {
 			hash.Splats = append(hash.Splats, p.parseExpression(precAssignment))
 			continue
 		}
-		k, v, ok := p.parseKeyValue()
+		k, v, ok, omitted := p.parseKeyValue()
 		if !ok {
 			return nil
 		}
 		hash.Map.Set(k, v)
+		if omitted {
+			hash.Map.SetOmitted(k)
+		}
 	}
 
 	for p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
@@ -2231,7 +2237,7 @@ func (p *parser) parseHash() ast.Expression {
 	return hash
 }
 
-func (p *parser) parseKeyValue() (ast.Expression, ast.Expression, bool) {
+func (p *parser) parseKeyValue() (ast.Expression, ast.Expression, bool, bool) {
 	defer trace.TraceCtx(p.ctx)()
 	// Label syntax: key: value (Ruby 1.9+)
 	if p.currentTokenIs(token.LABEL) {
@@ -2246,11 +2252,11 @@ func (p *parser) parseKeyValue() (ast.Expression, ast.Expression, bool) {
 				p.versionError(ruby31, "hash value omission")
 			}
 			val := &ast.Identifier{Token: p.curToken, Value: name}
-			return key, val, true
+			return key, val, true, true // isLabel, omitted
 		}
 		p.nextToken()
 		val := p.parseExpression(precAssignment)
-		return key, val, true
+		return key, val, true, false // isLabel, not omitted
 	}
 	// Classic hashrocket syntax: key => value
 	key := p.parseExpression(precAssignment)
@@ -2260,18 +2266,18 @@ func (p *parser) parseKeyValue() (ast.Expression, ast.Expression, bool) {
 			p.nextToken()
 			if p.peekTokenOneOf(token.COMMA, token.RBRACE, token.RPAREN, token.NEWLINE) {
 				val := key
-				return &ast.SymbolLiteral{Token: p.curToken, Value: key.(*ast.StringLiteral)}, val, true
+				return &ast.SymbolLiteral{Token: p.curToken, Value: key.(*ast.StringLiteral)}, val, true, false
 			}
 			p.nextToken()
 			val := p.parseExpression(precAssignment)
-			return &ast.SymbolLiteral{Token: p.curToken, Value: key.(*ast.StringLiteral)}, val, true
+			return &ast.SymbolLiteral{Token: p.curToken, Value: key.(*ast.StringLiteral)}, val, true, false
 		}
 	}
 	if !p.consume(token.HASHROCKET) {
-		return nil, nil, false
+		return nil, nil, false, false
 	}
 	val := p.parseExpression(precAssignment)
-	return key, val, true
+	return key, val, true, false
 }
 
 func (p *parser) parseBlockExpr() *ast.BlockExpression {
@@ -3891,11 +3897,14 @@ func (p *parser) parseStringLabelHash(firstKey ast.Expression, end ...token.Type
 		if p.currentTokenOneOf(end...) {
 			break
 		}
-		k, v, ok := p.parseKeyValue()
+		k, v, ok, omitted := p.parseKeyValue()
 		if !ok {
 			break
 		}
 		hash.Map.Set(k, v)
+		if omitted {
+			hash.Map.SetOmitted(k)
+		}
 	}
 	if p.peekTokenOneOf(end...) {
 		p.acceptOneOf(end...)

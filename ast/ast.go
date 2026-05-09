@@ -1112,8 +1112,7 @@ func (hl *HashLiteral) String() string {
 		for _, kv := range hl.Map.Entries() {
 			if kv.Value != nil {
 				if sym, ok := kv.Key.(*SymbolLiteral); ok && sym.Token.Type == token.LABEL {
-					// Hash value omission: {x:} == {x: x}
-					if id, ok := kv.Value.(*Identifier); ok && id.Value == strings.TrimSuffix(sym.Token.Literal, ":") {
+					if kv.Omitted {
 						elements = append(elements, sym.Token.Literal)
 					} else {
 						elements = append(elements, sym.Token.Literal+" "+kv.Value.String())
