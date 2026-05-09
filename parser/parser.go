@@ -1039,7 +1039,13 @@ func (p *parser) parseDefinedExpression() ast.Expression {
 	if p.peekTokenIs(token.LPAREN) {
 		p.accept(token.LPAREN)
 		p.nextToken()
+		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.nextToken()
+		}
 		expr.Expr = p.parseExpression(precLowest)
+		for p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			p.nextToken()
+		}
 		if p.peekTokenIs(token.RPAREN) {
 			p.accept(token.RPAREN)
 		}
