@@ -955,7 +955,11 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 	for p.currentTokenIs(token.NEWLINE) {
 		p.nextToken()
 	}
-	expr := p.parseExpression(precLowest)
+	rhsPrec := precLowest
+	if p.suppressHashrocket {
+		rhsPrec = precComma
+	}
+	expr := p.parseExpression(rhsPrec)
 	right, ok := expr.(*ast.ConditionalExpression)
 	if !ok || right.Token.Type == token.QMARK || right.EndToken.Type == token.END {
 		assign.Right = expr
