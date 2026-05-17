@@ -22,7 +22,9 @@ func TestLexerLiteralHeredocBody(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING, "hello\nworld\n"},
+				{token.STRING_BEG, "<<'EOS'"},
+				{token.STRING_CONTENT, "hello\nworld\n"},
+				{token.STRING_END, ""},
 				{token.NEWLINE, "\n"},
 				{token.EOF, ""},
 			},
@@ -34,7 +36,9 @@ func TestLexerLiteralHeredocBody(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING, "hello\nworld\n"},
+				{token.STRING_BEG, "<<~'EOS'"},
+				{token.STRING_CONTENT, "hello\nworld\n"},
+				{token.STRING_END, ""},
 				{token.NEWLINE, "\n"},
 				{token.EOF, ""},
 			},
@@ -46,7 +50,9 @@ func TestLexerLiteralHeredocBody(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING, "\tcontent\n"},
+				{token.STRING_BEG, "<<-'EOS'"},
+				{token.STRING_CONTENT, "\tcontent\n"},
+				{token.STRING_END, ""},
 				{token.NEWLINE, "\n"},
 				{token.EOF, ""},
 			},
@@ -58,7 +64,9 @@ func TestLexerLiteralHeredocBody(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING, ""},
+				{token.STRING_BEG, "<<'EOS'"},
+				{token.STRING_CONTENT, ""},
+				{token.STRING_END, ""},
 				{token.NEWLINE, "\n"},
 				{token.EOF, ""},
 			},
@@ -70,7 +78,9 @@ func TestLexerLiteralHeredocBody(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING, "\ncontent\n\n"},
+				{token.STRING_BEG, "<<~'EOS'"},
+				{token.STRING_CONTENT, "\ncontent\n\n"},
+				{token.STRING_END, ""},
 				{token.NEWLINE, "\n"},
 				{token.EOF, ""},
 			},

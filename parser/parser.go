@@ -1707,6 +1707,9 @@ func (p *parser) parseAliasName() *ast.Identifier {
 		}
 		return &ast.Identifier{Token: p.curToken, Value: name}
 	}
+	if p.currentTokenIs(token.GLOBAL) {
+		return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	}
 	if p.currentTokenIs(token.SYMBEG) {
 		sym := p.parseSymbolLiteral()
 		if sym != nil {

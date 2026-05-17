@@ -1279,14 +1279,25 @@ func TestLexerPercentAfterNewline(t *testing.T) {
 // --- lexHeredocBody: squiggy literal heredoc ---
 
 func TestLexerHeredocBodySquigLiteral(t *testing.T) {
-	// <<~'EOS' is a literal squiggy heredoc - single STRING token with stripped indent
+	// <<~'EOS' is a literal squiggy heredoc - STRING_BEG + STRING_CONTENT + STRING_END
 	l := New("<<~'EOS'\n  hello\n  EOS\n")
 	tok := l.NextToken()
-	if tok.Type != token.STRING {
-		t.Fatalf("expected STRING, got %s", tok.Type)
+	if tok.Type != token.STRING_BEG {
+		t.Fatalf("expected STRING_BEG, got %s", tok.Type)
+	}
+	if tok.Literal != "<<~'EOS'" {
+		t.Errorf("expected \"<<~'EOS'\", got %q", tok.Literal)
+	}
+	tok = l.NextToken()
+	if tok.Type != token.STRING_CONTENT {
+		t.Fatalf("expected STRING_CONTENT, got %s", tok.Type)
 	}
 	if tok.Literal != "hello\n" {
 		t.Errorf("expected 'hello\\n', got %q", tok.Literal)
+	}
+	tok = l.NextToken()
+	if tok.Type != token.STRING_END {
+		t.Fatalf("expected STRING_END, got %s", tok.Type)
 	}
 }
 
@@ -1297,8 +1308,12 @@ func TestLexerHeredocBodyPartialDelimMatch(t *testing.T) {
 	// The "ING" part is consumed as a trailer on the delim line.
 	l := New("<<'END'\ndata\nENDING\nEND\n")
 	tok := l.NextToken()
-	if tok.Type != token.STRING {
-		t.Fatalf("expected STRING, got %s", tok.Type)
+	if tok.Type != token.STRING_BEG {
+		t.Fatalf("expected STRING_BEG, got %s", tok.Type)
+	}
+	tok = l.NextToken()
+	if tok.Type != token.STRING_CONTENT {
+		t.Fatalf("expected STRING_CONTENT, got %s", tok.Type)
 	}
 	// "data\n" is content. "ENDING" matches "END" prefix, rest is trailer.
 	if tok.Literal != "data\n" {
@@ -1311,6 +1326,10 @@ func TestLexerHeredocBodyPartialDelimMatch(t *testing.T) {
 func TestLexerHeredocBodyUnterminated(t *testing.T) {
 	l := New("<<'EOS'\nbody without closing delim")
 	tok := l.NextToken()
+	if tok.Type != token.STRING_BEG {
+		t.Fatalf("expected STRING_BEG, got %s (%q)", tok.Type, tok.Literal)
+	}
+	tok = l.NextToken()
 	if tok.Type != token.ILLEGAL {
 		t.Errorf("expected ILLEGAL for unterminated heredoc, got %s (%q)", tok.Type, tok.Literal)
 	}
@@ -1545,11 +1564,19 @@ func TestLexerHeredocBodySquigIndentedDelim(t *testing.T) {
 	// <<~'EOS' with indented closing delimiter
 	l := New("<<~'EOS'\n  line\n  EOS\n")
 	tok := l.NextToken()
-	if tok.Type != token.STRING {
-		t.Fatalf("expected STRING, got %s", tok.Type)
+	if tok.Type != token.STRING_BEG {
+		t.Fatalf("expected STRING_BEG, got %s", tok.Type)
+	}
+	tok = l.NextToken()
+	if tok.Type != token.STRING_CONTENT {
+		t.Fatalf("expected STRING_CONTENT, got %s", tok.Type)
 	}
 	if tok.Literal != "line\n" {
 		t.Errorf("expected 'line\\n', got %q", tok.Literal)
+	}
+	tok = l.NextToken()
+	if tok.Type != token.STRING_END {
+		t.Fatalf("expected STRING_END, got %s", tok.Type)
 	}
 }
 
@@ -1558,11 +1585,19 @@ func TestLexerHeredocBodySquigIndentedDelim(t *testing.T) {
 func TestLexerHeredocBodyNoTrailingNewline(t *testing.T) {
 	l := New("<<'EOS'\nbody\nEOS")
 	tok := l.NextToken()
-	if tok.Type != token.STRING {
-		t.Fatalf("expected STRING, got %s", tok.Type)
+	if tok.Type != token.STRING_BEG {
+		t.Fatalf("expected STRING_BEG, got %s", tok.Type)
+	}
+	tok = l.NextToken()
+	if tok.Type != token.STRING_CONTENT {
+		t.Fatalf("expected STRING_CONTENT, got %s", tok.Type)
 	}
 	if tok.Literal != "body\n" {
 		t.Errorf("expected 'body\\n', got %q", tok.Literal)
+	}
+	tok = l.NextToken()
+	if tok.Type != token.STRING_END {
+		t.Fatalf("expected STRING_END, got %s", tok.Type)
 	}
 }
 
@@ -1836,11 +1871,19 @@ func TestLexerHeredocNoTrailingNewline(t *testing.T) {
 func TestLexerHeredocBodyEmptySquiggy(t *testing.T) {
 	l := New("<<~'EOS'\nEOS\n")
 	tok := l.NextToken()
-	if tok.Type != token.STRING {
-		t.Fatalf("expected STRING, got %s", tok.Type)
+	if tok.Type != token.STRING_BEG {
+		t.Fatalf("expected STRING_BEG, got %s", tok.Type)
+	}
+	tok = l.NextToken()
+	if tok.Type != token.STRING_CONTENT {
+		t.Fatalf("expected STRING_CONTENT, got %s", tok.Type)
 	}
 	if tok.Literal != "" {
 		t.Errorf("expected empty string, got %q", tok.Literal)
+	}
+	tok = l.NextToken()
+	if tok.Type != token.STRING_END {
+		t.Fatalf("expected STRING_END, got %s", tok.Type)
 	}
 }
 
@@ -1849,6 +1892,10 @@ func TestLexerHeredocBodyEmptySquiggy(t *testing.T) {
 func TestLexerHeredocBodyUnterminatedMidBody(t *testing.T) {
 	l := New("<<'EOS'\nline\n")
 	tok := l.NextToken()
+	if tok.Type != token.STRING_BEG {
+		t.Fatalf("expected STRING_BEG, got %s (%q)", tok.Type, tok.Literal)
+	}
+	tok = l.NextToken()
 	if tok.Type != token.ILLEGAL {
 		t.Errorf("expected ILLEGAL, got %s (%q)", tok.Type, tok.Literal)
 	}
@@ -1859,6 +1906,10 @@ func TestLexerHeredocBodyUnterminatedMidBody(t *testing.T) {
 func TestLexerHeredocBodyIndentedUnterminated(t *testing.T) {
 	l := New("<<-'EOS'\nline\n  ")
 	tok := l.NextToken()
+	if tok.Type != token.STRING_BEG {
+		t.Fatalf("expected STRING_BEG, got %s (%q)", tok.Type, tok.Literal)
+	}
+	tok = l.NextToken()
 	if tok.Type != token.ILLEGAL {
 		t.Errorf("expected ILLEGAL, got %s (%q)", tok.Type, tok.Literal)
 	}
@@ -1869,6 +1920,10 @@ func TestLexerHeredocBodyIndentedUnterminated(t *testing.T) {
 func TestLexerHeredocBodyEOFDuringDelim(t *testing.T) {
 	l := New("<<'EOS'\nline\nE")
 	tok := l.NextToken()
+	if tok.Type != token.STRING_BEG {
+		t.Fatalf("expected STRING_BEG, got %s (%q)", tok.Type, tok.Literal)
+	}
+	tok = l.NextToken()
 	if tok.Type != token.ILLEGAL {
 		t.Errorf("expected ILLEGAL, got %s (%q)", tok.Type, tok.Literal)
 	}
@@ -1917,7 +1972,14 @@ func TestLexerHeredocContentMatchAtLineStart(t *testing.T) {
 
 func TestLexerMatchHeredocDelimLineExtraChars(t *testing.T) {
 	l := New("<<'EOS'\nEOSextra\nEOS\n")
-	tok := l.NextToken() // STRING
+	tok := l.NextToken() // STRING_BEG
+	if tok.Type != token.STRING_BEG {
+		t.Fatalf("expected STRING_BEG, got %s (%q)", tok.Type, tok.Literal)
+	}
+	tok = l.NextToken() // STRING_CONTENT
+	if tok.Type != token.STRING_CONTENT {
+		t.Fatalf("expected STRING_CONTENT, got %s (%q)", tok.Type, tok.Literal)
+	}
 	if tok.Literal != "EOSextra\n" {
 		t.Errorf("expected 'EOSextra\\n', got %q", tok.Literal)
 	}

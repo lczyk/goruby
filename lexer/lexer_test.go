@@ -463,7 +463,9 @@ func TestLexerHeredoc(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING, "hello\nworld\n"},
+				{token.STRING_BEG, "<<~'EOS'"},
+				{token.STRING_CONTENT, "hello\nworld\n"},
+				{token.STRING_END, ""},
 				{token.NEWLINE, "\n"},
 				{token.EOF, ""},
 			},
@@ -556,9 +558,13 @@ func TestLexerHeredoc(t *testing.T) {
 			}{
 				{token.IDENT, "f"},
 				{token.LPAREN, "("},
-				{token.STRING, "aaa\n"},
+				{token.STRING_BEG, "<<'A'"},
+				{token.STRING_CONTENT, "aaa\n"},
+				{token.STRING_END, ""},
 				{token.COMMA, ","},
-				{token.STRING, "b_b\n"},
+				{token.STRING_BEG, "<<'B'"},
+				{token.STRING_CONTENT, "b_b\n"},
+				{token.STRING_END, ""},
 				{token.RPAREN, ")"},
 				{token.NEWLINE, "\n"},
 				{token.EOF, ""},

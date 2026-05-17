@@ -1664,9 +1664,13 @@ foundEnd:
 		}
 	}
 	l.ignore()
-	// Literal heredocs (<<'EOS') are a single STRING token.
-	// Interpolating heredocs emit STRING_BEG + STRING_CONTENT segments.
+	// All heredocs (including single-quoted) emit STRING_BEG + STRING_CONTENT + STRING_END.
 	if l.heredocQuote == '\'' {
+		if l.heredocSquig {
+			stripSquigInterpBody(l)
+		}
+		tag := buildHeredocTag(l.heredocIndent, l.heredocSquig, '\'', l.heredocDelim)
+		l.emitLiteral(token.STRING_BEG, tag)
 		return lexHeredocBody
 	}
 	if l.heredocSquig {
@@ -1774,19 +1778,13 @@ func matchHeredocDelimLine(l *Lexer, pos int) (int, bool) {
 }
 
 // lexHeredocBody reads a literal (non-interpolating) heredoc body until
-// the delimiter appears at line start.
+// the delimiter appears at line start. Emits STRING_CONTENT + STRING_END.
 func lexHeredocBody(l *Lexer) StateFn {
 	delim := l.heredocDelim
 	// Empty body: delim line is the first body line.
 	if _, ok := matchHeredocDelimLine(l, l.pos); ok {
-		if l.heredocSquig {
-			tok := token.NewToken(token.STRING, "", l.start)
-			l.lastToken = tok
-			l.tokens <- tok
-			l.start = l.pos
-		} else {
-			l.emit(token.STRING)
-		}
+		l.emitLiteral(token.STRING_CONTENT, "")
+		l.emitLiteral(token.STRING_END, "")
 		for {
 			r := l.next()
 			if r == eof || r == '\n' {
@@ -1839,15 +1837,9 @@ func lexHeredocBody(l *Lexer) StateFn {
 			if matched {
 				after := l.pos
 				l.pos = contentEnd
-				if l.heredocSquig {
-					content := stripHeredocIndent(l.input[l.start:l.pos])
-					tok := token.NewToken(token.STRING, content, l.start)
-					l.lastToken = tok
-					l.tokens <- tok
-					l.start = l.pos
-				} else {
-					l.emit(token.STRING)
-				}
+				content := l.input[l.start:l.pos]
+				l.emitLiteral(token.STRING_CONTENT, content)
+				l.emitLiteral(token.STRING_END, "")
 				l.pos = after
 				// Consume rest of delimiter line (handles <<EOS.chop etc.)
 				for {
