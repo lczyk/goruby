@@ -10,7 +10,6 @@
 ast * internal/integrationtest/testdata/mri-tests/test_file_exhaustive.rb
 ast * internal/integrationtest/testdata/mri-tests/test_literal.rb
 ast * internal/integrationtest/testdata/mri-tests/test_pattern_matching.rb
-ast * internal/integrationtest/testdata/mri-tests/test_signal.rb
 ast * internal/integrationtest/testdata/mri-tests/test_syntax.rb
 src * internal/integrationtest/testdata/esolangs/a_semicolon.rb
 src * internal/integrationtest/testdata/esolangs/alarm_clock_radio.rb

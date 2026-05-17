@@ -1937,11 +1937,14 @@ func lexHeredocContent(l *Lexer) StateFn {
 					l.pos = lineStart
 					l.ignore()
 				}
-				// Consume rest of delimiter line.
-				for {
-					r := l.next()
-					if r == eof || r == '\n' {
-						break
+				// Consume rest of delimiter line (for non-empty delimiters,
+				// skip any trailing chars after the delimiter word).
+				if len(delim) > 0 {
+					for {
+						r := l.next()
+						if r == eof || r == '\n' {
+							break
+						}
 					}
 				}
 				l.ignore()
