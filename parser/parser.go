@@ -1348,7 +1348,10 @@ func (p *parser) parsePatternHashPair(pairs *ast.OrderedExprMap) {
 	}
 	// key => pattern or "string": pattern
 	p.inPattern = false
+	prevSuppressHR := p.suppressHashrocket
+	p.suppressHashrocket = true
 	key := p.parseExpression(precLowest)
+	p.suppressHashrocket = prevSuppressHR
 	p.inPattern = true
 	if _, isStr := key.(*ast.StringLiteral); isStr && p.peekTokenOneOf(token.COLON, token.SYMBEG) {
 		p.acceptOneOf(token.COLON, token.SYMBEG)
