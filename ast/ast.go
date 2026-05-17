@@ -981,7 +981,10 @@ func (s *SymbolLiteral) End() int { return s.Value.End() }
 
 // TokenLiteral returns the literal from token token.SYMBOL
 func (s *SymbolLiteral) TokenLiteral() string { return s.Token.Literal }
-func (s *SymbolLiteral) String() string       { return ":" + s.Value.String() }
+func (s *SymbolLiteral) String() string { return ":" + s.Value.String() }
+
+// LabelString returns the symbol in label form (without leading colon).
+func (s *SymbolLiteral) LabelString() string { return s.Value.String() }
 
 // ConditionalExpression represents an if expression within the AST
 type ConditionalExpression struct {
@@ -1202,8 +1205,7 @@ func (hl *HashLiteral) End() int { return hl.Rbrace.Pos }
 
 // TokenLiteral returns the literal of the token token.LBRACE
 func (hl *HashLiteral) TokenLiteral() string { return hl.Token.Literal }
-func (hl *HashLiteral) String() string {
-	var out bytes.Buffer
+func (hl *HashLiteral) hashElements() []string {
 	elements := []string{}
 	if hl.Map != nil {
 		for _, kv := range hl.Map.Entries() {
@@ -1218,17 +1220,65 @@ func (hl *HashLiteral) String() string {
 					elements = append(elements, kv.Key.String()+" => "+kv.Value.String())
 				}
 			} else {
-				elements = append(elements, kv.Key.String())
+				if sym, ok := kv.Key.(*SymbolLiteral); ok {
+					elements = append(elements, sym.LabelString()+":")
+				} else {
+					elements = append(elements, kv.Key.String())
+				}
 			}
 		}
 	}
 	for _, s := range hl.Splats {
 		elements = append(elements, "**"+s.String())
 	}
-	out.WriteString("{")
-	out.WriteString(strings.Join(elements, ", "))
-	out.WriteString("}")
-	return out.String()
+	return elements
+}
+
+func (hl *HashLiteral) String() string {
+	return "{" + strings.Join(hl.hashElements(), ", ") + "}"
+}
+
+// StringNoBraces returns the hash content without surrounding braces,
+// for use in pattern matching in-clauses where implicit hash is needed.
+// Uses label syntax (key: val) instead of hashrocket (key => val) for
+// symbol keys so the output re-parses as an implicit hash pattern.
+func (hl *HashLiteral) StringNoBraces() string {
+	elements := []string{}
+	if hl.Map != nil {
+		for _, kv := range hl.Map.Entries() {
+			if kv.Value != nil {
+				if sym, ok := kv.Key.(*SymbolLiteral); ok {
+					label := sym.LabelString()
+					if !strings.HasSuffix(label, ":") {
+						label += ":"
+					}
+					if kv.Omitted {
+						elements = append(elements, label)
+					} else {
+						elements = append(elements, label+" "+kv.Value.String())
+					}
+				} else if sl, ok := kv.Key.(*StringLiteral); ok && sl.HeredocTag == "" {
+					elements = append(elements, sl.String()+": "+kv.Value.String())
+				} else {
+					elements = append(elements, kv.Key.String()+" => "+kv.Value.String())
+				}
+			} else {
+				if sym, ok := kv.Key.(*SymbolLiteral); ok {
+					label := sym.LabelString()
+					if !strings.HasSuffix(label, ":") {
+						label += ":"
+					}
+					elements = append(elements, label)
+				} else {
+					elements = append(elements, kv.Key.String())
+				}
+			}
+		}
+	}
+	for _, s := range hl.Splats {
+		elements = append(elements, s.String())
+	}
+	return strings.Join(elements, ", ")
 }
 
 // A BlockCapture represents a function scoped variable capturing a block
