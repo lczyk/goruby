@@ -1828,8 +1828,11 @@ func (w *WhenClause) String() string {
 		out.WriteString(cond.String())
 	}
 	out.WriteString("\n")
-	out.WriteString(w.Body.String())
-	out.WriteString("\n")
+	body := w.Body.String()
+	if body != "" {
+		out.WriteString(body)
+		out.WriteString("\n")
+	}
 	return out.String()
 }
 func (w *WhenClause) expressionNode() {}
