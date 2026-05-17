@@ -3599,6 +3599,22 @@ func (p *parser) parseCallArgument(function ast.Expression) ast.Expression {
 	return exp
 }
 
+func (p *parser) concatStringPart(str *ast.StringLiteral, rstr *ast.StringLiteral) {
+	if len(rstr.Parts) > 0 {
+		if len(str.Parts) == 0 && str.Value != "" {
+			str.Parts = append(str.Parts, &ast.StringContent{Value: str.Value})
+			str.Value = ""
+		}
+		str.Parts = append(str.Parts, rstr.Parts...)
+	} else if rstr.Value != "" {
+		if len(str.Parts) > 0 {
+			str.Parts = append(str.Parts, &ast.StringContent{Value: rstr.Value})
+		} else {
+			str.Value += rstr.Value
+		}
+	}
+}
+
 func (p *parser) parseStringConcat(left ast.Expression) ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	str, ok := left.(*ast.StringLiteral)
@@ -3610,20 +3626,12 @@ func (p *parser) parseStringConcat(left ast.Expression) ast.Expression {
 	if !ok {
 		return left
 	}
-	if len(rstr.Parts) > 0 {
-		str.Parts = append(str.Parts, rstr.Parts...)
-	} else if rstr.Value != "" {
-		str.Parts = append(str.Parts, &ast.StringLiteral{Value: rstr.Value})
-	}
+	p.concatStringPart(str, rstr)
 	for p.peekTokenOneOf(token.STRING, token.STRING_BEG) {
 		p.nextToken()
 		next := p.parseExpression(precCallArg)
 		if ns, ok := next.(*ast.StringLiteral); ok {
-			if len(ns.Parts) > 0 {
-				str.Parts = append(str.Parts, ns.Parts...)
-			} else if ns.Value != "" {
-				str.Parts = append(str.Parts, &ast.StringLiteral{Value: ns.Value})
-			}
+			p.concatStringPart(str, ns)
 		}
 	}
 	return str
