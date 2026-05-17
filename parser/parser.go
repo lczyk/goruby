@@ -1710,6 +1710,15 @@ func (p *parser) parseAliasName() *ast.Identifier {
 	if p.currentTokenIs(token.GLOBAL) {
 		return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 	}
+	if p.currentTokenIs(token.LBRACKET) && p.peekTokenIs(token.RBRACKET) {
+		p.nextToken()
+		name := "[]"
+		if p.peekTokenIs(token.ASSIGN) {
+			name = "[]="
+			p.nextToken()
+		}
+		return &ast.Identifier{Token: p.curToken, Value: name}
+	}
 	if p.currentTokenIs(token.SYMBEG) {
 		sym := p.parseSymbolLiteral()
 		if sym != nil {
@@ -3785,6 +3794,9 @@ func (p *parser) parseImplicitHash(firstKey ast.Expression, end ...token.Type) a
 		if p.currentTokenOneOf(end...) {
 			return hash
 		}
+		if p.currentTokenOneOf(token.CAPTURE, token.AND) {
+			break
+		}
 		key := p.parseExpression(precAssignment)
 		if p.peekTokenIs(token.HASHROCKET) {
 			p.accept(token.HASHROCKET)
@@ -3831,14 +3843,26 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 	if p.peekTokenIs(token.HASHROCKET) {
 		hash := p.parseImplicitHash(next, end...)
 		list = append(list, hash)
+		if p.currentTokenOneOf(token.CAPTURE, token.AND) {
+			list = append(list, p.parseExpression(precComma))
+			if p.peekTokenOneOf(end...) { p.acceptOneOf(end...) }
+			return list
+		}
+		if p.peekTokenOneOf(end...) { p.acceptOneOf(end...) }
 		return list
-	}
-	if _, isStr := next.(*ast.StringLiteral); isStr && p.peekTokenOneOf(token.COLON, token.SYMBEG) {
+	} else if _, isStr := next.(*ast.StringLiteral); isStr && p.peekTokenOneOf(token.COLON, token.SYMBEG) {
 		hash := p.parseStringLabelHash(next, end...)
 		list = append(list, hash)
+		if p.currentTokenOneOf(token.CAPTURE, token.AND) {
+			list = append(list, p.parseExpression(precComma))
+			if p.peekTokenOneOf(end...) { p.acceptOneOf(end...) }
+			return list
+		}
+		if p.peekTokenOneOf(end...) { p.acceptOneOf(end...) }
 		return list
+	} else {
+		list = append(list, next)
 	}
-	list = append(list, next)
 
 	// Handle comma-separated elements with newlines between them.
 	for {
@@ -3878,11 +3902,23 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 		if p.peekTokenIs(token.HASHROCKET) {
 			hash := p.parseImplicitHash(next, end...)
 			list = append(list, hash)
+			if p.currentTokenOneOf(token.CAPTURE, token.AND) {
+				list = append(list, p.parseExpression(precComma))
+				if p.peekTokenOneOf(end...) { p.acceptOneOf(end...) }
+				return list
+			}
+			if p.peekTokenOneOf(end...) { p.acceptOneOf(end...) }
 			return list
 		}
 		if _, isStr := next.(*ast.StringLiteral); isStr && p.peekTokenOneOf(token.COLON, token.SYMBEG) {
 			hash := p.parseStringLabelHash(next, end...)
 			list = append(list, hash)
+			if p.currentTokenOneOf(token.CAPTURE, token.AND) {
+				list = append(list, p.parseExpression(precComma))
+				if p.peekTokenOneOf(end...) { p.acceptOneOf(end...) }
+				return list
+			}
+			if p.peekTokenOneOf(end...) { p.acceptOneOf(end...) }
 			return list
 		}
 		list = append(list, next)
