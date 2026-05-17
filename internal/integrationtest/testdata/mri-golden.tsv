@@ -504,6 +504,11 @@ internal/integrationtest/testdata/esolangs/spoon.rb	pass	pass	pass	pass	pass	pas
 internal/integrationtest/testdata/esolangs/subskin.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/esolangs/tick.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/esolangs/tomagotcha.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
+internal/integrationtest/testdata/ruby-extra/parser/adversarial/begin_block_semicolons.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
+internal/integrationtest/testdata/ruby-extra/parser/adversarial/heredoc_in_heredoc_interp.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
+internal/integrationtest/testdata/ruby-extra/parser/adversarial/heredoc_in_if_branch.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
+internal/integrationtest/testdata/ruby-extra/parser/adversarial/pattern_double_splat_nil.rb	fail	fail	fail	fail	fail	fail	pass	pass	pass	pass	pass	pass
+internal/integrationtest/testdata/ruby-extra/parser/adversarial/pattern_double_splat_rest.rb	fail	fail	fail	fail	fail	fail	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/ruby-extra/parser/assignment.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/ruby-extra/parser/blocks.rb	fail	fail	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/ruby-extra/parser/call.rb	fail	fail	fail	pass	pass	pass	pass	pass	pass	pass	pass	pass
