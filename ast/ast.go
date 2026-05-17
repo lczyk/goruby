@@ -770,7 +770,11 @@ func (sl *StringLiteral) String() string {
 		out.WriteString(open)
 		for _, p := range sl.Parts {
 			if sc, ok := p.(*StringContent); ok {
-				out.WriteString(sc.Value)
+				v := sc.Value
+				if open == "\"" && strings.Contains(v, "\"") && !strings.Contains(v, "\\\"") {
+					v = strings.ReplaceAll(v, "\"", "\\\"")
+				}
+				out.WriteString(v)
 			} else {
 				out.WriteString("#{")
 				out.WriteString(p.String())
@@ -1211,7 +1215,14 @@ func (fl *FunctionLiteral) String() string {
 	} else {
 		out.WriteString("def ")
 		if fl.Receiver != nil {
+			needsParens := fl.Receiver.Token.Type == token.RPAREN
+			if needsParens {
+				out.WriteString("(")
+			}
 			out.WriteString(fl.Receiver.String())
+			if needsParens {
+				out.WriteString(")")
+			}
 			out.WriteString(".")
 		}
 		out.WriteString(fl.Name.String())
