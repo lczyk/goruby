@@ -1911,15 +1911,19 @@ func lexHeredocContent(l *Lexer) StateFn {
 				}
 			}
 			matched := true
-			for i := 0; i < len(delim); i++ {
-				if r2 != rune(delim[i]) {
-					matched = false
-					break
-				}
-				if i < len(delim)-1 {
-					r2 = l.next()
-					if r2 == eof {
-						return l.errorf("unterminated heredoc")
+			if len(delim) == 0 {
+				matched = r2 == '\n' || r2 == eof
+			} else {
+				for i := 0; i < len(delim); i++ {
+					if r2 != rune(delim[i]) {
+						matched = false
+						break
+					}
+					if i < len(delim)-1 {
+						r2 = l.next()
+						if r2 == eof {
+							return l.errorf("unterminated heredoc")
+						}
 					}
 				}
 			}
