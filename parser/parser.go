@@ -1551,7 +1551,6 @@ func (p *parser) parseBeginBlock() ast.Expression {
 	if !p.accept(token.LBRACE) {
 		return nil
 	}
-	p.nextToken()
 	block.Body = p.parseBlockStatement(token.RBRACE)
 	p.nextToken() // consume }
 	return block
@@ -1563,7 +1562,6 @@ func (p *parser) parseEndBlock() ast.Expression {
 	if !p.accept(token.LBRACE) {
 		return nil
 	}
-	p.nextToken()
 	block.Body = p.parseBlockStatement(token.RBRACE)
 	p.nextToken() // consume }
 	return block
