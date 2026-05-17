@@ -7,7 +7,6 @@
 #     src = source text differs (but AST roundtrip may still pass)
 # - version-range: same as golden.skip (2.7, ..2.6, 3.0.., 2.0..2.6, *)
 # - path relative to repo root, single-* glob per segment
-ast * internal/integrationtest/testdata/mri-tests/test_file_exhaustive.rb
 ast * internal/integrationtest/testdata/mri-tests/test_literal.rb
 ast * internal/integrationtest/testdata/mri-tests/test_pattern_matching.rb
 ast * internal/integrationtest/testdata/mri-tests/test_syntax.rb

@@ -4033,15 +4033,39 @@ func splitWordList(s string) []string {
 	var words []string
 	var cur strings.Builder
 	escaping := false
+	inUnicodeBrace := false
 	for _, r := range s {
 		if escaping {
+			if !isSpace(r) {
+				cur.WriteByte('\\')
+			}
 			cur.WriteRune(r)
+			if r == 'u' {
+				// Check for \u{...} multi-codepoint escape; handled by
+				// looking for '{' as the NEXT character after 'u'. We set
+				// a flag here and check for '{' on the next iteration.
+			}
 			escaping = false
+			continue
+		}
+		if inUnicodeBrace {
+			cur.WriteRune(r)
+			if r == '}' {
+				inUnicodeBrace = false
+			}
 			continue
 		}
 		if r == '\\' {
 			escaping = true
 			continue
+		}
+		if r == '{' && cur.Len() >= 2 {
+			b := cur.String()
+			if b[len(b)-1] == 'u' && b[len(b)-2] == '\\' {
+				inUnicodeBrace = true
+				cur.WriteRune(r)
+				continue
+			}
 		}
 		if isSpace(r) {
 			if cur.Len() > 0 {
@@ -4051,6 +4075,9 @@ func splitWordList(s string) []string {
 			continue
 		}
 		cur.WriteRune(r)
+	}
+	if escaping {
+		cur.WriteByte('\\')
 	}
 	if cur.Len() > 0 {
 		words = append(words, cur.String())
