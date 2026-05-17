@@ -3468,8 +3468,11 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 		return contextCallExpression
 	}
 
-	// ** with whitespace after it is exponentiation, not keyword splat.
-	if p.peekTokenIs(token.POWER) && p.spacedOperator(p.peekToken, p.peek2Token) {
+	// Spaced binary operator after bare method call on the same line:
+	// a.b + c is infix, a.b +\n c is a call argument.
+	if p.peekToken.HadWhitespace && p.peekToken.Type.IsOperator() &&
+		!p.peek2TokenIs(token.NEWLINE) && !p.peek2TokenIs(token.EOF) &&
+		p.spacedOperator(p.peekToken, p.peek2Token) {
 		contextCallExpression.Arguments = []ast.Expression{}
 		return contextCallExpression
 	}
@@ -3532,7 +3535,9 @@ func (p *parser) parseContextCallExpression(context ast.Expression) ast.Expressi
 		return contextCallExpression
 	}
 
-	if p.peekTokenIs(token.POWER) && p.spacedOperator(p.peekToken, p.peek2Token) {
+	if p.peekToken.HadWhitespace && p.peekToken.Type.IsOperator() &&
+		!p.peek2TokenIs(token.NEWLINE) && !p.peek2TokenIs(token.EOF) &&
+		p.spacedOperator(p.peekToken, p.peek2Token) {
 		contextCallExpression.Arguments = []ast.Expression{}
 		return contextCallExpression
 	}
