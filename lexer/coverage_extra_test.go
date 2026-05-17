@@ -215,7 +215,7 @@ func TestLexerHeredocEdgeCases(t *testing.T) {
 			name:  "heredoc with trailer",
 			input: "<<EOS.chop\nbody\nEOS\n",
 			expected: []expTok{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<EOS"},
 				{token.STRING_CONTENT, "body\n"},
 				{token.STRING_END, ""},
 				{token.DOT, "."},
@@ -227,7 +227,7 @@ func TestLexerHeredocEdgeCases(t *testing.T) {
 			name:  "interpolating heredoc with #$var",
 			input: "<<EOS\nhello #$name\nEOS\n",
 			expected: []expTok{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<EOS"},
 				{token.STRING_CONTENT, "hello "},
 				{token.GLOBAL, "$name"},
 				{token.STRING_CONTENT, "\n"},
@@ -239,7 +239,7 @@ func TestLexerHeredocEdgeCases(t *testing.T) {
 			name:  "interpolating heredoc with #@var",
 			input: "<<EOS\nhello #@name\nEOS\n",
 			expected: []expTok{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<EOS"},
 				{token.STRING_CONTENT, "hello "},
 				{token.AT, "@"},
 				{token.IDENT, "name"},
@@ -252,7 +252,7 @@ func TestLexerHeredocEdgeCases(t *testing.T) {
 			name:  "backtick heredoc",
 			input: "<<`EOS`\ncmd\nEOS\n",
 			expected: []expTok{
-				{token.XSTR_BEG, ""},
+				{token.XSTR_BEG, "<<`EOS`"},
 				{token.XSTR_CONTENT, "cmd\n"},
 				{token.XSTR_END, ""},
 				{token.NEWLINE, "\n"},
@@ -262,7 +262,7 @@ func TestLexerHeredocEdgeCases(t *testing.T) {
 			name:  "squiggy interpolating heredoc",
 			input: "<<~EOS\n  body\n  EOS\n",
 			expected: []expTok{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<~EOS"},
 				{token.STRING_CONTENT, "body\n"},
 				{token.STRING_END, ""},
 				{token.NEWLINE, "\n"},
@@ -272,7 +272,7 @@ func TestLexerHeredocEdgeCases(t *testing.T) {
 			name:  "squiggy heredoc with blank lines",
 			input: "<<~EOS\n  line1\n\n  line2\n  EOS\n",
 			expected: []expTok{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<~EOS"},
 				{token.STRING_CONTENT, "line1\n\nline2\n"},
 				{token.STRING_END, ""},
 				{token.NEWLINE, "\n"},
@@ -282,7 +282,7 @@ func TestLexerHeredocEdgeCases(t *testing.T) {
 			name:  "heredoc with #{expr} in body",
 			input: "<<EOS\nhello #{name}\nEOS\n",
 			expected: []expTok{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<EOS"},
 				{token.STRING_CONTENT, "hello "},
 				{token.EMBEXPR_BEG, "#{"},
 				{token.IDENT, "name"},
@@ -296,7 +296,7 @@ func TestLexerHeredocEdgeCases(t *testing.T) {
 			name:  "heredoc empty body with trailer",
 			input: "<<EOS.chop\nEOS\n",
 			expected: []expTok{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<EOS"},
 				{token.STRING_CONTENT, ""},
 				{token.STRING_END, ""},
 				{token.DOT, "."},
@@ -308,7 +308,7 @@ func TestLexerHeredocEdgeCases(t *testing.T) {
 			name:  "quoted heredoc double-quote",
 			input: "<<\"EOS\"\nhello\nEOS\n",
 			expected: []expTok{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<\"EOS\""},
 				{token.STRING_CONTENT, "hello\n"},
 				{token.STRING_END, ""},
 				{token.NEWLINE, "\n"},
@@ -862,7 +862,7 @@ func TestLexerHeredocIndentedMatch(t *testing.T) {
 			name:  "<<- with mixed whitespace indent before delim",
 			input: "<<-EOS\n  body\n  \tEOS\n",
 			expected: []expTok{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<-EOS"},
 				{token.STRING_CONTENT, "  body\n"},
 				{token.STRING_END, ""},
 				{token.NEWLINE, "\n"},
@@ -872,7 +872,7 @@ func TestLexerHeredocIndentedMatch(t *testing.T) {
 			name:  "<<- with no indent on delim line",
 			input: "<<-EOS\nbody\nEOS\n",
 			expected: []expTok{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<-EOS"},
 				{token.STRING_CONTENT, "body\n"},
 				{token.STRING_END, ""},
 				{token.NEWLINE, "\n"},

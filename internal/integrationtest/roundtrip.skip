@@ -9,7 +9,6 @@
 # - path relative to repo root, single-* glob per segment
 ast * internal/integrationtest/testdata/gems/minitest/lib/minitest/assertions.rb
 ast * internal/integrationtest/testdata/gems/minitest/lib/minitest/benchmark.rb
-ast * internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_assertions.rb
 ast * internal/integrationtest/testdata/mri-tests/test_box.rb
 ast * internal/integrationtest/testdata/mri-tests/test_econv.rb
 ast * internal/integrationtest/testdata/mri-tests/test_file_exhaustive.rb
@@ -18,6 +17,7 @@ ast * internal/integrationtest/testdata/mri-tests/test_literal.rb
 ast * internal/integrationtest/testdata/mri-tests/test_optimization.rb
 ast * internal/integrationtest/testdata/mri-tests/test_pattern_matching.rb
 ast * internal/integrationtest/testdata/mri-tests/test_regexp.rb
+ast * internal/integrationtest/testdata/mri-tests/test_signal.rb
 ast * internal/integrationtest/testdata/mri-tests/test_require.rb
 ast * internal/integrationtest/testdata/mri-tests/test_syntax.rb
 ast * internal/integrationtest/testdata/mri-tests/test_thread.rb

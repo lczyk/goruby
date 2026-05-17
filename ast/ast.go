@@ -76,7 +76,50 @@ func (p *Program) String() string {
 			stmts[i] = s.String()
 		}
 	}
-	return strings.Join(stmts, "\n")
+	return relocateHeredocBodies(strings.Join(stmts, "\n"))
+}
+
+// relocateHeredocBodies moves NUL-delimited heredoc bodies from their
+// inline position to after the line that contains their tag. Heredoc
+// String() emits <<TAG\x00body\nDELIM\n\x00 inline; this function
+// extracts the \x00...\x00 segments and appends them after the
+// enclosing line's newline.
+func relocateHeredocBodies(s string) string {
+	if !strings.ContainsRune(s, '\x00') {
+		return s
+	}
+	var result strings.Builder
+	result.Grow(len(s))
+	var pending []string
+
+	i := 0
+	for i < len(s) {
+		if s[i] == '\x00' {
+			end := strings.IndexByte(s[i+1:], '\x00')
+			if end >= 0 {
+				pending = append(pending, s[i+1:i+1+end])
+				i = i + 1 + end + 1
+				continue
+			}
+		}
+		if s[i] == '\n' && len(pending) > 0 {
+			result.WriteByte('\n')
+			for _, body := range pending {
+				result.WriteString(body)
+			}
+			pending = pending[:0]
+		} else {
+			result.WriteByte(s[i])
+		}
+		i++
+	}
+	if len(pending) > 0 {
+		result.WriteByte('\n')
+		for _, body := range pending {
+			result.WriteString(body)
+		}
+	}
+	return result.String()
 }
 
 // TokenLiteral returns the literal of the first statement and empty string if
@@ -727,9 +770,10 @@ func (b *Boolean) String() string       { return fmt.Sprintf("%t", b.Value) }
 // Value holds the content and Parts is nil. For interpolated strings, Parts
 // holds StringContent and expression nodes.
 type StringLiteral struct {
-	Token token.Token  // STRING_BEG or STRING
-	Value string       // for non-interpolated strings
-	Parts []Expression // for interpolated strings
+	Token      token.Token  // STRING_BEG or STRING
+	Value      string       // for non-interpolated strings
+	Parts      []Expression // for interpolated strings
+	HeredocTag string       // e.g. "<<~EOS", "<<-'DOC'" -- empty for non-heredocs
 }
 
 func (sl *StringLiteral) expressionNode() {}
@@ -751,7 +795,44 @@ func (sl *StringLiteral) End() int {
 
 // TokenLiteral returns the literal from the string token
 func (sl *StringLiteral) TokenLiteral() string { return sl.Token.Literal }
+func heredocDelimFromTag(tag string) string {
+	s := tag[2:]
+	if len(s) > 0 && (s[0] == '~' || s[0] == '-') {
+		s = s[1:]
+	}
+	if len(s) >= 2 {
+		q := s[0]
+		if q == '\'' || q == '"' || q == '`' {
+			return s[1 : len(s)-1]
+		}
+	}
+	return s
+}
+
 func (sl *StringLiteral) String() string {
+	if sl.HeredocTag != "" {
+		delim := heredocDelimFromTag(sl.HeredocTag)
+		var out bytes.Buffer
+		out.WriteString(sl.HeredocTag)
+		out.WriteByte('\x00')
+		if sl.Parts != nil {
+			for _, p := range sl.Parts {
+				if sc, ok := p.(*StringContent); ok {
+					out.WriteString(sc.Value)
+				} else {
+					out.WriteString("#{")
+					out.WriteString(p.String())
+					out.WriteString("}")
+				}
+			}
+		} else {
+			out.WriteString(sl.Value)
+		}
+		out.WriteString(delim)
+		out.WriteByte('\n')
+		out.WriteByte('\x00')
+		return out.String()
+	}
 	var open, close string
 	switch sl.Token.Type {
 	case token.XSTR, token.XSTR_BEG:

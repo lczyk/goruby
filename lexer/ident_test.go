@@ -451,7 +451,7 @@ func TestLexerIdentifierInContexts(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<EOS"},
 				{token.STRING_CONTENT, "hello "},
 				{token.EMBEXPR_BEG, "#{"},
 				{token.IDENT, "name"},

@@ -214,7 +214,7 @@ func TestLexerEscapes(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<EOS"},
 				{token.STRING_CONTENT, "\\u{41}\n"},
 				{token.STRING_END, ""},
 				{token.NEWLINE, "\n"},

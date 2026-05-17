@@ -1985,6 +1985,9 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 	}
 
 	sl := &ast.StringLiteral{Token: begToken}
+	if strings.HasPrefix(begToken.Literal, "<<") {
+		sl.HeredocTag = begToken.Literal
+	}
 	// Optimisation: simple string without interpolation.
 	if len(parts) == 1 {
 		if sc, ok := parts[0].(*ast.StringContent); ok {

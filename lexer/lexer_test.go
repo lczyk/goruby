@@ -447,7 +447,7 @@ func TestLexerHeredoc(t *testing.T) {
 			}{
 				{token.IDENT, "x"},
 				{token.ASSIGN, "="},
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<EOS"},
 				{token.STRING_CONTENT, "content\n"},
 				{token.STRING_END, ""},
 				{token.DOT, "."},
@@ -475,7 +475,7 @@ func TestLexerHeredoc(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<-EOS"},
 				{token.STRING_CONTENT, "\tcontent\n"},
 				{token.STRING_END, ""},
 				{token.NEWLINE, "\n"},
@@ -491,7 +491,7 @@ func TestLexerHeredoc(t *testing.T) {
 			}{
 				{token.IDENT, "foo"},
 				{token.LPAREN, "("},
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<EOS"},
 				{token.STRING_CONTENT, "content\n"},
 				{token.STRING_END, ""},
 				{token.DOT, "."},
@@ -510,11 +510,11 @@ func TestLexerHeredoc(t *testing.T) {
 			}{
 				{token.IDENT, "foo"},
 				{token.LPAREN, "("},
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<A"},
 				{token.STRING_CONTENT, "body_a\n"},
 				{token.STRING_END, ""},
 				{token.COMMA, ","},
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<B"},
 				{token.STRING_CONTENT, "body_b\n"},
 				{token.STRING_END, ""},
 				{token.RPAREN, ")"},
@@ -531,15 +531,15 @@ func TestLexerHeredoc(t *testing.T) {
 			}{
 				{token.IDENT, "f"},
 				{token.LPAREN, "("},
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<A"},
 				{token.STRING_CONTENT, "aaa\n"},
 				{token.STRING_END, ""},
 				{token.COMMA, ","},
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<B"},
 				{token.STRING_CONTENT, "b_b\n"},
 				{token.STRING_END, ""},
 				{token.COMMA, ","},
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<C"},
 				{token.STRING_CONTENT, "ccc\n"},
 				{token.STRING_END, ""},
 				{token.RPAREN, ")"},
@@ -694,7 +694,7 @@ func TestLexerHeredocInterpolation(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<EOS"},
 				{token.STRING_CONTENT, "hello "},
 				{token.EMBEXPR_BEG, "#{"},
 				{token.IDENT, "name"},
@@ -710,7 +710,7 @@ func TestLexerHeredocInterpolation(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<EOS"},
 				{token.STRING_CONTENT, "hello "},
 				{token.GLOBAL, "$foo"},
 				{token.STRING_CONTENT, " world\n"},
@@ -724,7 +724,7 @@ func TestLexerHeredocInterpolation(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.XSTR_BEG, ""},
+				{token.XSTR_BEG, "<<`CMD`"},
 				{token.XSTR_CONTENT, "ls -la\n"},
 				{token.XSTR_END, ""},
 			},
@@ -736,7 +736,7 @@ func TestLexerHeredocInterpolation(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.XSTR_BEG, ""},
+				{token.XSTR_BEG, "<<`CMD`"},
 				{token.XSTR_CONTENT, "ls "},
 				{token.EMBEXPR_BEG, "#{"},
 				{token.IDENT, "path"},
@@ -752,7 +752,7 @@ func TestLexerHeredocInterpolation(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<~EOS"},
 				{token.STRING_CONTENT, "hello "},
 				{token.EMBEXPR_BEG, "#{"},
 				{token.IDENT, "name"},
@@ -768,7 +768,7 @@ func TestLexerHeredocInterpolation(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<~EOS"},
 				{token.STRING_CONTENT, "  a\nb\n  "},
 				{token.EMBEXPR_BEG, "#{"},
 				{token.IDENT, "x"},
@@ -784,7 +784,7 @@ func TestLexerHeredocInterpolation(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<EOS"},
 				{token.STRING_CONTENT, ""},
 				{token.STRING_END, ""},
 				{token.NEWLINE, "\n"},
@@ -797,7 +797,7 @@ func TestLexerHeredocInterpolation(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<~EOS"},
 				{token.STRING_CONTENT, "body\n"},
 				{token.STRING_END, ""},
 				{token.NEWLINE, "\n"},
@@ -812,7 +812,7 @@ func TestLexerHeredocInterpolation(t *testing.T) {
 			}{
 				{token.STRING_BEG, ""},
 				{token.EMBEXPR_BEG, "#{"},
-				{token.STRING_BEG, ""},
+				{token.STRING_BEG, "<<~A"},
 				{token.STRING_CONTENT, "\""},
 				{token.EMBEXPR_BEG, "#{"},
 				{token.IDENT, "x"},

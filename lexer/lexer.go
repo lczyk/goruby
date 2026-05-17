@@ -1557,6 +1557,24 @@ func lexBacktickContent(l *Lexer) StateFn {
 	}
 }
 
+func buildHeredocTag(indent, squig bool, quote rune, delim string) string {
+	var b strings.Builder
+	b.WriteString("<<")
+	if squig {
+		b.WriteByte('~')
+	} else if indent {
+		b.WriteByte('-')
+	}
+	if quote != 0 {
+		b.WriteRune(quote)
+	}
+	b.WriteString(delim)
+	if quote != 0 {
+		b.WriteRune(quote)
+	}
+	return b.String()
+}
+
 // lexHeredocStart reads the heredoc delimiter and transitions to body lexing.
 func lexHeredocStart(l *Lexer, indent, squig bool) StateFn {
 	l.heredocIndent = indent
@@ -1655,10 +1673,11 @@ foundEnd:
 		// Pre-strip indentation so the interp lexer sees normalised content.
 		stripSquigInterpBody(l)
 	}
+	tag := buildHeredocTag(l.heredocIndent, l.heredocSquig, l.heredocQuote, l.heredocDelim)
 	if l.heredocQuote == '`' {
-		l.emit(token.XSTR_BEG)
+		l.emitLiteral(token.XSTR_BEG, tag)
 	} else {
-		l.emit(token.STRING_BEG)
+		l.emitLiteral(token.STRING_BEG, tag)
 	}
 	return lexHeredocContent
 }
