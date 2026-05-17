@@ -848,6 +848,14 @@ func (sl *StringLiteral) String() string {
 		open, close = "\"", "\""
 	}
 	if sl.Parts != nil {
+		if open == "'" {
+			for _, p := range sl.Parts {
+				if _, ok := p.(*StringContent); !ok {
+					open, close = "\"", "\""
+					break
+				}
+			}
+		}
 		var out bytes.Buffer
 		out.WriteString(open)
 		for _, p := range sl.Parts {
