@@ -1813,8 +1813,8 @@ func TestConditionalExpression(t *testing.T) {
 			end`, "x", "<", "y", "x = Object(x)"},
 			{"x 3 if x < y", "x", "<", "y", "x(3)"},
 			{"x.add 3 if x < y", "x", "<", "y", "x.add(3)"},
-			{"yield 3 if x < y", "x", "<", "y", "yield 3"},
-			{"yield self if x < y", "x", "<", "y", "yield self"},
+			{"yield 3 if x < y", "x", "<", "y", "yield(3)"},
+			{"yield self if x < y", "x", "<", "y", "yield(self)"},
 			{`unless x < y
 			x
 			end`, "x", "<", "y", "x"},
@@ -1838,8 +1838,8 @@ func TestConditionalExpression(t *testing.T) {
 			{"@x = 3 unless x < y", "x", "<", "y", "@x = 3"},
 			{"x 3 unless x < y", "x", "<", "y", "x(3)"},
 			{"x.add 3 unless x < y", "x", "<", "y", "x.add(3)"},
-			{"yield 3 unless x < y", "x", "<", "y", "yield 3"},
-			{"yield self unless x < y", "x", "<", "y", "yield self"},
+			{"yield 3 unless x < y", "x", "<", "y", "yield(3)"},
+			{"yield self unless x < y", "x", "<", "y", "yield(self)"},
 		}
 
 		for _, tt := range tests {

@@ -957,10 +957,11 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 	}
 	expr := p.parseExpression(precLowest)
 	right, ok := expr.(*ast.ConditionalExpression)
-	if !ok || right.Token.Type == token.QMARK {
+	if !ok || right.Token.Type == token.QMARK || right.EndToken.Type == token.END {
 		assign.Right = expr
 		return assign
 	}
+	// Modifier if/unless: restructure `x = val if cond` into `if cond then x = val end`
 	expStmt, ok := right.Consequence.Statements[0].(*ast.ExpressionStatement)
 	if !ok {
 		assign.Right = expr

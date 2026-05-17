@@ -440,8 +440,9 @@ func (y *YieldExpression) String() string {
 		for _, a := range y.Arguments {
 			args = append(args, a.String())
 		}
-		out.WriteString(" ")
+		out.WriteString("(")
 		out.WriteString(strings.Join(args, ", "))
+		out.WriteString(")")
 	}
 	return out.String()
 }
@@ -1927,6 +1928,17 @@ func (pe *PrefixExpression) End() int { return pe.Right.End() }
 
 // TokenLiteral returns the literal from the prefix operator token
 func (pe *PrefixExpression) TokenLiteral() string { return pe.Token.Literal }
+func pinNeedsParens(right Expression) bool {
+	switch right.(type) {
+	case *Identifier, *InstanceVariable, *ClassVariable, *Global,
+		*IntegerLiteral, *FloatLiteral, *StringLiteral, *SymbolLiteral,
+		*Boolean, *Nil, *ParenExpression,
+		*InfixExpression, *PrefixExpression:
+		return false
+	}
+	return true
+}
+
 func (pe *PrefixExpression) String() string {
 	var out bytes.Buffer
 	if pe.Operator != "^" {
@@ -1937,7 +1949,14 @@ func (pe *PrefixExpression) String() string {
 		if pe.Operator == "not" || pe.Operator == "defined?" {
 			out.WriteString(" ")
 		}
+		needsParens := pe.Operator == "^" && pinNeedsParens(pe.Right)
+		if needsParens {
+			out.WriteString("(")
+		}
 		out.WriteString(pe.Right.String())
+		if needsParens {
+			out.WriteString(")")
+		}
 	}
 	if pe.Operator != "^" {
 		out.WriteString(")")
