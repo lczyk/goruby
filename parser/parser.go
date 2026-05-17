@@ -2316,6 +2316,15 @@ func (p *parser) parseBlock() ast.Expression {
 	}
 	if p.peekTokenIs(token.PIPE) {
 		block.Parameters = p.parseParameters(token.PIPE, token.PIPE)
+		if p.currentTokenOneOf(token.CAPTURE, token.AND) {
+			capture := p.parseBlockCapture()
+			if capture != nil {
+				block.CapturedBlock = capture.(*ast.BlockCapture)
+			}
+			if p.peekTokenIs(token.PIPE) {
+				p.accept(token.PIPE)
+			}
+		}
 		// Block-local variables: |params; locals|
 		if (p.peekTokenIs(token.SEMICOLON) || p.currentTokenIs(token.SEMICOLON)) && !p.currentTokenIs(token.PIPE) {
 			if p.peekTokenIs(token.SEMICOLON) {
@@ -2838,13 +2847,16 @@ parseParams:
 	lit.Parameters = p.parseParameters(token.LPAREN, token.RPAREN)
 
 	if p.currentTokenOneOf(token.CAPTURE, token.AND) {
-		// Anonymous block forwarding: & without name
+		bc := &ast.BlockCapture{Token: p.curToken}
 		if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.EOF, token.RPAREN) {
+			if !p.version.AtLeast(ruby31) {
+				p.versionError(ruby31, "anonymous block forwarding")
+			}
+			lit.CapturedBlock = bc
 			if p.peekTokenIs(token.RPAREN) {
 				p.accept(token.RPAREN)
 			}
 		} else {
-			bc := &ast.BlockCapture{Token: p.curToken}
 			if !p.acceptOneOf(token.IDENT, token.NIL) {
 				return nil
 			}
@@ -2976,9 +2988,6 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 		if p.peekTokenOneOf(token.CAPTURE, token.AND) {
 			p.acceptOneOf(token.CAPTURE, token.AND)
 			if p.peekTokenOneOf(token.COMMA, endToken, token.NEWLINE, token.SEMICOLON, token.EOF) {
-				if hasDelimiters && p.peekTokenIs(endToken) {
-					p.accept(endToken)
-				}
 				return identifiers
 			}
 			p.accept(token.IDENT)
@@ -3190,17 +3199,6 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 	}
 	if p.peekTokenOneOf(token.CAPTURE, token.AND) {
 		p.acceptOneOf(token.CAPTURE, token.AND)
-		// Anonymous block forwarding: def foo(&) -- ruby 3.1+
-		if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.NEWLINE, token.SEMICOLON, token.EOF) {
-			if !p.version.AtLeast(ruby31) {
-				p.versionError(ruby31, "anonymous block forwarding")
-			}
-			if hasDelimiters {
-				p.accept(endToken)
-			}
-			return identifiers
-		}
-		// Named block capture: let parseFunctionLiteral handle it
 		return identifiers
 	}
 	identifiers = append(identifiers, p.parseOneParameter(endToken)...)

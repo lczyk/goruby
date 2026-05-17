@@ -1234,7 +1234,15 @@ func (b *BlockCapture) literalNode()    {}
 func (b *BlockCapture) Pos() int { return b.Token.Pos }
 
 // End returns the position of the last character of Name
-func (b *BlockCapture) End() int { return b.Name.End() }
+func (b *BlockCapture) End() int {
+	if b.Expr != nil {
+		return b.Expr.End()
+	}
+	if b.Name != nil {
+		return b.Name.End()
+	}
+	return b.Token.Pos + 1
+}
 func (b *BlockCapture) String() string {
 	if b.Expr != nil {
 		return "&" + b.Expr.String()

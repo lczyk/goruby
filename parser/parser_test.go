@@ -4900,9 +4900,11 @@ func TestAnonymousBlockForwarding(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected *ast.FunctionLiteral, got %T", stmt.Expression)
 	}
-	// Anonymous block forwarding should have no captured block name
-	if fl.CapturedBlock != nil {
-		t.Errorf("expected nil CapturedBlock for anonymous &")
+	if fl.CapturedBlock == nil {
+		t.Fatalf("expected non-nil CapturedBlock for anonymous &")
+	}
+	if fl.CapturedBlock.Name != nil {
+		t.Errorf("expected nil Name for anonymous &, got %s", fl.CapturedBlock.Name.Value)
 	}
 }
 
