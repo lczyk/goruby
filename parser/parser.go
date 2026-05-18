@@ -4064,10 +4064,10 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 			break
 		}
 		p.consume(token.COMMA)
+		// Comma-as-continuation: skip newlines/semicolons after a comma
+		// so multi-line arg lists keep parsing -- NEWLINE / SEMICOLON
+		// may be end markers normally, but a trailing comma defeats them.
 		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
-			if p.currentTokenOneOf(end...) {
-				return list
-			}
 			p.nextToken()
 		}
 		if p.currentTokenOneOf(end...) {
