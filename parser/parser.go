@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/MarcinKonowalczyk/trace"
+	"github.com/lczyk/trace"
 	"github.com/lczyk/goruby/ast"
 	"github.com/lczyk/goruby/lexer"
 	"github.com/lczyk/goruby/token"

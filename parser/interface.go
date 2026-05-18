@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/MarcinKonowalczyk/trace"
-	"github.com/MarcinKonowalczyk/trace/printer"
+	"github.com/lczyk/trace"
+	"github.com/lczyk/trace/printer"
 	"github.com/lczyk/goruby/ast"
 	"github.com/lczyk/goruby/token"
 	"github.com/pkg/errors"
