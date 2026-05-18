@@ -2134,7 +2134,7 @@ func TestConditionalExpressionWithAlternative(t *testing.T) {
 		}{
 			"x < y ? x.foo : y;",
 			[3]string{"x", "<", "y"},
-			"x.foo()",
+			"x.foo",
 			"y",
 		}
 		program, err := parseSource(tt.input)
@@ -4179,8 +4179,8 @@ func TestParsingIndexExpressions(t *testing.T) {
 			}
 
 			index := indexExp.Index.String()
-			if index != "foo.bar()" {
-				t.Logf("Expected index arg to equal %s, got %s", "foo.bar()", index)
+			if index != "foo.bar" {
+				t.Logf("Expected index arg to equal %s, got %s", "foo.bar", index)
 				t.Fail()
 			}
 
@@ -4208,8 +4208,8 @@ func TestParsingIndexExpressions(t *testing.T) {
 			}
 
 			length := indexExp.Length.String()
-			if length != "foo.bar()" {
-				t.Logf("Expected length arg to equal %s, got %s", "foo.bar()", length)
+			if length != "foo.bar" {
+				t.Logf("Expected length arg to equal %s, got %s", "foo.bar", length)
 				t.Fail()
 			}
 		})

@@ -1670,7 +1670,7 @@ func (ce *ContextCallExpression) String() string {
 			args = append(args, a.String())
 		}
 	}
-	if len(args) > 0 || ce.Block == nil {
+	if len(args) > 0 {
 		out.WriteString("(")
 		out.WriteString(strings.Join(args, ", "))
 		out.WriteString(")")

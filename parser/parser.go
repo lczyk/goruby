@@ -2447,7 +2447,12 @@ func (p *parser) parseInfixExpression(left ast.Expression) ast.Expression {
 	}
 	// Many operators allow assignment on RHS: a && b = c -> a && (b = c)
 	// Also << (shovel/append), ternary patterns, etc.
-	if expression.Operator == "&&" || expression.Operator == "||" ||
+	// ||, or, and absorb assignment (|=, = etc.) on the right:
+	//   a || b = c  ->  a || (b = c)
+	//   a or b = c  ->  a or (b = c)
+	// && does NOT absorb || on the right:
+	//   a && b || c  ->  (a && b) || c
+	if expression.Operator == "||" ||
 		expression.Operator == "and" || expression.Operator == "or" ||
 		expression.Operator == "<<" {
 		precedence = precAssignment - 1
