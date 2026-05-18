@@ -272,8 +272,13 @@ func trimTrailingStarLine(line string) string {
 	}
 	nameStart := i + 1
 	// Must be preceded by `@ NODE_` (NODE_ is part of the name pattern, so
-	// nameStart points to `N` of `NODE_X`).
+	// nameStart points to `N` of `NODE_X`). The regex requires `NODE_[A-Z0-9_]+`
+	// -- at least one char AFTER `NODE_`, so the substring before `*` must be
+	// strictly longer than `NODE_`.
 	if !strings.HasPrefix(line[nameStart:], "NODE_") {
+		return line
+	}
+	if len(line)-1-nameStart <= len("NODE_") {
 		return line
 	}
 	// Need `@ ` immediately before nameStart.
@@ -373,14 +378,15 @@ func scanDigits(s string, i int) (int, bool) {
 }
 
 // scanParenPair advances past `(<no-rparen>)-(<no-rparen>)` starting at i.
-// Mirrors the `\([^)]+\)-\([^)]+\)` regex fragment.
+// Mirrors the `\([^)]+\)-\([^)]+\)` regex fragment. Each `[^)]+` requires
+// at least one non-`)` char, so empty `()` does NOT match.
 func scanParenPair(s string, i int) (int, bool) {
 	if i >= len(s) || s[i] != '(' {
 		return 0, false
 	}
 	i++
 	end := strings.IndexByte(s[i:], ')')
-	if end < 0 {
+	if end < 1 {
 		return 0, false
 	}
 	i += end + 1
@@ -393,7 +399,7 @@ func scanParenPair(s string, i int) (int, bool) {
 	}
 	i++
 	end = strings.IndexByte(s[i:], ')')
-	if end < 0 {
+	if end < 1 {
 		return 0, false
 	}
 	return i + end + 1, true
@@ -417,10 +423,17 @@ func stripSiblingIndex(s string) string {
 			break
 		}
 		j += i
-		// Scan field name: [a-z_]+
-		k := j + len(trigger)
+		// Scan field name: [a-z_]+ (require at least one char to match
+		// the regex `[a-z_]+` -- empty name means no match).
+		nameStart := j + len(trigger)
+		k := nameStart
 		for k < len(s) && ((s[k] >= 'a' && s[k] <= 'z') || s[k] == '_') {
 			k++
+		}
+		if k == nameStart {
+			b.WriteString(s[i : j+1])
+			i = j + 1
+			continue
 		}
 		// Expect " (<digits>):"
 		if !strings.HasPrefix(s[k:], " (") {
