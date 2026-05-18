@@ -122,6 +122,113 @@ func TestKeepsMultiChildBlock(t *testing.T) {
 	}
 }
 
+func TestMaskLineMagicPrismFormat(t *testing.T) {
+	src := "x = 1\n__LINE__\n"
+	dump := "@ NODE_LIT (location: (2,0)-(2,8))\n+- nd_lit: 2\n"
+	out := NormalizeWithSource(dump, src)
+	if !strings.Contains(out, "<__LINE__>") {
+		t.Errorf("Prism-format __LINE__ not masked:\n%s", out)
+	}
+}
+
+func TestMaskLineMagicPreIDFormat(t *testing.T) {
+	src := "x = 1\n__LINE__\n"
+	dump := "@ NODE_LIT (id: 5, line: 2, location: (2,0)-(2,8))\n+- nd_lit: 2\n"
+	out := NormalizeWithSource(dump, src)
+	if !strings.Contains(out, "<__LINE__>") {
+		t.Errorf("(id, line, location) format __LINE__ not masked:\n%s", out)
+	}
+}
+
+func TestMaskLineMagicNoNdLitFollows(t *testing.T) {
+	// NODE_LIT header but no nd_lit field within window -- bail out cleanly.
+	src := "__LINE__\n"
+	dump := "@ NODE_LIT (line: 1)\n" +
+		"# noise\n# noise\n# noise\n+- nd_lit: 1\n"
+	out := NormalizeWithSource(dump, src)
+	if strings.Contains(out, "<__LINE__>") {
+		t.Errorf("masked despite nd_lit beyond lookahead window:\n%s", out)
+	}
+}
+
+func TestUnwrapBlockWithNonHeadField(t *testing.T) {
+	// NODE_BLOCK with a non-nd_head child field -- don't unwrap, just keep.
+	in := "@ NODE_BLOCK\n" +
+		"+- nd_unexpected:\n" +
+		"    @ NODE_LIT\n"
+	out := Normalize(in)
+	if !strings.Contains(out, "NODE_BLOCK") {
+		t.Errorf("unexpected-field NODE_BLOCK wrongly unwrapped:\n%s", out)
+	}
+}
+
+func TestStripNullBeginLastSibling(t *testing.T) {
+	// NODE_BEGIN(null) as the LAST sibling (uses ` ` connector not `|`).
+	in := "@ NODE_BLOCK\n" +
+		"+- nd_head:\n" +
+		"|   @ NODE_LIT\n" +
+		"|   +- nd_lit: 1\n" +
+		"+- nd_head:\n" +
+		"    @ NODE_BEGIN\n" +
+		"    +- nd_body:\n" +
+		"        (null node)\n"
+	out := Normalize(in)
+	if strings.Contains(out, "NODE_BEGIN") {
+		t.Errorf("last-sibling NODE_BEGIN(null) not stripped:\n%s", out)
+	}
+}
+
+func TestLineMagicLinesEmptyShortcut(t *testing.T) {
+	if got := lineMagicLines("x = 1\nputs y\n"); got != nil {
+		t.Errorf("non-nil map for source w/out __LINE__: %v", got)
+	}
+}
+
+func FuzzNormalize(f *testing.F) {
+	f.Add("")
+	f.Add(sampleDump3x)
+	f.Add("@ NODE_BLOCK\n+- nd_head:\n|   @ NODE_BEGIN\n|   +- nd_body:\n|       (null node)\n")
+	f.Add("@ NODE_LIT (line: 5)\n+- nd_lit: 5\n")
+	f.Fuzz(func(t *testing.T, dump string) {
+		// Should never panic, and must be idempotent.
+		out1 := Normalize(dump)
+		out2 := Normalize(out1)
+		if out1 != out2 {
+			t.Fatalf("not idempotent:\n--- once ---\n%q\n--- twice ---\n%q", out1, out2)
+		}
+	})
+}
+
+func FuzzNormalizeWithSource(f *testing.F) {
+	f.Add("", "")
+	f.Add(sampleDump3x, "x = 1\n__LINE__\n")
+	f.Add("@ NODE_LIT (line: 1)\n+- nd_lit: 1\n", "__LINE__")
+	f.Fuzz(func(t *testing.T, dump, src string) {
+		out1 := NormalizeWithSource(dump, src)
+		out2 := NormalizeWithSource(out1, src)
+		if out1 != out2 {
+			t.Fatalf("not idempotent for src=%q\n--- once ---\n%q\n--- twice ---\n%q", src, out1, out2)
+		}
+	})
+}
+
+func BenchmarkNormalize(b *testing.B) {
+	in := strings.Repeat(sampleDump3x, 100)
+	b.ResetTimer()
+	for b.Loop() {
+		_ = Normalize(in)
+	}
+}
+
+func BenchmarkNormalizeWithSource(b *testing.B) {
+	in := strings.Repeat(sampleDump3x, 100)
+	src := strings.Repeat("__LINE__\n", 100)
+	b.ResetTimer()
+	for b.Loop() {
+		_ = NormalizeWithSource(in, src)
+	}
+}
+
 const sampleDump3x = `###########################################################
 ## Do NOT use this node dump for any purpose other than  ##
 ## debug and research.  Compatibility is not guaranteed. ##

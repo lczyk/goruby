@@ -25,7 +25,9 @@ var (
 	// Warning banner some MRIs prepend to --dump=parsetree output.
 	reHeader = regexp.MustCompile(`(?s)^#+\n## Do NOT.*?\n#+\n+`)
 	// Leading "# " on each line (1.9 through 3.2 wrap output in comments).
-	reLeadingHash = regexp.MustCompile(`(?m)^# ?`)
+	// `#+` (not `#`) keeps the strip idempotent on synthetic multi-hash
+	// inputs; real MRI output always emits a single `# `.
+	reLeadingHash = regexp.MustCompile(`(?m)^#+ ?`)
 	// Prism (3.4+) node header: "@ NodeName (location: (L,C)-(L,C))".
 	rePrismLocation = regexp.MustCompile(` \(location: \([^)]+\)-\([^)]+\)\)`)
 	// Pre-Prism (3.1/3.2) "(id: N, line: N, location: ...)" form.
@@ -76,6 +78,20 @@ func NormalizeWithSource(dump, src string) string {
 }
 
 func normalize(s string, magic map[int]bool) string {
+	// Fixed-point loop: individual passes are not all mutually idempotent
+	// when run once (e.g. unwrapSingleChildBlocks can expose new lines
+	// starting with `#` that reLeadingHash would then strip). Iterating
+	// guarantees Normalize . Normalize == Normalize on any input.
+	for {
+		next := normalizeOnce(s, magic)
+		if next == s {
+			return s
+		}
+		s = next
+	}
+}
+
+func normalizeOnce(s string, magic map[int]bool) string {
 	s = reHeader.ReplaceAllString(s, "")
 	s = reLeadingHash.ReplaceAllString(s, "")
 	// __LINE__ masking depends on (line: N) / (location: (L,C)-...) info
