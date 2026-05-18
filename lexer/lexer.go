@@ -288,8 +288,10 @@ func (l *Lexer) consumeEscape() {
 // peek returns but does not consume
 // the next rune in the input.
 func (l *Lexer) peek() rune {
+	w := l.width
 	r := l.next()
 	l.backup()
+	l.width = w
 	return r
 }
 
@@ -309,10 +311,14 @@ func (l *Lexer) peekPastWhitespace() rune {
 
 // peekSecond returns the rune after the next rune, without consuming.
 func (l *Lexer) peekSecond() rune {
+	w := l.width
 	l.next()
+	w1 := l.width
 	r := l.next()
 	l.backup()
+	l.width = w1
 	l.backup()
+	l.width = w
 	return r
 }
 
@@ -884,9 +890,17 @@ func lexDigit(l *Lexer) StateFn {
 				l.next() // consume +/-
 				return lexFloatExponent(l)
 			}
+			// Dangling e[+-]: swallow into the int token (MRI behavior).
+			l.next() // consume +/-
+			l.emit(token.INT)
+			return startLexer
 		} else if isDigit(p) {
 			l.next() // consume e/E
 			return lexFloatExponent(l)
+		} else if p == eof {
+			// Dangling e at EOF: swallow into int token (MRI behavior).
+			l.emit(token.INT)
+			return startLexer
 		}
 	}
 	// Rational or complex suffix (Ruby 2.1+).
@@ -920,9 +934,18 @@ func lexFloatFraction(l *Lexer) StateFn {
 				l.next()
 				return lexFloatExponent(l)
 			}
+			// Dangling e+: swallow into float token (MRI behavior).
+			l.next()
+			l.emit(token.FLOAT)
+			return startLexer
 		} else if isDigit(p) {
 			l.next()
 			return lexFloatExponent(l)
+		}
+		if p == eof {
+			// Dangling e at EOF: swallow into float token.
+			l.emit(token.FLOAT)
+			return startLexer
 		}
 	}
 	// Optional rational/complex suffix (Ruby 2.1+).

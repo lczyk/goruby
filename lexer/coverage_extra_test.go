@@ -775,9 +775,7 @@ func TestLexerDigitExponentEdgeCases(t *testing.T) {
 			name:  "0e+x not exponent",
 			input: "0e+x",
 			expected: []expTok{
-				{token.INT, "0"},
-				{token.IDENT, "e"},
-				{token.PLUS, "+"},
+				{token.INT, "0e+"},
 				{token.IDENT, "x"},
 			},
 		},
