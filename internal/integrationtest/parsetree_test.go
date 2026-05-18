@@ -187,7 +187,100 @@ func normalizeParsetree(s string) string {
 	s = rePrismSourceFile.ReplaceAllString(s, "")
 	s = reNdLitTempPath.ReplaceAllString(s, "")
 	s = stripNullBeginChildren(s)
+	s = unwrapSingleChildBlocks(s)
 	return s
+}
+
+// unwrapSingleChildBlocks collapses NODE_BLOCK nodes containing exactly one
+// nd_head child into that child directly. A NODE_BLOCK is a statement
+// sequence; a 1-element sequence evaluates identically to its element, so
+// the wrap carries no observable behaviour. Often arises after
+// stripNullBeginChildren removes the NODE_BEGIN(null) placeholder, leaving
+// a NODE_BLOCK with a single remaining nd_head.
+//
+// A NODE_BLOCK with multiple nd_head children is NOT unwrapped -- multiple
+// statements need the explicit sequence node.
+func unwrapSingleChildBlocks(s string) string {
+	for {
+		next, changed := unwrapOneBlock(s)
+		if !changed {
+			return next
+		}
+		s = next
+	}
+}
+
+func unwrapOneBlock(s string) (string, bool) {
+	lines := strings.Split(s, "\n")
+	for i, l := range lines {
+		// Locate a NODE_BLOCK header: `<P>{|| }   @ NODE_BLOCK` where
+		// `<P>{|| }   ` ends with the indent that places `@` directly under
+		// its parent's `+- nd_body:` (or similar). Just match `@ NODE_BLOCK`
+		// at any indent and inspect the region below.
+		idx := strings.Index(l, "@ NODE_BLOCK")
+		if idx < 0 || l[idx:] != "@ NODE_BLOCK" {
+			continue
+		}
+		// Region extends while subsequent lines are indented past `idx-4`
+		// (children sit one level deeper: `+-` at column idx, descendants
+		// at column idx+4 via `|   ` / `    `).
+		childCol := idx // children's `+-` aligns with the `@` column
+		end := i + 1
+		var childStarts []int
+		for end < len(lines) {
+			ln := lines[end]
+			if len(ln) <= childCol || !strings.HasPrefix(ln[childCol:], "+- ") {
+				// could be a deeper line (descendant of a child) -- keep going
+				if len(ln) > childCol && (ln[childCol] == '|' || ln[childCol] == ' ') {
+					end++
+					continue
+				}
+				break
+			}
+			// direct child of NODE_BLOCK
+			tail := ln[childCol:]
+			if !strings.HasPrefix(tail, "+- nd_head:") &&
+				!strings.HasPrefix(tail, "+- nd_head ") {
+				// non-nd_head field (shouldn't happen on NODE_BLOCK, but
+				// don't unwrap if unexpected fields present)
+				return s, false
+			}
+			childStarts = append(childStarts, end)
+			end++
+		}
+		if len(childStarts) != 1 {
+			continue
+		}
+		// Single child found. The child subtree starts at childStarts[0]+1
+		// (line after `+- nd_head:`) and is indented `childCol+4` columns
+		// in. Replace the NODE_BLOCK header + `+- nd_head:` line with the
+		// child subtree dedented by 4 cols.
+		childRegionStart := childStarts[0] + 1
+		childRegionEnd := end
+		// The first line of the child uses `    ` (last child of nd_head),
+		// so dedent by stripping the leading 4 cols starting at childCol.
+		// Replacement: skip NODE_BLOCK header line (i), skip nd_head line
+		// (childStarts[0]), dedent child lines, keep rest.
+		var dedented []string
+		for j := childRegionStart; j < childRegionEnd; j++ {
+			ln := lines[j]
+			if len(ln) <= childCol+4 {
+				dedented = append(dedented, ln)
+				continue
+			}
+			// Replace `<prefix><4-cols>` with `<prefix>` where prefix is
+			// everything before childCol. The 4 cols at [childCol:childCol+4]
+			// were `|   ` (child's connector to grandchild) or `    `
+			// (gap inside last-child region). Drop them.
+			dedented = append(dedented, ln[:childCol]+ln[childCol+4:])
+		}
+		out := make([]string, 0, len(lines)-2)
+		out = append(out, lines[:i]...)
+		out = append(out, dedented...)
+		out = append(out, lines[end:]...)
+		return strings.Join(out, "\n"), true
+	}
+	return s, false
 }
 
 // stripNullBeginChildren removes "nd_head:" entries that point to a
