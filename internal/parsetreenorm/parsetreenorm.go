@@ -12,7 +12,6 @@ package parsetreenorm
 
 import (
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -97,6 +96,9 @@ func normalizeOnce(s string, magic map[int]bool) (string, bool) {
 	if len(magic) > 0 {
 		s = maskLineMagic(s, magic)
 	}
+	// Outer gates are cheap SIMD-accelerated `strings.Contains` calls.
+	// Skipping the helper's function-call + internal Contains is faster
+	// than entering a no-op helper, especially on the idempotent path.
 	if strings.Contains(s, "(location: ") {
 		s = stripPrismLocation(s)
 	}
@@ -171,15 +173,14 @@ func stripLeadingHash(s string) string {
 				i++
 			}
 		}
-		// Copy through to and including next newline.
-		for i < len(s) && s[i] != '\n' {
-			b.WriteByte(s[i])
-			i++
+		// Copy through to and including next newline as one chunk.
+		nl := strings.IndexByte(s[i:], '\n')
+		if nl < 0 {
+			b.WriteString(s[i:])
+			break
 		}
-		if i < len(s) {
-			b.WriteByte('\n')
-			i++
-		}
+		b.WriteString(s[i : i+nl+1])
+		i += nl + 1
 	}
 	return b.String()
 }
@@ -227,10 +228,19 @@ func stripTrailingStars(s string) string {
 // hasTrailingStar reports whether s contains a `*` immediately followed by
 // `\n` or at end-of-input -- the only positions stripTrailingStars touches.
 func hasTrailingStar(s string) bool {
-	for i := 0; i < len(s); i++ {
-		if s[i] == '*' && (i+1 == len(s) || s[i+1] == '\n') {
+	// Jump from `*` to `*` via IndexByte (SIMD-accelerated) instead of
+	// scanning every byte. Cheap reject path for inputs lacking `*`.
+	i := 0
+	for i < len(s) {
+		j := strings.IndexByte(s[i:], '*')
+		if j < 0 {
+			return false
+		}
+		j += i
+		if j+1 == len(s) || s[j+1] == '\n' {
 			return true
 		}
+		i = j + 1
 	}
 	return false
 }
@@ -725,73 +735,159 @@ func lineMagicLines(src string) map[int]bool {
 	return out
 }
 
-// reNodeLitHeader extracts the source line from a NODE_LIT header, across
-// all known MRI dump formats. Group 1 (pre-Prism `line: N`) or group 2
-// (Prism `location: (L,...`) holds the line number.
-var reNodeLitHeader = regexp.MustCompile(`@ NODE_LIT\b[^\n]*?(?:line: (\d+)|location: \((\d+),)`)
-
-// reNdLitInt matches a `+- nd_lit: <int>` value line. Captures the int.
-var reNdLitInt = regexp.MustCompile(`^(.*\+- nd_lit: )(\d+)$`)
-
 // maskLineMagic walks the dump and replaces nd_lit integer values that
 // look like __LINE__ evaluations with a placeholder. A NODE_LIT at source
 // line N whose nd_lit value is N is treated as `__LINE__` iff line N in
 // src contains `__LINE__`.
 func maskLineMagic(dump string, magic map[int]bool) string {
-	// Cheap gate: pattern requires `NODE_LIT` somewhere. Avoid the
-	// Split+regex-per-line cost when no such node is present.
-	if !strings.Contains(dump, "NODE_LIT") {
+	// Gate: pattern requires `@ NODE_LIT` somewhere.
+	if !strings.Contains(dump, "@ NODE_LIT") {
 		return dump
 	}
-	lines := strings.Split(dump, "\n")
-	changed := false
-	for i, l := range lines {
-		// Per-line gate: skip the regex unless the line at least contains
-		// the header marker. Most lines don't and the regex is hot.
-		if !strings.Contains(l, "NODE_LIT") {
-			continue
-		}
-		m := reNodeLitHeader.FindStringSubmatch(l)
-		if m == nil {
-			continue
-		}
-		var nodeLine int
-		for _, g := range m[1:] {
-			if g != "" {
-				n, err := strconv.Atoi(g)
-				if err != nil {
-					continue
-				}
-				nodeLine = n
-				break
-			}
-		}
-		if nodeLine == 0 || !magic[nodeLine] {
-			continue
-		}
-		// Find the next `+- nd_lit: <int>` line owned by this NODE_LIT.
-		// NODE_LIT has only nd_lit as its content field, so the immediate
-		// next non-empty line carrying `+- nd_lit:` is ours.
-		for j := i + 1; j < len(lines) && j < i+4; j++ {
-			mm := reNdLitInt.FindStringSubmatch(lines[j])
-			if mm == nil {
-				continue
-			}
-			v, err := strconv.Atoi(mm[2])
-			if err != nil {
-				break
-			}
-			if v == nodeLine {
-				lines[j] = mm[1] + "<__LINE__>"
-				changed = true
-			}
+	const tag = "@ NODE_LIT"
+	var b strings.Builder
+	// Output is dump verbatim with at most a few short edits per match,
+	// so initial capacity = len(dump) is a safe upper bound.
+	written := 0
+	for pos := 0; pos < len(dump); {
+		// Find the next NODE_LIT header.
+		off := strings.Index(dump[pos:], tag)
+		if off < 0 {
 			break
 		}
+		hdrStart := pos + off
+		// Header occupies dump[hdrStart:hdrEnd]. Find end-of-line.
+		nl := strings.IndexByte(dump[hdrStart:], '\n')
+		var hdrEnd int
+		if nl < 0 {
+			hdrEnd = len(dump)
+		} else {
+			hdrEnd = hdrStart + nl
+		}
+		nodeLine, ok := parseNodeLitLineNo(dump[hdrStart:hdrEnd])
+		if !ok || !magic[nodeLine] {
+			pos = hdrEnd
+			continue
+		}
+		// Scan up to ~3 following lines for `+- nd_lit: <int>`.
+		litLineStart := hdrEnd
+		if nl >= 0 {
+			litLineStart++
+		}
+		litValueStart, litValueEnd, found := findNdLitInt(dump, litLineStart, 3)
+		if !found {
+			pos = hdrEnd
+			continue
+		}
+		v, vok := atoiBytes(dump[litValueStart:litValueEnd])
+		if !vok || v != nodeLine {
+			pos = hdrEnd
+			continue
+		}
+		// Match. Copy dump[written:litValueStart], emit placeholder,
+		// resume at litValueEnd.
+		if b.Cap() == 0 {
+			b.Grow(len(dump))
+		}
+		b.WriteString(dump[written:litValueStart])
+		b.WriteString("<__LINE__>")
+		written = litValueEnd
+		pos = litValueEnd
 	}
-	if !changed {
+	if written == 0 {
 		return dump
 	}
-	return strings.Join(lines, "\n")
+	b.WriteString(dump[written:])
+	return b.String()
+}
+
+// parseNodeLitLineNo extracts the source line number from a NODE_LIT
+// header line. Mirrors the regex
+// `@ NODE_LIT\b[^\n]*?(?:line: (\d+)|location: \((\d+),)`. Returns the
+// line number (group 1 or group 2) and ok.
+func parseNodeLitLineNo(line string) (int, bool) {
+	// Find earliest of `line: ` or `location: (`. Both are extracted.
+	a := strings.Index(line, "line: ")
+	bIdx := strings.Index(line, "location: (")
+	// Pick whichever comes first AND is present.
+	if a < 0 && bIdx < 0 {
+		return 0, false
+	}
+	if a >= 0 && (bIdx < 0 || a < bIdx) {
+		// `line: <digits>`
+		start := a + len("line: ")
+		end, ok := scanDigits(line, start)
+		if !ok {
+			return 0, false
+		}
+		return atoiBytes(line[start:end])
+	}
+	// `location: (<digits>,...`
+	start := bIdx + len("location: (")
+	end, ok := scanDigits(line, start)
+	if !ok || end >= len(line) || line[end] != ',' {
+		return 0, false
+	}
+	return atoiBytes(line[start:end])
+}
+
+// findNdLitInt scans up to maxLines lines starting at start, looking for
+// a line matching `^.*\+- nd_lit: <digits>$`. Returns the byte offsets of
+// the digit run and true on success.
+func findNdLitInt(s string, start, maxLines int) (int, int, bool) {
+	const tag = "+- nd_lit: "
+	pos := start
+	for k := 0; k < maxLines && pos < len(s); k++ {
+		nl := strings.IndexByte(s[pos:], '\n')
+		var lineEnd int
+		if nl < 0 {
+			lineEnd = len(s)
+		} else {
+			lineEnd = pos + nl
+		}
+		line := s[pos:lineEnd]
+		// `^.*\+- nd_lit: \d+$` -- find rightmost tag occurrence whose
+		// suffix is all digits to end-of-line. With greedy `.*`, rightmost
+		// preferred but earlier positions are valid fallbacks.
+		from := len(line)
+		for {
+			rel := strings.LastIndex(line[:from], tag)
+			if rel < 0 {
+				break
+			}
+			digitStart := pos + rel + len(tag)
+			digitEnd, ok := scanDigits(s, digitStart)
+			if ok && digitEnd == lineEnd {
+				return digitStart, digitEnd, true
+			}
+			from = rel
+			if from == 0 {
+				break
+			}
+		}
+		if nl < 0 {
+			return 0, 0, false
+		}
+		pos = lineEnd + 1
+	}
+	return 0, 0, false
+}
+
+// atoiBytes parses a decimal int from an all-digit substring. Faster than
+// strconv.Atoi for tiny inputs because it skips the sign/prefix machinery.
+func atoiBytes(s string) (int, bool) {
+	if len(s) == 0 {
+		return 0, false
+	}
+	n := 0
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c < '0' || c > '9' {
+			return 0, false
+		}
+		n = n*10 + int(c-'0')
+	}
+	return n, true
 }
 
 // stripNullBeginChildren removes nd_head entries pointing to a NODE_BEGIN
@@ -808,18 +904,83 @@ func maskLineMagic(dump string, magic map[int]bool) string {
 //	<prefix>{|| }   +- nd_body:
 //	<prefix>{|| }       (null node)
 func stripNullBeginChildren(s string) string {
-	lines := strings.Split(s, "\n")
-	out := make([]string, 0, len(lines))
-	for i := 0; i < len(lines); i++ {
-		if i+3 < len(lines) {
-			if nullBeginMatch(lines[i], lines[i+1], lines[i+2], lines[i+3]) {
-				i += 3 // skip all 4 lines
-				continue
-			}
-		}
-		out = append(out, lines[i])
+	// Pattern needs both NODE_BEGIN and (null node) to appear -- cheap
+	// double-gate before any per-line work.
+	if !strings.Contains(s, "(null node)") {
+		return s
 	}
-	return strings.Join(out, "\n")
+	var b strings.Builder
+	// Walk line-by-line via IndexByte. No []string materialization.
+	written := 0
+	pos := 0
+	for pos < len(s) {
+		l1Start := pos
+		nl := strings.IndexByte(s[pos:], '\n')
+		var l1End int
+		if nl < 0 {
+			l1End = len(s)
+			pos = len(s)
+		} else {
+			l1End = pos + nl
+			pos = l1End + 1
+		}
+		// Need full 4-line pattern: peek the next 3 line ends.
+		l2End, l3End, l4End, ok := peekThreeLineEnds(s, pos)
+		if !ok {
+			continue
+		}
+		if !nullBeginMatch(s[l1Start:l1End], s[pos:l2End],
+			s[l2End+1:l3End], s[l3End+1:l4End]) {
+			continue
+		}
+		// Match: drop lines 1-4 inclusive of line 4's trailing newline.
+		if b.Cap() == 0 {
+			b.Grow(len(s))
+		}
+		b.WriteString(s[written:l1Start])
+		if l4End < len(s) {
+			written = l4End + 1
+		} else {
+			written = l4End
+		}
+		pos = written
+	}
+	if written == 0 {
+		return s
+	}
+	b.WriteString(s[written:])
+	return b.String()
+}
+
+// peekThreeLineEnds finds the end-of-line offsets for the next 3 lines
+// starting at start. Returns (end of line 1, end of line 2, end of line 3,
+// ok). All three lines must have terminating newlines.
+func peekThreeLineEnds(s string, start int) (int, int, int, bool) {
+	if start >= len(s) {
+		return 0, 0, 0, false
+	}
+	n1 := strings.IndexByte(s[start:], '\n')
+	if n1 < 0 {
+		return 0, 0, 0, false
+	}
+	e1 := start + n1
+	if e1+1 >= len(s) {
+		return 0, 0, 0, false
+	}
+	n2 := strings.IndexByte(s[e1+1:], '\n')
+	if n2 < 0 {
+		return 0, 0, 0, false
+	}
+	e2 := e1 + 1 + n2
+	if e2+1 >= len(s) {
+		return 0, 0, 0, false
+	}
+	n3 := strings.IndexByte(s[e2+1:], '\n')
+	if n3 < 0 {
+		return 0, 0, 0, false
+	}
+	e3 := e2 + 1 + n3
+	return e1, e2, e3, true
 }
 
 func nullBeginMatch(l1, l2, l3, l4 string) bool {
