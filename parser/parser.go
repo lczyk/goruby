@@ -4282,9 +4282,20 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 			return
 		}
 		var elem ast.Expression
-		if len(curWord) == 1 {
-			elem = curWord[0]
-		} else {
+		switch {
+		case len(curWord) == 1:
+			// Single-part word. If it's already a string-shaped literal,
+			// use as-is; if it's a bare interpolation expression (no
+			// surrounding text), wrap so it prints as `"#{x}"` rather than
+			// `x`. The wrap preserves MRI semantics: %W"#{x}" produces a
+			// DSTR (string with implicit to_s on the interp), not a bare
+			// reference to x.
+			if _, isStr := curWord[0].(*ast.StringLiteral); isStr || isSymbol {
+				elem = curWord[0]
+			} else {
+				elem = &ast.StringLiteral{Token: beg, Parts: curWord}
+			}
+		default:
 			elem = &ast.StringLiteral{Token: beg, Parts: curWord}
 		}
 		elements = append(elements, elem)
