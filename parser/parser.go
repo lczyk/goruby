@@ -3940,7 +3940,7 @@ func (p *parser) parseCallArguments(end ...token.Type) []ast.Expression {
 }
 
 func (p *parser) parseImplicitHash(firstKey ast.Expression, end ...token.Type) ast.Expression {
-	hash := &ast.HashLiteral{Token: p.curToken, Map: ast.NewOrderedExprMap()}
+	hash := &ast.HashLiteral{Token: p.curToken, Map: ast.NewOrderedExprMap(), Implicit: true}
 	p.accept(token.HASHROCKET)
 	p.nextToken()
 	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
@@ -4123,7 +4123,7 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 }
 
 func (p *parser) parseStringLabelHash(firstKey ast.Expression, end ...token.Type) ast.Expression {
-	hash := &ast.HashLiteral{Token: p.curToken, Map: ast.NewOrderedExprMap()}
+	hash := &ast.HashLiteral{Token: p.curToken, Map: ast.NewOrderedExprMap(), Implicit: true}
 	p.acceptOneOf(token.COLON, token.SYMBEG)
 	key := &ast.SymbolLiteral{Token: p.curToken, Value: firstKey.(*ast.StringLiteral)}
 	if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.RBRACE, token.NEWLINE) {

@@ -1287,10 +1287,11 @@ func (al *ArrayLiteral) String() string {
 
 // HashLiteral represents an Hash literal within the AST
 type HashLiteral struct {
-	Token  token.Token // the '{'
-	Rbrace token.Token // the '}'
-	Map    *OrderedExprMap
-	Splats []Expression // **expr keyword-splat entries
+	Token    token.Token // the '{'
+	Rbrace   token.Token // the '}'
+	Map      *OrderedExprMap
+	Splats   []Expression // **expr keyword-splat entries
+	Implicit bool         // true for implicit hash arg (no braces in source)
 }
 
 func (hl *HashLiteral) expressionNode() {}
@@ -1346,6 +1347,9 @@ func doubleSplatPatternKey(pe *PrefixExpression) string {
 }
 
 func (hl *HashLiteral) String() string {
+	if hl.Implicit {
+		return strings.Join(hl.hashElements(), ", ")
+	}
 	return "{" + strings.Join(hl.hashElements(), ", ") + "}"
 }
 
