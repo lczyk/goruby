@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/lczyk/assert"
 	"github.com/lczyk/goruby/token"
 )
 
@@ -36,9 +37,7 @@ type goldenRow struct {
 func loadGoldenTSV(t *testing.T) (versions []string, rows []goldenRow) {
 	t.Helper()
 	f, err := os.Open(goldenTSV)
-	if err != nil {
-		t.Fatalf("open %s: %v", goldenTSV, err)
-	}
+	assert.NoError(t, err, "open %s", goldenTSV)
 	defer f.Close()
 
 	sc := bufio.NewScanner(f)
@@ -65,9 +64,7 @@ func loadGoldenTSV(t *testing.T) (versions []string, rows []goldenRow) {
 		}
 		rows = append(rows, row)
 	}
-	if err := sc.Err(); err != nil {
-		t.Fatalf("read %s: %v", goldenTSV, err)
-	}
+	assert.NoError(t, sc.Err(), "read %s", goldenTSV)
 	if len(versions) == 0 {
 		t.Fatalf("no version header in %s", goldenTSV)
 	}
@@ -201,16 +198,12 @@ func (sl *goldenSkipList) match(phase, relpath string, ver token.RubyVersion) *g
 func TestMRIGoldenLex(t *testing.T) {
 	versions, rows := loadGoldenTSV(t)
 	goldenSkips, err := loadGoldenSkips(goldenSkipFile, "lex", "parse")
-	if err != nil {
-		t.Fatalf("load %s: %v", goldenSkipFile, err)
-	}
+	assert.NoError(t, err, "load %s", goldenSkipFile)
 
 	for _, row := range rows {
 		localPath := strings.TrimPrefix(row.file, goldenPrefix)
 		src, err := os.ReadFile(localPath)
-		if err != nil {
-			t.Fatalf("read %s: %v", localPath, err)
-		}
+		assert.NoError(t, err, "read %s", localPath)
 
 		for _, verStr := range versions {
 			mriPass := row.results[verStr]
@@ -243,16 +236,12 @@ func TestMRIGoldenLex(t *testing.T) {
 func TestMRIGoldenParse(t *testing.T) {
 	versions, rows := loadGoldenTSV(t)
 	goldenSkips, err := loadGoldenSkips(goldenSkipFile, "lex", "parse")
-	if err != nil {
-		t.Fatalf("load %s: %v", goldenSkipFile, err)
-	}
+	assert.NoError(t, err, "load %s", goldenSkipFile)
 
 	for _, row := range rows {
 		localPath := strings.TrimPrefix(row.file, goldenPrefix)
 		src, err := os.ReadFile(localPath)
-		if err != nil {
-			t.Fatalf("read %s: %v", localPath, err)
-		}
+		assert.NoError(t, err, "read %s", localPath)
 
 		for _, verStr := range versions {
 			mriPass := row.results[verStr]

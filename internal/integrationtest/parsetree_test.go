@@ -33,6 +33,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lczyk/assert"
 	"github.com/lczyk/goruby/internal/parsetreenorm"
 	"github.com/lczyk/goruby/parser"
 	"github.com/lczyk/goruby/token"
@@ -304,18 +305,14 @@ func TestMRIParseTreeDiff(t *testing.T) {
 
 	versions, rows := loadGoldenTSV(t)
 	skips, err := loadGoldenSkips(parsetreeSkipFile, bucketSrc2Rejected, bucketTreeMismatch)
-	if err != nil {
-		t.Fatalf("load %s: %v", parsetreeSkipFile, err)
-	}
+	assert.NoError(t, err, "load %s", parsetreeSkipFile)
 
 	for _, row := range rows {
 		row := row
 		localPath := strings.TrimPrefix(row.file, goldenPrefix)
 
 		src, err := os.ReadFile(localPath)
-		if err != nil {
-			t.Fatalf("read %s: %v", localPath, err)
-		}
+		assert.NoError(t, err, "read %s", localPath)
 
 		// Reformat src1 once per fixture (independent of MRI version).
 		prog, gorubyParseErr := parser.ParseFile(row.file, src, parser.AllErrors|parser.ParseComments)

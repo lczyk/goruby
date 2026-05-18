@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/lczyk/assert"
 	"github.com/lczyk/goruby/lexer"
 	"github.com/lczyk/goruby/parser"
 	"github.com/lczyk/goruby/token"
@@ -25,9 +26,7 @@ type boundaryEntry struct {
 func loadBoundaries(t *testing.T) []boundaryEntry {
 	t.Helper()
 	f, err := os.Open(boundaryTSV)
-	if err != nil {
-		t.Fatalf("open %s: %v", boundaryTSV, err)
-	}
+	assert.NoError(t, err, "open %s", boundaryTSV)
 	defer f.Close()
 
 	var entries []boundaryEntry
@@ -46,9 +45,7 @@ func loadBoundaries(t *testing.T) []boundaryEntry {
 			file:       parts[1],
 		})
 	}
-	if err := sc.Err(); err != nil {
-		t.Fatalf("read %s: %v", boundaryTSV, err)
-	}
+	assert.NoError(t, sc.Err(), "read %s", boundaryTSV)
 	return entries
 }
 
@@ -76,9 +73,7 @@ func TestVersionBoundariesLex(t *testing.T) {
 
 	for _, entry := range entries {
 		src, err := os.ReadFile(filepath.Join("testdata", entry.file))
-		if err != nil {
-			t.Fatalf("read %s: %v", entry.file, err)
-		}
+		assert.NoError(t, err, "read %s", entry.file)
 
 		var minVer token.RubyVersion
 		isAny := entry.minVersion == "any"
@@ -109,9 +104,7 @@ func TestVersionBoundariesParse(t *testing.T) {
 
 	for _, entry := range entries {
 		src, err := os.ReadFile(filepath.Join("testdata", entry.file))
-		if err != nil {
-			t.Fatalf("read %s: %v", entry.file, err)
-		}
+		assert.NoError(t, err, "read %s", entry.file)
 
 		var minVer token.RubyVersion
 		isAny := entry.minVersion == "any"

@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/lczyk/assert"
 )
 
 func TestNormalizeIdempotent(t *testing.T) {
@@ -434,20 +436,14 @@ func TestNormalizeOnRealFixture(t *testing.T) {
 	fixture := filepath.Join(repoRoot, "internal", "integrationtest",
 		"testdata", "mri-tests", "test_const.rb")
 	src, err := os.ReadFile(fixture)
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	assert.NoError(t, err, "read fixture")
 	var stdout, stderr bytes.Buffer
 	cmd := exec.Command(rubyBin, "--disable-gems", "--dump=parsetree", fixture)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("ruby dump failed (%s): %v\nstderr: %s", rubyBin, err, stderr.String())
-	}
+	assert.NoError(t, cmd.Run(), "ruby dump failed (%s) stderr=%s", rubyBin, stderr.String())
 	out := NormalizeWithSource(stdout.String(), string(src))
-	if out == "" {
-		t.Fatal("empty normalised output")
-	}
+	assert.NotEqual(t, out, "")
 	// First line should be the flat-form root node identifier (e.g.
 	// `NODE_SCOPE` on pre-Prism or `ProgramNode` on Prism 3.4+). No
 	// indented tree marker should leak through.

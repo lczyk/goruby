@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/lczyk/assert"
 	"github.com/lczyk/goruby/ast"
 	"github.com/lczyk/goruby/parser"
 	"github.com/lczyk/goruby/token"
@@ -37,17 +38,13 @@ func init() {
 func TestRoundtrip(t *testing.T) {
 	versions, rows := loadGoldenTSV(t)
 	skips, err := loadGoldenSkips(roundtripSkipFile, "ast", "src")
-	if err != nil {
-		t.Fatalf("load %s: %v", roundtripSkipFile, err)
-	}
+	assert.NoError(t, err, "load %s", roundtripSkipFile)
 
 	for _, row := range rows {
 		localPath := strings.TrimPrefix(row.file, goldenPrefix)
 
 		src, err := os.ReadFile(localPath)
-		if err != nil {
-			t.Fatalf("read %s: %v", localPath, err)
-		}
+		assert.NoError(t, err, "read %s", localPath)
 
 		for _, verStr := range versions {
 			if !row.results[verStr] {
