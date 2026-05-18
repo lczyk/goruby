@@ -33,6 +33,10 @@ spellcheck:  ## Spellcheck sources and docs with cspell (via npx)
 bench:  ## Run benchmarks (override scope/duration: PKG=... BENCH=... BENCHTIME=...)
 	go test -run '^$$' -bench '$(or $(BENCH),.)' -benchmem -benchtime '$(or $(BENCHTIME),1s)' $(or $(PKG),./...)
 
+.PHONY: fuzz
+fuzz:  ## Fuzz a single target (override: PKG=... FUZZ=... FUZZTIME=...)
+	go test -run='^$$' -fuzz='$(or $(FUZZ),FuzzParse)' -fuzztime='$(or $(FUZZTIME),30s)' $(or $(PKG),./parser/)
+
 .PHONY: cover
 cover:  ## Coverage profile + HTML report (cover.out, cover.html)
 	go test -coverpkg=./... -coverprofile=cover.out -race ./...
