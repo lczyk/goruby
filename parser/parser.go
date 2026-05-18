@@ -4108,8 +4108,11 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 	}
 
 	next := p.parseExpression(precComma)
-	// ident do...end inside expression list: proc do...end, lambda do...end
-	if _, ok := next.(*ast.Identifier); ok && p.peekTokenIs(token.DO) {
+	// `do/end` normally binds to the outermost call, not the inner arg.
+	// Exception: `proc`/`lambda` bare identifiers as arg are conventionally
+	// a proc literal -- attach the block to them.
+	if id, ok := next.(*ast.Identifier); ok && p.peekTokenIs(token.DO) &&
+		(id.Value == "proc" || id.Value == "lambda") {
 		p.nextToken()
 		next = p.parseCallBlock(next)
 	}
@@ -4184,7 +4187,9 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 			return list
 		}
 		next = p.parseExpression(precComma)
-		if _, ok := next.(*ast.Identifier); ok && p.peekTokenIs(token.DO) {
+		// `proc`/`lambda` arg do/end -- attach block to proc literal.
+		if id, ok := next.(*ast.Identifier); ok && p.peekTokenIs(token.DO) &&
+			(id.Value == "proc" || id.Value == "lambda") {
 			p.nextToken()
 			next = p.parseCallBlock(next)
 		}
