@@ -437,7 +437,6 @@ src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/test_dir.rb: gorub
 src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/test_enum.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/test_enumerator.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/test_env.rb: goruby String() output rejected by MRI
-src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/test_fiber.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/test_file.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/test_file_exhaustive.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/test_fixnum.rb: goruby String() output rejected by MRI
@@ -539,7 +538,6 @@ src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_dir.rb: gorub
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_enum.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_enumerator.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_env.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_fiber.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_file.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_file_exhaustive.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_fixnum.rb: goruby String() output rejected by MRI
@@ -645,7 +643,6 @@ src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_enum.rb: goru
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_enumerator.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_env.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_exception.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_fiber.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_file.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_file_exhaustive.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_fixnum.rb: goruby String() output rejected by MRI
@@ -757,7 +754,6 @@ src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_enum.rb: goru
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_enumerator.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_env.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_exception.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_fiber.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_file.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_file_exhaustive.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_fixnum.rb: goruby String() output rejected by MRI
@@ -875,7 +871,6 @@ src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_enum.rb: goru
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_enumerator.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_env.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_exception.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_fiber.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_file.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_file_exhaustive.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_fixnum.rb: goruby String() output rejected by MRI
@@ -1196,7 +1191,6 @@ tree-mismatch 1.9 internal/integrationtest/testdata/gems/esolang-book-sources/_p
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/esolang-book-sources/_practices/uncontrollable.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/hexagony/coords.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/hexagony/direction.rb: tree diff vs MRI parsetree
-tree-mismatch 1.9 internal/integrationtest/testdata/gems/hexagony/grid.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/hexagony/hexagony.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/kaiser-ruby/examples/treesort.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/kaiser-ruby/spec/general/integration_spec.rb: tree diff vs MRI parsetree
@@ -1230,7 +1224,6 @@ tree-mismatch 1.9 internal/integrationtest/testdata/gems/puberty/interpreter.rb:
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/backtrace.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/cpu_counter.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/dsl_definition.rb: tree diff vs MRI parsetree
-tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/ext/string.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/file_list.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/file_utils_ext.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/loaders/makefile.rb: tree diff vs MRI parsetree
@@ -1318,7 +1311,6 @@ tree-mismatch 2.0 internal/integrationtest/testdata/gems/esolang-book-sources/_p
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/esolang-book-sources/_practices/uncontrollable.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/hexagony/coords.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/hexagony/direction.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/hexagony/grid.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/hexagony/hexagony.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/kaiser-ruby/examples/treesort.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/kaiser-ruby/spec/general/integration_spec.rb: tree diff vs MRI parsetree
@@ -1356,7 +1348,6 @@ tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/backtrace
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/clean.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/cpu_counter.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/dsl_definition.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/ext/string.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/file_list.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/file_utils_ext.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/loaders/makefile.rb: tree diff vs MRI parsetree
@@ -1455,7 +1446,6 @@ tree-mismatch 2.1 internal/integrationtest/testdata/gems/esolang-book-sources/_p
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/esolang-book-sources/_practices/uncontrollable.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/hexagony/coords.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/hexagony/direction.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/hexagony/grid.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/hexagony/hexagony.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/kaiser-ruby/examples/treesort.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/kaiser-ruby/spec/general/integration_spec.rb: tree diff vs MRI parsetree
@@ -1494,7 +1484,6 @@ tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/backtrace
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/clean.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/cpu_counter.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/dsl_definition.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/ext/string.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/file_list.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/file_utils_ext.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/loaders/makefile.rb: tree diff vs MRI parsetree
@@ -1611,7 +1600,6 @@ tree-mismatch 2.3 internal/integrationtest/testdata/gems/esolang-book-sources/_p
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/esolang-book-sources/_practices/uncontrollable.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/hexagony/coords.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/hexagony/direction.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/hexagony/grid.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/hexagony/hexagony.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/kaiser-ruby/examples/treesort.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/kaiser-ruby/lib/kaiser_ruby.rb: tree diff vs MRI parsetree
@@ -1895,7 +1883,6 @@ tree-mismatch 2.5 internal/integrationtest/testdata/gems/esolang-book-sources/_p
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/esolang-book-sources/_practices/uncontrollable.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/hexagony/coords.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/hexagony/direction.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/hexagony/grid.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/hexagony/hexagony.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/kaiser-ruby/examples/treesort.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/kaiser-ruby/lib/kaiser_ruby.rb: tree diff vs MRI parsetree
@@ -2158,7 +2145,6 @@ tree-mismatch 2.6 internal/integrationtest/testdata/esolangs/fishing.rb: tree di
 tree-mismatch 2.6 internal/integrationtest/testdata/esolangs/nope.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/esolangs/ora.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/esolangs/subskin.rb: tree diff vs MRI parsetree
-tree-mismatch 2.6 internal/integrationtest/testdata/gems/alice/interpreter.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/alice/point2d.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/bangyen-esolangs/extra/ruby/3x.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/bangyen-esolangs/extra/ruby/bit.rb: tree diff vs MRI parsetree
@@ -2411,7 +2397,6 @@ tree-mismatch 2.7 internal/integrationtest/testdata/esolangs/skinny_pig.rb: tree
 tree-mismatch 2.7 internal/integrationtest/testdata/esolangs/subskin.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/esolangs/tick.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/alice/direction.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/gems/alice/interpreter.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/alice/point2d.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/bangyen-esolangs/extra/ruby/3x.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/bangyen-esolangs/extra/ruby/bit.rb: tree diff vs MRI parsetree
@@ -2668,7 +2653,6 @@ tree-mismatch 3.0 internal/integrationtest/testdata/esolangs/skinny_pig.rb: tree
 tree-mismatch 3.0 internal/integrationtest/testdata/esolangs/subskin.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/esolangs/tick.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/alice/direction.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/gems/alice/interpreter.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/alice/point2d.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/bangyen-esolangs/extra/ruby/3x.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/bangyen-esolangs/extra/ruby/bit.rb: tree diff vs MRI parsetree
@@ -2928,7 +2912,6 @@ tree-mismatch 3.1 internal/integrationtest/testdata/esolangs/skinny_pig.rb: tree
 tree-mismatch 3.1 internal/integrationtest/testdata/esolangs/subskin.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/esolangs/tick.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/alice/direction.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/gems/alice/interpreter.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/alice/point2d.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/bangyen-esolangs/extra/ruby/3x.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/bangyen-esolangs/extra/ruby/bit.rb: tree diff vs MRI parsetree
@@ -3191,7 +3174,6 @@ tree-mismatch 3.2 internal/integrationtest/testdata/esolangs/skinny_pig.rb: tree
 tree-mismatch 3.2 internal/integrationtest/testdata/esolangs/subskin.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/esolangs/tick.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/alice/direction.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/gems/alice/interpreter.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/alice/point2d.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/bangyen-esolangs/extra/ruby/3x.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/bangyen-esolangs/extra/ruby/bit.rb: tree diff vs MRI parsetree
@@ -3458,7 +3440,6 @@ tree-mismatch 3.4 internal/integrationtest/testdata/esolangs/subskin.rb: tree di
 tree-mismatch 3.4 internal/integrationtest/testdata/esolangs/tick.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/esolangs/tomagotcha.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/alice/direction.rb: tree diff vs MRI parsetree
-tree-mismatch 3.4 internal/integrationtest/testdata/gems/alice/interpreter.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/alice/point2d.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/bangyen-esolangs/extra/ruby/3x.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/bangyen-esolangs/extra/ruby/74.rb: tree diff vs MRI parsetree
@@ -3806,7 +3787,6 @@ tree-mismatch 4.0 internal/integrationtest/testdata/esolangs/subskin.rb: tree di
 tree-mismatch 4.0 internal/integrationtest/testdata/esolangs/tick.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/esolangs/tomagotcha.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/alice/direction.rb: tree diff vs MRI parsetree
-tree-mismatch 4.0 internal/integrationtest/testdata/gems/alice/interpreter.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/alice/point2d.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/bangyen-esolangs/extra/ruby/3x.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/bangyen-esolangs/extra/ruby/74.rb: tree diff vs MRI parsetree

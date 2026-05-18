@@ -3634,6 +3634,13 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 		return contextCallExpression
 	}
 
+	// `[` without preceding whitespace is index access, not an array arg
+	// without parens. `a.b[x]` -> index; `a.b [x]` -> arg list.
+	if p.peekTokenIs(token.LBRACKET) && !p.peekToken.HadWhitespace {
+		contextCallExpression.Arguments = []ast.Expression{}
+		return contextCallExpression
+	}
+
 	// Spaced binary operator after bare method call on the same line:
 	// a.b + c is infix, a.b +\n c is a call argument.
 	if p.peekToken.HadWhitespace && p.peekToken.Type.IsOperator() &&
