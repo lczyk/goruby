@@ -1,6 +1,10 @@
 package parsetreenorm
 
 import (
+	"bytes"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -210,6 +214,92 @@ func FuzzNormalizeWithSource(f *testing.F) {
 			t.Fatalf("not idempotent for src=%q\n--- once ---\n%q\n--- twice ---\n%q", src, out1, out2)
 		}
 	})
+}
+
+// TestNormalizeOnRealFixture exercises the full pipeline against a real
+// MRI parsetree dump if any ruby binary is locally available under
+// `.rubies/versions/`. Picks the first one found and a moderate-size
+// in-tree fixture. Skips cleanly when no ruby is installed.
+func TestNormalizeOnRealFixture(t *testing.T) {
+	repoRoot, ok := findRepoRoot(t)
+	if !ok {
+		t.Skip("repo root not found")
+	}
+	rubyBin, ok := findFirstRuby(filepath.Join(repoRoot, ".rubies", "versions"))
+	if !ok {
+		t.Skip("no MRI binary under .rubies/versions/")
+	}
+	fixture := filepath.Join(repoRoot, "internal", "integrationtest",
+		"testdata", "mri-tests", "test_const.rb")
+	src, err := os.ReadFile(fixture)
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := exec.Command(rubyBin, "--disable-gems", "--dump=parsetree", fixture)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("ruby dump failed (%s): %v\nstderr: %s", rubyBin, err, stderr.String())
+	}
+	out := NormalizeWithSource(stdout.String(), string(src))
+	if out == "" {
+		t.Fatal("empty normalised output")
+	}
+	// First line should be the flat-form root node identifier (e.g.
+	// `NODE_SCOPE` on pre-Prism or `ProgramNode` on Prism 3.4+). No
+	// indented tree marker should leak through.
+	first, _, _ := strings.Cut(out, "\n")
+	if strings.Contains(first, "+-") || strings.Contains(first, "@") {
+		t.Errorf("output not flattened, first line still tree-shaped: %q", first)
+	}
+	if !strings.HasPrefix(first, "NODE_") && !strings.HasSuffix(first, "Node") {
+		t.Errorf("unexpected root node name: %q", first)
+	}
+	// Idempotent: re-normalising should not change anything.
+	out2 := NormalizeWithSource(out, string(src))
+	if out != out2 {
+		t.Errorf("not idempotent on real fixture")
+	}
+}
+
+// findRepoRoot walks up from cwd looking for the go.mod that names this
+// repository.
+func findRepoRoot(t *testing.T) (string, bool) {
+	t.Helper()
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", false
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir, true
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", false
+		}
+		dir = parent
+	}
+}
+
+// findFirstRuby returns the first `<rootdir>/<ver>/bin/ruby` it finds,
+// sorted lexically for determinism.
+func findFirstRuby(rubiesDir string) (string, bool) {
+	entries, err := os.ReadDir(rubiesDir)
+	if err != nil {
+		return "", false
+	}
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		bin := filepath.Join(rubiesDir, e.Name(), "bin", "ruby")
+		if st, err := os.Stat(bin); err == nil && st.Mode()&0o111 != 0 {
+			return bin, true
+		}
+	}
+	return "", false
 }
 
 func BenchmarkNormalize(b *testing.B) {
