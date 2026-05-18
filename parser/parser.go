@@ -3634,6 +3634,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 		p.accept(token.LPAREN)
 		p.nextToken()
 		contextCallExpression.Arguments = p.parseExpressionList(token.RPAREN)
+		contextCallExpression.ExplicitParens = true
 		if p.peekTokenOneOf(token.LBRACE, token.DO) {
 			if p.suppressDoBlock && p.peekTokenIs(token.DO) {
 				return contextCallExpression
@@ -3913,7 +3914,7 @@ func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {
 
 func (p *parser) parseCallExpressionWithParens(function ast.Expression) ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	exp := &ast.ContextCallExpression{Token: p.curToken}
+	exp := &ast.ContextCallExpression{Token: p.curToken, ExplicitParens: true}
 	if ident, ok := function.(*ast.Identifier); ok {
 		exp.Function = ident
 	} else {

@@ -1679,11 +1679,12 @@ func (ie *IndexExpression) String() string {
 
 // A ContextCallExpression represents a method call on a given Context
 type ContextCallExpression struct {
-	Token     token.Token      // The '.' token
-	Context   Expression       // The lefthandside expression
-	Function  *Identifier      // The function to call
-	Arguments []Expression     // The function arguments
-	Block     *BlockExpression // The function block
+	Token          token.Token      // The '.' token
+	Context        Expression       // The lefthandside expression
+	Function       *Identifier      // The function to call
+	Arguments      []Expression     // The function arguments
+	Block          *BlockExpression // The function block
+	ExplicitParens bool             // true when source had explicit ( ) -- preserves obj.foo() vs obj.foo and foo() vs foo (vcall)
 }
 
 func (ce *ContextCallExpression) expressionNode() {}
@@ -1741,7 +1742,7 @@ func (ce *ContextCallExpression) String() string {
 			args = append(args, a.String())
 		}
 	}
-	if len(args) > 0 {
+	if len(args) > 0 || ce.ExplicitParens {
 		out.WriteString("(")
 		out.WriteString(strings.Join(args, ", "))
 		out.WriteString(")")
