@@ -2365,11 +2365,13 @@ func (ra *RightwardAssignment) String() string {
 }
 
 // ParenExpression wraps a parenthesised expression, preserving the parens
-// for source roundtrip fidelity.
+// for source roundtrip fidelity. (a; b; c) groups multiple statements,
+// stored in Stmts; the single-expression case uses Expr.
 type ParenExpression struct {
 	Token  token.Token // the '(' token
 	Rparen token.Token // the ')' token
 	Expr   Expression
+	Stmts  []Expression // multi-statement form: (a; b; c). nil for single-expr.
 }
 
 func (pe *ParenExpression) expressionNode()      {}
@@ -2377,6 +2379,13 @@ func (pe *ParenExpression) Pos() int             { return pe.Token.Pos }
 func (pe *ParenExpression) End() int             { return pe.Rparen.Pos }
 func (pe *ParenExpression) TokenLiteral() string { return pe.Token.Literal }
 func (pe *ParenExpression) String() string {
+	if len(pe.Stmts) > 0 {
+		parts := make([]string, len(pe.Stmts))
+		for i, s := range pe.Stmts {
+			parts[i] = s.String()
+		}
+		return "(" + strings.Join(parts, "; ") + ")"
+	}
 	// Skip the wrap when Expr already emits its own outer parens.
 	switch e := pe.Expr.(type) {
 	case *ParenExpression:

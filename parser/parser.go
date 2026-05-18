@@ -2612,6 +2612,10 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 		return &ast.ParenExpression{Token: lparen, Rparen: p.curToken, Expr: &ast.Nil{Token: p.curToken}}
 	}
 	exp := p.parseExpression(precLowest)
+	var stmts []ast.Expression
+	if exp != nil {
+		stmts = append(stmts, exp)
+	}
 	for p.currentTokenOneOf(token.SEMICOLON, token.NEWLINE) ||
 		p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE) {
 		for p.currentTokenOneOf(token.SEMICOLON, token.NEWLINE) {
@@ -2629,6 +2633,9 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 			p.nextToken()
 			exp = p.parseExpression(precLowest)
 		}
+		if exp != nil {
+			stmts = append(stmts, exp)
+		}
 	}
 	if !p.accept(token.RPAREN) {
 		return nil
@@ -2636,7 +2643,11 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 	if exp == nil {
 		return nil
 	}
-	return &ast.ParenExpression{Token: lparen, Rparen: p.curToken, Expr: exp}
+	pe := &ast.ParenExpression{Token: lparen, Rparen: p.curToken, Expr: exp}
+	if len(stmts) > 1 {
+		pe.Stmts = stmts
+	}
+	return pe
 }
 
 func (p *parser) parseIfExpression() ast.Expression {
