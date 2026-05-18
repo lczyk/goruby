@@ -1662,7 +1662,11 @@ func (ce *ContextCallExpression) String() string {
 	var out bytes.Buffer
 	if ce.Context != nil {
 		out.WriteString(ce.Context.String())
-		out.WriteString(".")
+		if ce.Token.Type == token.LONELY {
+			out.WriteString("&.")
+		} else {
+			out.WriteString(".")
+		}
 	}
 	if ce.Function != nil {
 		// Setter call obj.x = 5 -- output as assignment, not obj.x=(5)
