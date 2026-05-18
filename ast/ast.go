@@ -903,6 +903,72 @@ func (sl *StringLiteral) End() int {
 
 // TokenLiteral returns the literal from the string token
 func (sl *StringLiteral) TokenLiteral() string { return sl.Token.Literal }
+// heredocStyle classifies a heredoc tag by its prefix:
+// "<<~" -> "squiggly", "<<-" -> "dash", "<<" -> "plain".
+func heredocStyle(tag string) string {
+	if len(tag) < 3 {
+		return "plain"
+	}
+	switch tag[2] {
+	case '~':
+		return "squiggly"
+	case '-':
+		return "dash"
+	}
+	return "plain"
+}
+
+// minLeadingWS returns the smallest count of leading space chars across
+// all non-empty lines of s. Returns 0 if s is empty or any non-empty line
+// has no leading space.
+func minLeadingWS(s string) int {
+	if s == "" {
+		return 0
+	}
+	min := -1
+	i := 0
+	for i < len(s) {
+		// find next non-newline run -- skip blank lines (only `\n`).
+		j := i
+		for j < len(s) && s[j] != '\n' {
+			j++
+		}
+		if j > i { // non-empty line
+			lead := 0
+			for lead < j-i && s[i+lead] == ' ' {
+				lead++
+			}
+			if min < 0 || lead < min {
+				min = lead
+			}
+		}
+		i = j + 1
+	}
+	if min < 0 {
+		return 0
+	}
+	return min
+}
+
+// indentLines prepends pad to every line in s except an empty trailing
+// line (so a trailing `\n` doesn't produce a phantom indented empty line).
+func indentLines(s, pad string) string {
+	if s == "" {
+		return s
+	}
+	var b bytes.Buffer
+	b.Grow(len(s) + strings.Count(s, "\n")*len(pad) + len(pad))
+	b.WriteString(pad)
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		b.WriteByte(c)
+		if c == '\n' && i+1 < len(s) {
+			b.WriteString(pad)
+		}
+	}
+	return b.String()
+}
+
 func heredocDelimFromTag(tag string) string {
 	s := tag[2:]
 	if len(s) > 0 && (s[0] == '~' || s[0] == '-') {
@@ -928,24 +994,69 @@ func (sl *StringLiteral) String() string {
 func (sl *StringLiteral) stringOnce() string {
 	if sl.HeredocTag != "" {
 		delim := heredocDelimFromTag(sl.HeredocTag)
-		var out bytes.Buffer
-		out.WriteString(sl.HeredocTag)
-		out.WriteByte(heredocBodyOpen)
+		// Heredoc style affects col-0 vs indented body handling. MRI's
+		// parser fails to recognise the closing delimiter for *chained*
+		// heredocs in interp (e.g. `"#{<<~A}#{<<~B}"`) when both body
+		// lines and delim sit at column 0 -- the delim line is misread
+		// as part of the previous body. Indenting body+delim by one
+		// space sidesteps the quirk:
+		//   - `<<~` (squiggly) strips common leading WS, so adding one
+		//     space to every body line + delim is a content no-op.
+		//   - `<<-` (dash) allows indented delim but preserves body
+		//     verbatim; indenting only the delim is safe.
+		//   - `<<` (plain) requires delim at column 0 and preserves body
+		//     verbatim; no safe indent possible. Untouched.
+		style := heredocStyle(sl.HeredocTag)
+		var body bytes.Buffer
 		if sl.Parts != nil {
 			for _, p := range sl.Parts {
 				switch x := p.(type) {
 				case *StringContent:
-					out.WriteString(x.Value)
+					body.WriteString(x.Value)
 				case *EmbeddedVariable:
-					out.WriteString(x.String())
+					body.WriteString(x.String())
 				default:
-					out.WriteString("#{")
-					out.WriteString(p.String())
-					out.WriteString("}")
+					body.WriteString("#{")
+					body.WriteString(p.String())
+					body.WriteString("}")
 				}
 			}
 		} else {
-			out.WriteString(sl.Value)
+			body.WriteString(sl.Value)
+		}
+		var out bytes.Buffer
+		out.WriteString(sl.HeredocTag)
+		out.WriteByte(heredocBodyOpen)
+		// Compute delim indentation so that MRI strips exactly the body's
+		// current leading WS (preserves squiggly content) but is also at
+		// >= col 1 (works around the MRI chained-heredoc-in-interp quirk
+		// where col-0 delim isn't recognised). For non-squiggly, keep
+		// delim at col 0 unless we'd hit the quirk -- but plain `<<` only
+		// accepts col-0 delim, so leave alone.
+		bodyStr := body.String()
+		switch style {
+		case "squiggly":
+			bodyMin := minLeadingWS(bodyStr)
+			target := bodyMin
+			if target < 1 {
+				target = 1
+			}
+			if target > bodyMin {
+				bodyStr = indentLines(bodyStr, strings.Repeat(" ", target-bodyMin))
+			}
+			out.WriteString(bodyStr)
+			out.WriteString(strings.Repeat(" ", target))
+		case "dash":
+			// `<<-` allows indented delim; body preserved verbatim. Indent
+			// delim by 1 if body min is 0, sidestepping the col-0 quirk
+			// for chained heredocs.
+			out.WriteString(bodyStr)
+			if minLeadingWS(bodyStr) == 0 {
+				out.WriteByte(' ')
+			}
+		default:
+			// plain `<<` requires delim at col 0; body verbatim.
+			out.WriteString(bodyStr)
 		}
 		out.WriteString(delim)
 		out.WriteByte('\n')
