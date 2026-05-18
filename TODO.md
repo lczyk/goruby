@@ -15,7 +15,7 @@ remaining `TestMRIParseTreeDiff` failures by cluster. ~159 fails as of writing.
 | 7 | BlockParametersNode emission when locals exist | blocked on #2 |
 | 8 | magic encoding comment preservation | noop -- ParseComments mode covers it |
 | 9 | splat key in multi-assign LHS positional | open |
-| 10 | regex `%r:...:` form normalisation | open (small, 2 fails) |
+| 10 | regex `%r:...:` form normalisation | [DONE] 9574e98 |
 | 11 | anonymous block-pass arg `&` in calls | works in practice |
 | 12 | misc small clusters | tied to others |
 
@@ -68,18 +68,6 @@ per-node Pos handling, fallback when Pos unset.
 
 **pattern**: `(x1.y1.z, *x2[1, 2, 3], self[4]) = ...` -- complex multi-target
 with splat-of-index.
-
-### 10. regex `%r:...:` form normalisation (~2 fails)
-
-**files**: test_regexp (2)
-
-**pattern**: `%r:\::` -- `\:` is delimiter escape, MRI normalises to just
-`:` as regex content. we keep `\:`.
-
-**fix shape**: lex-time normalize: strip `\` before delim char in regex
-content for `%r` form.
-
-**risk**: low. small surface.
 
 ### misc
 
