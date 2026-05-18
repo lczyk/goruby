@@ -1921,6 +1921,7 @@ func (p *parser) parseLambda() ast.Expression {
 	// Optional parameters: ->(x, y) or bare ->
 	if p.peekTokenIs(token.LPAREN) {
 		lit.Parameters = p.parseParameters(token.LPAREN, token.RPAREN)
+		lit.ExplicitParens = true
 	}
 	if p.currentTokenOneOf(token.CAPTURE, token.AND) {
 		if !p.peekTokenOneOf(token.LBRACE, token.DO) {

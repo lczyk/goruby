@@ -1471,6 +1471,9 @@ type FunctionLiteral struct {
 	ElseBody      *BlockStatement
 	EnsureBody    *BlockStatement
 	IsLambda      bool // true for -> lambda literals
+	// ExplicitParens marks lambdas written as ->() with an explicit (possibly
+	// empty) parameter list, distinct from bare -> (no parens).
+	ExplicitParens bool
 }
 
 func (fl *FunctionLiteral) expressionNode() {}
@@ -1531,7 +1534,7 @@ func (fl *FunctionLiteral) String() string {
 		}
 		return out.String()
 	}
-	if !fl.IsLambda || len(params) > 0 {
+	if !fl.IsLambda || len(params) > 0 || fl.ExplicitParens {
 		out.WriteString("(")
 		out.WriteString(strings.Join(params, ", "))
 		out.WriteString(")")
