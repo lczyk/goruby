@@ -1548,7 +1548,15 @@ func lexPercentContentInner(l *Lexer, opener, closer rune, paired bool,
 			if r == closer {
 				if l.pos-l.width > l.start {
 					l.backup()
-					l.emit(contentTok)
+					if endTok == token.REGEX_END {
+						// MRI's %r with non-meta delim normalises `\<delim>`
+						// in content to bare `<delim>` (escape of delimiter).
+						raw := string(l.input[l.start:l.pos])
+						norm := strings.ReplaceAll(raw, "\\"+string(closer), string(closer))
+						l.emitLiteral(contentTok, norm)
+					} else {
+						l.emit(contentTok)
+					}
 					l.next()
 				}
 				l.ignore() // consume closer
