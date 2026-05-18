@@ -171,50 +171,49 @@ while IFS=$'\t' read -r version url checksum || [[ -n "${version:-}" ]]; do
     # Apply quilt-style patches for old rubies on modern toolchains.
     _apply_patches "$src" "$version"
 
-    # Compile a minimal ruby -- we only need `ruby -c` for syntax checks.
+    # Compile a minimal ruby -- we only need `ruby -c` / `--dump=parsetree`.
     # Disable extensions that don't build on modern platforms (fiddle, openssl).
     #
-    # Speed: MRI defaults optflags=-O3 -fno-fast-math (kept). Add LTO + drop
-    # debug symbols for faster startup / parse. LTO gated to ruby >= 2.5
-    # since older versions trip modern clang LTO. --enable-lto exists only
-    # in ruby >= 3.0; for 2.5-2.x we pass raw -flto via CFLAGS/LDFLAGS.
-    mm_major="${version%%.*}"
-    mm_rest="${version#*.}"
-    mm_minor="${mm_rest%%.*}"
-    lto_cflags=""
-    lto_ldflags=""
-    lto_configure=()
-    if [[ "$mm_major" -ge 3 ]]; then
-        lto_configure+=(--enable-lto)
-    elif [[ "$mm_major" -eq 2 && "$mm_minor" -ge 5 ]]; then
-        lto_cflags="-flto"
-        lto_ldflags="-flto"
-    fi
+    # Speed: keep MRI defaults (optflags=-O3 -fno-fast-math); drop debug
+    # symbols via debugflags="". LTO was tried and dropped -- on macOS arm64
+    # it breaks the link of ruby >= 3.x because hand-written .S files
+    # (coroutine_transfer for fibers, YJIT shims) export symbols the LTO
+    # merge can't see. Win was marginal for parse-only workload anyway.
 
-    echo "    configuring (lto=$([[ -n $lto_cflags || ${#lto_configure[@]} -gt 0 ]] && echo yes || echo no))"
-    (
-        cd "$src"
-        ./configure \
-            --prefix="$target" \
+    # All build output (stdout + stderr) goes to per-version log. On failure
+    # we tail the log to stderr so the user sees the actual error w/out
+    # drowning successful builds in compiler warnings.
+    log_file="$build_dir/build.log"
+    : > "$log_file"
+    _run() {
+        local label="$1"; shift
+        echo "    $label"
+        if ! "$@" >>"$log_file" 2>&1; then
+            echo "    ERROR: $label failed. Last 80 lines of $log_file:" >&2
+            tail -80 "$log_file" >&2
+            echo "    (full log: $log_file)" >&2
+            exit 1
+        fi
+    }
+
+    _run "configuring" \
+        bash -c "cd '$src' && ./configure \
+            --prefix='$target' \
             --disable-install-doc \
-            --without-gmp \
-            --without-fiddle \
-            --without-openssl \
-            ${lto_configure[@]+"${lto_configure[@]}"} \
-            CFLAGS="${CFLAGS:-} $lto_cflags" \
-            LDFLAGS="${LDFLAGS:-} $lto_ldflags" \
-            debugflags="" \
-            --quiet
-    ) >/dev/null
+            --without-gmp --without-fiddle --without-openssl \
+            optflags='-O3 -fno-fast-math' \
+            debugflags='' \
+            --quiet"
 
     # Build just the ruby binary, not extensions. Extensions often fail
     # on modern toolchains for old Ruby versions and we don't need them.
-    echo "    building (-j$NPROC)"
-    make -C "$src" ruby -j"$NPROC" >/dev/null
+    _run "building (-j$NPROC)" make -C "$src" ruby -j"$NPROC"
 
     # Try the full install first; if extensions fail, install just the binary.
+    # Don't use _run here -- install-nodoc failure is expected when extensions
+    # don't build, so we recover manually rather than aborting.
     echo "    installing"
-    if ! make -C "$src" install-nodoc >/dev/null 2>&1; then
+    if ! make -C "$src" install-nodoc >>"$log_file" 2>&1; then
         # Extensions failed -- install the core ruby binary manually.
         mkdir -p "$target/bin"
         cp "$src/ruby" "$target/bin/ruby"
