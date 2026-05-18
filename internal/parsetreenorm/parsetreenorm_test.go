@@ -198,6 +198,180 @@ func TestPrismListField(t *testing.T) {
 	}
 }
 
+func TestStripsPrismTokenLoc(t *testing.T) {
+	in := "@ ProgramNode\n+-- name_loc: nil\n+-- value_loc: (1,0)-(1,5) = \"hello\"\n"
+	out := Normalize(in)
+	if strings.Contains(out, "_loc:") {
+		t.Errorf("_loc lines not stripped:\n%s", out)
+	}
+}
+
+func TestStripsNdAlen(t *testing.T) {
+	in := "@ NODE_ARRAY\n+- nd_alen: 99\n+- nd_head:\n    @ NODE_LIT\n    +- nd_lit: 1\n"
+	out := Normalize(in)
+	if strings.Contains(out, "nd_alen") {
+		t.Errorf("nd_alen line not stripped:\n%s", out)
+	}
+}
+
+func TestStripsTempPathVariants(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+	}{
+		{"prism-filepath", "@ ProgramNode\n+-- filepath: \"/tmp/foo/parsetree-12345.rb\"\n"},
+		{"nd-lit-path", "@ NODE_STR\n+- nd_lit: \"/var/folders/x/parsetree-99.rb\"\n"},
+		{"embedded-substr", "@ NODE_STR\n+- nd_lit: \"(eval at /tmp/parsetree-7.rb:1)\"\n"},
+	}
+	for _, c := range cases {
+		out := Normalize(c.in)
+		if strings.Contains(out, "/tmp/") || strings.Contains(out, "/var/folders/") {
+			t.Errorf("%s: tempfile path leaked:\n%s", c.name, out)
+		}
+	}
+	// Embedded-substr case should keep the surrounding literal.
+	embedded := Normalize("@ NODE_STR\n+- nd_lit: \"(eval at /tmp/parsetree-7.rb:1)\"\n")
+	if !strings.Contains(embedded, "<TEMPFILE>") {
+		t.Errorf("expected <TEMPFILE> placeholder:\n%s", embedded)
+	}
+}
+
+func TestPrismInlineChildField(t *testing.T) {
+	// Prism inlines child nodes as `+-- @ ChildNode` -- not a list field.
+	in := "@ ProgramNode\n+-- @ DefNode\n    +-- name: :foo\n"
+	out := Normalize(in)
+	if !strings.Contains(out, "DefNode") {
+		t.Errorf("inline child node lost:\n%s", out)
+	}
+}
+
+func TestSplitFieldNameValueNoSpace(t *testing.T) {
+	// `name:value` (no space after colon) -- rare leaf form.
+	name, val, ok := splitFieldNameValue("foo:bar")
+	if !ok || name != "foo" || val != "bar" {
+		t.Errorf("got (%q, %q, %v); want (foo, bar, true)", name, val, ok)
+	}
+}
+
+func TestSplitFieldNameValueNoColon(t *testing.T) {
+	name, val, ok := splitFieldNameValue("just-a-name")
+	if ok || name != "just-a-name" || val != "" {
+		t.Errorf("got (%q, %q, %v); want (just-a-name, '', false)", name, val, ok)
+	}
+}
+
+func TestParseNodeKindRejects(t *testing.T) {
+	cases := []string{
+		"no-at-prefix",
+		"@ ",          // empty after `@ `
+		"@ 123lower",  // bad first char
+		"@ NODE_",     // too short (just prefix)
+	}
+	for _, c := range cases {
+		if kind, ok := parseNodeKind(c); ok {
+			t.Errorf("parseNodeKind(%q) = (%q, true); want false", c, kind)
+		}
+	}
+}
+
+func TestParseNodeKindPrismForm(t *testing.T) {
+	if kind, ok := parseNodeKind("@ ProgramNode (location: ...)"); !ok || kind != "ProgramNode" {
+		t.Errorf("got (%q, %v); want (ProgramNode, true)", kind, ok)
+	}
+}
+
+func TestConsumeFieldBodyMissingBody(t *testing.T) {
+	// Subtree field with no body line at expected depth -- leave field empty.
+	in := "@ NODE_SCOPE\n+- nd_body:\n@ NODE_ORPHAN\n"
+	out := Normalize(in)
+	if out == "" {
+		t.Errorf("output empty for malformed body")
+	}
+}
+
+func TestConsumeFieldBodyBadNodeKind(t *testing.T) {
+	// Body line starts with `@ ` but kind doesn't parse -- skip.
+	in := "@ NODE_SCOPE\n+- nd_body:\n    @ 0bad\n"
+	_ = Normalize(in) // should not panic
+}
+
+func TestTrimTrailingStarLineRejects(t *testing.T) {
+	// `*` not preceded by `)` or NODE_X -- leave alone.
+	in := "some random *\n"
+	out := stripTrailingStars(in)
+	if out != in {
+		t.Errorf("stripped non-qualifying `*`: %q", out)
+	}
+}
+
+func TestStripTrailingStarsFastPath(t *testing.T) {
+	in := "no stars at end of line\nplain text\n"
+	out := stripTrailingStars(in)
+	if out != in {
+		t.Errorf("fast-path mutated input: %q", out)
+	}
+}
+
+func TestStripLeadingHashFastPath(t *testing.T) {
+	in := "no hash here\nplain line\n"
+	out := stripLeadingHash(in)
+	if out != in {
+		t.Errorf("fast-path mutated input: %q", out)
+	}
+}
+
+func TestStripIDLineLocationFastPath(t *testing.T) {
+	in := "@ NODE_LIT\n+- nd_lit: 1\n"
+	out := stripIDLineLocation(in)
+	if out != in {
+		t.Errorf("fast-path mutated input: %q", out)
+	}
+}
+
+func TestStripIDLineLocationCodeRange(t *testing.T) {
+	in := "@ NODE_LIT (id: 5, line: 2, code_range: (2,0)-(2,8))\n+- nd_lit: 2\n"
+	out := stripIDLineLocation(in)
+	if strings.Contains(out, "code_range") || strings.Contains(out, "id:") {
+		t.Errorf("code_range form not stripped: %q", out)
+	}
+}
+
+func TestStripIDLineLocationMalformed(t *testing.T) {
+	// `(id:` substring without the full pattern -- copy through, no panic.
+	in := "@ NODE_LIT (id: not-digits)\n"
+	out := stripIDLineLocation(in)
+	if !strings.Contains(out, "(id: not-digits)") {
+		t.Errorf("malformed input mangled: %q", out)
+	}
+}
+
+func TestStripSiblingIndexFastPath(t *testing.T) {
+	in := "@ NODE_LIT\n+- nd_lit: 1\n"
+	out := stripSiblingIndex(in)
+	if out != in {
+		t.Errorf("fast-path mutated input: %q", out)
+	}
+}
+
+func TestStripSiblingIndexMalformed(t *testing.T) {
+	// `+- nd_xxx` w/out the `(N):` suffix -- copy through.
+	in := "+- nd_head: leaf-value\n"
+	out := stripSiblingIndex(in)
+	if out != in {
+		t.Errorf("non-matching marker mangled: %q", out)
+	}
+}
+
+func TestMaskLineMagicNoNodeLitGate(t *testing.T) {
+	// Source has __LINE__ but dump has no NODE_LIT -- gate triggers, returns dump as-is.
+	src := "__LINE__\n"
+	dump := "@ NODE_SCOPE\n+- nd_body:\n    (null node)\n"
+	out := NormalizeWithSource(dump, src)
+	if !strings.Contains(out, "NODE_SCOPE") {
+		t.Errorf("dump corrupted:\n%s", out)
+	}
+}
+
 func TestLineMagicLinesEmptyShortcut(t *testing.T) {
 	if got := lineMagicLines("x = 1\nputs y\n"); got != nil {
 		t.Errorf("non-nil map for source w/out __LINE__: %v", got)
