@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math/big"
+	"sort"
 	"strings"
 
 	"github.com/lczyk/goruby/token"
@@ -1352,32 +1353,43 @@ func (hl *HashLiteral) End() int { return hl.Rbrace.Pos }
 // TokenLiteral returns the literal of the token token.LBRACE
 func (hl *HashLiteral) TokenLiteral() string { return hl.Token.Literal }
 func (hl *HashLiteral) hashElements() []string {
-	elements := []string{}
+	type posStr struct {
+		pos int
+		s   string
+	}
+	items := []posStr{}
 	if hl.Map != nil {
 		for _, kv := range hl.Map.Entries() {
+			var s string
 			if kv.Value != nil {
 				if sym, ok := kv.Key.(*SymbolLiteral); ok && sym.Token.Type == token.LABEL {
 					if kv.Omitted {
-						elements = append(elements, sym.Token.Literal)
+						s = sym.Token.Literal
 					} else {
-						elements = append(elements, sym.Token.Literal+" "+kv.Value.String())
+						s = sym.Token.Literal + " " + kv.Value.String()
 					}
 				} else {
-					elements = append(elements, kv.Key.String()+" => "+kv.Value.String())
+					s = kv.Key.String() + " => " + kv.Value.String()
 				}
 			} else {
 				if sym, ok := kv.Key.(*SymbolLiteral); ok {
-					elements = append(elements, sym.LabelString()+":")
+					s = sym.LabelString() + ":"
 				} else if pe, ok := kv.Key.(*PrefixExpression); ok && pe.Operator == "**" {
-					elements = append(elements, doubleSplatPatternKey(pe))
+					s = doubleSplatPatternKey(pe)
 				} else {
-					elements = append(elements, kv.Key.String())
+					s = kv.Key.String()
 				}
 			}
+			items = append(items, posStr{pos: kv.Key.Pos(), s: s})
 		}
 	}
 	for _, s := range hl.Splats {
-		elements = append(elements, "**"+s.String())
+		items = append(items, posStr{pos: s.Pos(), s: "**" + s.String()})
+	}
+	sort.SliceStable(items, func(i, j int) bool { return items[i].pos < items[j].pos })
+	elements := make([]string, len(items))
+	for i, it := range items {
+		elements[i] = it.s
 	}
 	return elements
 }
