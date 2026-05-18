@@ -3699,7 +3699,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 		return contextCallExpression
 	}
 
-	if p.peekTokenIs(token.LPAREN) {
+	if p.peekTokenIs(token.LPAREN) && !p.peekToken.HadWhitespace {
 		p.accept(token.LPAREN)
 		p.nextToken()
 		contextCallExpression.Arguments = p.parseExpressionList(token.RPAREN)
@@ -4035,7 +4035,7 @@ func (p *parser) parseCallArguments(end ...token.Type) []ast.Expression {
 		return list
 	}
 
-	first := p.parseExpression(precAssignment)
+	first := p.parseExpression(precComma)
 	if p.peekTokenIs(token.HASHROCKET) {
 		hash := p.parseImplicitHash(first, end...)
 		list = append(list, hash)
@@ -4048,7 +4048,7 @@ func (p *parser) parseCallArguments(end ...token.Type) []ast.Expression {
 		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 			p.nextToken()
 		}
-		arg := p.parseExpression(precAssignment)
+		arg := p.parseExpression(precComma)
 		if p.peekTokenIs(token.HASHROCKET) {
 			hash := p.parseImplicitHash(arg, end...)
 			list = append(list, hash)
