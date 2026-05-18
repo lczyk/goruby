@@ -1463,9 +1463,12 @@ func lexPercentContentInner(l *Lexer, opener, closer rune, paired bool,
 						l.emit(contentTok)
 						l.next()
 					}
-					l.ignore() // consume closer
-					l.emit(endTok)
-					return checkInterpStack
+						l.ignore() // consume closer
+						if endTok == token.REGEX_END {
+							consumeRegexFlags(l)
+						}
+						l.emit(endTok)
+						return checkInterpStack
 				}
 				continue
 			}
@@ -1477,6 +1480,9 @@ func lexPercentContentInner(l *Lexer, opener, closer rune, paired bool,
 					l.next()
 				}
 				l.ignore() // consume closer
+				if endTok == token.REGEX_END {
+					consumeRegexFlags(l)
+				}
 				l.emit(endTok)
 				return checkInterpStack
 			}
@@ -1516,6 +1522,20 @@ func lexPercentContentInner(l *Lexer, opener, closer rune, paired bool,
 				l.next() // consume $
 				return lexGlobal
 			}
+		}
+	}
+}
+
+// consumeRegexFlags consumes trailing regex option flags (i,m,x,o,u,n,e,s)
+// and advances l.pos past them so the next emit() includes them in the token literal.
+func consumeRegexFlags(l *Lexer) {
+	for {
+		p := l.peek()
+		if p == 'i' || p == 'm' || p == 'x' || p == 'o' ||
+			p == 'u' || p == 'n' || p == 'e' || p == 's' {
+			l.next()
+		} else {
+			break
 		}
 	}
 }
