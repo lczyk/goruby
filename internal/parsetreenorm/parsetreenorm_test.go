@@ -381,8 +381,13 @@ func TestLineMagicLinesEmptyShortcut(t *testing.T) {
 func FuzzNormalize(f *testing.F) {
 	f.Add("")
 	f.Add(sampleDump3x)
+	f.Add(samplePrism34)
+	f.Add(sample2x)
 	f.Add("@ NODE_BLOCK\n+- nd_head:\n|   @ NODE_BEGIN\n|   +- nd_body:\n|       (null node)\n")
 	f.Add("@ NODE_LIT (line: 5)\n+- nd_lit: 5\n")
+	f.Add("@ NODE_BLOCK\n+- nd_head:\n|   @ NODE_LIT\n+- nd_head:\n    @ NODE_LIT\n")
+	f.Add("@ NODE_STR\n+- nd_lit: \"/tmp/parsetree-7.rb\"\n")
+	f.Add("@ NODE_ARRAY\n+- nd_alen: 99\n+- nd_head (1):\n|   @ NODE_LIT\n")
 	f.Fuzz(func(t *testing.T, dump string) {
 		// Should never panic, and must be idempotent.
 		out1 := Normalize(dump)

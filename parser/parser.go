@@ -4284,15 +4284,22 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 		var elem ast.Expression
 		switch {
 		case len(curWord) == 1:
-			// Single-part word. If it's already a string-shaped literal,
-			// use as-is; if it's a bare interpolation expression (no
-			// surrounding text), wrap so it prints as `"#{x}"` rather than
-			// `x`. The wrap preserves MRI semantics: %W"#{x}" produces a
-			// DSTR (string with implicit to_s on the interp), not a bare
-			// reference to x.
-			if _, isStr := curWord[0].(*ast.StringLiteral); isStr || isSymbol {
-				elem = curWord[0]
-			} else {
+			// Single-part word. Pick the cheapest representation that
+			// prints with proper escaping:
+			//   - StringLiteral / Symbol -> use as-is
+			//   - StringContent (pure literal text) -> wrap in Value form
+			//     so the printer's quote-aware escape handles apostrophes
+			//     (`'s` -> `'\'s'`); Parts-form doesn't escape `'`
+			//   - anything else (bare EMBEXPR) -> wrap in Parts form so it
+			//     prints as `"#{x}"` (preserves to_s semantics)
+			switch w := curWord[0].(type) {
+			case *ast.StringLiteral:
+				elem = w
+			case *ast.SymbolLiteral:
+				elem = w
+			case *ast.StringContent:
+				elem = &ast.StringLiteral{Token: beg, Value: w.Value}
+			default:
 				elem = &ast.StringLiteral{Token: beg, Parts: curWord}
 			}
 		default:
@@ -4302,7 +4309,7 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 		curWord = nil
 	}
 
-	for i, part := range parts {
+	for _, part := range parts {
 		switch pt := part.(type) {
 		case *ast.StringContent:
 			hasLeadingWS := len(pt.Value) > 0 && isSpace(rune(pt.Value[0]))
@@ -4311,7 +4318,10 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 			words := splitWordList(pt.Value)
 			for j, w := range words {
 				if j == 0 {
-					if hasLeadingWS || (len(curWord) > 0 && i > 0) {
+					// Only flush on a real word boundary -- leading WS in
+					// this content. Following an EMBEXPR with no leading
+					// WS means the StringContent continues the same word.
+					if hasLeadingWS {
 						flushWord()
 					}
 				} else {
@@ -4327,7 +4337,10 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 						Value: symValue,
 					})
 				} else {
-					curWord = append(curWord, &ast.StringLiteral{Token: beg, Value: w})
+					// Use StringContent (not StringLiteral) so when this
+					// word is wrapped in an outer StringLiteral with Parts
+					// the literal text emits inline, not as `#{"..."}`.
+					curWord = append(curWord, &ast.StringContent{Token: pt.Token, Value: w})
 				}
 				if j == len(words)-1 && hasTrailingWS {
 					flushWord()
