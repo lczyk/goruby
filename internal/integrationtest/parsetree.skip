@@ -30,20 +30,17 @@ src2-rejected 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_lin
 src2-rejected 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: goruby String() output rejected by MRI
-src2-rejected 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/mri-tests/enc/test_emoji_breaks.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/mri-tests/marshaltestlib.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/mri-tests/test_assignment.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/mri-tests/test_insns_leaf.rb: goruby String() output rejected by MRI
-src2-rejected 1.9 internal/integrationtest/testdata/mri-tests/test_pack.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/mri-tests/test_whileuntil.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/ruby-extra/parser/loops_control.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/brain-flak/Interpreter.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/kaiser-ruby/lib/kaiser_ruby/cli.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/minitest/lib/minitest.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/minitest/lib/minitest/assertions.rb: goruby String() output rejected by MRI
-src2-rejected 2.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
@@ -54,21 +51,18 @@ src2-rejected 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_lin
 src2-rejected 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: goruby String() output rejected by MRI
-src2-rejected 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/mri-tests/enc/test_emoji_breaks.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/mri-tests/test_assignment.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/mri-tests/test_insns_leaf.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/mri-tests/test_lazy_enumerator.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/mri-tests/test_numeric.rb: goruby String() output rejected by MRI
-src2-rejected 2.0 internal/integrationtest/testdata/mri-tests/test_pack.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/mri-tests/test_whileuntil.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/ruby-extra/parser/loops_control.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/brain-flak/Interpreter.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/kaiser-ruby/lib/kaiser_ruby/cli.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/minitest/lib/minitest.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/minitest/lib/minitest/assertions.rb: goruby String() output rejected by MRI
-src2-rejected 2.1 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
@@ -79,22 +73,18 @@ src2-rejected 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_lin
 src2-rejected 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: goruby String() output rejected by MRI
-src2-rejected 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/mri-tests/enc/test_emoji_breaks.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/mri-tests/test_assignment.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/mri-tests/test_insns_leaf.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/mri-tests/test_lazy_enumerator.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/mri-tests/test_numeric.rb: goruby String() output rejected by MRI
-src2-rejected 2.1 internal/integrationtest/testdata/mri-tests/test_pack.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/mri-tests/test_whileuntil.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/ruby-extra/parser/loops_control.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/brain-flak/Interpreter.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/minitest/lib/minitest.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/minitest/lib/minitest/assertions.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_assertions.rb: goruby String() output rejected by MRI
-src2-rejected 2.3 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: goruby String() output rejected by MRI
-src2-rejected 2.3 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
@@ -105,15 +95,11 @@ src2-rejected 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_lin
 src2-rejected 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: goruby String() output rejected by MRI
-src2-rejected 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/enc/test_emoji_breaks.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_assignment.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_ast.rb: goruby String() output rejected by MRI
-src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_autoload.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_bignum.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_enum.rb: goruby String() output rejected by MRI
-src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_env.rb: goruby String() output rejected by MRI
-src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_fiber.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_insns_leaf.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_io_m17n.rb: goruby String() output rejected by MRI
@@ -122,7 +108,6 @@ src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_lambda.rb: go
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_lazy_enumerator.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_m17n.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_numeric.rb: goruby String() output rejected by MRI
-src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_pack.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_system.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_thread.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_whileuntil.rb: goruby String() output rejected by MRI
@@ -131,8 +116,6 @@ src2-rejected 2.5 internal/integrationtest/testdata/gems/brain-flak/Interpreter.
 src2-rejected 2.5 internal/integrationtest/testdata/gems/minitest/lib/minitest.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/minitest/lib/minitest/assertions.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_assertions.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
@@ -143,28 +126,19 @@ src2-rejected 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_lin
 src2-rejected 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/enc/test_emoji_breaks.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_assignment.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_ast.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_autoload.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_bignum.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_dir.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_enum.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_env.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_fiber.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_file_exhaustive.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_insns_leaf.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_io_m17n.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_iterator.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_lambda.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_lazy_enumerator.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_m17n.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_numeric.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_pack.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_parse.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_process.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_regexp.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_settracefunc.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_system.rb: goruby String() output rejected by MRI
@@ -208,8 +182,6 @@ src2-rejected 2.7 internal/integrationtest/testdata/gems/brain-flak/Interpreter.
 src2-rejected 2.7 internal/integrationtest/testdata/gems/minitest/lib/minitest.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/minitest/lib/minitest/assertions.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_assertions.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
@@ -220,29 +192,21 @@ src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_lin
 src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/enc/test_emoji_breaks.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_array.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_assignment.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_ast.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_autoload.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_bignum.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_dir.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_enum.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_file_exhaustive.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_insns_leaf.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_io_m17n.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_iterator.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_lambda.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_lazy_enumerator.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_m17n.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_module.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_numeric.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_pack.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_parse.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_proc.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_process.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_regexp.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_settracefunc.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_system.rb: goruby String() output rejected by MRI
@@ -254,8 +218,6 @@ src2-rejected 3.0 internal/integrationtest/testdata/gems/brain-flak/Interpreter.
 src2-rejected 3.0 internal/integrationtest/testdata/gems/minitest/lib/minitest.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/gems/minitest/lib/minitest/assertions.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_assertions.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
@@ -266,30 +228,21 @@ src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_lin
 src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/enc/test_emoji_breaks.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_array.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_assignment.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_ast.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_autoload.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_bignum.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_dir.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_enum.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_exception.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_file_exhaustive.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_hash.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_insns_leaf.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_io_m17n.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_iterator.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_lambda.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_lazy_enumerator.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_module.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_numeric.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_pack.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_parse.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_proc.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_process.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_refinement.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_settracefunc.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_string.rb: goruby String() output rejected by MRI
@@ -304,8 +257,6 @@ src2-rejected 3.1 internal/integrationtest/testdata/gems/brain-flak/Interpreter.
 src2-rejected 3.1 internal/integrationtest/testdata/gems/minitest/lib/minitest.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/gems/minitest/lib/minitest/assertions.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_assertions.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
@@ -316,35 +267,25 @@ src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_lin
 src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/enc/test_emoji_breaks.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_array.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_assignment.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_ast.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_autoload.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_bignum.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_dir.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_enum.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_exception.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_file_exhaustive.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_hash.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_insns_leaf.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_io_m17n.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_iterator.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_lambda.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_lazy_enumerator.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_literal.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_m17n.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_module.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_numeric.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_pack.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_parse.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_pattern_matching.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_proc.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_process.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_refinement.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_regexp.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_settracefunc.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_string.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_system.rb: goruby String() output rejected by MRI
@@ -358,8 +299,6 @@ src2-rejected 3.2 internal/integrationtest/testdata/gems/brain-flak/Interpreter.
 src2-rejected 3.2 internal/integrationtest/testdata/gems/minitest/lib/minitest.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/gems/minitest/lib/minitest/assertions.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_assertions.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
@@ -370,38 +309,27 @@ src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_lin
 src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/enc/test_emoji_breaks.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_array.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_assignment.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_ast.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_autoload.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_bignum.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_call.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_dir.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_enum.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_exception.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_file_exhaustive.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_hash.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_insns_leaf.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_io_m17n.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_iseq.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_iterator.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_lambda.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_lazy_enumerator.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_literal.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_m17n.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_module.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_numeric.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_optimization.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_pack.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_parse.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_pattern_matching.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_proc.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_process.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_refinement.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_regexp.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_settracefunc.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_string.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_syntax.rb: goruby String() output rejected by MRI
@@ -418,7 +346,6 @@ src2-rejected 3.4 internal/integrationtest/testdata/gems/minitest/lib/minitest.r
 src2-rejected 3.4 internal/integrationtest/testdata/gems/minitest/lib/minitest/assertions.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_assertions.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
@@ -433,14 +360,11 @@ src2-rejected 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_tas
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/enc/test_emoji_breaks.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_array.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_ast.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_autoload.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_bignum.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_call.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_defined.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_dir.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_enum.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_exception.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_file_exhaustive.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_hash.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_insns_leaf.rb: goruby String() output rejected by MRI
@@ -454,11 +378,9 @@ src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_m17n.rb: goru
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_module.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_numeric.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_optimization.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_pack.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_parse.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_pattern_matching.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_proc.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_process.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_refinement.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_settracefunc.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_string.rb: goruby String() output rejected by MRI
@@ -474,7 +396,6 @@ src2-rejected 4.0 internal/integrationtest/testdata/gems/minitest/lib/minitest.r
 src2-rejected 4.0 internal/integrationtest/testdata/gems/minitest/lib/minitest/assertions.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_assertions.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
@@ -489,14 +410,11 @@ src2-rejected 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_tas
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/enc/test_emoji_breaks.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_array.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_ast.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_autoload.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_bignum.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_call.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_defined.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_dir.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_enum.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_exception.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_file_exhaustive.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_hash.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_insns_leaf.rb: goruby String() output rejected by MRI
@@ -510,11 +428,9 @@ src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_m17n.rb: goru
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_module.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_numeric.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_optimization.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_pack.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_parse.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_pattern_matching.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_proc.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_process.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_refinement.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_settracefunc.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_string.rb: goruby String() output rejected by MRI
@@ -525,7 +441,6 @@ src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_whileuntil.rb
 src2-rejected 4.0 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_7.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_3_0.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_3_2.rb: goruby String() output rejected by MRI
-tree-mismatch 1.9 internal/integrationtest/testdata/gems/brainfint/src/brainfuck.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/brian-chuck/brian-chuck.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/hexagony/hexagony.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/kaiser-ruby/spec/general/integration_spec.rb: tree diff vs MRI parsetree
@@ -549,9 +464,6 @@ tree-mismatch 1.9 internal/integrationtest/testdata/gems/kaiser-ruby/spec/refere
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/labyrinth/labyrinth.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/minitest/lib/minitest/test_task.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/backtrace.rb: tree diff vs MRI parsetree
-tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/cpu_counter.rb: tree diff vs MRI parsetree
-tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/file_list.rb: tree diff vs MRI parsetree
-tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/file_utils_ext.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/rule_recursion_overflow_error.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
@@ -560,12 +472,10 @@ tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_req
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: tree diff vs MRI parsetree
-tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/mri-tests/test_const.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/ruby-extra/parser/exception.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/brainfint/src/brainfuck.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/brian-chuck/brian-chuck.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/hexagony/hexagony.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/kaiser-ruby/spec/general/integration_spec.rb: tree diff vs MRI parsetree
@@ -588,10 +498,6 @@ tree-mismatch 2.0 internal/integrationtest/testdata/gems/kaiser-ruby/spec/refere
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/kaiser-ruby/spec/reference/whitespace_spec.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/labyrinth/labyrinth.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/minitest/lib/minitest/test_task.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/cpu_counter.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/file_list.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/file_utils_ext.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/rule_recursion_overflow_error.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
@@ -599,17 +505,13 @@ tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_req
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/mri-tests/marshaltestlib.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/mri-tests/test_backtrace.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/mri-tests/test_const.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/mri-tests/test_numeric.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/mri-tests/test_pack.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/ruby-extra/parser/exception.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_0.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/brainfint/src/brainfuck.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/brian-chuck/brian-chuck.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/hexagony/hexagony.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/kaiser-ruby/spec/general/integration_spec.rb: tree diff vs MRI parsetree
@@ -633,10 +535,6 @@ tree-mismatch 2.1 internal/integrationtest/testdata/gems/kaiser-ruby/spec/refere
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/labyrinth/labyrinth.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/minitest/lib/minitest/test_task.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_mock.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/cpu_counter.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/file_list.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/file_utils_ext.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/rule_recursion_overflow_error.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
@@ -644,27 +542,16 @@ tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_req
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/mri-tests/marshaltestlib.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/mri-tests/test_backtrace.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/mri-tests/test_const.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/mri-tests/test_pack.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/mri-tests/test_time_tz.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/ruby-extra/parser/exception.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_0.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_1.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/brainfint/src/brainfuck.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/brian-chuck/brian-chuck.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/hexagony/hexagony.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/kaiser-ruby/lib/kaiser_ruby/cli.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/kaiser-ruby/spec/general/integration_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/kaiser-ruby/spec/general/other_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/kaiser-ruby/spec/language/comparison_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/kaiser-ruby/spec/language/flow_control_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/kaiser-ruby/spec/language/functions_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/kaiser-ruby/spec/language/general_statements_spec.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/kaiser-ruby/spec/old_reference_tests/correct_spec.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/kaiser-ruby/spec/old_reference_tests/parsing_errors_spec.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/kaiser-ruby/spec/old_reference_tests/runtime_errors_spec.rb: tree diff vs MRI parsetree
@@ -682,17 +569,11 @@ tree-mismatch 2.3 internal/integrationtest/testdata/gems/kaiser-ruby/spec/refere
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/kaiser-ruby/spec/reference/operators_spec.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/kaiser-ruby/spec/reference/variables_spec.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/kaiser-ruby/spec/reference/whitespace_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/kaiser-ruby/spec/variables/variable_names_spec.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/labyrinth/labyrinth.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/minitest/lib/minitest/test_task.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/minitest/test/minitest/metametameta.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_assertions.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_mock.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/lib/rake/cpu_counter.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/lib/rake/file_list.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/lib/rake/file_utils_ext.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/lib/rake/rule_recursion_overflow_error.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
@@ -700,52 +581,21 @@ tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_req
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/wumpus/icosahedron.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/marshaltestlib.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_alias.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_autoload.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_backtrace.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_beginendblock.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_class.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_const.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_econv.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_encoding.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_fiber.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_gc_compact.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_lambda.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_numeric.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_object_id.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_objectspace.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_pack.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_pipe.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_ractor.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_require.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_require_lib.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_rubyvm.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_time_tz.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_transcode.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_warning.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_weakmap.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_yjit_exit_locations.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/ruby-extra/parser/exception.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/ruby-extra/parser/heredoc.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/ruby-extra/parser/unicode.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_0.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_1.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_3.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/brainfint/src/brainfuck.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/brian-chuck/brian-chuck.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/hexagony/hexagony.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/kaiser-ruby/lib/kaiser_ruby/cli.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/kaiser-ruby/spec/general/integration_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/kaiser-ruby/spec/general/other_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/kaiser-ruby/spec/language/comparison_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/kaiser-ruby/spec/language/flow_control_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/kaiser-ruby/spec/language/functions_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/kaiser-ruby/spec/language/general_statements_spec.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/kaiser-ruby/spec/old_reference_tests/correct_spec.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/kaiser-ruby/spec/old_reference_tests/parsing_errors_spec.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/kaiser-ruby/spec/old_reference_tests/runtime_errors_spec.rb: tree diff vs MRI parsetree
@@ -763,15 +613,9 @@ tree-mismatch 2.5 internal/integrationtest/testdata/gems/kaiser-ruby/spec/refere
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/kaiser-ruby/spec/reference/operators_spec.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/kaiser-ruby/spec/reference/variables_spec.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/kaiser-ruby/spec/reference/whitespace_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/kaiser-ruby/spec/variables/variable_names_spec.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/minitest/lib/minitest/test_task.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/minitest/test/minitest/metametameta.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_assertions.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/lib/rake/cpu_counter.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/lib/rake/file_list.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/lib/rake/file_utils_ext.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/lib/rake/rule_recursion_overflow_error.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
@@ -779,42 +623,15 @@ tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_req
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/wumpus/icosahedron.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/marshaltestlib.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_alias.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_argf.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_autoload.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_backtrace.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_beginendblock.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_const.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_econv.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_encoding.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_fiber.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_gc.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_gc_compact.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_lambda.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_numeric.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_object_id.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_objectspace.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_pack.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_pipe.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_ractor.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_require.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_require_lib.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_rubyvm.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_thread.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_time_tz.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_warning.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_yjit_exit_locations.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/ruby-extra/parser/exception.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/ruby-extra/parser/heredoc.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/ruby-extra/parser/unicode.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_0.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_1.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_3.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/brian-chuck/brian-chuck.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/hexagony/hexagony.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/kaiser-ruby/spec/general/integration_spec.rb: tree diff vs MRI parsetree
@@ -858,7 +675,6 @@ tree-mismatch 2.6 internal/integrationtest/testdata/mri-tests/test_thread.rb: tr
 tree-mismatch 2.6 internal/integrationtest/testdata/mri-tests/test_time_tz.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_0.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_1.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/gems/brainfint/src/brainfuck.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/brian-chuck/brian-chuck.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/hexagony/hexagony.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/kaiser-ruby/spec/general/integration_spec.rb: tree diff vs MRI parsetree
@@ -884,11 +700,6 @@ tree-mismatch 2.7 internal/integrationtest/testdata/gems/minitest/lib/minitest/t
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/minitest/test/minitest/metametameta.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_assertions.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_mock.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/lib/rake/cpu_counter.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/lib/rake/file_list.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/lib/rake/file_utils_ext.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/lib/rake/rule_recursion_overflow_error.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
@@ -896,30 +707,17 @@ tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_req
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/gems/wumpus/icosahedron.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/marshaltestlib.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/test_alias.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/test_autoload.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/test_backtrace.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/test_class.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/test_const.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/test_econv.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/test_gc.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/test_lambda.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/test_numeric.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/test_pack.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/test_proc.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/test_require.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/test_thread.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/test_time_tz.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/test_transcode.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/ruby-extra/parser/exception.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_0.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_1.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/gems/brainfint/src/brainfuck.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/brian-chuck/brian-chuck.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/hexagony/hexagony.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/kaiser-ruby/spec/general/integration_spec.rb: tree diff vs MRI parsetree
@@ -945,11 +743,6 @@ tree-mismatch 3.0 internal/integrationtest/testdata/gems/minitest/lib/minitest/t
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/minitest/test/minitest/metametameta.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_assertions.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_mock.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/lib/rake/cpu_counter.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/lib/rake/file_list.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/lib/rake/file_utils_ext.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/lib/rake/rule_recursion_overflow_error.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
@@ -957,29 +750,17 @@ tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_req
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/gems/wumpus/icosahedron.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/marshaltestlib.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_alias.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_autoload.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_class.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_const.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_exception.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_gc.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_lambda.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_numeric.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_pack.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_proc.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_require.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_thread.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_time_tz.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_transcode.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/ruby-extra/parser/exception.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_0.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_1.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/gems/brainfint/src/brainfuck.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/brian-chuck/brian-chuck.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/hexagony/hexagony.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/kaiser-ruby/spec/general/integration_spec.rb: tree diff vs MRI parsetree
@@ -1005,11 +786,6 @@ tree-mismatch 3.1 internal/integrationtest/testdata/gems/minitest/lib/minitest/t
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/minitest/test/minitest/metametameta.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_assertions.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_mock.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/lib/rake/cpu_counter.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/lib/rake/file_list.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/lib/rake/file_utils_ext.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/lib/rake/rule_recursion_overflow_error.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
@@ -1017,31 +793,17 @@ tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_req
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/gems/wumpus/icosahedron.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/marshaltestlib.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/test_alias.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/test_autoload.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/test_backtrace.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/test_class.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/test_const.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/test_econv.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/test_exception.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/test_gc.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/test_lambda.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/test_numeric.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/test_pack.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/test_proc.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/test_require.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/test_thread.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/test_time_tz.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/test_transcode.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/ruby-extra/parser/exception.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_0.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_1.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/gems/brainfint/src/brainfuck.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/brian-chuck/brian-chuck.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/hexagony/hexagony.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/kaiser-ruby/spec/general/integration_spec.rb: tree diff vs MRI parsetree
@@ -1067,11 +829,6 @@ tree-mismatch 3.2 internal/integrationtest/testdata/gems/minitest/lib/minitest/t
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/minitest/test/minitest/metametameta.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_assertions.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_mock.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/lib/rake/cpu_counter.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/lib/rake/file_list.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/lib/rake/file_utils_ext.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/lib/rake/rule_recursion_overflow_error.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
@@ -1079,34 +836,21 @@ tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_req
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/gems/wumpus/icosahedron.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/marshaltestlib.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/test_alias.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/test_autoload.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/test_backtrace.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/test_class.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/test_const.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/test_econv.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/test_exception.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/test_gc.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/test_lambda.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/test_numeric.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/test_optimization.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/test_pack.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/test_thread.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/test_time_tz.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/test_transcode.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/ruby-extra/parser/exception.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_0.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_1.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/esolangs/baz.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/esolangs/tomagotcha.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/bouncy-lang/bouncy/point.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/brain-flak/BraceCheck.rb: tree diff vs MRI parsetree
-tree-mismatch 3.4 internal/integrationtest/testdata/gems/brainfint/src/brainfuck.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/brian-chuck/brian-chuck.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/esolang-book-sources/2-2/11.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/esolang-book-sources/bolic/bolic.rb: tree diff vs MRI parsetree
@@ -1136,7 +880,6 @@ tree-mismatch 3.4 internal/integrationtest/testdata/gems/minitest/test/minitest/
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_assertions.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_mock.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 3.4 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/pyramid-scheme/pyra.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/lib/rake/rule_recursion_overflow_error.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
@@ -1152,14 +895,11 @@ tree-mismatch 3.4 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: 
 tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/enc/test_grapheme_breaks.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/test_alias.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/test_argf.rb: tree diff vs MRI parsetree
-tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/test_autoload.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/test_class.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/test_const.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/test_econv.rb: tree diff vs MRI parsetree
-tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/test_exception.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/test_numeric.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/test_optimization.rb: tree diff vs MRI parsetree
-tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/test_pack.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/test_proc.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/test_regexp.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/test_require.rb: tree diff vs MRI parsetree
@@ -1176,7 +916,6 @@ tree-mismatch 4.0 internal/integrationtest/testdata/esolangs/baz.rb: tree diff v
 tree-mismatch 4.0 internal/integrationtest/testdata/esolangs/tomagotcha.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/bouncy-lang/bouncy/point.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/brain-flak/BraceCheck.rb: tree diff vs MRI parsetree
-tree-mismatch 4.0 internal/integrationtest/testdata/gems/brainfint/src/brainfuck.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/brian-chuck/brian-chuck.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/esolang-book-sources/2-2/11.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/esolang-book-sources/bolic/bolic.rb: tree diff vs MRI parsetree
@@ -1206,7 +945,6 @@ tree-mismatch 4.0 internal/integrationtest/testdata/gems/minitest/test/minitest/
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_assertions.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_mock.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: tree diff vs MRI parsetree
-tree-mismatch 4.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/pyramid-scheme/pyra.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/lib/rake/rule_recursion_overflow_error.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
@@ -1222,14 +960,11 @@ tree-mismatch 4.0 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: 
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/enc/test_grapheme_breaks.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_alias.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_argf.rb: tree diff vs MRI parsetree
-tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_autoload.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_class.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_const.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_econv.rb: tree diff vs MRI parsetree
-tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_exception.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_numeric.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_optimization.rb: tree diff vs MRI parsetree
-tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_pack.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_proc.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_regexp.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_require.rb: tree diff vs MRI parsetree
@@ -1243,36 +978,14 @@ tree-mismatch 4.0 internal/integrationtest/testdata/ruby-extra/parser/literals.r
 tree-mismatch 4.0 internal/integrationtest/testdata/ruby-extra/parser/precedence.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_0.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_1.rb: tree diff vs MRI parsetree
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_box.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_box.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_box.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_box.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_box.rb: goruby String() output rejected by MRI
-src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_box.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_basicinstructions.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_basicinstructions.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_rational.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_rational.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_rational.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_rational.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/mri-tests/test_rational2.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/mri-tests/test_rational2.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/mri-tests/test_rational2.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_rational.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/mri-tests/test_rational.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_range.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_rational.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_range.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_range.rb: goruby String() output rejected by MRI
 tree-mismatch 3.0 internal/integrationtest/testdata/ruby-extra/parser/nested.rb: tree diff vs MRI parsetree
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_symbol.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_symbol.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_symbol.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_set.rb: goruby String() output rejected by MRI
-src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_set.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_object.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_object.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_object.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_mixed_unicode_escapes.rb: MRI rejects cp932 encoding magic comment
 src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/test_mixed_unicode_escapes.rb: MRI rejects cp932 encoding magic comment
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_mixed_unicode_escapes.rb: MRI rejects cp932 encoding magic comment
@@ -1288,33 +1001,9 @@ src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/enc/test_euc_jp.rb
 src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/enc/test_shift_jis.rb: MRI rejects encoding magic comment in older versions
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/enc/test_shift_jis.rb: MRI rejects encoding magic comment in older versions
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/enc/test_shift_jis.rb: MRI rejects encoding magic comment in older versions
-src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_rubyoptions.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_rubyoptions.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_rubyoptions.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_enumerator.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_enumerator.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_enumerator.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_enumerator.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_struct.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_struct.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_struct.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_struct.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_struct.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_struct.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_signal.rb: goruby String() output rejected by MRI
-src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_signal.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_stringchar.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_stringchar.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_eval.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_eval.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_eval.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_eval.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_eval.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_eval.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/gems/rake/lib/rake/task_manager.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/gems/rake/lib/rake/task_manager.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_io.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_io.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_io.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_io.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_io.rb: goruby String() output rejected by MRI
