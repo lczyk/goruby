@@ -173,7 +173,25 @@ while IFS=$'\t' read -r version url checksum || [[ -n "${version:-}" ]]; do
 
     # Compile a minimal ruby -- we only need `ruby -c` for syntax checks.
     # Disable extensions that don't build on modern platforms (fiddle, openssl).
-    echo "    configuring"
+    #
+    # Speed: MRI defaults optflags=-O3 -fno-fast-math (kept). Add LTO + drop
+    # debug symbols for faster startup / parse. LTO gated to ruby >= 2.5
+    # since older versions trip modern clang LTO. --enable-lto exists only
+    # in ruby >= 3.0; for 2.5-2.x we pass raw -flto via CFLAGS/LDFLAGS.
+    mm_major="${version%%.*}"
+    mm_rest="${version#*.}"
+    mm_minor="${mm_rest%%.*}"
+    lto_cflags=""
+    lto_ldflags=""
+    lto_configure=()
+    if [[ "$mm_major" -ge 3 ]]; then
+        lto_configure+=(--enable-lto)
+    elif [[ "$mm_major" -eq 2 && "$mm_minor" -ge 5 ]]; then
+        lto_cflags="-flto"
+        lto_ldflags="-flto"
+    fi
+
+    echo "    configuring (lto=$([[ -n $lto_cflags || ${#lto_configure[@]} -gt 0 ]] && echo yes || echo no))"
     (
         cd "$src"
         ./configure \
@@ -182,6 +200,10 @@ while IFS=$'\t' read -r version url checksum || [[ -n "${version:-}" ]]; do
             --without-gmp \
             --without-fiddle \
             --without-openssl \
+            ${lto_configure[@]+"${lto_configure[@]}"} \
+            CFLAGS="${CFLAGS:-} $lto_cflags" \
+            LDFLAGS="${LDFLAGS:-} $lto_ldflags" \
+            debugflags="" \
             --quiet
     ) >/dev/null
 
