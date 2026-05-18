@@ -70,13 +70,57 @@ func (p *Program) End() int {
 	return p.Statements[len(p.Statements)-1].End()
 }
 func (p *Program) String() string {
-	stmts := make([]string, len(p.Statements))
+	// Preserve blank lines between top-level statements (using source line
+	// positions) so re-parse sees the same `__LINE__` values. Only applies
+	// when File is set and both adjacent stmts have non-zero Pos.
+	var out bytes.Buffer
 	for i, s := range p.Statements {
-		if s != nil {
-			stmts[i] = s.String()
+		if s == nil {
+			continue
 		}
+		if i > 0 && p.File != nil {
+			prev := p.Statements[i-1]
+			if prev != nil {
+				gap := blankLinesBetween(p.File, prev, s)
+				if gap > 0 {
+					out.WriteString(strings.Repeat("\n", gap))
+				} else {
+					out.WriteByte('\n')
+				}
+			} else {
+				out.WriteByte('\n')
+			}
+		}
+		out.WriteString(s.String())
 	}
-	return relocateHeredocBodies(strings.Join(stmts, "\n"))
+	return relocateHeredocBodies(out.String())
+}
+
+// blankLinesBetween returns the number of `\n` chars to emit between two
+// adjacent statements to mirror the source's line spacing. Returns 0 if
+// either statement lacks position info (synthesised), in which case the
+// caller falls back to a single `\n`.
+func blankLinesBetween(f *token.File, prev, next Node) (gap int) {
+	defer func() {
+		if recover() != nil {
+			gap = 0
+		}
+	}()
+	prevEnd := prev.End()
+	nextPos := next.Pos()
+	if prevEnd <= 0 || nextPos <= 0 || nextPos <= prevEnd {
+		return 0
+	}
+	prevLine := f.Position(f.Pos(prevEnd)).Line
+	nextLine := f.Position(f.Pos(nextPos)).Line
+	if prevLine == 0 || nextLine == 0 {
+		return 0
+	}
+	gap = nextLine - prevLine
+	if gap < 1 {
+		gap = 1
+	}
+	return gap
 }
 
 // Heredoc body markers used internally by StringLiteral.String() and
