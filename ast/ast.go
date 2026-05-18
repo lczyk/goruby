@@ -2194,7 +2194,7 @@ func (pe *PrefixExpression) String() string {
 	atomic := false
 	switch pe.Operator {
 	case "-", "+":
-		switch pe.Right.(type) {
+		switch r := pe.Right.(type) {
 		case *IntegerLiteral, *FloatLiteral,
 			*ContextCallExpression, *IndexExpression,
 			*Identifier, *InstanceVariable, *ClassVariable, *Global,
@@ -2205,6 +2205,12 @@ func (pe *PrefixExpression) String() string {
 			// groups the unary binds to the result either way so no
 			// outer parens needed.
 			atomic = true
+		case *InfixExpression:
+			// `**` binds tighter than unary -/+: `-x**y` parses as
+			// `-(x**y)` directly. Skip the defensive wrap.
+			if r.Operator == "**" {
+				atomic = true
+			}
 		}
 	case "!", "~":
 		switch pe.Right.(type) {
