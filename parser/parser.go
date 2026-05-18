@@ -449,10 +449,10 @@ func (p *parser) nextToken() {
 	}
 	p.curToken = p.peekToken
 	p.peekToken = p.peek2Token
-	p.pos = gotoken.Pos(p.curToken.Pos)
+	p.pos = gotoken.Pos(p.file.Base() + p.curToken.Pos)
 	p.lastLine += p.curToken.Literal
 	if p.curToken.Type == token.NEWLINE {
-		p.file.AddLine(int(p.pos))
+		p.file.AddLine(p.curToken.Pos + 1)
 		p.lastLine = ""
 	}
 	p.peek2Token = p.nextNonCommentToken()

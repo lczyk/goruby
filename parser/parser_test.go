@@ -1063,7 +1063,7 @@ func TestKeyword__FILE__(t *testing.T) {
 
 		_, err := parseSource(input)
 
-		expected := "1:9: syntax error: Can't assign to __FILE__"
+		expected := "1:10: syntax error: Can't assign to __FILE__"
 
 		parserErrors := err.errors
 		if len(parserErrors) != 1 {
