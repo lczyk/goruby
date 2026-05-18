@@ -153,9 +153,12 @@ var (
 	// Prism per-token _loc lines: "+-- foo_loc: nil" or "+-- foo_loc: (L,C)-(L,C) = \"literal\"".
 	// Handles escaped quotes inside the literal.
 	rePrismTokenLoc = regexp.MustCompile(`(?m)^.*_loc: (?:nil|\([^)]+\)-\([^)]+\) = "(?:[^"\\]|\\.)*")$\n?`)
-	// Trailing "*" marker (MRI 2.6+ flags "last sibling" -- changes with tree
-	// reshape but carries no semantic info).
-	reTrailingStar = regexp.MustCompile(`(?m)\)\*$`)
+	// Trailing "*" marker. Multiple uses across MRI versions:
+	//   - "<name>)*" on entry headers flags "last sibling" (2.6+)
+	//   - "NODE_<X>*" flags the expression was parenthesised in source
+	// Neither carries semantic info we want to diff on. Strip both.
+	reTrailingStar     = regexp.MustCompile(`(?m)\)\*$`)
+	reNodeNameStar     = regexp.MustCompile(`(?m)(@ NODE_[A-Z_]+)\*$`)
 	// 1.9 nd_alen leaks an uninitialised value on the tail NODE_ARRAY entry --
 	// drop nd_alen entirely (redundant with sibling count anyway).
 	reNdAlen = regexp.MustCompile(`(?m)^.*\bnd_alen: .*$\n?`)
@@ -174,6 +177,7 @@ func normalizeParsetree(s string) string {
 	s = reLineLocation.ReplaceAllString(s, "")
 	s = rePrismTokenLoc.ReplaceAllString(s, "")
 	s = reTrailingStar.ReplaceAllString(s, ")")
+	s = reNodeNameStar.ReplaceAllString(s, "$1")
 	s = reNdAlen.ReplaceAllString(s, "")
 	s = rePrismSourceFile.ReplaceAllString(s, "")
 	s = reNdLitTempPath.ReplaceAllString(s, "")
