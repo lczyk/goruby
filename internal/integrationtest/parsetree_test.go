@@ -1,4 +1,4 @@
-//go:build integration
+//go:build oracle
 
 // TestMRIParseTreeDiff: parser-correctness oracle.
 //

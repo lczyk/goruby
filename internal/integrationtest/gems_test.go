@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration || oracle
 
 // Smoke tests for lexer + parser + ast walker against real-world ruby source.
 // Fixtures populated by `make gems` (see plan.md).
