@@ -28,12 +28,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/lczyk/goruby/internal/parsetreenorm"
 	"github.com/lczyk/goruby/parser"
 	"github.com/lczyk/goruby/token"
 )
@@ -134,205 +134,9 @@ func rubies(t *testing.T) map[string]string {
 }
 
 // --- normalisation ----------------------------------------------------------
-
-// Patterns that match cosmetic / positional noise common across MRI parsetree
-// dump formats (1.9 -> 4.0). Each MRI generation emits a slightly different
-// format; the union of these regexes covers all observed cases without
-// requiring per-version awareness, since we only ever diff intra-version.
-var (
-	// Strip warning banner that some MRIs prepend to --dump=parsetree output.
-	reHeader = regexp.MustCompile(`(?s)^#+\n## Do NOT.*?\n#+\n+`)
-	// Leading "# " on each line (1.9 through 3.2 wrap output in comments).
-	reLeadingHash = regexp.MustCompile(`(?m)^# ?`)
-	// Prism (3.4+) node header: "@ NodeName (location: (L,C)-(L,C))".
-	rePrismLocation = regexp.MustCompile(` \(location: \([^)]+\)-\([^)]+\)\)`)
-	// Pre-Prism (3.1/3.2) "(id: N, line: N, location: ...)" form.
-	reLineIDLocation = regexp.MustCompile(` \(id: \d+, line: \d+(?:, (?:location|code_range): \([^)]+\)-\([^)]+\))?\)`)
-	// 1.9 ... 3.0 "(line: N)" or "(line: N, location: ...)" or "(line: N, code_range: ...)".
-	reLineLocation = regexp.MustCompile(` \(line: \d+(?:, (?:location|code_range): \([^)]+\)-\([^)]+\))?\)`)
-	// Prism per-token _loc lines: "+-- foo_loc: nil" or "+-- foo_loc: (L,C)-(L,C) = \"literal\"".
-	// Handles escaped quotes inside the literal.
-	rePrismTokenLoc = regexp.MustCompile(`(?m)^.*_loc: (?:nil|\([^)]+\)-\([^)]+\) = "(?:[^"\\]|\\.)*")$\n?`)
-	// Trailing "*" marker. Multiple uses across MRI versions:
-	//   - "<name>)*" on entry headers flags "last sibling" (2.6+)
-	//   - "NODE_<X>*" flags the expression was parenthesised in source
-	// Neither carries semantic info we want to diff on. Strip both.
-	reTrailingStar     = regexp.MustCompile(`(?m)\)\*$`)
-	reNodeNameStar     = regexp.MustCompile(`(?m)(@ NODE_[A-Z0-9_]+)\*$`)
-	// 1.9 nd_alen leaks an uninitialised value on the tail NODE_ARRAY entry --
-	// drop nd_alen entirely (redundant with sibling count anyway).
-	reNdAlen = regexp.MustCompile(`(?m)^.*\bnd_alen: .*$\n?`)
-	// 3.x+ adds " (N)" sibling-index suffix on chained child links
-	// (e.g. "+- nd_head (1):", "+- nd_head (2):"). Index is redundant with
-	// emission order. Strip to keep cross-version diffs uniform.
-	reSiblingIndex = regexp.MustCompile(`(\+- nd_[a-z_]+) \(\d+\):`)
-	// __FILE__ / __dir__ substitution via SourceFileNode (prism) or
-	// NODE_STR with the tempfile path -- different tempfiles per run so
-	// the path text differs even when the source is identical.
-	rePrismSourceFile = regexp.MustCompile(`(?m)^.*\+-- filepath: ".*parsetree-[0-9]+\.rb".*$\n?`)
-	reNdLitTempPath   = regexp.MustCompile(`(?m)^.*\+- nd_lit: ".*parsetree-[0-9]+\.rb".*$\n?`)
-)
-
-func normalizeParsetree(s string) string {
-	s = reHeader.ReplaceAllString(s, "")
-	s = reLeadingHash.ReplaceAllString(s, "")
-	s = rePrismLocation.ReplaceAllString(s, "")
-	s = reLineIDLocation.ReplaceAllString(s, "")
-	s = reLineLocation.ReplaceAllString(s, "")
-	s = rePrismTokenLoc.ReplaceAllString(s, "")
-	s = reTrailingStar.ReplaceAllString(s, ")")
-	s = reNodeNameStar.ReplaceAllString(s, "$1")
-	s = reNdAlen.ReplaceAllString(s, "")
-	s = reSiblingIndex.ReplaceAllString(s, "$1:")
-	s = rePrismSourceFile.ReplaceAllString(s, "")
-	s = reNdLitTempPath.ReplaceAllString(s, "")
-	s = stripNullBeginChildren(s)
-	s = unwrapSingleChildBlocks(s)
-	return s
-}
-
-// unwrapSingleChildBlocks collapses NODE_BLOCK nodes containing exactly one
-// nd_head child into that child directly. A NODE_BLOCK is a statement
-// sequence; a 1-element sequence evaluates identically to its element, so
-// the wrap carries no observable behaviour. Often arises after
-// stripNullBeginChildren removes the NODE_BEGIN(null) placeholder, leaving
-// a NODE_BLOCK with a single remaining nd_head.
 //
-// A NODE_BLOCK with multiple nd_head children is NOT unwrapped -- multiple
-// statements need the explicit sequence node.
-func unwrapSingleChildBlocks(s string) string {
-	for {
-		next, changed := unwrapOneBlock(s)
-		if !changed {
-			return next
-		}
-		s = next
-	}
-}
-
-func unwrapOneBlock(s string) (string, bool) {
-	lines := strings.Split(s, "\n")
-	for i, l := range lines {
-		// Locate a NODE_BLOCK header: `<P>{|| }   @ NODE_BLOCK` where
-		// `<P>{|| }   ` ends with the indent that places `@` directly under
-		// its parent's `+- nd_body:` (or similar). Just match `@ NODE_BLOCK`
-		// at any indent and inspect the region below.
-		idx := strings.Index(l, "@ NODE_BLOCK")
-		if idx < 0 || l[idx:] != "@ NODE_BLOCK" {
-			continue
-		}
-		// Region extends while subsequent lines are indented past `idx-4`
-		// (children sit one level deeper: `+-` at column idx, descendants
-		// at column idx+4 via `|   ` / `    `).
-		childCol := idx // children's `+-` aligns with the `@` column
-		end := i + 1
-		var childStarts []int
-		for end < len(lines) {
-			ln := lines[end]
-			if len(ln) <= childCol || !strings.HasPrefix(ln[childCol:], "+- ") {
-				// could be a deeper line (descendant of a child) -- keep going
-				if len(ln) > childCol && (ln[childCol] == '|' || ln[childCol] == ' ') {
-					end++
-					continue
-				}
-				break
-			}
-			// direct child of NODE_BLOCK
-			tail := ln[childCol:]
-			if !strings.HasPrefix(tail, "+- nd_head:") &&
-				!strings.HasPrefix(tail, "+- nd_head ") {
-				// non-nd_head field (shouldn't happen on NODE_BLOCK, but
-				// don't unwrap if unexpected fields present)
-				return s, false
-			}
-			childStarts = append(childStarts, end)
-			end++
-		}
-		if len(childStarts) != 1 {
-			continue
-		}
-		// Single child found. The child subtree starts at childStarts[0]+1
-		// (line after `+- nd_head:`) and is indented `childCol+4` columns
-		// in. Replace the NODE_BLOCK header + `+- nd_head:` line with the
-		// child subtree dedented by 4 cols.
-		childRegionStart := childStarts[0] + 1
-		childRegionEnd := end
-		// The first line of the child uses `    ` (last child of nd_head),
-		// so dedent by stripping the leading 4 cols starting at childCol.
-		// Replacement: skip NODE_BLOCK header line (i), skip nd_head line
-		// (childStarts[0]), dedent child lines, keep rest.
-		var dedented []string
-		for j := childRegionStart; j < childRegionEnd; j++ {
-			ln := lines[j]
-			if len(ln) <= childCol+4 {
-				dedented = append(dedented, ln)
-				continue
-			}
-			// Replace `<prefix><4-cols>` with `<prefix>` where prefix is
-			// everything before childCol. The 4 cols at [childCol:childCol+4]
-			// were `|   ` (child's connector to grandchild) or `    `
-			// (gap inside last-child region). Drop them.
-			dedented = append(dedented, ln[:childCol]+ln[childCol+4:])
-		}
-		out := make([]string, 0, len(lines)-2)
-		out = append(out, lines[:i]...)
-		out = append(out, dedented...)
-		out = append(out, lines[end:]...)
-		return strings.Join(out, "\n"), true
-	}
-	return s, false
-}
-
-// stripNullBeginChildren removes "nd_head:" entries that point to a
-// NODE_BEGIN with a (null node) body. MRI 3.x wraps single-line def bodies
-// (`def f(); body; end`) as NODE_BLOCK[NODE_BEGIN(null), body]; the BEGIN
-// placeholder is a no-op (no rescue clauses, empty body) so the wrapped
-// form evaluates identically to the unwrapped body. Stripping aligns these
-// dumps with versions / syntaxes that emit the body directly.
-//
-// Pattern (4 consecutive lines, shared indent prefix; the link char to the
-// child is `|` for non-last siblings, ` ` for the last):
-//
-//	<prefix>+- nd_head:
-//	<prefix>{|| }   @ NODE_BEGIN
-//	<prefix>{|| }   +- nd_body:
-//	<prefix>{|| }       (null node)
-func stripNullBeginChildren(s string) string {
-	lines := strings.Split(s, "\n")
-	out := make([]string, 0, len(lines))
-	for i := 0; i < len(lines); i++ {
-		if i+3 < len(lines) {
-			l1, l2, l3, l4 := lines[i], lines[i+1], lines[i+2], lines[i+3]
-			pref, link, ok := nullBeginMatch(l1, l2, l3, l4)
-			_, _ = pref, link
-			if ok {
-				i += 3 // skip all 4 lines
-				continue
-			}
-		}
-		out = append(out, lines[i])
-	}
-	return strings.Join(out, "\n")
-}
-
-// nullBeginMatch checks the 4-line NODE_BEGIN(null) child pattern. Returns
-// the shared prefix and the link char (`|` or ` `) if matched.
-func nullBeginMatch(l1, l2, l3, l4 string) (prefix, link string, ok bool) {
-	const tag = "+- nd_head:"
-	idx := strings.Index(l1, tag)
-	if idx < 0 || l1[idx:] != tag {
-		return "", "", false
-	}
-	prefix = l1[:idx]
-	for _, lk := range []string{"|", " "} {
-		if l2 == prefix+lk+"   @ NODE_BEGIN" &&
-			l3 == prefix+lk+"   +- nd_body:" &&
-			l4 == prefix+lk+"       (null node)" {
-			return prefix, lk, true
-		}
-	}
-	return "", "", false
-}
+// Lives in internal/parsetreenorm so the same logic backs the
+// `normalize-parsetree` CLI under cmd/.
 
 // --- MRI invocation ---------------------------------------------------------
 
