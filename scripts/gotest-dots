@@ -8,11 +8,14 @@
 # Exit code mirrors the wrapped command.
 set -o pipefail
 
-# Dot-row width: prefer $COLUMNS, then tput against stderr (so it works
-# even when stdout is piped), then fall back to 80.
+# Dot-row width: prefer $COLUMNS, then stty/tput via /dev/tty (so width
+# detection survives when stdout is piped through tee/less/make), then 80.
 width="${COLUMNS:-}"
-if [ -z "$width" ] && [ -t 2 ]; then
-    width=$(tput cols 2>/dev/null || true)
+if [ -z "$width" ] && [ -r /dev/tty ]; then
+    width=$(stty size </dev/tty 2>/dev/null | awk '{print $2}')
+fi
+if [ -z "$width" ] && [ -r /dev/tty ]; then
+    width=$(tput cols </dev/tty 2>/dev/null || true)
 fi
 [ -n "$width" ] && [ "$width" -gt 0 ] 2>/dev/null || width=80
 
@@ -34,15 +37,21 @@ function emit(ch) {
         }
     }
 
-    if ($0 ~ /^[[:space:]]*--- PASS:/) { emit("."); npass++; next }
+    if ($0 ~ /^[[:space:]]*--- PASS:/) { emit("."); npass++; suppressing_log=0; next }
     if ($0 ~ /^[[:space:]]*--- FAIL:/) {
-        emit("F"); fails[++nf] = $0; capturing = 1; next
+        emit("F"); fails[++nf] = $0; capturing = 1; suppressing_log=0; next
     }
-    if ($0 ~ /^[[:space:]]*--- SKIP:/) { emit("s"); nskip++; next }
-    if ($0 ~ /^[[:space:]]*=== (RUN|PAUSE|CONT|NAME)/) { next }
-    if ($0 == "PASS" || $0 == "FAIL") { next }
-    # suppress in-test t.Log noise (file.go:NN: msg) -- shown on FAIL via fail_buf
-    if (match($0, "^[[:space:]]+[A-Za-z0-9_./-]+\\.go:[0-9]+:")) { next }
+    if ($0 ~ /^[[:space:]]*--- SKIP:/) { emit("s"); nskip++; suppressing_log=0; next }
+    if ($0 ~ /^[[:space:]]*=== (RUN|PAUSE|CONT|NAME)/) { suppressing_log=0; next }
+    if ($0 == "PASS" || $0 == "FAIL") { suppressing_log=0; next }
+    # suppress in-test t.Log noise: the "file.go:NN: msg" header and any
+    # continuation lines (extra-indented) that follow it.
+    if (match($0, "^[[:space:]]+[A-Za-z0-9_./-]+\\.go:[0-9]+:")) {
+        suppressing_log = 1
+        next
+    }
+    if (suppressing_log && $0 ~ /^[[:space:]]/) { next }
+    suppressing_log = 0
     flush_dots()
     print
 }
