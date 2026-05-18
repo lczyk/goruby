@@ -19,3 +19,9 @@ parse esolang-book-sources/1-4/07.rb: parser gaps
 
 walk esolang-book-sources/1-2/03.rb: parse failed; walk skipped
 walk esolang-book-sources/1-4/07.rb: parse failed; walk skipped
+
+# parser gaps
+parse esolangs/subskin.rb: parser gap
+parse puberty/interpreter.rb: parser gap
+walk esolangs/subskin.rb: parse failed; walk skipped
+walk puberty/interpreter.rb: parse failed; walk skipped
