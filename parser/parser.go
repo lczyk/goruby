@@ -3986,9 +3986,20 @@ func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {
 func (p *parser) parseCallExpressionWithParens(function ast.Expression) ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	exp := &ast.ContextCallExpression{Token: p.curToken, ExplicitParens: true}
-	if ident, ok := function.(*ast.Identifier); ok {
-		exp.Function = ident
-	} else {
+	switch fn := function.(type) {
+	case *ast.Identifier:
+		exp.Function = fn
+	case *ast.ScopedIdentifier:
+		// `Foo::bar(args)` is a method call on Foo, not a Proc/method
+		// retrieval. Split into Context=Foo, Function=bar.
+		if innerIdent, ok := fn.Inner.(*ast.Identifier); ok {
+			exp.Context = fn.Outer
+			exp.Function = innerIdent
+		} else {
+			exp.Context = function
+			exp.Function = &ast.Identifier{Token: p.curToken, Value: "call"}
+		}
+	default:
 		// Non-identifier callable: @ivar(args), method_returning_proc(args)
 		exp.Context = function
 		exp.Function = &ast.Identifier{Token: p.curToken, Value: "call"}
