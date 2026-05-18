@@ -2213,11 +2213,18 @@ func (p *parser) parseInterpolatedRegex() ast.Expression {
 		case token.STRING_CONTENT:
 			parts = append(parts, &ast.StringContent{Token: p.curToken, Value: p.curToken.Literal})
 		case token.EMBEXPR_BEG:
+			embTok := p.curToken
 			p.nextToken()
 			for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 				p.nextToken()
 			}
 			if p.currentTokenIs(token.EMBEXPR_END) {
+				// Empty interpolation `#{ }`: MRI emits NODE_EVSTR wrapping
+				// a NODE_BEGIN with nil body, which preserves the DREGX/DSTR
+				// shape (not a static REGX/STR). Use ParenExpression{Expr:
+				// nil} as a placeholder; it prints as `#{()}` which MRI
+				// parses back to the same EVSTR(BEGIN(nil)) shape.
+				parts = append(parts, &ast.ParenExpression{Token: embTok, Rparen: p.curToken})
 				break
 			}
 			var lastExp ast.Expression
