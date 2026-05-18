@@ -430,15 +430,15 @@ func (p *parser) nextNonCommentToken() token.Token {
 }
 
 func (p *parser) nextToken() {
-	if p.pos.IsValid() && trace.GetTracer(p.ctx) != nil {
+	if p.pos.IsValid() && trace.IsTracing(p.ctx) {
 		s := p.curToken.Type.String()
 		switch {
 		case p.curToken.IsLiteral():
-			trace.MessageCtx(p.ctx, s+" "+p.curToken.Literal)
+			trace.MessageStrCtx(p.ctx, s+" "+p.curToken.Literal)
 		case p.curToken.IsOperator(), p.curToken.IsKeyword():
-			trace.MessageCtx(p.ctx, "\""+s+"\"")
+			trace.MessageStrCtx(p.ctx, "\""+s+"\"")
 		default:
-			trace.MessageCtx(p.ctx, s)
+			trace.MessageStrCtx(p.ctx, s)
 		}
 	}
 	p.curToken = p.peekToken
