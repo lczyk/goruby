@@ -52,7 +52,6 @@ src2-rejected 1.9 internal/integrationtest/testdata/mri-tests/test_pack.rb: goru
 src2-rejected 1.9 internal/integrationtest/testdata/mri-tests/test_primitive.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/mri-tests/test_whileuntil.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/ruby-extra/parser/loops_control.rb: goruby String() output rejected by MRI
-src2-rejected 1.9 internal/integrationtest/testdata/ruby-extra/parser/misc_keywords.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/alice/mode.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/brain-flak/Interpreter.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/kaiser-ruby/lib/kaiser_ruby/cli.rb: goruby String() output rejected by MRI
@@ -90,7 +89,6 @@ src2-rejected 2.0 internal/integrationtest/testdata/mri-tests/test_pack.rb: goru
 src2-rejected 2.0 internal/integrationtest/testdata/mri-tests/test_primitive.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/mri-tests/test_whileuntil.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/ruby-extra/parser/loops_control.rb: goruby String() output rejected by MRI
-src2-rejected 2.0 internal/integrationtest/testdata/ruby-extra/parser/misc_keywords.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/alice/mode.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/brain-flak/Interpreter.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/kaiser-ruby/lib/kaiser_ruby/cli.rb: goruby String() output rejected by MRI
@@ -129,7 +127,6 @@ src2-rejected 2.1 internal/integrationtest/testdata/mri-tests/test_primitive.rb:
 src2-rejected 2.1 internal/integrationtest/testdata/mri-tests/test_rational.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/mri-tests/test_whileuntil.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/ruby-extra/parser/loops_control.rb: goruby String() output rejected by MRI
-src2-rejected 2.1 internal/integrationtest/testdata/ruby-extra/parser/misc_keywords.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/alice/mode.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/brain-flak/Interpreter.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/minitest/lib/minitest.rb: goruby String() output rejected by MRI
@@ -190,7 +187,6 @@ src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_variable.rb: 
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_weakkeymap.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_whileuntil.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/ruby-extra/parser/loops_control.rb: goruby String() output rejected by MRI
-src2-rejected 2.3 internal/integrationtest/testdata/ruby-extra/parser/misc_keywords.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/alice/mode.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/brain-flak/Interpreter.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/minitest/lib/minitest.rb: goruby String() output rejected by MRI
@@ -259,7 +255,6 @@ src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_variable.rb: 
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_weakkeymap.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_whileuntil.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/ruby-extra/parser/loops_control.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/ruby-extra/parser/misc_keywords.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/gems/alice/mode.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/gems/brain-flak/Interpreter.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/gems/minitest/lib/minitest.rb: goruby String() output rejected by MRI
@@ -327,7 +322,6 @@ src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/test_variable.rb: 
 src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/test_weakkeymap.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/test_whileuntil.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/ruby-extra/parser/loops_control.rb: goruby String() output rejected by MRI
-src2-rejected 2.6 internal/integrationtest/testdata/ruby-extra/parser/misc_keywords.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/alice/mode.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/brain-flak/Interpreter.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/minitest/lib/minitest.rb: goruby String() output rejected by MRI
@@ -393,7 +387,6 @@ src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_rubyoptions.r
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_settracefunc.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_shapes.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_struct.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_super.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_system.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_thread.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_thread_queue.rb: goruby String() output rejected by MRI
@@ -401,7 +394,6 @@ src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_variable.rb: 
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_weakkeymap.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_whileuntil.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/ruby-extra/parser/loops_control.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/ruby-extra/parser/misc_keywords.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_7.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/gems/alice/mode.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/gems/brain-flak/Interpreter.rb: goruby String() output rejected by MRI
@@ -479,7 +471,6 @@ src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_variable.rb: 
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_weakkeymap.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_whileuntil.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/ruby-extra/parser/loops_control.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/ruby-extra/parser/misc_keywords.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/ruby-extra/parser/stress_test.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_7.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_3_0.rb: goruby String() output rejected by MRI
@@ -555,7 +546,6 @@ src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_settracefunc.
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_shapes.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_string.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_struct.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_super.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_system.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_thread.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_thread_queue.rb: goruby String() output rejected by MRI
@@ -563,7 +553,6 @@ src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_variable.rb: 
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_weakkeymap.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_whileuntil.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/ruby-extra/parser/loops_control.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/ruby-extra/parser/misc_keywords.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/ruby-extra/parser/stress_test.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_7.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_3_0.rb: goruby String() output rejected by MRI
@@ -642,7 +631,6 @@ src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_settracefunc.
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_shapes.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_string.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_struct.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_super.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_syntax.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_system.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_thread.rb: goruby String() output rejected by MRI
@@ -651,7 +639,6 @@ src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_variable.rb: 
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_weakkeymap.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_whileuntil.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/ruby-extra/parser/loops_control.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/ruby-extra/parser/misc_keywords.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/ruby-extra/parser/stress_test.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_7.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_3_0.rb: goruby String() output rejected by MRI
@@ -753,7 +740,6 @@ src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_time.rb: goru
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_variable.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_weakkeymap.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_whileuntil.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/ruby-extra/parser/misc_keywords.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_7.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_3_0.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_3_2.rb: goruby String() output rejected by MRI
@@ -854,7 +840,6 @@ src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_time.rb: goru
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_variable.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_weakkeymap.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_whileuntil.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/ruby-extra/parser/misc_keywords.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_2_7.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_3_0.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/ruby-extra/parser/version-boundaries/ruby_3_2.rb: goruby String() output rejected by MRI

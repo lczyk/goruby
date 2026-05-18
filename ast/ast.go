@@ -69,13 +69,42 @@ func (p *Program) End() int {
 	return p.Statements[len(p.Statements)-1].End()
 }
 func (p *Program) String() string {
-	stmts := make([]string, len(p.Statements))
+	stmtLine := func(getPos func() int) (line int, ok bool) {
+		if p.File == nil {
+			return 0, false
+		}
+		defer func() {
+			if r := recover(); r != nil {
+				line, ok = 0, false
+			}
+		}()
+		off := getPos()
+		return p.File.Position(p.File.Pos(off)).Line, true
+	}
+	var out strings.Builder
+	prevLine := 0
 	for i, s := range p.Statements {
-		if s != nil {
-			stmts[i] = s.String()
+		if s == nil {
+			continue
+		}
+		if i > 0 {
+			gap := 1
+			if cur, ok := stmtLine(s.Pos); ok && cur > prevLine && prevLine > 0 {
+				gap = cur - prevLine
+				if gap < 1 {
+					gap = 1
+				}
+			}
+			for j := 0; j < gap; j++ {
+				out.WriteByte('\n')
+			}
+		}
+		out.WriteString(s.String())
+		if ln, ok := stmtLine(s.End); ok {
+			prevLine = ln
 		}
 	}
-	return relocateHeredocBodies(strings.Join(stmts, "\n"))
+	return relocateHeredocBodies(out.String())
 }
 
 // Heredoc body markers used internally by StringLiteral.String() and
@@ -544,7 +573,7 @@ type SuperExpression struct {
 func (s *SuperExpression) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.Token.Literal)
-	if len(s.Arguments) != 0 {
+	if s.Arguments != nil {
 		args := []string{}
 		for _, a := range s.Arguments {
 			args = append(args, a.String())
