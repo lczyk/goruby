@@ -579,27 +579,26 @@ func (p *parser) parseStatement() ast.Statement {
 		case token.RETURN:
 			// Bare return with modifier: route through expression path
 			// so the modifier infix handler (if/unless/while/until) can
-			// attach to the JumpExpression. Return with a value and a
-			// modifier is handled by parseReturnStatement.
+			// attach to the JumpExpression.
 			if p.peekTokenOneOf(token.IF, token.UNLESS, token.WHILE, token.UNTIL) {
 				return p.parseExpressionStatement()
 			}
 			return p.parseReturnStatement()
-	default:
-		return p.parseExpressionStatement()
-	}
+		default:
+			return p.parseExpressionStatement()
+		}
 }
 
 func (p *parser) parseReturnExpression() ast.Expression {
 	jmp := &ast.JumpExpression{Token: p.curToken}
 	if !p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE, token.RPAREN, token.RBRACKET, token.EMBEXPR_END, token.IF, token.UNLESS, token.WHILE, token.UNTIL) {
 		p.nextToken()
-		jmp.Value = p.parseExpression(precLowest)
+		jmp.Value = p.parseExpression(precIfUnless)
 	}
 	return jmp
 }
 
-func (p *parser) parseReturnStatement() *ast.ReturnStatement {
+func (p *parser) parseReturnStatement() ast.Statement {
 	defer trace.TraceCtx(p.ctx)()
 	stmt := &ast.ReturnStatement{Token: p.curToken}
 	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE) {
@@ -614,13 +613,27 @@ func (p *parser) parseReturnStatement() *ast.ReturnStatement {
 		return stmt
 	}
 	valToken := p.curToken
-	stmt.ReturnValue = p.parseExpression(precLowest)
+	stmt.ReturnValue = p.parseExpression(precIfUnless)
 	if list, ok := stmt.ReturnValue.(ast.ExpressionList); ok {
 		stmt.ReturnValue = &ast.ArrayLiteral{Elements: list}
 	}
 
+	// Modifier if/unless/while/until after return value: wrap
+	// the ReturnStatement in a Conditional/LoopExpression.
+	if p.peekTokenOneOf(token.IF, token.UNLESS) {
+		p.nextToken()
+		jmp := &ast.JumpExpression{Token: stmt.Token}
+		jmp.Value = stmt.ReturnValue
+		return &ast.ExpressionStatement{Expression: p.parseModifierConditionalExpression(jmp)}
+	}
+	if p.peekTokenOneOf(token.WHILE, token.UNTIL) {
+		p.nextToken()
+		jmp := &ast.JumpExpression{Token: stmt.Token}
+		jmp.Value = stmt.ReturnValue
+		return &ast.ExpressionStatement{Expression: p.parseModifierLoopExpression(jmp)}
+	}
 	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.ELSE, token.KW_ELSIF, token.END, token.RBRACE, token.EOF,
-		token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.RESCUE) {
+		token.RESCUE) {
 		return stmt
 	}
 
@@ -1132,7 +1145,7 @@ func (p *parser) parseJumpExpression() ast.Expression {
 		if !p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.EOF, token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.RESCUE,
 			token.RPAREN, token.RBRACKET, token.RBRACE, token.END, token.DOT, token.EMBEXPR_END) {
 			p.nextToken()
-			jmp.Value = p.parseExpression(precLowest)
+			jmp.Value = p.parseExpression(precIfUnless)
 		}
 	}
 	return jmp
