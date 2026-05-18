@@ -1041,7 +1041,7 @@ func (c *Comment) End() int { return c.Token.Pos + len(c.Value) }
 
 // TokenLiteral returns the literal from token token.STRING
 func (c *Comment) TokenLiteral() string { return c.Token.Literal }
-func (c *Comment) String() string       { return c.Value }
+func (c *Comment) String() string       { return "#" + c.Value }
 
 // SymbolLiteral represents a symbol within the AST
 type SymbolLiteral struct {

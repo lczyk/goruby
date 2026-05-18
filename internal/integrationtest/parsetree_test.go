@@ -344,7 +344,7 @@ func TestMRIParseTreeDiff(t *testing.T) {
 		}
 
 		// Reformat src1 once per fixture (independent of MRI version).
-		prog, gorubyParseErr := parser.ParseFile(row.file, src, parser.AllErrors)
+		prog, gorubyParseErr := parser.ParseFile(row.file, src, parser.AllErrors|parser.ParseComments)
 		var src2 string
 		var stringPanic string
 		if gorubyParseErr == nil {
