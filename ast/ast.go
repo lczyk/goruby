@@ -2248,10 +2248,11 @@ func (pe *PrefixExpression) String() string {
 			*ContextCallExpression, *IndexExpression,
 			*Identifier, *InstanceVariable, *ClassVariable, *Global,
 			*Self, *Nil, *Boolean, *ScopedIdentifier,
-			*ParenExpression:
+			*ParenExpression, *StringLiteral:
 			// MRI folds leading negative numeric via tUMINUS_NUM; for
 			// other terminals / call / index chains / explicit-paren
-			// groups the unary binds to the result either way so no
+			// groups / string literals (frozen-string `-"str"` form)
+			// the unary binds to the result either way so no
 			// outer parens needed.
 			atomic = true
 		case *InfixExpression:
