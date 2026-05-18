@@ -184,7 +184,7 @@ func mriDumpParsetree(rubyBin, src string) mriDumpResult {
 		}
 		return mriDumpResult{fatal: fmt.Errorf("MRI run: %w", runErr)}
 	}
-	return mriDumpResult{tree: parsetreenorm.Normalize(stdout.String())}
+	return mriDumpResult{tree: parsetreenorm.NormalizeWithSource(stdout.String(), src)}
 }
 
 // --- cache layer (tree1 only -- src1 never changes per fixture) -------------
@@ -199,10 +199,15 @@ func cachePath(fullVer, src string) string {
 // partition so that rebuilds of `.rubies/versions/<ver>/` invalidate naturally
 // by leaving stale entries unreachable (cache is content-addressed by src
 // hash, but partitioned by full version dir name).
+//
+// Cache stores the post-normalisation tree. Since NormalizeWithSource is
+// deterministic for (dump, src) and src is content-addressed by hash, the
+// cached value remains valid as long as the normaliser logic is unchanged.
+// Update parsetreeCacheDir below when the normaliser changes shape.
 func mriDumpCached(rubyBin, fullVer, src string) mriDumpResult {
 	cp := cachePath(fullVer, src)
 	if data, err := os.ReadFile(cp); err == nil {
-		return mriDumpResult{tree: parsetreenorm.Normalize(string(data))}
+		return mriDumpResult{tree: string(data)}
 	}
 	res := mriDumpParsetree(rubyBin, src)
 	if res.fatal == nil && res.parseErr == nil {

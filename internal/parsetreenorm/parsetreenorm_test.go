@@ -74,6 +74,40 @@ func TestStripsNullBegin(t *testing.T) {
 	}
 }
 
+func TestMaskLineMagic(t *testing.T) {
+	src := "x = 1\n__LINE__\n"
+	// NODE_LIT at line 2 (where __LINE__ lives), value 2 -> mask.
+	dump := "# @ NODE_LIT (line: 2)\n# +- nd_lit: 2\n"
+	out := NormalizeWithSource(dump, src)
+	if !strings.Contains(out, "<__LINE__>") {
+		t.Errorf("__LINE__ at matching line not masked:\n%s", out)
+	}
+	if strings.Contains(out, "nd_lit: 2") {
+		t.Errorf("original value still present:\n%s", out)
+	}
+}
+
+func TestMaskLineMagicNoFalsePositive(t *testing.T) {
+	src := "x = 1\nputs 42\n"
+	// NODE_LIT at line 2, value 2. Line 2 has no __LINE__ -> do NOT mask.
+	dump := "# @ NODE_LIT (line: 2)\n# +- nd_lit: 2\n"
+	out := NormalizeWithSource(dump, src)
+	if strings.Contains(out, "<__LINE__>") {
+		t.Errorf("non-__LINE__ value wrongly masked:\n%s", out)
+	}
+}
+
+func TestMaskLineMagicValueMismatch(t *testing.T) {
+	// __LINE__ on src line 2 but the NODE_LIT at line 2 has a different
+	// value -- e.g. literal `99` on the same line. Don't mask.
+	src := "x = 1\n__LINE__; puts 99\n"
+	dump := "# @ NODE_LIT (line: 2)\n# +- nd_lit: 99\n"
+	out := NormalizeWithSource(dump, src)
+	if strings.Contains(out, "<__LINE__>") {
+		t.Errorf("value-mismatched NODE_LIT wrongly masked:\n%s", out)
+	}
+}
+
 func TestKeepsMultiChildBlock(t *testing.T) {
 	in := "@ NODE_BLOCK\n" +
 		"+- nd_head:\n" +

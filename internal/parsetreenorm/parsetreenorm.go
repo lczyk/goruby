@@ -12,6 +12,7 @@ package parsetreenorm
 
 import (
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -57,9 +58,31 @@ var (
 // Normalize returns s with cosmetic / positional noise stripped and
 // semantics-preserving no-op wrappers collapsed. Idempotent: Normalize ==
 // Normalize . Normalize.
+//
+// Does NOT handle __LINE__ divergence -- callers that have the original
+// source should use NormalizeWithSource instead.
 func Normalize(s string) string {
+	return normalize(s, nil)
+}
+
+// NormalizeWithSource is Normalize with extra __LINE__ awareness. src is
+// the Ruby source that produced the parsetree dump. Lines containing the
+// `__LINE__` pseudo-literal are detected and the NODE_LIT integer values
+// at those lines are replaced with a placeholder, so two parsetrees from
+// reformatted-but-equivalent sources compare equal even when their
+// `__LINE__` evaluations differ.
+func NormalizeWithSource(dump, src string) string {
+	return normalize(dump, lineMagicLines(src))
+}
+
+func normalize(s string, magic map[int]bool) string {
 	s = reHeader.ReplaceAllString(s, "")
 	s = reLeadingHash.ReplaceAllString(s, "")
+	// __LINE__ masking depends on (line: N) / (location: (L,C)-...) info
+	// that the strip passes below remove, so it must run first.
+	if len(magic) > 0 {
+		s = maskLineMagic(s, magic)
+	}
 	s = rePrismLocation.ReplaceAllString(s, "")
 	s = reLineIDLocation.ReplaceAllString(s, "")
 	s = reLineLocation.ReplaceAllString(s, "")
@@ -73,6 +96,78 @@ func Normalize(s string) string {
 	s = stripNullBeginChildren(s)
 	s = unwrapSingleChildBlocks(s)
 	return s
+}
+
+// lineMagicLines returns the 1-indexed source lines that contain a
+// `__LINE__` token. Cheap textual scan -- string literals / comments that
+// contain the literal text `__LINE__` would also match, but those almost
+// never overlap with a NODE_LIT at the same line so false positives are
+// rare and harmless.
+func lineMagicLines(src string) map[int]bool {
+	if !strings.Contains(src, "__LINE__") {
+		return nil
+	}
+	out := map[int]bool{}
+	for i, l := range strings.Split(src, "\n") {
+		if strings.Contains(l, "__LINE__") {
+			out[i+1] = true
+		}
+	}
+	return out
+}
+
+// reNodeLitHeader extracts the source line from a NODE_LIT header, across
+// all known MRI dump formats. Group 1 (pre-Prism `line: N`) or group 2
+// (Prism `location: (L,...`) holds the line number.
+var reNodeLitHeader = regexp.MustCompile(`@ NODE_LIT\b[^\n]*?(?:line: (\d+)|location: \((\d+),)`)
+
+// reNdLitInt matches a `+- nd_lit: <int>` value line. Captures the int.
+var reNdLitInt = regexp.MustCompile(`^(.*\+- nd_lit: )(\d+)$`)
+
+// maskLineMagic walks the dump and replaces nd_lit integer values that
+// look like __LINE__ evaluations with a placeholder. A NODE_LIT at source
+// line N whose nd_lit value is N is treated as `__LINE__` iff line N in
+// src contains `__LINE__`.
+func maskLineMagic(dump string, magic map[int]bool) string {
+	lines := strings.Split(dump, "\n")
+	for i, l := range lines {
+		m := reNodeLitHeader.FindStringSubmatch(l)
+		if m == nil {
+			continue
+		}
+		var nodeLine int
+		for _, g := range m[1:] {
+			if g != "" {
+				n, err := strconv.Atoi(g)
+				if err != nil {
+					continue
+				}
+				nodeLine = n
+				break
+			}
+		}
+		if nodeLine == 0 || !magic[nodeLine] {
+			continue
+		}
+		// Find the next `+- nd_lit: <int>` line owned by this NODE_LIT.
+		// NODE_LIT has only nd_lit as its content field, so the immediate
+		// next non-empty line carrying `+- nd_lit:` is ours.
+		for j := i + 1; j < len(lines) && j < i+4; j++ {
+			mm := reNdLitInt.FindStringSubmatch(lines[j])
+			if mm == nil {
+				continue
+			}
+			v, err := strconv.Atoi(mm[2])
+			if err != nil {
+				break
+			}
+			if v == nodeLine {
+				lines[j] = mm[1] + "<__LINE__>"
+			}
+			break
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 // stripNullBeginChildren removes nd_head entries pointing to a NODE_BEGIN
