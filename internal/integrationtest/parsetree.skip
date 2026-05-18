@@ -29,7 +29,6 @@ src2-rejected 1.9 internal/integrationtest/testdata/gems/pan-unicode-lang/bf_con
 src2-rejected 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/application.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_backtrace.rb: goruby String() output rejected by MRI
-src2-rejected 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_clean.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_file_creation_task.rb: goruby String() output rejected by MRI
@@ -69,7 +68,6 @@ src2-rejected 2.0 internal/integrationtest/testdata/gems/minitest/test/minitest/
 src2-rejected 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/application.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
-src2-rejected 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_clean.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_file_creation_task.rb: goruby String() output rejected by MRI
@@ -111,7 +109,6 @@ src2-rejected 2.1 internal/integrationtest/testdata/gems/minitest/test/minitest/
 src2-rejected 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/application.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
-src2-rejected 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_clean.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_file_creation_task.rb: goruby String() output rejected by MRI
@@ -157,7 +154,6 @@ src2-rejected 2.3 internal/integrationtest/testdata/gems/minitest/test/minitest/
 src2-rejected 2.3 internal/integrationtest/testdata/gems/rake/lib/rake/application.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
-src2-rejected 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_clean.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_file_creation_task.rb: goruby String() output rejected by MRI
@@ -223,7 +219,6 @@ src2-rejected 2.5 internal/integrationtest/testdata/gems/minitest/test/minitest/
 src2-rejected 2.5 internal/integrationtest/testdata/gems/rake/lib/rake/application.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_clean.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_file_creation_task.rb: goruby String() output rejected by MRI
@@ -301,7 +296,6 @@ src2-rejected 2.6 internal/integrationtest/testdata/gems/rake/lib/rake/applicati
 src2-rejected 2.6 internal/integrationtest/testdata/gems/rake/lib/rake/rake_module.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
-src2-rejected 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_clean.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_file_creation_task.rb: goruby String() output rejected by MRI
@@ -386,7 +380,6 @@ src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/lib/rake/applicati
 src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/lib/rake/rake_module.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_clean.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_definitions.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
@@ -482,7 +475,6 @@ src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/lib/rake/applicati
 src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/lib/rake/rake_module.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_clean.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_definitions.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
@@ -582,7 +574,6 @@ src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/lib/rake/applicati
 src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/lib/rake/rake_module.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_clean.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_definitions.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
@@ -687,7 +678,6 @@ src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/lib/rake/applicati
 src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/lib/rake/rake_module.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_clean.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_definitions.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
@@ -797,7 +787,6 @@ src2-rejected 3.4 internal/integrationtest/testdata/gems/rake/lib/rake/applicati
 src2-rejected 3.4 internal/integrationtest/testdata/gems/rake/lib/rake/rake_module.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_clean.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_definitions.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
@@ -907,7 +896,6 @@ src2-rejected 4.0 internal/integrationtest/testdata/gems/rake/lib/rake/applicati
 src2-rejected 4.0 internal/integrationtest/testdata/gems/rake/lib/rake/rake_module.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_clean.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_definitions.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_dsl.rb: goruby String() output rejected by MRI
@@ -1047,39 +1035,26 @@ tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/file_util
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/rule_recursion_overflow_error.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/task_manager.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
-tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/win32.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
-tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_backtrace.rb: tree diff vs MRI parsetree
-tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_definitions.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: tree diff vs MRI parsetree
-tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_file_list_path_map.rb: tree diff vs MRI parsetree
-tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_file_utils.rb: tree diff vs MRI parsetree
-tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_functional.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_invocation_chain.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_multi_task.rb: tree diff vs MRI parsetree
-tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_name_space.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_package_task.rb: tree diff vs MRI parsetree
-tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map.rb: tree diff vs MRI parsetree
-tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map_explode.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_rake_test_loader.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_require.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: tree diff vs MRI parsetree
-tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_task_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager.rb: tree diff vs MRI parsetree
-tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager_argument_resolution.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_thread_pool.rb: tree diff vs MRI parsetree
-tree-mismatch 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_win32.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/stackcats/ruby/tape.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/wumpus/direction.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/gems/wumpus/point2d.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/mri-tests/allpairs.rb: tree diff vs MRI parsetree
-tree-mismatch 1.9 internal/integrationtest/testdata/mri-tests/enc/test_case_comprehensive.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/mri-tests/enc/test_regex_casefold.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/mri-tests/test_const.rb: tree diff vs MRI parsetree
 tree-mismatch 1.9 internal/integrationtest/testdata/mri-tests/test_string_memory.rb: tree diff vs MRI parsetree
@@ -1135,42 +1110,26 @@ tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/dsl_defin
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/file_list.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/file_utils_ext.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/rule_recursion_overflow_error.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/task_manager.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/win32.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_backtrace.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_definitions.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_file_list_path_map.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_file_utils.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_functional.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_invocation_chain.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_multi_task.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_name_space.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_package_task.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map_explode.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_rake_test_loader.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_require.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager_argument_resolution.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_thread_pool.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_win32.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/stackcats/ruby/tape.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/wumpus/direction.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/gems/wumpus/point2d.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/mri-tests/allpairs.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/mri-tests/enc/test_case_comprehensive.rb: tree diff vs MRI parsetree
-tree-mismatch 2.0 internal/integrationtest/testdata/mri-tests/enc/test_grapheme_breaks.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/mri-tests/enc/test_regex_casefold.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/mri-tests/marshaltestlib.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/mri-tests/test_backtrace.rb: tree diff vs MRI parsetree
@@ -1234,42 +1193,26 @@ tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/dsl_defin
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/file_list.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/file_utils_ext.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/rule_recursion_overflow_error.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/task_manager.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/win32.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_backtrace.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_definitions.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_file_list_path_map.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_file_utils.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_functional.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_invocation_chain.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_multi_task.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_name_space.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_package_task.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map_explode.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_rake_test_loader.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_require.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager_argument_resolution.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_thread_pool.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_win32.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/stackcats/ruby/tape.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/wumpus/direction.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/gems/wumpus/point2d.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/mri-tests/allpairs.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/mri-tests/enc/test_case_comprehensive.rb: tree diff vs MRI parsetree
-tree-mismatch 2.1 internal/integrationtest/testdata/mri-tests/enc/test_grapheme_breaks.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/mri-tests/enc/test_regex_casefold.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/mri-tests/marshaltestlib.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/mri-tests/test_backtrace.rb: tree diff vs MRI parsetree
@@ -1346,34 +1289,20 @@ tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/lib/rake/dsl_defin
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/lib/rake/file_list.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/lib/rake/file_utils_ext.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/lib/rake/rule_recursion_overflow_error.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/lib/rake/task_manager.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/lib/rake/win32.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_backtrace.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_definitions.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_file_list_path_map.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_file_utils.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_functional.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_invocation_chain.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_multi_task.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_name_space.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_package_task.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map_explode.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_rake_test_loader.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_require.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_task_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager_argument_resolution.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_thread_pool.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_win32.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/stackcats/ruby/tape.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/wumpus/direction.rb: tree diff vs MRI parsetree
@@ -1381,8 +1310,6 @@ tree-mismatch 2.3 internal/integrationtest/testdata/gems/wumpus/icosahedron.rb: 
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/gems/wumpus/point2d.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/allpairs.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/enc/test_case_comprehensive.rb: tree diff vs MRI parsetree
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/enc/test_grapheme_breaks.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/enc/test_regex_casefold.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/marshaltestlib.rb: tree diff vs MRI parsetree
 tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_alias.rb: tree diff vs MRI parsetree
@@ -1491,34 +1418,20 @@ tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/lib/rake/dsl_defin
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/lib/rake/file_list.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/lib/rake/file_utils_ext.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/lib/rake/rule_recursion_overflow_error.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/lib/rake/task_manager.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/lib/rake/win32.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_backtrace.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_definitions.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_file_list_path_map.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_file_utils.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_functional.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_invocation_chain.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_multi_task.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_name_space.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_package_task.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map_explode.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_rake_test_loader.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_require.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_task_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager_argument_resolution.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_thread_pool.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_win32.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/stackcats/ruby/tape.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/wumpus/direction.rb: tree diff vs MRI parsetree
@@ -1526,8 +1439,6 @@ tree-mismatch 2.5 internal/integrationtest/testdata/gems/wumpus/icosahedron.rb: 
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/gems/wumpus/point2d.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/allpairs.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/enc/test_case_comprehensive.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/enc/test_grapheme_breaks.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/enc/test_regex_casefold.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/marshaltestlib.rb: tree diff vs MRI parsetree
 tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_alias.rb: tree diff vs MRI parsetree
@@ -1654,32 +1565,21 @@ tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/lib/rake/scope.rb:
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/lib/rake/task.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/lib/rake/task_manager.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
-tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/lib/rake/win32.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
-tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake.rb: tree diff vs MRI parsetree
-tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_backtrace.rb: tree diff vs MRI parsetree
-tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_definitions.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: tree diff vs MRI parsetree
-tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_file_list_path_map.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_file_utils.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_functional.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_invocation_chain.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_multi_task.rb: tree diff vs MRI parsetree
-tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_name_space.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_package_task.rb: tree diff vs MRI parsetree
-tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map.rb: tree diff vs MRI parsetree
-tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map_explode.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_rake_test_loader.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_require.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_task.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_task_argument_parsing.rb: tree diff vs MRI parsetree
-tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_task_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager.rb: tree diff vs MRI parsetree
-tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager_argument_resolution.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_thread_pool.rb: tree diff vs MRI parsetree
-tree-mismatch 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_win32.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/ropy/ruby/ropy.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/stackcats/ruby/tape.rb: tree diff vs MRI parsetree
@@ -1689,7 +1589,6 @@ tree-mismatch 2.6 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: 
 tree-mismatch 2.6 internal/integrationtest/testdata/gems/wumpus/point2d.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/mri-tests/allpairs.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/mri-tests/bug-13526.rb: tree diff vs MRI parsetree
-tree-mismatch 2.6 internal/integrationtest/testdata/mri-tests/enc/test_case_comprehensive.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/mri-tests/enc/test_case_mapping.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/mri-tests/enc/test_case_options.rb: tree diff vs MRI parsetree
 tree-mismatch 2.6 internal/integrationtest/testdata/mri-tests/enc/test_cesu8.rb: tree diff vs MRI parsetree
@@ -1841,21 +1740,14 @@ tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/lib/rake/scope.rb:
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/lib/rake/task.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/lib/rake/task_manager.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/lib/rake/win32.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_backtrace.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_definitions.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_file_list_path_map.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_file_utils.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_functional.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_invocation_chain.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_multi_task.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_name_space.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_package_task.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map_explode.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_rake_test_loader.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_require.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
@@ -1865,7 +1757,6 @@ tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_tas
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager_argument_resolution.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_win32.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/ropy/ruby/ropy.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/ropy/ruby/ropy_spec.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb: tree diff vs MRI parsetree
@@ -1876,7 +1767,6 @@ tree-mismatch 2.7 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: 
 tree-mismatch 2.7 internal/integrationtest/testdata/gems/wumpus/point2d.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/allpairs.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/bug-13526.rb: tree diff vs MRI parsetree
-tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/enc/test_case_comprehensive.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/enc/test_case_mapping.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/enc/test_case_options.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/enc/test_cesu8.rb: tree diff vs MRI parsetree
@@ -2032,21 +1922,14 @@ tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/lib/rake/scope.rb:
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/lib/rake/task.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/lib/rake/task_manager.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/lib/rake/win32.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_backtrace.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_definitions.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_file_list_path_map.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_file_utils.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_functional.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_invocation_chain.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_multi_task.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_name_space.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_package_task.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map_explode.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_rake_test_loader.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_require.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
@@ -2057,7 +1940,6 @@ tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_tas
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager_argument_resolution.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_thread_pool.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_win32.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/ropy/ruby/ropy_spec.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/stackcats/ruby/tape.rb: tree diff vs MRI parsetree
@@ -2067,7 +1949,6 @@ tree-mismatch 3.0 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: 
 tree-mismatch 3.0 internal/integrationtest/testdata/gems/wumpus/point2d.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/allpairs.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/bug-13526.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/enc/test_case_comprehensive.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/enc/test_case_mapping.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/enc/test_case_options.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/enc/test_cesu8.rb: tree diff vs MRI parsetree
@@ -2224,21 +2105,14 @@ tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/lib/rake/scope.rb:
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/lib/rake/task.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/lib/rake/task_manager.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/lib/rake/win32.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_backtrace.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_definitions.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_file_list_path_map.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_file_utils.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_functional.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_invocation_chain.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_multi_task.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_name_space.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_package_task.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map_explode.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_rake_test_loader.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_require.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
@@ -2249,7 +2123,6 @@ tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_tas
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager_argument_resolution.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_thread_pool.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_win32.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/ropy/ruby/ropy.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/ropy/ruby/ropy_spec.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb: tree diff vs MRI parsetree
@@ -2260,7 +2133,6 @@ tree-mismatch 3.1 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: 
 tree-mismatch 3.1 internal/integrationtest/testdata/gems/wumpus/point2d.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/allpairs.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/bug-13526.rb: tree diff vs MRI parsetree
-tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/enc/test_case_comprehensive.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/enc/test_case_mapping.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/enc/test_case_options.rb: tree diff vs MRI parsetree
 tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/enc/test_cesu8.rb: tree diff vs MRI parsetree
@@ -2419,21 +2291,14 @@ tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/lib/rake/scope.rb:
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/lib/rake/task.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/lib/rake/task_manager.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/lib/rake/win32.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_backtrace.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_definitions.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_file_list_path_map.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_file_utils.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_functional.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_invocation_chain.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_multi_task.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_name_space.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_package_task.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map_explode.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_rake_test_loader.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_require.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
@@ -2444,7 +2309,6 @@ tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_tas
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager_argument_resolution.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_thread_pool.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_win32.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/ropy/ruby/ropy.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/ropy/ruby/ropy_spec.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/stackcats/ruby/stackcats.rb: tree diff vs MRI parsetree
@@ -2455,7 +2319,6 @@ tree-mismatch 3.2 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: 
 tree-mismatch 3.2 internal/integrationtest/testdata/gems/wumpus/point2d.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/allpairs.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/bug-13526.rb: tree diff vs MRI parsetree
-tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/enc/test_case_comprehensive.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/enc/test_case_mapping.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/enc/test_case_options.rb: tree diff vs MRI parsetree
 tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/enc/test_cesu8.rb: tree diff vs MRI parsetree
@@ -2618,22 +2481,15 @@ tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/lib/rake/scope.rb:
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/lib/rake/task.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/lib/rake/task_manager.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
-tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/lib/rake/win32.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/support/file_creation.rb: tree diff vs MRI parsetree
-tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake.rb: tree diff vs MRI parsetree
-tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_backtrace.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_definitions.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: tree diff vs MRI parsetree
-tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_file_list_path_map.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_file_utils.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_functional.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_invocation_chain.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_multi_task.rb: tree diff vs MRI parsetree
-tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_name_space.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_package_task.rb: tree diff vs MRI parsetree
-tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map.rb: tree diff vs MRI parsetree
-tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map_explode.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_rake_test_loader.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_require.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
@@ -2644,7 +2500,6 @@ tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_tas
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager_argument_resolution.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_thread_pool.rb: tree diff vs MRI parsetree
-tree-mismatch 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_win32.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/ropy/ruby/ropy.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/ropy/ruby/ropy_spec.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/stackcats/ruby/interpreter.rb: tree diff vs MRI parsetree
@@ -2655,7 +2510,6 @@ tree-mismatch 3.4 internal/integrationtest/testdata/gems/wumpus/icosahedron.rb: 
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/gems/wumpus/point2d.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/allpairs.rb: tree diff vs MRI parsetree
-tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/enc/test_case_comprehensive.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/enc/test_case_mapping.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/enc/test_case_options.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/enc/test_cesu8.rb: tree diff vs MRI parsetree
@@ -2834,22 +2688,15 @@ tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/lib/rake/scope.rb:
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/lib/rake/task.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/lib/rake/task_manager.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/lib/rake/testtask.rb: tree diff vs MRI parsetree
-tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/lib/rake/win32.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/helper.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/support/file_creation.rb: tree diff vs MRI parsetree
-tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake.rb: tree diff vs MRI parsetree
-tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_backtrace.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_definitions.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: tree diff vs MRI parsetree
-tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_file_list_path_map.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_file_utils.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_functional.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_invocation_chain.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_multi_task.rb: tree diff vs MRI parsetree
-tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_name_space.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_package_task.rb: tree diff vs MRI parsetree
-tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map.rb: tree diff vs MRI parsetree
-tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_path_map_explode.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_rake_test_loader.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_require.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_rules.rb: tree diff vs MRI parsetree
@@ -2860,7 +2707,6 @@ tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_tas
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager_argument_resolution.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_thread_pool.rb: tree diff vs MRI parsetree
-tree-mismatch 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_win32.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/ropy/ruby/ropy.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/ropy/ruby/ropy_spec.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/stackcats/ruby/interpreter.rb: tree diff vs MRI parsetree
@@ -2871,7 +2717,6 @@ tree-mismatch 4.0 internal/integrationtest/testdata/gems/wumpus/icosahedron.rb: 
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/wumpus/interpreter.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/gems/wumpus/point2d.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/allpairs.rb: tree diff vs MRI parsetree
-tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/enc/test_case_comprehensive.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/enc/test_case_mapping.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/enc/test_case_options.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/enc/test_cesu8.rb: tree diff vs MRI parsetree
