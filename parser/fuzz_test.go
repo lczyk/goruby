@@ -90,8 +90,7 @@ func FuzzParse(f *testing.F) {
 			t.Fatalf("parse exceeded %s on input %q", perInputTimeout, input)
 		}
 		if panicMsg != "" {
-			// TODO: parser panics on adversarial input -- track + fix.
-			t.Skipf("parser panicked on %q: %s", input, panicMsg)
+			t.Errorf("parser panicked on %q: %s", input, panicMsg)
 		}
 	})
 }
