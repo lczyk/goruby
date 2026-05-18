@@ -1662,9 +1662,12 @@ func (ce *ContextCallExpression) String() string {
 	var out bytes.Buffer
 	if ce.Context != nil {
 		out.WriteString(ce.Context.String())
-		if ce.Token.Type == token.LONELY {
+		switch ce.Token.Type {
+		case token.LONELY:
 			out.WriteString("&.")
-		} else {
+		case token.SCOPE:
+			out.WriteString("::")
+		default:
 			out.WriteString(".")
 		}
 	}
