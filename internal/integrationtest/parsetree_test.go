@@ -186,7 +186,59 @@ func normalizeParsetree(s string) string {
 	s = reSiblingIndex.ReplaceAllString(s, "$1:")
 	s = rePrismSourceFile.ReplaceAllString(s, "")
 	s = reNdLitTempPath.ReplaceAllString(s, "")
+	s = stripNullBeginChildren(s)
 	return s
+}
+
+// stripNullBeginChildren removes "nd_head:" entries that point to a
+// NODE_BEGIN with a (null node) body. MRI 3.x wraps single-line def bodies
+// (`def f(); body; end`) as NODE_BLOCK[NODE_BEGIN(null), body]; the BEGIN
+// placeholder is a no-op (no rescue clauses, empty body) so the wrapped
+// form evaluates identically to the unwrapped body. Stripping aligns these
+// dumps with versions / syntaxes that emit the body directly.
+//
+// Pattern (4 consecutive lines, shared indent prefix; the link char to the
+// child is `|` for non-last siblings, ` ` for the last):
+//
+//	<prefix>+- nd_head:
+//	<prefix>{|| }   @ NODE_BEGIN
+//	<prefix>{|| }   +- nd_body:
+//	<prefix>{|| }       (null node)
+func stripNullBeginChildren(s string) string {
+	lines := strings.Split(s, "\n")
+	out := make([]string, 0, len(lines))
+	for i := 0; i < len(lines); i++ {
+		if i+3 < len(lines) {
+			l1, l2, l3, l4 := lines[i], lines[i+1], lines[i+2], lines[i+3]
+			pref, link, ok := nullBeginMatch(l1, l2, l3, l4)
+			_, _ = pref, link
+			if ok {
+				i += 3 // skip all 4 lines
+				continue
+			}
+		}
+		out = append(out, lines[i])
+	}
+	return strings.Join(out, "\n")
+}
+
+// nullBeginMatch checks the 4-line NODE_BEGIN(null) child pattern. Returns
+// the shared prefix and the link char (`|` or ` `) if matched.
+func nullBeginMatch(l1, l2, l3, l4 string) (prefix, link string, ok bool) {
+	const tag = "+- nd_head:"
+	idx := strings.Index(l1, tag)
+	if idx < 0 || l1[idx:] != tag {
+		return "", "", false
+	}
+	prefix = l1[:idx]
+	for _, lk := range []string{"|", " "} {
+		if l2 == prefix+lk+"   @ NODE_BEGIN" &&
+			l3 == prefix+lk+"   +- nd_body:" &&
+			l4 == prefix+lk+"       (null node)" {
+			return prefix, lk, true
+		}
+	}
+	return "", "", false
 }
 
 // --- MRI invocation ---------------------------------------------------------
