@@ -81,14 +81,19 @@ func normalize(s string, magic map[int]bool) string {
 	// Fixed-point loop: individual passes are not all mutually idempotent
 	// when run once (e.g. unwrapSingleChildBlocks can expose new lines
 	// starting with `#` that reLeadingHash would then strip). Iterating
-	// guarantees Normalize . Normalize == Normalize on any input.
+	// guarantees the text-level pass converges before flattening.
 	for {
 		next := normalizeOnce(s, magic)
 		if next == s {
-			return s
+			break
 		}
 		s = next
 	}
+	// Final pass: reparse the indented tree and re-emit in flat path form,
+	// one fact per line. Path-prefixed lines are diff-stable -- adding /
+	// removing one node changes only contiguous lines instead of cascading
+	// horizontal indent shifts across whole subtrees.
+	return toFlat(s)
 }
 
 func normalizeOnce(s string, magic map[int]bool) string {

@@ -69,7 +69,7 @@ func TestStripsNullBegin(t *testing.T) {
 	if strings.Contains(out, "NODE_BLOCK") {
 		t.Errorf("single-child NODE_BLOCK not unwrapped:\n%s", out)
 	}
-	if !strings.Contains(out, "NODE_LIT") || !strings.Contains(out, "nd_lit: 42") {
+	if !strings.Contains(out, "NODE_LIT") || !strings.Contains(out, "nd_lit = 42") {
 		t.Errorf("body content lost:\n%s", out)
 	}
 }
