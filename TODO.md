@@ -1,6 +1,9 @@
 # goruby parser/printer TODO
 
-remaining `TestMRIParseTreeDiff` failures by cluster. ~159 fails as of writing.
+remaining `TestMRIParseTreeDiff` failures by cluster. ~157 fails as of writing.
+
+added narrow fix: unary -/+ atomic on StringLiteral (f322e4b) -- handles
+`-"str"` frozen-string-literal form without defensive wrap.
 
 ## status
 
