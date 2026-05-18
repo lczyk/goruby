@@ -2171,7 +2171,8 @@ func (pe *PrefixExpression) String() string {
 		case *Identifier, *InstanceVariable, *ClassVariable, *Global,
 			*Boolean, *Nil, *Self, *IntegerLiteral, *FloatLiteral,
 			*ParenExpression, *PrefixExpression, *ContextCallExpression,
-			*IndexExpression, *ScopedIdentifier:
+			*IndexExpression, *ScopedIdentifier,
+			*DefinedExpression, *YieldExpression, *SuperExpression:
 			atomic = true
 		}
 	}
