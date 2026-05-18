@@ -710,6 +710,22 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 		if p.suppressHashrocket && p.peekTokenIs(token.HASHROCKET) {
 			return leftExp
 		}
+		// `ident [array]` (with leading space on `[`) is a command call with
+		// an array literal as its first arg, not an index expression.
+		if p.peekTokenIs(token.LBRACKET) && p.peekToken.HadWhitespace {
+			if id, ok := leftExp.(*ast.Identifier); ok && !id.IsConstant() {
+				call := &ast.ContextCallExpression{Token: id.Token, Function: id}
+				p.nextToken() // advance to [
+				call.Arguments = p.parseCallArguments(
+					token.SEMICOLON, token.NEWLINE, token.LBRACE, token.DO,
+				)
+				if p.currentTokenOneOf(token.LBRACE, token.DO) {
+					call.Block = p.parseBlockExpr()
+				}
+				leftExp = call
+				continue
+			}
+		}
 		infix := p.infixParseFns[p.peekToken.Type]
 		if infix == nil {
 			return leftExp
