@@ -47,3 +47,6 @@ bin/
 
 # Fuzz test corpus and failures
 parser/testdata/
+
+# Captured failure output from scripts/gotest-dots
+.testoutput/

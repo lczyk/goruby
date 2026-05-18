@@ -8,6 +8,16 @@
 # Exit code mirrors the wrapped command.
 set -o pipefail
 
+name="test"
+if [ "${1:0:7}" = "--name=" ]; then
+    name="${1:7}"
+    shift
+fi
+outdir=".testoutput"
+outfile="${outdir}/${name}.log"
+mkdir -p "$outdir"
+: > "$outfile"
+
 # Dot-row width: prefer $COLUMNS, then stty/tput via /dev/tty (so width
 # detection survives when stdout is piped through tee/less/make), then 80.
 width="${COLUMNS:-}"
@@ -29,7 +39,7 @@ else
     c_green='' c_yellow='' c_red='' c_reset=''
 fi
 
-"$@" | awk -v width="$width" \
+"$@" | LC_ALL=C awk -v width="$width" -v outfile="$outfile" \
     -v c_green="$c_green" -v c_yellow="$c_yellow" \
     -v c_red="$c_red" -v c_reset="$c_reset" '
 function flush_dots() { if (in_dots) { printf "\n"; in_dots = 0; cnt_in_row = 0 } }
@@ -44,41 +54,42 @@ function emit(ch) {
     if (++cnt_in_row >= width) { printf "\n"; cnt_in_row = 0 }
 }
 {
-    # collect captured output for failing tests
-    if (capturing) {
-        if ($0 ~ /^[[:space:]]*--- (PASS|FAIL|SKIP):/ || $0 ~ /^[[:space:]]*=== /) {
-            capturing = 0
-        } else {
-            fail_buf[nf] = fail_buf[nf] $0 "\n"
-        }
+    # Buffer per-test output between === RUN and --- (PASS|FAIL|SKIP) so
+    # that t.Fatal / t.Error messages (which print BEFORE --- FAIL) get
+    # captured. Trailing indented lines after --- FAIL fold into that
+    # test buffer too.
+    if ($0 ~ /^[[:space:]]*=== RUN[[:space:]]/) {
+        run_buf = ""; in_run = 1; post_fail = 0; next
     }
-
-    if ($0 ~ /^[[:space:]]*--- PASS:/) { emit("."); npass++; suppressing_log=0; next }
+    if ($0 ~ /^[[:space:]]*=== (PAUSE|CONT|NAME)/) { next }
+    if ($0 ~ /^[[:space:]]*--- PASS:/) {
+        emit("."); npass++; in_run=0; run_buf=""; next
+    }
     if ($0 ~ /^[[:space:]]*--- FAIL:/) {
-        emit("F"); fails[++nf] = $0; capturing = 1; suppressing_log=0; next
+        emit("F"); fails[++nf] = $0; fail_buf[nf] = run_buf
+        run_buf=""; in_run=0; post_fail=nf; next
     }
-    if ($0 ~ /^[[:space:]]*--- SKIP:/) { emit("s"); nskip++; suppressing_log=0; next }
-    if ($0 ~ /^[[:space:]]*=== (RUN|PAUSE|CONT|NAME)/) { suppressing_log=0; next }
-    if ($0 == "PASS" || $0 == "FAIL") { suppressing_log=0; next }
-    # suppress in-test t.Log noise: the "file.go:NN: msg" header and any
-    # continuation lines (extra-indented) that follow it.
-    if (match($0, "^[[:space:]]+[A-Za-z0-9_./-]+\\.go:[0-9]+:")) {
-        suppressing_log = 1
-        next
+    if ($0 ~ /^[[:space:]]*--- SKIP:/) {
+        emit("s"); nskip++; in_run=0; run_buf=""; next
     }
-    if (suppressing_log && $0 ~ /^[[:space:]]/) { next }
-    suppressing_log = 0
+    if ($0 == "PASS" || $0 == "FAIL") { in_run=0; post_fail=0; next }
+
+    if (in_run) { run_buf = run_buf $0 "\n"; next }
+    if (post_fail && $0 ~ /^[[:space:]]/) {
+        fail_buf[post_fail] = fail_buf[post_fail] $0 "\n"; next
+    }
+    post_fail = 0
     flush_dots()
     print
 }
 END {
     flush_dots()
     if (nf > 0) {
-        printf "\nfailures:\n"
         for (i = 1; i <= nf; i++) {
-            print fails[i]
-            if (length(fail_buf[i]) > 0) printf "%s", fail_buf[i]
+            print fails[i] >> outfile
+            if (length(fail_buf[i]) > 0) printf "%s", fail_buf[i] >> outfile
         }
+        printf "\n%s%d failed%s (see %s)\n", c_red, nf, c_reset, outfile
     }
     printf "totals: %d passed, %d failed, %d skipped\n", npass+0, nf+0, nskip+0
 }

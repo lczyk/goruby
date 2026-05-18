@@ -13,7 +13,7 @@ unit:  ## Run unit tests with race detection (pytest-style dots; pass V=1 for ve
 	@if [ "$(V)" = "1" ]; then \
 		$(GOTEST) -v -race -timeout 2m ./...; \
 	else \
-		./scripts/gotest-dots $(GOTEST) -v -race -timeout 2m ./...; \
+		./scripts/gotest-dots --name=unit $(GOTEST) -v -race -timeout 2m ./...; \
 	fi
 
 .PHONY: test
@@ -68,7 +68,7 @@ integration: gems  ## Run integration smoke suite (pytest-style dots; pass V=1 f
 	@if [ "$(V)" = "1" ]; then \
 		$(GOTEST) -v -tags=integration -race -timeout 10m ./internal/integrationtest/...; \
 	else \
-		./scripts/gotest-dots $(GOTEST) -v -tags=integration -race -timeout 10m ./internal/integrationtest/...; \
+		./scripts/gotest-dots --name=integration $(GOTEST) -v -tags=integration -race -timeout 10m ./internal/integrationtest/...; \
 	fi
 
 .PHONY: rubies
@@ -92,7 +92,7 @@ oracle: rubies gems  ## Diff goruby roundtrip against MRI parsetree dump (slow; 
 	@if [ "$(V)" = "1" ]; then \
 		$(GOTEST) -v -tags=oracle -timeout 20m -run TestMRIParseTreeDiff ./internal/integrationtest/...; \
 	else \
-		./scripts/gotest-dots $(GOTEST) -v -tags=oracle -timeout 20m -run TestMRIParseTreeDiff ./internal/integrationtest/...; \
+		./scripts/gotest-dots --name=oracle $(GOTEST) -v -tags=oracle -timeout 20m -run TestMRIParseTreeDiff ./internal/integrationtest/...; \
 	fi
 
 .PHONY: clean
