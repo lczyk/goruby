@@ -158,7 +158,7 @@ var (
 	//   - "NODE_<X>*" flags the expression was parenthesised in source
 	// Neither carries semantic info we want to diff on. Strip both.
 	reTrailingStar     = regexp.MustCompile(`(?m)\)\*$`)
-	reNodeNameStar     = regexp.MustCompile(`(?m)(@ NODE_[A-Z_]+)\*$`)
+	reNodeNameStar     = regexp.MustCompile(`(?m)(@ NODE_[A-Z0-9_]+)\*$`)
 	// 1.9 nd_alen leaks an uninitialised value on the tail NODE_ARRAY entry --
 	// drop nd_alen entirely (redundant with sibling count anyway).
 	reNdAlen = regexp.MustCompile(`(?m)^.*\bnd_alen: .*$\n?`)
@@ -248,7 +248,7 @@ func cachePath(fullVer, src string) string {
 func mriDumpCached(rubyBin, fullVer, src string) mriDumpResult {
 	cp := cachePath(fullVer, src)
 	if data, err := os.ReadFile(cp); err == nil {
-		return mriDumpResult{tree: string(data)}
+		return mriDumpResult{tree: normalizeParsetree(string(data))}
 	}
 	res := mriDumpParsetree(rubyBin, src)
 	if res.fatal == nil && res.parseErr == nil {
