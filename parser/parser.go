@@ -743,6 +743,26 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 				continue
 			}
 		}
+		// `ident (expr)` with whitespace before `(` is a command call whose
+		// first arg is a parenthesised expression, not a normal paren call.
+		// MRI keeps the explicit ParenthesesNode on the arg in this case.
+		if p.peekTokenIs(token.LPAREN) && p.peekToken.HadWhitespace {
+			if id, ok := leftExp.(*ast.Identifier); ok && !id.IsConstant() {
+				call := &ast.ContextCallExpression{Token: id.Token, Function: id}
+				p.nextToken() // advance to (
+				prevAO := p.suppressKwAndOr
+				p.suppressKwAndOr = true
+				call.Arguments = p.parseCallArguments(
+					token.SEMICOLON, token.NEWLINE, token.LBRACE, token.DO,
+				)
+				p.suppressKwAndOr = prevAO
+				if p.currentTokenOneOf(token.LBRACE, token.DO) {
+					call.Block = p.parseBlockExpr()
+				}
+				leftExp = call
+				continue
+			}
+		}
 		infix := infixParseFns[p.peekToken.Type]
 		if infix == nil {
 			return leftExp
