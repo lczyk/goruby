@@ -2122,11 +2122,16 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 		case token.STRING_CONTENT, token.XSTR_CONTENT:
 			parts = append(parts, &ast.StringContent{Token: p.curToken, Value: p.curToken.Literal})
 		case token.EMBEXPR_BEG:
+			embTok := p.curToken
 			p.nextToken() // advance past EMBEXPR_BEG to first expression token
 			for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 				p.nextToken()
 			}
 			if p.currentTokenIs(token.EMBEXPR_END) {
+				// Empty `#{ }` -- preserve as DSTR-shaping placeholder so
+				// MRI re-parses to EVSTR(BEGIN(nil)) instead of collapsing
+				// to a static STR. See same handling in parseInterpolatedRegex.
+				parts = append(parts, &ast.ParenExpression{Token: embTok, Rparen: p.curToken})
 				break
 			}
 			var lastExp ast.Expression
