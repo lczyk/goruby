@@ -2783,6 +2783,12 @@ func (p *parser) parseModifierLoopExpression(left ast.Expression) ast.Expression
 			&ast.ExpressionStatement{Expression: left},
 		},
 	}
+	// `begin ... end while cond` is a do-while (post-test) loop in MRI,
+	// distinct from a normal pre-test `while`. Flag so the printer can
+	// emit the post-test form.
+	if _, ok := left.(*ast.ExceptionHandlingBlock); ok {
+		loop.PostTest = true
+	}
 	return loop
 }
 

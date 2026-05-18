@@ -1189,6 +1189,10 @@ type LoopExpression struct {
 	EndToken  token.Token // end
 	Condition Expression
 	Block     *BlockStatement
+	// PostTest marks `begin ... end while cond` (do-while) form, where
+	// the condition is checked AFTER each iteration. MRI parses this
+	// as a post-test loop distinct from `while cond ... end`.
+	PostTest bool
 }
 
 func (ce *LoopExpression) expressionNode() {}
@@ -1207,6 +1211,18 @@ func (ce *LoopExpression) End() int {
 func (ce *LoopExpression) TokenLiteral() string { return ce.Token.Literal }
 func (ce *LoopExpression) String() string {
 	var out bytes.Buffer
+	if ce.PostTest && ce.Block != nil && len(ce.Block.Statements) == 1 {
+		if es, ok := ce.Block.Statements[0].(*ExpressionStatement); ok {
+			if bb, ok := es.Expression.(*ExceptionHandlingBlock); ok {
+				out.WriteString(bb.String())
+				out.WriteString(" ")
+				out.WriteString(ce.Token.Literal)
+				out.WriteString(" ")
+				out.WriteString(ce.Condition.String())
+				return out.String()
+			}
+		}
+	}
 	out.WriteString(ce.Token.Literal)
 	out.WriteString(" ")
 	out.WriteString(ce.Condition.String())

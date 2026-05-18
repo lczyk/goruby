@@ -24,7 +24,6 @@ src2-rejected 1.9 internal/integrationtest/testdata/gems/kaiser-ruby/lib/kaiser_
 src2-rejected 1.9 internal/integrationtest/testdata/gems/minitest/lib/minitest.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/gems/minitest/lib/minitest/spec.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/gems/pan-unicode-lang/bf_converter.rb: goruby String() output rejected by MRI
-src2-rejected 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/application.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_backtrace.rb: goruby String() output rejected by MRI
 src2-rejected 1.9 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
@@ -59,7 +58,6 @@ src2-rejected 2.0 internal/integrationtest/testdata/gems/minitest/lib/minitest.r
 src2-rejected 2.0 internal/integrationtest/testdata/gems/minitest/lib/minitest/assertions.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/minitest/lib/minitest/spec.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: goruby String() output rejected by MRI
-src2-rejected 2.0 internal/integrationtest/testdata/gems/rake/lib/rake/application.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
@@ -96,7 +94,6 @@ src2-rejected 2.1 internal/integrationtest/testdata/gems/minitest/lib/minitest.r
 src2-rejected 2.1 internal/integrationtest/testdata/gems/minitest/lib/minitest/assertions.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/minitest/lib/minitest/spec.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: goruby String() output rejected by MRI
-src2-rejected 2.1 internal/integrationtest/testdata/gems/rake/lib/rake/application.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
@@ -136,7 +133,6 @@ src2-rejected 2.3 internal/integrationtest/testdata/gems/minitest/test/minitest/
 src2-rejected 2.3 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_reporter.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: goruby String() output rejected by MRI
-src2-rejected 2.3 internal/integrationtest/testdata/gems/rake/lib/rake/application.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
@@ -196,7 +192,6 @@ src2-rejected 2.5 internal/integrationtest/testdata/gems/minitest/test/minitest/
 src2-rejected 2.5 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_reporter.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/gems/rake/lib/rake/application.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
@@ -264,7 +259,6 @@ src2-rejected 2.6 internal/integrationtest/testdata/gems/minitest/test/minitest/
 src2-rejected 2.6 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_reporter.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: goruby String() output rejected by MRI
-src2-rejected 2.6 internal/integrationtest/testdata/gems/rake/lib/rake/application.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
@@ -331,7 +325,6 @@ src2-rejected 2.7 internal/integrationtest/testdata/gems/minitest/test/minitest/
 src2-rejected 2.7 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_reporter.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/lib/rake/application.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
@@ -404,7 +397,6 @@ src2-rejected 3.0 internal/integrationtest/testdata/gems/minitest/test/minitest/
 src2-rejected 3.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_reporter.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/lib/rake/application.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
@@ -482,7 +474,6 @@ src2-rejected 3.1 internal/integrationtest/testdata/gems/minitest/test/minitest/
 src2-rejected 3.1 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_reporter.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/lib/rake/application.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
@@ -564,7 +555,6 @@ src2-rejected 3.2 internal/integrationtest/testdata/gems/minitest/test/minitest/
 src2-rejected 3.2 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_reporter.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_spec.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/gems/minitest/test/minitest/test_minitest_test.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/lib/rake/application.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_application.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_application_options.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/gems/rake/test/test_rake_directory_task.rb: goruby String() output rejected by MRI
@@ -1540,7 +1530,6 @@ tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_shapes.rb: tr
 tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_stack.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_string_memory.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_struct.rb: tree diff vs MRI parsetree
-tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_super.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_symbol.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_thread.rb: tree diff vs MRI parsetree
 tree-mismatch 3.0 internal/integrationtest/testdata/mri-tests/test_time_tz.rb: tree diff vs MRI parsetree
