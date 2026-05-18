@@ -45,7 +45,8 @@ func FuzzParse(f *testing.F) {
 	}
 	// Regression seeds for crashes previously found by the fuzzer.
 	seeds = append(seeds,
-		"alia, alias", // nil-leak into ExpressionList from alias without args
+		"alia, alias",         // nil-leak into ExpressionList from alias without args
+		"begin\nrescue A A=", // nil Right on Assignment from EOF after `=` inside rescue arg
 	)
 	for _, s := range seeds {
 		f.Add(s)

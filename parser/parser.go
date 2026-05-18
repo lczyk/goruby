@@ -958,6 +958,9 @@ func (p *parser) parseAssignmentOperator(left ast.Expression) ast.Expression {
 		p.nextToken()
 	}
 	newInf.Right = p.parseExpression(precAssignment)
+	if newInf.Right == nil {
+		return nil
+	}
 	assign.Right = newInf
 	return assign
 }
@@ -992,6 +995,9 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 		leftNode.Function.Token.Literal += "="
 		p.nextToken()
 		right := p.parseExpression(precLowest)
+		if right == nil {
+			return nil
+		}
 		leftNode.Arguments = []ast.Expression{right}
 		return leftNode
 	default:
@@ -1012,6 +1018,9 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 		rhsPrec = precComma
 	}
 	expr := p.parseExpression(rhsPrec)
+	if expr == nil {
+		return nil
+	}
 	// `a = b and c` -> `(a = b) and c` (and/or have lower precedence than =)
 	if inf, ok := expr.(*ast.InfixExpression); ok && (inf.Operator == "and" || inf.Operator == "or") {
 		assign.Right = inf.Left
