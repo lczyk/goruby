@@ -1531,9 +1531,11 @@ func (fl *FunctionLiteral) String() string {
 		}
 		return out.String()
 	}
-	out.WriteString("(")
-	out.WriteString(strings.Join(params, ", "))
-	out.WriteString(")")
+	if !fl.IsLambda || len(params) > 0 {
+		out.WriteString("(")
+		out.WriteString(strings.Join(params, ", "))
+		out.WriteString(")")
+	}
 	if fl.IsLambda {
 		out.WriteString(" {")
 	}
