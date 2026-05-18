@@ -4097,7 +4097,15 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 			p.nextToken()
 		}
-		if p.currentTokenOneOf(end...) {
+		// after comma, SCOPE starts a top-level scoped ident (::Foo) as next arg;
+		// not a list terminator.
+		endNoScope := make([]token.Type, 0, len(end))
+		for _, e := range end {
+			if e != token.SCOPE {
+				endNoScope = append(endNoScope, e)
+			}
+		}
+		if p.currentTokenOneOf(endNoScope...) {
 			return list
 		}
 		next = p.parseExpression(precComma)
