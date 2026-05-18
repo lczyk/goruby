@@ -41,3 +41,6 @@ internal/integrationtest/testdata/rubies/
 goruby/
 bin/
 .claude/
+
+# Local cache for MRI parsetree dumps (parsetree_test.go)
+.cache/

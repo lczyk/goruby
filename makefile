@@ -75,6 +75,10 @@ rubies-verify: rubies gems  ## Verify all test fixtures against downloaded ruby 
 rubies-golden: rubies gems  ## Regenerate MRI golden TSV for version-aware integration tests
 	@$(MAKE) -C .rubies golden
 
+.PHONY: integration-parsetree
+integration-parsetree: rubies gems  ## Diff goruby roundtrip against MRI parsetree dump (requires built rubies)
+	$(GOTEST) -v -tags=integration -timeout 20m -run TestMRIParseTreeDiff ./internal/integrationtest/...
+
 .PHONY: clean
 clean:  ## Remove generated files
 	rm -f cover.out cover.html
