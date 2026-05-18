@@ -44,6 +44,7 @@ const (
 	precSum         // + or -
 	precProduct     // *, /, %
 	precPrefix      // -X or !X
+	precPower       // ** (right-associative, binds tighter than unary)
 	precCallArg     // func x
 	precCall        // foo.myFunction(X)
 	precIndex       // array[index]
@@ -118,7 +119,7 @@ var precedences = map[token.Type]int{
 	token.CLASS_VAR:         precCallArg,
 	token.AT:                precCallArg,
 	token.CAPTURE:           precCapture,
-	token.POWER:             precProduct,
+	token.POWER:             precPower,
 	token.RANGE:             precLessGreater,
 	token.RANGEEX:           precLessGreater,
 	token.LONELY:            precCall,
@@ -2583,6 +2584,9 @@ func (p *parser) parseInfixExpression(left ast.Expression) ast.Expression {
 	switch expression.Operator {
 	case "and", "or":
 		precedence = precAssignment - 1
+	case "**":
+		// ** is right-associative: a ** b ** c parses as a ** (b ** c).
+		precedence--
 	}
 	p.nextToken()
 	for p.currentTokenIs(token.NEWLINE) {
