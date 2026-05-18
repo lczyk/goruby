@@ -976,6 +976,12 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 		rhsPrec = precComma
 	}
 	expr := p.parseExpression(rhsPrec)
+	// `a = b and c` -> `(a = b) and c` (and/or have lower precedence than =)
+	if inf, ok := expr.(*ast.InfixExpression); ok && (inf.Operator == "and" || inf.Operator == "or") {
+		assign.Right = inf.Left
+		inf.Left = assign
+		return inf
+	}
 	right, ok := expr.(*ast.ConditionalExpression)
 	if !ok || right.Token.Type == token.QMARK || right.EndToken.Type == token.END {
 		assign.Right = expr
