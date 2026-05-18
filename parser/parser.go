@@ -4241,9 +4241,13 @@ func (p *parser) buildSymbolFromPercent(beg token.Token, parts []ast.Expression)
 	}
 	if len(parts) == 1 {
 		if sc, ok := parts[0].(*ast.StringContent); ok {
+			var symValue ast.Expression = &ast.StringLiteral{Value: sc.Value}
+			if isSimpleIdent(sc.Value) {
+				symValue = &ast.Identifier{Value: sc.Value}
+			}
 			return &ast.SymbolLiteral{
 				Token: beg,
-				Value: &ast.StringLiteral{Value: sc.Value},
+				Value: symValue,
 			}
 		}
 	}

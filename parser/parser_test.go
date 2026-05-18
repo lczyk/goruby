@@ -5436,7 +5436,7 @@ func TestPercentLiterals(t *testing.T) {
 		// %I -- symbol array (interpolating)
 		{"%I symbols", "%I[foo bar]", "[:foo, :bar]"},
 		// %s -- symbol literal
-		{"%s symbol", "%s(foo)", `:"foo"`},
+		{"%s symbol", "%s(foo)", ":foo"},
 		// %r -- regex
 		{"%r regex", "%r{pattern}", `/pattern/`},
 		// %x -- command
