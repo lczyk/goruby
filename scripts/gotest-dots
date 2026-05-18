@@ -8,13 +8,21 @@
 # Exit code mirrors the wrapped command.
 set -o pipefail
 
-"$@" | awk '
+# Dot-row width: prefer $COLUMNS, then tput against stderr (so it works
+# even when stdout is piped), then fall back to 80.
+width="${COLUMNS:-}"
+if [ -z "$width" ] && [ -t 2 ]; then
+    width=$(tput cols 2>/dev/null || true)
+fi
+[ -n "$width" ] && [ "$width" -gt 0 ] 2>/dev/null || width=80
+
+"$@" | awk -v width="$width" '
 function flush_dots() { if (in_dots) { printf "\n"; in_dots = 0; cnt_in_row = 0 } }
 function emit(ch) {
     printf "%s", ch
     fflush()
     in_dots = 1
-    if (++cnt_in_row >= 80) { printf "\n"; cnt_in_row = 0 }
+    if (++cnt_in_row >= width) { printf "\n"; cnt_in_row = 0 }
 }
 {
     # collect captured output for failing tests
