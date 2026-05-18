@@ -2487,6 +2487,18 @@ func encloseInParensIfNeeded(expr Expression) string {
 			isLiteral = true
 		}
 	}
+	// Atomic enough to not need a defensive wrap: identifiers, instance /
+	// class / global vars, scoped names, method calls (including chained
+	// .new), index access, self/nil/booleans -- MRI parses these as the
+	// default value directly without a ParenthesesNode.
+	switch expr.(type) {
+	case *Identifier, *InstanceVariable, *ClassVariable, *Global,
+		*ScopedIdentifier, *ContextCallExpression, *IndexExpression,
+		*Self, *Nil, *Boolean, *Keyword__FILE__, *Keyword__DIR__,
+		*Keyword__ENCODING__, *Keyword__CALLEE__, *Keyword__METHOD__,
+		*SymbolLiteral:
+		isLiteral = true
+	}
 	if !isLiteral && !hasParens {
 		val = "(" + val + ")"
 	}
