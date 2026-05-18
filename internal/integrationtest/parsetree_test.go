@@ -162,6 +162,10 @@ var (
 	// 1.9 nd_alen leaks an uninitialised value on the tail NODE_ARRAY entry --
 	// drop nd_alen entirely (redundant with sibling count anyway).
 	reNdAlen = regexp.MustCompile(`(?m)^.*\bnd_alen: .*$\n?`)
+	// 3.x+ adds " (N)" sibling-index suffix on chained child links
+	// (e.g. "+- nd_head (1):", "+- nd_head (2):"). Index is redundant with
+	// emission order. Strip to keep cross-version diffs uniform.
+	reSiblingIndex = regexp.MustCompile(`(\+- nd_[a-z_]+) \(\d+\):`)
 	// __FILE__ / __dir__ substitution via SourceFileNode (prism) or
 	// NODE_STR with the tempfile path -- different tempfiles per run so
 	// the path text differs even when the source is identical.
@@ -179,6 +183,7 @@ func normalizeParsetree(s string) string {
 	s = reTrailingStar.ReplaceAllString(s, ")")
 	s = reNodeNameStar.ReplaceAllString(s, "$1")
 	s = reNdAlen.ReplaceAllString(s, "")
+	s = reSiblingIndex.ReplaceAllString(s, "$1:")
 	s = rePrismSourceFile.ReplaceAllString(s, "")
 	s = reNdLitTempPath.ReplaceAllString(s, "")
 	return s
