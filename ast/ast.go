@@ -546,6 +546,12 @@ func (s *SuperExpression) String() string {
 		out.WriteString(strings.Join(args, ", "))
 		out.WriteString(")")
 	}
+	if s.Block != nil {
+		if s.Block.Token.Type == token.LBRACE {
+			out.WriteString(" ")
+		}
+		out.WriteString(s.Block.String())
+	}
 	return out.String()
 }
 func (s *SuperExpression) expressionNode() {}

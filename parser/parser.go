@@ -1795,12 +1795,24 @@ func (p *parser) parseUndef() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	expr := &ast.UndefExpression{Token: p.curToken}
 	p.nextToken()
-	expr.Names = []*ast.Identifier{{Token: p.curToken, Value: p.curToken.Literal}}
+	expr.Names = []*ast.Identifier{parseUndefName(p)}
 	for p.peekTokenIs(token.COMMA) {
 		p.consume(token.COMMA)
-		expr.Names = append(expr.Names, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+		expr.Names = append(expr.Names, parseUndefName(p))
 	}
 	return expr
+}
+
+// parseUndefName parses a single undef target (identifier, symbol, or operator).
+func parseUndefName(p *parser) *ast.Identifier {
+	if p.currentTokenIs(token.SYMBEG) {
+		sym := p.parseSymbolLiteral()
+		if sym == nil {
+			return &ast.Identifier{Token: p.curToken, Value: ""}
+		}
+		return &ast.Identifier{Token: p.curToken, Value: sym.(*ast.SymbolLiteral).Value.String()}
+	}
+	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 }
 
 func (p *parser) parseRangeOrForwarding() ast.Expression {
