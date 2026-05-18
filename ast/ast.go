@@ -1954,8 +1954,10 @@ func (s *SplatExpression) String() string {
 	if s.Right != nil {
 		inner := s.Right.String()
 		// Wrap when the operand is a bare infix expression so *a + b
-		// (which would parse as (*a) + b) becomes *(a + b).
-		if _, isInfix := s.Right.(*InfixExpression); isInfix {
+		// (which would parse as (*a) + b) becomes *(a + b). Range (..,
+		// ...) is exempt -- MRI parses *x..y as splat over a range, so
+		// adding parens around the range introduces a ParenthesesNode.
+		if ie, isInfix := s.Right.(*InfixExpression); isInfix && ie.Operator != ".." && ie.Operator != "..." {
 			inner = "(" + inner + ")"
 		}
 		out.WriteString(inner)

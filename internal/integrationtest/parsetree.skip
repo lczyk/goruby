@@ -610,7 +610,6 @@ src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_primitive.rb:
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_proc.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_process.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_rand.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_range.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_rational.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_refinement.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_regexp.rb: goruby String() output rejected by MRI
@@ -636,7 +635,6 @@ src2-rejected 3.4 internal/integrationtest/testdata/gems/alice/state.rb: goruby 
 src2-rejected 3.4 internal/integrationtest/testdata/gems/bouncy-lang/bouncy/language/interpreter.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/gems/bouncy-lang/bouncy/language/pointer.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/gems/brain-flak/Interpreter.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/gems/hexagony/brute-forcer.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/gems/minitest/lib/minitest.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/gems/minitest/lib/minitest/assertions.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/gems/minitest/lib/minitest/spec.rb: goruby String() output rejected by MRI
@@ -661,7 +659,6 @@ src2-rejected 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_tas
 src2-rejected 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/enc/test_emoji_breaks.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/enc/test_windows_1252.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_array.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_assignment.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_ast.rb: goruby String() output rejected by MRI
@@ -676,7 +673,6 @@ src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_defined.rb: g
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_dir.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_enum.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_enumerator.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_env.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_exception.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_file.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_file_exhaustive.rb: goruby String() output rejected by MRI
@@ -708,7 +704,6 @@ src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_primitive.rb:
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_proc.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_process.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_rand.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_random_formatter.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_range.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_rational.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_refinement.rb: goruby String() output rejected by MRI
@@ -735,7 +730,6 @@ src2-rejected 4.0 internal/integrationtest/testdata/gems/alice/state.rb: goruby 
 src2-rejected 4.0 internal/integrationtest/testdata/gems/bouncy-lang/bouncy/language/interpreter.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/gems/bouncy-lang/bouncy/language/pointer.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/gems/brain-flak/Interpreter.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/gems/hexagony/brute-forcer.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/gems/minitest/lib/minitest.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/gems/minitest/lib/minitest/assertions.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/gems/minitest/lib/minitest/spec.rb: goruby String() output rejected by MRI
@@ -760,7 +754,6 @@ src2-rejected 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_tas
 src2-rejected 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task_manager.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/gems/rake/test/test_rake_task_with_arguments.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/enc/test_emoji_breaks.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/enc/test_windows_1252.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_array.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_assignment.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_ast.rb: goruby String() output rejected by MRI
@@ -775,7 +768,6 @@ src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_defined.rb: g
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_dir.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_enum.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_enumerator.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_env.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_exception.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_file_exhaustive.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_fixnum.rb: goruby String() output rejected by MRI

@@ -4560,8 +4560,10 @@ func TestSplatExpression(t *testing.T) {
 		{"*x", "*x"},
 		{"*call(1, 2)", "*call(1, 2)"},
 		// Splat absorbs the full expression up to the next comma / hashrocket.
-		{"*a..z", "*(a .. z)"},
-		{"*a...z", "*(a ... z)"},
+		// Range (.., ...) is exempt from the wrap-when-infix rule so the
+		// printer keeps MRI's bare *a..z form.
+		{"*a..z", "*a .. z"},
+		{"*a...z", "*a ... z"},
 		{"*a + b", "*(a + b)"},
 		{"*a * b", "*(a * b)"},
 		{"*a == b", "*(a == b)"},
