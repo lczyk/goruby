@@ -3075,15 +3075,11 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 			continue
 		}
 		if p.peekTokenOneOf(token.CAPTURE, token.AND) {
+			// Block capture (&block). Leave cur at `&` for the caller
+			// (parseFunctionLiteral / parseBlockExpression) to build the
+			// CapturedBlock node; otherwise the `&` is lost in String().
 			p.acceptOneOf(token.CAPTURE, token.AND)
-			if p.peekTokenOneOf(token.COMMA, endToken, token.NEWLINE, token.SEMICOLON, token.EOF) {
-				return identifiers
-			}
-			p.accept(token.IDENT)
-			identifiers = append(identifiers, &ast.FunctionParameter{
-				Name: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
-			})
-			continue
+			return identifiers
 		}
 		// Keyword parameter: `name: default` (ruby 2.0+)
 		if p.peekTokenIs(token.LABEL) {
