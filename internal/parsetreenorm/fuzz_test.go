@@ -16,6 +16,10 @@ var (
 	oracleSiblingIndex   = regexp.MustCompile(`(\+- nd_[a-z_]+) \(\d+\):`)
 	oracleTrailingStar   = regexp.MustCompile(`(?m)\)\*$`)
 	oracleNodeNameStar   = regexp.MustCompile(`(?m)(@ NODE_[A-Z0-9_]+)\*$`)
+	oraclePrismLocation  = regexp.MustCompile(` \(location: \([^)]+\)-\([^)]+\)\)`)
+	oracleLineLocation   = regexp.MustCompile(` \(line: \d+(?:, (?:location|code_range): \([^)]+\)-\([^)]+\))?\)`)
+	oraclePrismTokenLoc  = regexp.MustCompile(`(?m)^.*_loc: (?:nil|\([^)]+\)-\([^)]+\) = "(?:[^"\\]|\\.)*")$\n?`)
+	oracleNdAlen         = regexp.MustCompile(`(?m)^.*\bnd_alen: .*$\n?`)
 )
 
 func oracleStripTrailingStars(s string) string {
@@ -96,6 +100,78 @@ func FuzzStripTrailingStarsOracle(f *testing.F) {
 		want := oracleStripTrailingStars(s)
 		if got != want {
 			t.Fatalf("stripTrailingStars diverges for %q\nscan:  %q\nregex: %q", s, got, want)
+		}
+	})
+}
+
+func FuzzStripPrismLocationOracle(f *testing.F) {
+	for _, s := range commonSeeds {
+		f.Add(s)
+	}
+	f.Add(" (location: (1,0)-(1,2))")
+	f.Add(" (location: ()-())")
+	f.Add(" (location: (a)-(b)) (location: (c)-(d))")
+	f.Fuzz(func(t *testing.T, s string) {
+		got := stripPrismLocation(s)
+		want := oraclePrismLocation.ReplaceAllString(s, "")
+		if got != want {
+			t.Fatalf("stripPrismLocation diverges for %q\nscan:  %q\nregex: %q", s, got, want)
+		}
+	})
+}
+
+func FuzzStripLineLocationOracle(f *testing.F) {
+	for _, s := range commonSeeds {
+		f.Add(s)
+	}
+	f.Add(" (line: 1)")
+	f.Add(" (line: 12, location: (1,0)-(1,5))")
+	f.Add(" (line: 9, code_range: (1,0)-(2,3))")
+	f.Add(" (line: not-digits)")
+	f.Add(" (line: 1, location: ()-())")
+	f.Fuzz(func(t *testing.T, s string) {
+		got := stripLineLocation(s)
+		want := oracleLineLocation.ReplaceAllString(s, "")
+		if got != want {
+			t.Fatalf("stripLineLocation diverges for %q\nscan:  %q\nregex: %q", s, got, want)
+		}
+	})
+}
+
+func FuzzStripPrismTokenLocOracle(f *testing.F) {
+	for _, s := range commonSeeds {
+		f.Add(s)
+	}
+	f.Add("+-- name_loc: nil\n")
+	f.Add("+-- value_loc: (1,0)-(1,5) = \"hello\"\n")
+	f.Add("a _loc: nil\nb _loc: (1,0)-(1,2) = \"x\"\n")
+	f.Add("x _loc: nil and more\n")    // doesn't end at nil -- no match
+	f.Add("_loc: (1,0)-(1,2) = \"a\\\"b\"\n") // escaped quote in literal
+	f.Add("_loc: (1,0)-(1,2) = \"unterm\n")    // unterminated string
+	f.Fuzz(func(t *testing.T, s string) {
+		got := stripPrismTokenLoc(s)
+		want := oraclePrismTokenLoc.ReplaceAllString(s, "")
+		if got != want {
+			t.Fatalf("stripPrismTokenLoc diverges for %q\nscan:  %q\nregex: %q", s, got, want)
+		}
+	})
+}
+
+func FuzzStripNdAlenOracle(f *testing.F) {
+	for _, s := range commonSeeds {
+		f.Add(s)
+	}
+	f.Add("+- nd_alen: 99\n")
+	f.Add("xx nd_alen: 1\n")             // word-boundary `x` is a word char -> would match if preceded by space
+	f.Add("foo_nd_alen: 1\n")            // preceded by `_` (word) -- no boundary, no match
+	f.Add("(nd_alen: 5)\n")              // preceded by `(` -- boundary, match
+	f.Add("nd_alen: 1\nnd_alen: 2\n")    // two lines
+	f.Add("nd_alen:no-space\n")          // tag is `nd_alen: ` with space; without, no match
+	f.Fuzz(func(t *testing.T, s string) {
+		got := stripNdAlen(s)
+		want := oracleNdAlen.ReplaceAllString(s, "")
+		if got != want {
+			t.Fatalf("stripNdAlen diverges for %q\nscan:  %q\nregex: %q", s, got, want)
 		}
 	})
 }
