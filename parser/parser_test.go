@@ -4564,9 +4564,9 @@ func TestSplatExpression(t *testing.T) {
 		// printer keeps MRI's bare *a..z form.
 		{"*a..z", "*a .. z"},
 		{"*a...z", "*a ... z"},
-		{"*a + b", "*(a + b)"},
-		{"*a * b", "*(a * b)"},
-		{"*a == b", "*(a == b)"},
+		{"*a + b", "*a + b"},
+		{"*a * b", "*a * b"},
+		{"*a == b", "*a == b"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
