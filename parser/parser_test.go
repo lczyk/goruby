@@ -78,6 +78,7 @@ func TestBlockCapture(t *testing.T) {
 			err: &unexpectedTokenError{
 				expectedTokens: []token.Type{token.IDENT, token.NIL},
 				actualToken:    token.INT,
+				actualLiteral:  "2",
 			},
 		},
 		{

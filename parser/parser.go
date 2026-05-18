@@ -468,6 +468,7 @@ func (p *parser) peekError(t ...token.Type) {
 		Pos:            epos,
 		expectedTokens: t,
 		actualToken:    p.peekToken.Type,
+		actualLiteral:  p.peekToken.Literal,
 	}
 	p.errors = append(p.errors, errors.WithStack(err))
 }
@@ -478,6 +479,7 @@ func (p *parser) expectError(t ...token.Type) {
 		Pos:            epos,
 		expectedTokens: t,
 		actualToken:    p.curToken.Type,
+		actualLiteral:  p.curToken.Literal,
 	}
 	p.errors = append(p.errors, errors.WithStack(err))
 }

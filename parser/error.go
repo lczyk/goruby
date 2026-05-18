@@ -169,12 +169,17 @@ type unexpectedTokenError struct {
 	Pos            gotoken.Position
 	expectedTokens []token.Type
 	actualToken    token.Type
+	actualLiteral  string // optional; included in Error() if non-empty
 }
 
 func (e *unexpectedTokenError) Error() string {
+	actual := e.actualToken.String()
+	if e.actualLiteral != "" && e.actualLiteral != actual {
+		actual = fmt.Sprintf("%s (%q)", e.actualToken, e.actualLiteral)
+	}
 	msg := fmt.Sprintf(
 		"unexpected %s, expecting %s",
-		e.actualToken,
+		actual,
 		tokens(e.expectedTokens),
 	)
 	if e.Pos.Filename != "" || e.Pos.IsValid() {
