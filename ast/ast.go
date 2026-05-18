@@ -69,42 +69,13 @@ func (p *Program) End() int {
 	return p.Statements[len(p.Statements)-1].End()
 }
 func (p *Program) String() string {
-	stmtLine := func(getPos func() int) (line int, ok bool) {
-		if p.File == nil {
-			return 0, false
-		}
-		defer func() {
-			if r := recover(); r != nil {
-				line, ok = 0, false
-			}
-		}()
-		off := getPos()
-		return p.File.Position(p.File.Pos(off)).Line, true
-	}
-	var out strings.Builder
-	prevLine := 0
+	stmts := make([]string, len(p.Statements))
 	for i, s := range p.Statements {
-		if s == nil {
-			continue
-		}
-		if i > 0 {
-			gap := 1
-			if cur, ok := stmtLine(s.Pos); ok && cur > prevLine && prevLine > 0 {
-				gap = cur - prevLine
-				if gap < 1 {
-					gap = 1
-				}
-			}
-			for j := 0; j < gap; j++ {
-				out.WriteByte('\n')
-			}
-		}
-		out.WriteString(s.String())
-		if ln, ok := stmtLine(s.End); ok {
-			prevLine = ln
+		if s != nil {
+			stmts[i] = s.String()
 		}
 	}
-	return relocateHeredocBodies(out.String())
+	return relocateHeredocBodies(strings.Join(stmts, "\n"))
 }
 
 // Heredoc body markers used internally by StringLiteral.String() and
