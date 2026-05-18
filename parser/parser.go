@@ -483,12 +483,11 @@ func (p *parser) expectError(t ...token.Type) {
 }
 
 func (p *parser) noPrefixParseFnError(t token.Type) {
-	msg := fmt.Sprintf("no prefix parse function for type %s found", t)
-	epos := p.file.Position(p.pos)
-	if epos.Filename != "" || epos.IsValid() {
-		msg = epos.String() + ": " + msg
-	}
-	p.errors = append(p.errors, errors.New(msg))
+	p.errors = append(p.errors, &parseError{
+		Pos:  p.file.Position(p.pos),
+		Kind: SyntaxError,
+		Msg:  fmt.Sprintf("no prefix parse function for type %s found", t),
+	})
 }
 
 func (p *parser) versionError(minVer token.RubyVersion, feature string) {
@@ -560,12 +559,11 @@ func (p *parser) parseStatement() ast.Statement {
 	defer trace.TraceCtx(p.ctx)()
 	switch p.curToken.Type {
 	case token.ILLEGAL:
-		msg := p.curToken.Literal
-		epos := p.file.Position(p.pos)
-		if epos.Filename != "" || epos.IsValid() {
-			msg = epos.String() + ": " + msg
-		}
-		p.errors = append(p.errors, errors.New(msg))
+		p.errors = append(p.errors, &parseError{
+			Pos:  p.file.Position(p.pos),
+			Kind: LexError,
+			Msg:  p.curToken.Literal,
+		})
 		return nil
 	case token.EOF:
 		p.expectError(token.NEWLINE)
@@ -966,9 +964,11 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 	case *ast.ParenExpression:
 		_ = leftNode
 	case *ast.Keyword__FILE__:
-		epos := p.file.Position(p.pos)
-		msg := fmt.Errorf("%s: Can't assign to __FILE__", epos.String())
-		p.errors = append(p.errors, msg)
+		p.errors = append(p.errors, &parseError{
+			Pos:  p.file.Position(p.pos),
+			Kind: SyntaxError,
+			Msg:  "Can't assign to __FILE__",
+		})
 		return nil
 	case *ast.ContextCallExpression:
 		// obj.method = value => obj.method=(value)
@@ -1920,8 +1920,11 @@ func (p *parser) parseIntegerLiteral() ast.Expression {
 	s = strings.TrimRight(s, "riRI")
 	v, bigV, err := parseRubyInt(s)
 	if err != nil {
-		msg := fmt.Errorf("could not parse %q as integer", p.curToken.Literal)
-		p.errors = append(p.errors, msg)
+		p.errors = append(p.errors, &parseError{
+			Pos:  p.file.Position(p.pos),
+			Kind: SyntaxError,
+			Msg:  fmt.Sprintf("could not parse %q as integer", p.curToken.Literal),
+		})
 		return nil
 	}
 	if bigV != nil {
@@ -1940,8 +1943,11 @@ func (p *parser) parseFloatLiteral() ast.Expression {
 	s = strings.TrimRight(s, "riRI")
 	value, err := parseFloat(s)
 	if err != nil {
-		msg := fmt.Errorf("could not parse %q as float", p.curToken.Literal)
-		p.errors = append(p.errors, msg)
+		p.errors = append(p.errors, &parseError{
+			Pos:  p.file.Position(p.pos),
+			Kind: SyntaxError,
+			Msg:  fmt.Sprintf("could not parse %q as float", p.curToken.Literal),
+		})
 		return nil
 	}
 	lit.Value = value
@@ -3810,8 +3816,11 @@ func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {
 			return fn
 		}
 	}
-	msg := fmt.Errorf("could not parse call expression: expected identifier, got token '%T'", function)
-	p.errors = append(p.errors, msg)
+	p.errors = append(p.errors, &parseError{
+		Pos:  p.file.Position(p.pos),
+		Kind: SyntaxError,
+		Msg:  fmt.Sprintf("could not parse call expression: expected identifier, got token '%T'", function),
+	})
 	return nil
 }
 
@@ -4263,7 +4272,11 @@ func (p *parser) buildSymbolFromPercent(beg token.Token, parts []ast.Expression)
 			}
 		}
 	}
-	p.errors = append(p.errors, fmt.Errorf("invalid %%s literal"))
+	p.errors = append(p.errors, &parseError{
+		Pos:  p.file.Position(p.pos),
+		Kind: SyntaxError,
+		Msg:  "invalid %s literal",
+	})
 	return nil
 }
 

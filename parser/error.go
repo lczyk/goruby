@@ -15,6 +15,67 @@ var _ error = &unexpectedTokenError{}
 // Make sure Errors implements error interface
 var _ error = &Errors{}
 
+// Make sure parseError implements error interface
+var _ error = &parseError{}
+
+// ErrorKind classifies a parser-side error so callers can filter by category
+// rather than by message text.
+type ErrorKind int
+
+const (
+	// LexError originates from the lexer and was surfaced as an ILLEGAL token.
+	LexError ErrorKind = iota
+	// SyntaxError covers parser-side rejections (bad expression shape, malformed
+	// literal, unexpected token shape not caught by unexpectedTokenError).
+	SyntaxError
+)
+
+func (k ErrorKind) String() string {
+	switch k {
+	case LexError:
+		return "lex error"
+	case SyntaxError:
+		return "syntax error"
+	}
+	return "error"
+}
+
+// parseError is a structured parser error carrying source position and kind.
+type parseError struct {
+	Pos  gotoken.Position
+	Kind ErrorKind
+	Msg  string
+}
+
+func (e *parseError) Error() string {
+	if e.Pos.Filename != "" || e.Pos.IsValid() {
+		return fmt.Sprintf("%s: %s: %s", e.Pos.String(), e.Kind, e.Msg)
+	}
+	return fmt.Sprintf("%s: %s", e.Kind, e.Msg)
+}
+
+// IsLexError reports whether err contains a LexError parseError.
+func IsLexError(err error) bool { return hasErrorKind(err, LexError) }
+
+// IsSyntaxError reports whether err contains a SyntaxError parseError.
+func IsSyntaxError(err error) bool { return hasErrorKind(err, SyntaxError) }
+
+func hasErrorKind(err error, kind ErrorKind) bool {
+	if errs, ok := err.(*Errors); ok {
+		for _, e := range errs.errors {
+			if hasErrorKind(e, kind) {
+				return true
+			}
+		}
+		return false
+	}
+	pe, ok := errors.Cause(err).(*parseError)
+	if !ok {
+		return false
+	}
+	return pe.Kind == kind
+}
+
 // NewErrors returns a composite Error object wrapping multiple errors into
 // one.
 func NewErrors(context string, errors ...error) *Errors {
