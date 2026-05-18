@@ -1574,13 +1574,14 @@ func (fl *FunctionLiteral) String() string {
 
 // A FunctionParameter represents a parameter in a function literal
 type FunctionParameter struct {
-	Name          *Identifier
-	Default       Expression
-	IsSplat       bool
-	IsKeyword     bool
-	IsKeywordRest bool // **kwargs
-	IsNoKeywords  bool // **nil (ruby 2.7+)
-	IsForwarding  bool // ... argument forwarding
+	Name           *Identifier
+	Default        Expression
+	IsSplat        bool
+	IsKeyword      bool
+	IsKeywordRest  bool // **kwargs
+	IsNoKeywords   bool // **nil (ruby 2.7+)
+	IsForwarding   bool // ... argument forwarding
+	IsImplicitRest bool // sentinel for `{|a,|}` trailing comma (MRI's ImplicitRestNode)
 }
 
 func (f *FunctionParameter) expressionNode() {}
@@ -1613,6 +1614,11 @@ func (f *FunctionParameter) TokenLiteral() string {
 }
 func (f *FunctionParameter) String() string {
 	var out bytes.Buffer
+	if f.IsImplicitRest {
+		// Trailing-comma sentinel: caller's join with ", " renders this
+		// as the bare comma after the last real param.
+		return ""
+	}
 	if f.IsForwarding {
 		out.WriteString("...")
 		return out.String()

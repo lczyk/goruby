@@ -3442,8 +3442,9 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 	for p.peekTokenIs(token.COMMA) {
 		p.accept(token.COMMA)
 		p.skipNewlines()
-		// Trailing comma: |a,| or (a,)
+		// Trailing comma: |a,| or (a,) -- MRI's ImplicitRestNode marker.
 		if hasDelimiters && p.peekTokenIs(endToken) {
+			identifiers = append(identifiers, &ast.FunctionParameter{IsImplicitRest: true})
 			p.accept(endToken)
 			return identifiers
 		}
