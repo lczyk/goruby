@@ -238,6 +238,7 @@ func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode M
 	}
 
 	p.prefixParseFns = make(map[token.Type]prefixParseFn)
+	p.registerPrefix(token.ILLEGAL, p.parseIllegal)
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
 	p.registerPrefix(token.CONST, p.parseIdentifier)
 	p.registerPrefix(token.AT, p.parseInstanceVariable)
@@ -1512,6 +1513,15 @@ func (p *parser) parseCaseExpression() ast.Expression {
 func (p *parser) parseNilLiteral() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	return &ast.Nil{Token: p.curToken}
+}
+
+func (p *parser) parseIllegal() ast.Expression {
+	p.errors = append(p.errors, &parseError{
+		Pos:  p.file.Position(p.pos),
+		Kind: LexError,
+		Msg:  p.curToken.Literal,
+	})
+	return nil
 }
 
 func (p *parser) parseIdentifier() ast.Expression {
