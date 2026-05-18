@@ -106,9 +106,37 @@ func parseNodeFields(lines []string, start, baseDepth int, n *ptNode) (int, int)
 			i++
 			continue
 		}
-		// depth == baseDepth
-		if rest, ok := strings.CutPrefix(content, "+- "); ok {
+		// Field markers: `+- ` (MRI) or `+-- ` (Prism). Try both.
+		var rest string
+		var ok bool
+		if rest, ok = strings.CutPrefix(content, "+-- "); !ok {
+			rest, ok = strings.CutPrefix(content, "+- ")
+		}
+		if ok {
+			// Prism inlines child nodes as `+-- @ NodeName ...` -- detect
+			// and create a subtree field with the child node directly.
+			if afterAt, isInline := strings.CutPrefix(rest, "@ "); isInline {
+				if kind, kok := parseNodeKind("@ " + afterAt); kok {
+					child := &ptNode{kind: kind}
+					i++
+					i, _ = parseNodeFields(lines, i, baseDepth+1, child)
+					// Anonymous field (kind is the body) -- use "_" so emitter
+					// still produces a fact line.
+					n.fields = append(n.fields, ptField{name: "_", child: child})
+					continue
+				}
+			}
 			name, val, hasVal := splitFieldNameValue(rest)
+			// Prism list field: `+-- name: (length: N)` followed by N
+			// inline `+-- @ Child` entries at bodyDepth. Expand to N
+			// separate ptFields named `name`, each owning one child.
+			isList := hasVal && strings.HasPrefix(val, "(length: ") &&
+				strings.HasSuffix(val, ")")
+			if isList {
+				i++
+				i = consumeListField(lines, i, baseDepth+1, name, n)
+				continue
+			}
 			f := ptField{name: name}
 			if hasVal && val != "" {
 				f.leaf = val
@@ -131,6 +159,47 @@ func parseNodeFields(lines []string, start, baseDepth int, n *ptNode) (int, int)
 		return i, i
 	}
 	return i, i
+}
+
+// consumeListField reads N inline `+-- @ Child` entries at bodyDepth and
+// appends one ptField named fieldName per child to n.fields. Used for
+// Prism list fields (`+-- name: (length: N)`).
+func consumeListField(lines []string, start, bodyDepth int, fieldName string, n *ptNode) int {
+	i := start
+	for i < len(lines) {
+		if strings.TrimSpace(lines[i]) == "" {
+			i++
+			continue
+		}
+		depth, content := splitIndent(lines[i])
+		if depth < bodyDepth {
+			return i
+		}
+		if depth > bodyDepth {
+			// Deeper line without a header at bodyDepth -- shouldn't
+			// happen, but skip defensively.
+			i++
+			continue
+		}
+		// Look for `+-- @ ChildNode` (inline child at this indent).
+		after, hasMarker := strings.CutPrefix(content, "+-- ")
+		if !hasMarker {
+			return i // end of list (next sibling field of parent)
+		}
+		afterAt, isNode := strings.CutPrefix(after, "@ ")
+		if !isNode {
+			return i // non-node entry -- not part of this list
+		}
+		kind, kok := parseNodeKind("@ " + afterAt)
+		if !kok {
+			return i
+		}
+		child := &ptNode{kind: kind}
+		i++
+		i, _ = parseNodeFields(lines, i, bodyDepth+1, child)
+		n.fields = append(n.fields, ptField{name: fieldName, child: child})
+	}
+	return i
 }
 
 // consumeFieldBody reads the body (at bodyDepth) of a subtree field f.
@@ -167,28 +236,48 @@ func consumeFieldBody(lines []string, start, bodyDepth int, f *ptField) int {
 	return i + 1
 }
 
-// parseNodeKind validates `@ NODE_X...` prefix and extracts NODE_X. Only
-// names matching `NODE_[A-Z0-9_]+` are accepted -- a stricter rule than
-// the raw dump suggests, but matches every observed MRI kind and rejects
-// fuzz-synthetic junk like `@ #0000` that would otherwise produce
-// non-idempotent flat output.
+// parseNodeKind validates `@ <Name>...` prefix and extracts Name. Accepts
+// MRI dump form (`NODE_[A-Z0-9_]+`, e.g. `NODE_SCOPE`) and Prism dump form
+// (CamelCase, e.g. `ProgramNode`, `DefNode`). Rejects fuzz-synthetic junk
+// like `@ #0000` that would otherwise produce non-idempotent flat output.
 func parseNodeKind(content string) (string, bool) {
 	rest, ok := strings.CutPrefix(content, "@ ")
 	if !ok {
 		return "", false
 	}
-	if !strings.HasPrefix(rest, "NODE_") {
+	if len(rest) == 0 {
+		return "", false
+	}
+	// MRI form: NODE_<UPPER>
+	if strings.HasPrefix(rest, "NODE_") {
+		end := len(rest)
+		for i := 0; i < len(rest); i++ {
+			c := rest[i]
+			if !((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
+				end = i
+				break
+			}
+		}
+		if end <= len("NODE_") {
+			return "", false
+		}
+		return rest[:end], true
+	}
+	// Prism form: <UpperCamelCase>[Node|Flags]
+	first := rest[0]
+	if !(first >= 'A' && first <= 'Z') {
 		return "", false
 	}
 	end := len(rest)
 	for i := 0; i < len(rest); i++ {
 		c := rest[i]
-		if !((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
+		if !((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+			(c >= '0' && c <= '9') || c == '_') {
 			end = i
 			break
 		}
 	}
-	return rest[:end], end > len("NODE_")
+	return rest[:end], end > 0
 }
 
 // splitIndent counts the indent of `line` (in 4-col units) and returns
