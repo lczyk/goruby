@@ -38,6 +38,10 @@ func FuzzParse(f *testing.F) {
 		"%w[foo bar baz]",
 		"def foo\nrescue\nend",
 	}
+	// Regression seeds for crashes previously found by the fuzzer.
+	seeds = append(seeds,
+		"alia, alias", // nil-leak into ExpressionList from alias without args
+	)
 	for _, s := range seeds {
 		f.Add(s)
 	}

@@ -877,8 +877,15 @@ func (p *parser) parseExpressions(left ast.Expression) ast.Expression {
 		return ast.ExpressionList{left}
 	}
 	elements := []ast.Expression{left}
-	next := p.parseExpression(precAssignment)
-	elements = append(elements, next)
+	if next := p.parseExpression(precAssignment); next != nil {
+		elements = append(elements, next)
+	} else {
+		p.errors = append(p.errors, &parseError{
+			Pos:  p.file.Position(p.pos),
+			Kind: SyntaxError,
+			Msg:  "expected expression after ','",
+		})
+	}
 	for p.peekTokenIs(token.COMMA) {
 		p.consume(token.COMMA)
 		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
@@ -888,8 +895,15 @@ func (p *parser) parseExpressions(left ast.Expression) ast.Expression {
 		if p.currentTokenOneOf(token.RPAREN, token.RBRACKET, token.RBRACE, token.ASSIGN) {
 			break
 		}
-		next = p.parseExpression(precAssignment)
-		elements = append(elements, next)
+		if next := p.parseExpression(precAssignment); next != nil {
+			elements = append(elements, next)
+		} else {
+			p.errors = append(p.errors, &parseError{
+				Pos:  p.file.Position(p.pos),
+				Kind: SyntaxError,
+				Msg:  "expected expression after ','",
+			})
+		}
 	}
 	return ast.ExpressionList(elements)
 }
@@ -1793,11 +1807,21 @@ func (p *parser) parseAlias() ast.Expression {
 	p.nextToken()
 	expr.NewName = p.parseAliasName()
 	if expr.NewName == nil {
+		p.errors = append(p.errors, &parseError{
+			Pos:  p.file.Position(p.pos),
+			Kind: SyntaxError,
+			Msg:  "alias requires a new name",
+		})
 		return nil
 	}
 	p.nextToken()
 	expr.OldName = p.parseAliasName()
 	if expr.OldName == nil {
+		p.errors = append(p.errors, &parseError{
+			Pos:  p.file.Position(p.pos),
+			Kind: SyntaxError,
+			Msg:  "alias requires an old name",
+		})
 		return nil
 	}
 	return expr
