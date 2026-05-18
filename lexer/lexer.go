@@ -57,6 +57,20 @@ type interpState struct {
 // `<<OUTER ... #{<<INNER ... INNER} ... OUTER`), the inner heredoc clobbers
 // the lexer's heredoc fields, so without snapshotting the outer heredoc
 // body lexer would fail to find its closing delimiter on pop.
+// lastTokIsValue reports whether the previously emitted token can stand on
+// the LHS of an infix operator (so `&` after it is bitwise AND, not block-pass).
+func lastTokIsValue(t token.Type) bool {
+	switch t {
+	case token.IDENT, token.CONST, token.INT, token.FLOAT, token.STRING,
+		token.NIL, token.TRUE, token.FALSE, token.SELF,
+		token.CLASS_VAR, token.GLOBAL,
+		token.RPAREN, token.RBRACKET, token.RBRACE,
+		token.END, token.STRING_END:
+		return true
+	}
+	return false
+}
+
 func (l *Lexer) pushInterp(s interpState) {
 	s.heredocDelim = l.heredocDelim
 	s.heredocIndent = l.heredocIndent
@@ -617,9 +631,22 @@ func startLexer(l *Lexer) StateFn {
 			l.emit(token.ANDASSIGN_BITWISE)
 			return startLexer
 		}
+		// CAPTURE (block-pass &foo) vs AND (bitwise infix). MRI's rule
+		// (paraphrased): `&` is block-pass when followed by a letter
+		// with no whitespace after, AND either there's no value-like
+		// token before it (start of expression) OR there IS whitespace
+		// before it (so `a &b` is `a(&b)`, but `a&b` and `a & b` are
+		// infix).
 		if p := l.peek(); isLetter(p) {
-			l.emit(token.CAPTURE)
-			return startLexer
+			afterLetter := true
+			noWSAfter := afterLetter // letter immediately follows &
+			if noWSAfter {
+				prevValue := lastTokIsValue(l.lastToken.Type)
+				if !prevValue || l.tokenHadWhitespace {
+					l.emit(token.CAPTURE)
+					return startLexer
+				}
+			}
 		}
 		l.emit(token.AND)
 		return startLexer
