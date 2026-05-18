@@ -1222,6 +1222,8 @@ func (hl *HashLiteral) hashElements() []string {
 			} else {
 				if sym, ok := kv.Key.(*SymbolLiteral); ok {
 					elements = append(elements, sym.LabelString()+":")
+				} else if pe, ok := kv.Key.(*PrefixExpression); ok && pe.Operator == "**" {
+					elements = append(elements, doubleSplatPatternKey(pe))
 				} else {
 					elements = append(elements, kv.Key.String())
 				}
@@ -1232,6 +1234,16 @@ func (hl *HashLiteral) hashElements() []string {
 		elements = append(elements, "**"+s.String())
 	}
 	return elements
+}
+
+// doubleSplatPatternKey renders a `**rest` / `**nil` / bare `**` hash-pattern key
+// without the parens that PrefixExpression.String() normally wraps around prefix
+// operators. Wrapping breaks re-parse inside hash patterns.
+func doubleSplatPatternKey(pe *PrefixExpression) string {
+	if pe.Right == nil {
+		return "**"
+	}
+	return "**" + pe.Right.String()
 }
 
 func (hl *HashLiteral) String() string {
@@ -1269,6 +1281,8 @@ func (hl *HashLiteral) StringNoBraces() string {
 						label += ":"
 					}
 					elements = append(elements, label)
+				} else if pe, ok := kv.Key.(*PrefixExpression); ok && pe.Operator == "**" {
+					elements = append(elements, doubleSplatPatternKey(pe))
 				} else {
 					elements = append(elements, kv.Key.String())
 				}

@@ -155,6 +155,8 @@ lex ..2.1 internal/integrationtest/testdata/mri-tests/test_weakmap.rb: version-a
 lex 2.0..3.0 internal/integrationtest/testdata/mri-tests/test_yjit.rb: version-aware rejection not implemented
 lex ..2.1 internal/integrationtest/testdata/mri-tests/test_yjit_exit_locations.rb: version-aware rejection not implemented
 lex ..3.0 internal/integrationtest/testdata/mri-tests/test_zjit.rb: version-aware rejection not implemented
+lex ..2.6 internal/integrationtest/testdata/ruby-extra/parser/adversarial/pattern_double_splat_nil.rb: version-aware rejection not implemented
+lex ..2.6 internal/integrationtest/testdata/ruby-extra/parser/adversarial/pattern_double_splat_rest.rb: version-aware rejection not implemented
 lex ..2.0 internal/integrationtest/testdata/ruby-extra/parser/blocks.rb: version-aware rejection not implemented
 lex ..2.1 internal/integrationtest/testdata/ruby-extra/parser/call.rb: version-aware rejection not implemented
 lex ..2.6 internal/integrationtest/testdata/ruby-extra/parser/case.rb: version-aware rejection not implemented

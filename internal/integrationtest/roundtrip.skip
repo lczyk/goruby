@@ -455,6 +455,8 @@ src * internal/integrationtest/testdata/mri-tests/test_yjit_exit_locations.rb
 src * internal/integrationtest/testdata/mri-tests/test_zjit.rb
 src * internal/integrationtest/testdata/mri-tests/ut_eof.rb
 src * internal/integrationtest/testdata/ruby-extra/parser/adversarial/begin_block_semicolons.rb: printer reflows `BEGIN { a; b; c }` onto multiple lines
+src * internal/integrationtest/testdata/ruby-extra/parser/adversarial/pattern_double_splat_nil.rb: printer drops comments and indent
+src * internal/integrationtest/testdata/ruby-extra/parser/adversarial/pattern_double_splat_rest.rb: printer drops comments and indent
 src * internal/integrationtest/testdata/ruby-extra/parser/assignment.rb
 src * internal/integrationtest/testdata/ruby-extra/parser/blocks.rb
 src * internal/integrationtest/testdata/ruby-extra/parser/call.rb
