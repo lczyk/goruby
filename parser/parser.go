@@ -186,8 +186,15 @@ var tokensNotPossibleInCallArgs = []token.Type{
 }
 
 type (
-	prefixParseFn func() ast.Expression
-	infixParseFn  func(ast.Expression) ast.Expression
+	prefixParseFn func(*parser) ast.Expression
+	infixParseFn  func(*parser, ast.Expression) ast.Expression
+)
+
+// Parse-fn dispatch tables. Populated once in package init via method
+// expressions so each ParseFile pays zero registration / closure-alloc cost.
+var (
+	prefixParseFns [token.TypeMax + 1]prefixParseFn
+	infixParseFns  [token.TypeMax + 1]infixParseFn
 )
 
 var defaultExpressionTerminators = []token.Type{
@@ -212,9 +219,6 @@ type parser struct {
 	peekToken  token.Token
 	peek2Token token.Token
 
-	prefixParseFns [token.TypeMax + 1]prefixParseFn
-	infixParseFns  [token.TypeMax + 1]infixParseFn
-
 	inPattern          bool // true when parsing a pattern matching clause
 	suppressDoBlock    bool // true inside while/until/for conditions
 	suppressHashrocket bool // true in call-arg lists to prevent => as rightward assignment
@@ -235,176 +239,170 @@ func (p *parser) init(filename string, src []byte, mode Mode) {
 		}
 	}
 
-	p.registerPrefix(token.ILLEGAL, p.parseIllegal)
-	p.registerPrefix(token.IDENT, p.parseIdentifier)
-	p.registerPrefix(token.CONST, p.parseIdentifier)
-	p.registerPrefix(token.AT, p.parseInstanceVariable)
-	p.registerPrefix(token.INT, p.parseIntegerLiteral)
-	p.registerPrefix(token.FLOAT, p.parseFloatLiteral)
-	p.registerPrefix(token.STRING, p.parseStringLiteral)
-	p.registerPrefix(token.STRING_BEG, p.parseInterpolatedString)
-	p.registerPrefix(token.XSTR_BEG, p.parseInterpolatedString)
-	p.registerPrefix(token.REGEX_BEG, p.parseInterpolatedRegex)
-	p.registerPrefix(token.REGEX, p.parseStringLiteral)
-	p.registerPrefix(token.XSTR, p.parseStringLiteral)
-	p.registerPrefix(token.BANG, p.parsePrefixExpression)
-	p.registerPrefix(token.PLUS, p.parsePrefixExpression)
-	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
-	p.registerPrefix(token.ASTERISK, p.parseSplatExpression)
-	p.registerPrefix(token.POWER, p.parseSplatExpression)
-	p.registerPrefix(token.TILDE, p.parsePrefixExpression)
-	p.registerPrefix(token.LOGICALAND, p.parsePrefixExpression)
-	p.registerPrefix(token.LOGICALOR, p.parsePrefixExpression)
-	p.registerPrefix(token.TRUE, p.parseBoolean)
-	p.registerPrefix(token.FALSE, p.parseBoolean)
-	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
-	p.registerPrefix(token.IF, p.parseIfExpression)
-	p.registerPrefix(token.UNLESS, p.parseIfExpression)
-	p.registerPrefix(token.WHILE, p.parseLoopExpression)
-	p.registerPrefix(token.UNTIL, p.parseLoopExpression)
-	p.registerPrefix(token.KW_FOR, p.parseLoopExpression)
-	p.registerPrefix(token.CASE, p.parseCaseExpression)
-	p.registerPrefix(token.WHEN, p.parseErrorSkip) // when outside case is an error
-	p.registerPrefix(token.ELSE, p.parseErrorSkip) // else outside if/case is an error
-	p.registerPrefix(token.KW_ELSIF, p.parseErrorSkip)
-	p.registerPrefix(token.KW_IN, p.parseErrorSkip)
-	p.registerPrefix(token.BREAK, p.parseJumpExpression)
-	p.registerPrefix(token.NEXT, p.parseJumpExpression)
-	p.registerPrefix(token.KW_REDO, p.parseJumpExpression)
-	p.registerPrefix(token.KW_RETRY, p.parseJumpExpression)
-	p.registerPrefix(token.KW_ENSURE, p.parseErrorSkip)
-	p.registerPrefix(token.DEF, p.parseFunctionLiteral)
-	p.registerPrefix(token.SCOPE, p.parseTopLevelScope)
-	p.registerPrefix(token.LABEL, p.parseLabelExpression)
-	p.registerPrefix(token.SYMBEG, p.parseSymbolLiteral)
-	p.registerPrefix(token.LBRACKET, p.parseArrayLiteral)
-	p.registerPrefix(token.NIL, p.parseNilLiteral)
-	p.registerPrefix(token.SELF, p.parseSelf)
-	p.registerPrefix(token.MODULE, p.parseModule)
-	p.registerPrefix(token.CLASS, p.parseClass)
-	p.registerPrefix(token.LBRACE, p.parseHash)
-	p.registerPrefix(token.DO, p.parseBlock)
-	p.registerPrefix(token.YIELD, p.parseYield)
-	p.registerPrefix(token.GLOBAL, p.parseGlobal)
-	p.registerPrefix(token.KEYWORD__FILE__, p.parseKeyword__FILE__)
-	p.registerPrefix(token.KEYWORD__LINE__, p.parseKeyword__LINE__)
-	p.registerPrefix(token.KEYWORD__ENCODING__, p.parseEncodingKeyword)
-	p.registerPrefix(token.KEYWORD__DIR__, p.parseKeyword__DIR__)
-	p.registerPrefix(token.KW_BEGIN, p.parseBeginBlock)
-	p.registerPrefix(token.KW_END, p.parseEndBlock)
-	p.registerPrefix(token.KW_USING, p.parseUsing)
-	p.registerPrefix(token.KW_REFINE, p.parseRefine)
-	p.registerPrefix(token.KEYWORD__CALLEE__, p.parseKeyword__CALLEE__)
-	p.registerPrefix(token.KEYWORD__METHOD__, p.parseKeyword__METHOD__)
-	p.registerPrefix(token.RPAREN, p.parseErrorSkip)
-	p.registerPrefix(token.RBRACKET, p.parseErrorSkip)
-	p.registerPrefix(token.RBRACE, p.parseErrorSkip)
-	p.registerPrefix(token.NEWLINE, p.parseErrorSkip)
-	p.registerPrefix(token.EMBEXPR_END, p.parseErrorSkip)
-	p.registerPrefix(token.HASHROCKET, p.parseErrorSkip)
-	p.registerPrefix(token.RESCUE, p.parseExceptionHandlingBlock)
-	p.registerPrefix(token.BEGIN, p.parseExceptionHandlingBlock)
-	p.registerPrefix(token.CLASS_VAR, p.parseClassVariable)
-	p.registerPrefix(token.AND, p.parseBlockCapture) // &:to_s, &block
-	p.registerPrefix(token.CAPTURE, p.parseBlockCapture)
-	p.registerPrefix(token.KW_SUPER, p.parseSuper)
-	p.registerPrefix(token.KW_UNDEF, p.parseUndef)
-	p.registerPrefix(token.KW_NOT, p.parsePrefixExpression)
-	p.registerPrefix(token.KW_DEFINED, p.parseDefinedExpression)
-	p.registerPrefix(token.RETURN, p.parseReturnExpression)
-	p.registerPrefix(token.KW_ALIAS, p.parseAlias)
-	p.registerPrefix(token.LAMBDA, p.parseLambda)
-	p.registerPrefix(token.RANGE, p.parseBeginlessRange)
-	p.registerPrefix(token.RANGEEX, p.parseRangeOrForwarding)
-
-	p.registerInfix(token.PLUS, p.parseInfixExpression)
-	p.registerInfix(token.MINUS, p.parseInfixExpression)
-	p.registerInfix(token.SLASH, p.parseInfixExpression)
-	p.registerInfix(token.ASTERISK, p.parseInfixExpression)
-	p.registerInfix(token.MODULO, p.parseInfixExpression)
-	p.registerInfix(token.AND, p.parseInfixExpression)
-	p.registerInfix(token.PIPE, p.parseInfixExpression)
-	p.registerInfix(token.XOR, p.parseInfixExpression)
-	p.registerInfix(token.EQ, p.parseInfixExpression)
-	p.registerInfix(token.NOTEQ, p.parseInfixExpression)
-	p.registerInfix(token.LT, p.parseInfixExpression)
-	p.registerInfix(token.GT, p.parseInfixExpression)
-	p.registerInfix(token.LTE, p.parseInfixExpression)
-	p.registerInfix(token.GTE, p.parseInfixExpression)
-	p.registerInfix(token.LOGICALOR, p.parseInfixExpression)
-	p.registerInfix(token.LOGICALAND, p.parseInfixExpression)
-	p.registerInfix(token.MATCH, p.parseInfixExpression)
-	p.registerInfix(token.NMATCH, p.parseInfixExpression)
-	p.registerInfix(token.SPACESHIP, p.parseInfixExpression)
-	p.registerInfix(token.LSHIFT, p.parseInfixExpression)
-	p.registerInfix(token.RSHIFT, p.parseInfixExpression)
-	p.registerInfix(token.CASEEQ, p.parseInfixExpression)
-	p.registerInfix(token.HASHROCKET, p.parseRightwardAssignment)
-	p.registerInfix(token.ASSIGN, p.parseAssignment)
-	p.registerInfix(token.ADDASSIGN, p.parseAssignmentOperator)
-	p.registerInfix(token.SUBASSIGN, p.parseAssignmentOperator)
-	p.registerInfix(token.MULASSIGN, p.parseAssignmentOperator)
-	p.registerInfix(token.DIVASSIGN, p.parseAssignmentOperator)
-	p.registerInfix(token.MODASSIGN, p.parseAssignmentOperator)
-	p.registerInfix(token.LSHIFTASSIGN, p.parseAssignmentOperator)
-	p.registerInfix(token.RSHIFTASSIGN, p.parseAssignmentOperator)
-	p.registerInfix(token.ANDASSIGN_BITWISE, p.parseAssignmentOperator)
-	p.registerInfix(token.ORASSIGN_BITWISE, p.parseAssignmentOperator)
-	p.registerInfix(token.XORASSIGN, p.parseAssignmentOperator)
-	p.registerInfix(token.IF, p.parseModifierConditionalExpression)
-	p.registerInfix(token.UNLESS, p.parseModifierConditionalExpression)
-	p.registerInfix(token.WHILE, p.parseModifierLoopExpression)
-	p.registerInfix(token.UNTIL, p.parseModifierLoopExpression)
-	p.registerInfix(token.KW_IN, p.parseInfixExpression)
-	p.registerInfix(token.QMARK, p.parseTenaryIfExpression)
-	p.registerInfix(token.LPAREN, p.parseCallExpressionWithParens)
-	p.registerInfix(token.IDENT, p.parseCallArgument)
-	p.registerInfix(token.CONST, p.parseCallArgument)
-	p.registerInfix(token.GLOBAL, p.parseCallArgument)
-	p.registerInfix(token.INT, p.parseCallArgument)
-	p.registerInfix(token.FLOAT, p.parseCallArgument)
-	p.registerInfix(token.STRING, p.parseStringConcat)
-	p.registerInfix(token.STRING_BEG, p.parseStringConcat)
-	p.registerInfix(token.XSTR_BEG, p.parseCallArgument)
-	p.registerInfix(token.REGEX_BEG, p.parseCallArgument)
-	p.registerInfix(token.REGEX, p.parseCallArgument)
-	p.registerInfix(token.XSTR, p.parseCallArgument)
-	p.registerInfix(token.LABEL, p.parseCallArgument)
-	p.registerInfix(token.SYMBEG, p.parseCallArgument)
-	p.registerInfix(token.CLASS_VAR, p.parseCallArgument)
-	p.registerInfix(token.CAPTURE, p.parseCallArgument)
-	p.registerInfix(token.SELF, p.parseCallArgument)
-	p.registerInfix(token.LAMBDA, p.parseCallArgument)
-	p.registerInfix(token.AT, p.parseCallArgument)
-	p.registerInfix(token.LBRACE, p.parseCallBlock)
-	p.registerInfix(token.DO, p.parseCallBlock)
-	p.registerInfix(token.DOT, p.parseMethodCall)
-	p.registerInfix(token.COMMA, p.parseExpressions)
-	p.registerInfix(token.LBRACKET, p.parseIndexExpression)
-	p.registerInfix(token.POWER, p.parseInfixExpression)
-	p.registerInfix(token.RANGE, p.parseInfixExpression)
-	p.registerInfix(token.RANGEEX, p.parseInfixExpression)
-	p.registerInfix(token.RESCUE, p.parseRescueModifier)
-	p.registerInfix(token.LONELY, p.parseMethodCall)
-	p.registerInfix(token.KW_AND, p.parseInfixExpression)
-	p.registerInfix(token.KW_OR, p.parseInfixExpression)
-	p.registerInfix(token.POWERASSIGN, p.parseAssignmentOperator)
-	p.registerInfix(token.ORASSIGN, p.parseAssignmentOperator)
-	p.registerInfix(token.ANDASSIGN, p.parseAssignmentOperator)
-	p.registerInfix(token.SCOPE, p.parseScopedIdentifierExpression)
-
 	// Bootstrap three-token lookahead window.
 	p.peekToken = p.nextNonCommentToken()
 	p.peek2Token = p.nextNonCommentToken()
 	p.nextToken()
 }
 
-func (p *parser) registerPrefix(tokenType token.Type, fn prefixParseFn) {
-	p.prefixParseFns[tokenType] = fn
-}
+func init() {
+	prefixParseFns[token.ILLEGAL] = (*parser).parseIllegal
+	prefixParseFns[token.IDENT] = (*parser).parseIdentifier
+	prefixParseFns[token.CONST] = (*parser).parseIdentifier
+	prefixParseFns[token.AT] = (*parser).parseInstanceVariable
+	prefixParseFns[token.INT] = (*parser).parseIntegerLiteral
+	prefixParseFns[token.FLOAT] = (*parser).parseFloatLiteral
+	prefixParseFns[token.STRING] = (*parser).parseStringLiteral
+	prefixParseFns[token.STRING_BEG] = (*parser).parseInterpolatedString
+	prefixParseFns[token.XSTR_BEG] = (*parser).parseInterpolatedString
+	prefixParseFns[token.REGEX_BEG] = (*parser).parseInterpolatedRegex
+	prefixParseFns[token.REGEX] = (*parser).parseStringLiteral
+	prefixParseFns[token.XSTR] = (*parser).parseStringLiteral
+	prefixParseFns[token.BANG] = (*parser).parsePrefixExpression
+	prefixParseFns[token.PLUS] = (*parser).parsePrefixExpression
+	prefixParseFns[token.MINUS] = (*parser).parsePrefixExpression
+	prefixParseFns[token.ASTERISK] = (*parser).parseSplatExpression
+	prefixParseFns[token.POWER] = (*parser).parseSplatExpression
+	prefixParseFns[token.TILDE] = (*parser).parsePrefixExpression
+	prefixParseFns[token.LOGICALAND] = (*parser).parsePrefixExpression
+	prefixParseFns[token.LOGICALOR] = (*parser).parsePrefixExpression
+	prefixParseFns[token.TRUE] = (*parser).parseBoolean
+	prefixParseFns[token.FALSE] = (*parser).parseBoolean
+	prefixParseFns[token.LPAREN] = (*parser).parseGroupedExpression
+	prefixParseFns[token.IF] = (*parser).parseIfExpression
+	prefixParseFns[token.UNLESS] = (*parser).parseIfExpression
+	prefixParseFns[token.WHILE] = (*parser).parseLoopExpression
+	prefixParseFns[token.UNTIL] = (*parser).parseLoopExpression
+	prefixParseFns[token.KW_FOR] = (*parser).parseLoopExpression
+	prefixParseFns[token.CASE] = (*parser).parseCaseExpression
+	prefixParseFns[token.WHEN] = (*parser).parseErrorSkip // when outside case is an error
+	prefixParseFns[token.ELSE] = (*parser).parseErrorSkip // else outside if/case is an error
+	prefixParseFns[token.KW_ELSIF] = (*parser).parseErrorSkip
+	prefixParseFns[token.KW_IN] = (*parser).parseErrorSkip
+	prefixParseFns[token.BREAK] = (*parser).parseJumpExpression
+	prefixParseFns[token.NEXT] = (*parser).parseJumpExpression
+	prefixParseFns[token.KW_REDO] = (*parser).parseJumpExpression
+	prefixParseFns[token.KW_RETRY] = (*parser).parseJumpExpression
+	prefixParseFns[token.KW_ENSURE] = (*parser).parseErrorSkip
+	prefixParseFns[token.DEF] = (*parser).parseFunctionLiteral
+	prefixParseFns[token.SCOPE] = (*parser).parseTopLevelScope
+	prefixParseFns[token.LABEL] = (*parser).parseLabelExpression
+	prefixParseFns[token.SYMBEG] = (*parser).parseSymbolLiteral
+	prefixParseFns[token.LBRACKET] = (*parser).parseArrayLiteral
+	prefixParseFns[token.NIL] = (*parser).parseNilLiteral
+	prefixParseFns[token.SELF] = (*parser).parseSelf
+	prefixParseFns[token.MODULE] = (*parser).parseModule
+	prefixParseFns[token.CLASS] = (*parser).parseClass
+	prefixParseFns[token.LBRACE] = (*parser).parseHash
+	prefixParseFns[token.DO] = (*parser).parseBlock
+	prefixParseFns[token.YIELD] = (*parser).parseYield
+	prefixParseFns[token.GLOBAL] = (*parser).parseGlobal
+	prefixParseFns[token.KEYWORD__FILE__] = (*parser).parseKeyword__FILE__
+	prefixParseFns[token.KEYWORD__LINE__] = (*parser).parseKeyword__LINE__
+	prefixParseFns[token.KEYWORD__ENCODING__] = (*parser).parseEncodingKeyword
+	prefixParseFns[token.KEYWORD__DIR__] = (*parser).parseKeyword__DIR__
+	prefixParseFns[token.KW_BEGIN] = (*parser).parseBeginBlock
+	prefixParseFns[token.KW_END] = (*parser).parseEndBlock
+	prefixParseFns[token.KW_USING] = (*parser).parseUsing
+	prefixParseFns[token.KW_REFINE] = (*parser).parseRefine
+	prefixParseFns[token.KEYWORD__CALLEE__] = (*parser).parseKeyword__CALLEE__
+	prefixParseFns[token.KEYWORD__METHOD__] = (*parser).parseKeyword__METHOD__
+	prefixParseFns[token.RPAREN] = (*parser).parseErrorSkip
+	prefixParseFns[token.RBRACKET] = (*parser).parseErrorSkip
+	prefixParseFns[token.RBRACE] = (*parser).parseErrorSkip
+	prefixParseFns[token.NEWLINE] = (*parser).parseErrorSkip
+	prefixParseFns[token.EMBEXPR_END] = (*parser).parseErrorSkip
+	prefixParseFns[token.HASHROCKET] = (*parser).parseErrorSkip
+	prefixParseFns[token.RESCUE] = (*parser).parseExceptionHandlingBlock
+	prefixParseFns[token.BEGIN] = (*parser).parseExceptionHandlingBlock
+	prefixParseFns[token.CLASS_VAR] = (*parser).parseClassVariable
+	prefixParseFns[token.AND] = (*parser).parseBlockCapture // &:to_s, &block
+	prefixParseFns[token.CAPTURE] = (*parser).parseBlockCapture
+	prefixParseFns[token.KW_SUPER] = (*parser).parseSuper
+	prefixParseFns[token.KW_UNDEF] = (*parser).parseUndef
+	prefixParseFns[token.KW_NOT] = (*parser).parsePrefixExpression
+	prefixParseFns[token.KW_DEFINED] = (*parser).parseDefinedExpression
+	prefixParseFns[token.RETURN] = (*parser).parseReturnExpression
+	prefixParseFns[token.KW_ALIAS] = (*parser).parseAlias
+	prefixParseFns[token.LAMBDA] = (*parser).parseLambda
+	prefixParseFns[token.RANGE] = (*parser).parseBeginlessRange
+	prefixParseFns[token.RANGEEX] = (*parser).parseRangeOrForwarding
 
-func (p *parser) registerInfix(tokenType token.Type, fn infixParseFn) {
-	p.infixParseFns[tokenType] = fn
+	infixParseFns[token.PLUS] = (*parser).parseInfixExpression
+	infixParseFns[token.MINUS] = (*parser).parseInfixExpression
+	infixParseFns[token.SLASH] = (*parser).parseInfixExpression
+	infixParseFns[token.ASTERISK] = (*parser).parseInfixExpression
+	infixParseFns[token.MODULO] = (*parser).parseInfixExpression
+	infixParseFns[token.AND] = (*parser).parseInfixExpression
+	infixParseFns[token.PIPE] = (*parser).parseInfixExpression
+	infixParseFns[token.XOR] = (*parser).parseInfixExpression
+	infixParseFns[token.EQ] = (*parser).parseInfixExpression
+	infixParseFns[token.NOTEQ] = (*parser).parseInfixExpression
+	infixParseFns[token.LT] = (*parser).parseInfixExpression
+	infixParseFns[token.GT] = (*parser).parseInfixExpression
+	infixParseFns[token.LTE] = (*parser).parseInfixExpression
+	infixParseFns[token.GTE] = (*parser).parseInfixExpression
+	infixParseFns[token.LOGICALOR] = (*parser).parseInfixExpression
+	infixParseFns[token.LOGICALAND] = (*parser).parseInfixExpression
+	infixParseFns[token.MATCH] = (*parser).parseInfixExpression
+	infixParseFns[token.NMATCH] = (*parser).parseInfixExpression
+	infixParseFns[token.SPACESHIP] = (*parser).parseInfixExpression
+	infixParseFns[token.LSHIFT] = (*parser).parseInfixExpression
+	infixParseFns[token.RSHIFT] = (*parser).parseInfixExpression
+	infixParseFns[token.CASEEQ] = (*parser).parseInfixExpression
+	infixParseFns[token.HASHROCKET] = (*parser).parseRightwardAssignment
+	infixParseFns[token.ASSIGN] = (*parser).parseAssignment
+	infixParseFns[token.ADDASSIGN] = (*parser).parseAssignmentOperator
+	infixParseFns[token.SUBASSIGN] = (*parser).parseAssignmentOperator
+	infixParseFns[token.MULASSIGN] = (*parser).parseAssignmentOperator
+	infixParseFns[token.DIVASSIGN] = (*parser).parseAssignmentOperator
+	infixParseFns[token.MODASSIGN] = (*parser).parseAssignmentOperator
+	infixParseFns[token.LSHIFTASSIGN] = (*parser).parseAssignmentOperator
+	infixParseFns[token.RSHIFTASSIGN] = (*parser).parseAssignmentOperator
+	infixParseFns[token.ANDASSIGN_BITWISE] = (*parser).parseAssignmentOperator
+	infixParseFns[token.ORASSIGN_BITWISE] = (*parser).parseAssignmentOperator
+	infixParseFns[token.XORASSIGN] = (*parser).parseAssignmentOperator
+	infixParseFns[token.IF] = (*parser).parseModifierConditionalExpression
+	infixParseFns[token.UNLESS] = (*parser).parseModifierConditionalExpression
+	infixParseFns[token.WHILE] = (*parser).parseModifierLoopExpression
+	infixParseFns[token.UNTIL] = (*parser).parseModifierLoopExpression
+	infixParseFns[token.KW_IN] = (*parser).parseInfixExpression
+	infixParseFns[token.QMARK] = (*parser).parseTenaryIfExpression
+	infixParseFns[token.LPAREN] = (*parser).parseCallExpressionWithParens
+	infixParseFns[token.IDENT] = (*parser).parseCallArgument
+	infixParseFns[token.CONST] = (*parser).parseCallArgument
+	infixParseFns[token.GLOBAL] = (*parser).parseCallArgument
+	infixParseFns[token.INT] = (*parser).parseCallArgument
+	infixParseFns[token.FLOAT] = (*parser).parseCallArgument
+	infixParseFns[token.STRING] = (*parser).parseStringConcat
+	infixParseFns[token.STRING_BEG] = (*parser).parseStringConcat
+	infixParseFns[token.XSTR_BEG] = (*parser).parseCallArgument
+	infixParseFns[token.REGEX_BEG] = (*parser).parseCallArgument
+	infixParseFns[token.REGEX] = (*parser).parseCallArgument
+	infixParseFns[token.XSTR] = (*parser).parseCallArgument
+	infixParseFns[token.LABEL] = (*parser).parseCallArgument
+	infixParseFns[token.SYMBEG] = (*parser).parseCallArgument
+	infixParseFns[token.CLASS_VAR] = (*parser).parseCallArgument
+	infixParseFns[token.CAPTURE] = (*parser).parseCallArgument
+	infixParseFns[token.SELF] = (*parser).parseCallArgument
+	infixParseFns[token.LAMBDA] = (*parser).parseCallArgument
+	infixParseFns[token.AT] = (*parser).parseCallArgument
+	infixParseFns[token.LBRACE] = (*parser).parseCallBlock
+	infixParseFns[token.DO] = (*parser).parseCallBlock
+	infixParseFns[token.DOT] = (*parser).parseMethodCall
+	infixParseFns[token.COMMA] = (*parser).parseExpressions
+	infixParseFns[token.LBRACKET] = (*parser).parseIndexExpression
+	infixParseFns[token.POWER] = (*parser).parseInfixExpression
+	infixParseFns[token.RANGE] = (*parser).parseInfixExpression
+	infixParseFns[token.RANGEEX] = (*parser).parseInfixExpression
+	infixParseFns[token.RESCUE] = (*parser).parseRescueModifier
+	infixParseFns[token.LONELY] = (*parser).parseMethodCall
+	infixParseFns[token.KW_AND] = (*parser).parseInfixExpression
+	infixParseFns[token.KW_OR] = (*parser).parseInfixExpression
+	infixParseFns[token.POWERASSIGN] = (*parser).parseAssignmentOperator
+	infixParseFns[token.ORASSIGN] = (*parser).parseAssignmentOperator
+	infixParseFns[token.ANDASSIGN] = (*parser).parseAssignmentOperator
+	infixParseFns[token.SCOPE] = (*parser).parseScopedIdentifierExpression
 }
 
 func (p *parser) nextNonCommentToken() token.Token {
@@ -681,9 +679,9 @@ func (p *parser) parseExpressionStatement() *ast.ExpressionStatement {
 		// Re-enter the expression loop for modifier if/unless/while/until.
 		if p.peekTokenOneOf(token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.RESCUE) {
 			p.nextToken()
-			infix := p.infixParseFns[p.curToken.Type]
+			infix := infixParseFns[p.curToken.Type]
 			if infix != nil {
-				stmt.Expression = infix(stmt.Expression)
+				stmt.Expression = infix(p, stmt.Expression)
 			}
 		}
 	}
@@ -706,12 +704,12 @@ func (p *parser) parseExpressionStatement() *ast.ExpressionStatement {
 
 func (p *parser) parseExpression(precedence int) ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	prefix := p.prefixParseFns[p.curToken.Type]
+	prefix := prefixParseFns[p.curToken.Type]
 	if prefix == nil {
 		p.noPrefixParseFnError(p.curToken.Type)
 		return nil
 	}
-	leftExp := prefix()
+	leftExp := prefix(p)
 	for precedence < p.peekPrecedence() {
 		if leftExp == nil {
 			return nil // fail early and stop parsing
@@ -741,12 +739,12 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 				continue
 			}
 		}
-		infix := p.infixParseFns[p.peekToken.Type]
+		infix := infixParseFns[p.peekToken.Type]
 		if infix == nil {
 			return leftExp
 		}
 		p.nextToken()
-		leftExp = infix(leftExp)
+		leftExp = infix(p, leftExp)
 	}
 	// Leading-dot continuation: expr\n.method
 	for p.peekTokenIs(token.NEWLINE) && p.peek2TokenIs(token.DOT) {
@@ -765,12 +763,12 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 			if p.suppressDoBlock && p.peekTokenIs(token.DO) {
 				return leftExp
 			}
-			infix := p.infixParseFns[p.peekToken.Type]
+			infix := infixParseFns[p.peekToken.Type]
 			if infix == nil {
 				return leftExp
 			}
 			p.nextToken()
-			leftExp = infix(leftExp)
+			leftExp = infix(p, leftExp)
 		}
 	}
 	return leftExp
@@ -1753,7 +1751,7 @@ func (p *parser) parseSuper() ast.Expression {
 	}
 	// If peekToken has no prefix handler, it can't start an argument.
 	// Return bare super so the expression loop handles it as infix.
-	if p.prefixParseFns[p.peekToken.Type] == nil && !p.peekTokenOneOf(token.LBRACE, token.DO, token.LPAREN) {
+	if prefixParseFns[p.peekToken.Type] == nil && !p.peekTokenOneOf(token.LBRACE, token.DO, token.LPAREN) {
 		return sup
 	}
 	p.nextToken()
@@ -2021,6 +2019,14 @@ func parseRubyInt(s string) (int64, *big.Int, error) {
 	}
 	if s == "" {
 		return 0, nil, fmt.Errorf("empty number")
+	}
+	// Fast path: try int64 first to skip the big.Int allocation for values
+	// that fit (the common case). On overflow (errors.Is ErrRange) fall back
+	// to big.Int. Other errors (invalid digits) are real and reported as-is.
+	if v, err := strconv.ParseInt(s, base, 64); err == nil {
+		return v, nil, nil
+	} else if ne, ok := err.(*strconv.NumError); !ok || ne.Err != strconv.ErrRange {
+		return 0, nil, fmt.Errorf("invalid digits for base %d: %q", base, s)
 	}
 	bi := new(big.Int)
 	bi, ok := bi.SetString(s, base)
@@ -3501,7 +3507,6 @@ func (p *parser) parseBlockStatement(t ...token.Type) *ast.BlockStatement {
 		t...,
 	)
 	block := &ast.BlockStatement{Token: p.curToken}
-	block.Statements = []ast.Statement{}
 
 	for !p.peekTokenOneOf(terminatorTokens...) {
 		if p.peekTokenIs(token.EOF) {
