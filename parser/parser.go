@@ -4114,9 +4114,13 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 					flushWord()
 				}
 				if isSymbol {
+					var symValue ast.Expression = &ast.StringLiteral{Value: w}
+					if isSimpleIdent(w) {
+						symValue = &ast.Identifier{Value: w}
+					}
 					curWord = append(curWord, &ast.SymbolLiteral{
 						Token: pt.Token,
-						Value: &ast.StringLiteral{Value: w},
+						Value: symValue,
 					})
 				} else {
 					curWord = append(curWord, &ast.StringLiteral{Value: w})
@@ -4144,6 +4148,32 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 }
 
 // splitWordList splits s by unicode whitespace, respecting backslash escapes.
+// isSimpleIdent reports whether s is a valid bare symbol name (no quotes needed).
+func isSimpleIdent(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+	// Allow trailing ? ! = (e.g. :foo?, :bar!, :baz=).
+	body := s
+	if last := s[len(s)-1]; last == '?' || last == '!' || last == '=' {
+		body = s[:len(s)-1]
+	}
+	if len(body) == 0 {
+		return false // bare ?, !, = are not valid bare symbols
+	}
+	first := rune(body[0])
+	if !(first == '_' || (first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z')) {
+		return false
+	}
+	for _, r := range body[1:] {
+		if r == '_' || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
 func splitWordList(s string) []string {
 	var words []string
 	var cur strings.Builder

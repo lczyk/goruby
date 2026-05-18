@@ -5432,9 +5432,9 @@ func TestPercentLiterals(t *testing.T) {
 		// %W -- word array (interpolating)
 		{"%W words", "%W[a b c]", `["a", "b", "c"]`},
 		// %i -- symbol array (non-interpolating)
-		{"%i symbols", "%i[foo bar]", `[:"foo", :"bar"]`},
+		{"%i symbols", "%i[foo bar]", "[:foo, :bar]"},
 		// %I -- symbol array (interpolating)
-		{"%I symbols", "%I[foo bar]", `[:"foo", :"bar"]`},
+		{"%I symbols", "%I[foo bar]", "[:foo, :bar]"},
 		// %s -- symbol literal
 		{"%s symbol", "%s(foo)", `:"foo"`},
 		// %r -- regex
