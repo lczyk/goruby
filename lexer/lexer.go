@@ -890,17 +890,15 @@ func lexDigit(l *Lexer) StateFn {
 				l.next() // consume +/-
 				return lexFloatExponent(l)
 			}
-			// Dangling e[+-]: swallow into the int token (MRI behavior).
+			// Dangling e[+-] with no digit: MRI rejects as syntax error.
 			l.next() // consume +/-
-			l.emit(token.INT)
-			return startLexer
+			return l.errorf("trailing '%c' in number", r)
 		} else if isDigit(p) {
 			l.next() // consume e/E
 			return lexFloatExponent(l)
 		} else if p == eof {
-			// Dangling e at EOF: swallow into int token (MRI behavior).
-			l.emit(token.INT)
-			return startLexer
+			// Dangling e at EOF: MRI rejects as syntax error.
+			return l.errorf("trailing '%c' in number", r)
 		}
 	}
 	// Rational or complex suffix (Ruby 2.1+).
@@ -929,23 +927,21 @@ func lexFloatFraction(l *Lexer) StateFn {
 	if r == 'e' || r == 'E' {
 		p := l.peek()
 		if p == '+' || p == '-' {
-			if isDigit(l.peekSecond()) || p == '-' {
+			if isDigit(l.peekSecond()) {
 				l.next()
 				l.next()
 				return lexFloatExponent(l)
 			}
-			// Dangling e+: swallow into float token (MRI behavior).
+			// Dangling e[+-] with no digit: MRI rejects as syntax error.
 			l.next()
-			l.emit(token.FLOAT)
-			return startLexer
+			return l.errorf("trailing '%c' in number", r)
 		} else if isDigit(p) {
 			l.next()
 			return lexFloatExponent(l)
 		}
 		if p == eof {
-			// Dangling e at EOF: swallow into float token.
-			l.emit(token.FLOAT)
-			return startLexer
+			// Dangling e at EOF: MRI rejects as syntax error.
+			return l.errorf("trailing '%c' in number", r)
 		}
 	}
 	// Optional rational/complex suffix (Ruby 2.1+).

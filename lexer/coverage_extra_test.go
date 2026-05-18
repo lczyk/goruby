@@ -751,32 +751,31 @@ func TestLexerDigitExponentEdgeCases(t *testing.T) {
 		expected []expTok
 	}{
 		{
-			name:  "e without digit not exponent",
+			name:  "e without digit rejected",
 			input: "1e",
 			expected: []expTok{
-				{token.INT, "1e"},
+				{token.ILLEGAL, "trailing 'e' in number"},
 			},
 		},
 		{
-			name:  "E+ without digit not exponent",
+			name:  "E+ without digit rejected",
 			input: "1E+",
 			expected: []expTok{
-				{token.INT, "1E+"},
+				{token.ILLEGAL, "trailing 'E' in number"},
 			},
 		},
 		{
-			name:  "e- without digit not exponent",
+			name:  "e- without digit rejected",
 			input: "1e-",
 			expected: []expTok{
-				{token.INT, "1e-"},
+				{token.ILLEGAL, "trailing 'e' in number"},
 			},
 		},
 		{
-			name:  "0e+x not exponent",
+			name:  "0e+x rejected",
 			input: "0e+x",
 			expected: []expTok{
-				{token.INT, "0e+"},
-				{token.IDENT, "x"},
+				{token.ILLEGAL, "trailing 'e' in number"},
 			},
 		},
 		{
@@ -788,10 +787,10 @@ func TestLexerDigitExponentEdgeCases(t *testing.T) {
 			},
 		},
 		{
-			name:  "float exponent with sign no digit",
+			name:  "float exponent with sign no digit rejected",
 			input: "1.5e+",
 			expected: []expTok{
-				{token.FLOAT, "1.5e+"},
+				{token.ILLEGAL, "trailing 'e' in number"},
 			},
 		},
 	}
@@ -1528,15 +1527,14 @@ func TestLexerDigitFloatTrailingUnderscore(t *testing.T) {
 }
 
 func TestLexerDigitFloatExpNegativeNoDigit(t *testing.T) {
-	// 1.5e- : negative exponent sign without digit still enters exponent path
-	// because lexFloatFraction has `|| p == '-'`
+	// 1.5e- : MRI rejects as syntax error (trailing 'e' in number).
 	l := New("1.5e-")
 	tok := l.NextToken()
-	if tok.Type != token.FLOAT {
-		t.Fatalf("expected FLOAT, got %s (%q)", tok.Type, tok.Literal)
+	if tok.Type != token.ILLEGAL {
+		t.Fatalf("expected ILLEGAL, got %s (%q)", tok.Type, tok.Literal)
 	}
-	if tok.Literal != "1.5e-" {
-		t.Errorf("expected '1.5e-', got %q", tok.Literal)
+	if tok.Literal != "trailing 'e' in number" {
+		t.Errorf("expected \"trailing 'e' in number\", got %q", tok.Literal)
 	}
 }
 
