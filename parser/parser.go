@@ -3877,19 +3877,10 @@ func (p *parser) parseCallArgument(function ast.Expression) ast.Expression {
 }
 
 func (p *parser) concatStringPart(str *ast.StringLiteral, rstr *ast.StringLiteral) {
-	if len(rstr.Parts) > 0 {
-		if len(str.Parts) == 0 && str.Value != "" {
-			str.Parts = append(str.Parts, &ast.StringContent{Value: str.Value})
-			str.Value = ""
-		}
-		str.Parts = append(str.Parts, rstr.Parts...)
-	} else if rstr.Value != "" {
-		if len(str.Parts) > 0 {
-			str.Parts = append(str.Parts, &ast.StringContent{Value: rstr.Value})
-		} else {
-			str.Value += rstr.Value
-		}
-	}
+	// Keep adjacent literals as separate StringLiteral nodes. MRI parses
+	// `"a" "b"` as an InterpolatedString with two parts; merging into one
+	// flat string loses that shape on re-parse.
+	str.Adjacent = append(str.Adjacent, rstr)
 }
 
 func (p *parser) parseStringConcat(left ast.Expression) ast.Expression {

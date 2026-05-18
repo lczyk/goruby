@@ -872,10 +872,11 @@ func (b *Boolean) String() string       { return fmt.Sprintf("%t", b.Value) }
 // Value holds the content and Parts is nil. For interpolated strings, Parts
 // holds StringContent and expression nodes.
 type StringLiteral struct {
-	Token      token.Token  // STRING_BEG or STRING
-	Value      string       // for non-interpolated strings
-	Parts      []Expression // for interpolated strings
-	HeredocTag string       // e.g. "<<~EOS", "<<-'DOC'" -- empty for non-heredocs
+	Token      token.Token       // STRING_BEG or STRING
+	Value      string            // for non-interpolated strings
+	Parts      []Expression      // for interpolated strings
+	HeredocTag string            // e.g. "<<~EOS", "<<-'DOC'" -- empty for non-heredocs
+	Adjacent   []*StringLiteral  // adjacent string literals: `"a" "b"` -- MRI parses each separately and wraps in an outer InterpolatedString
 }
 
 func (sl *StringLiteral) expressionNode() {}
@@ -912,6 +913,14 @@ func heredocDelimFromTag(tag string) string {
 }
 
 func (sl *StringLiteral) String() string {
+	s := sl.stringOnce()
+	for _, a := range sl.Adjacent {
+		s += " " + a.String()
+	}
+	return s
+}
+
+func (sl *StringLiteral) stringOnce() string {
 	if sl.HeredocTag != "" {
 		delim := heredocDelimFromTag(sl.HeredocTag)
 		var out bytes.Buffer
