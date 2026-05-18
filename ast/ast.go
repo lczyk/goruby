@@ -2146,8 +2146,21 @@ func pinNeedsParens(right Expression) bool {
 }
 
 func (pe *PrefixExpression) String() string {
+	// Drop the outer parens for unary - / + on a numeric literal so MRI's
+	// parsetree records a single NODE_LIT(-N) rather than NODE_OPCALL(:-,
+	// NODE_LIT(N)). The parens themselves are valid syntax but would emit
+	// an extra ParenthesesNode under prism, changing the tree.
+	atomic := false
+	if pe.Operator == "-" || pe.Operator == "+" {
+		switch pe.Right.(type) {
+		case *IntegerLiteral, *FloatLiteral:
+			atomic = true
+		}
+	}
+	wrap := pe.Operator != "^" && !atomic
+
 	var out bytes.Buffer
-	if pe.Operator != "^" {
+	if wrap {
 		out.WriteString("(")
 	}
 	out.WriteString(pe.Operator)
@@ -2164,7 +2177,7 @@ func (pe *PrefixExpression) String() string {
 			out.WriteString(")")
 		}
 	}
-	if pe.Operator != "^" {
+	if wrap {
 		out.WriteString(")")
 	}
 	return out.String()
@@ -2348,8 +2361,19 @@ func (pe *ParenExpression) TokenLiteral() string { return pe.Token.Literal }
 func (pe *ParenExpression) String() string {
 	// Skip the wrap when Expr already emits its own outer parens.
 	switch e := pe.Expr.(type) {
-	case *ParenExpression, *PrefixExpression:
+	case *ParenExpression:
 		return pe.Expr.String()
+	case *PrefixExpression:
+		// PrefixExpression self-wraps EXCEPT for - / + on numeric literals
+		// (which were folded into the literal). For those, ParenExpression
+		// still needs to wrap.
+		if e.Operator == "-" || e.Operator == "+" {
+			switch e.Right.(type) {
+			case *IntegerLiteral, *FloatLiteral:
+				return "(" + e.String() + ")"
+			}
+		}
+		return e.String()
 	case *InfixExpression:
 		// Unknown-operator fallback in InfixExpression.String() wraps in ().
 		if rubyInfixPrec(e.Operator) == 0 {
