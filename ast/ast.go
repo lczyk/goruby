@@ -1698,6 +1698,9 @@ func (ce *ContextCallExpression) String() string {
 		out.WriteString(")")
 	}
 	if ce.Block != nil {
+		if ce.Block.Token.Type == token.LBRACE {
+			out.WriteString(" ")
+		}
 		out.WriteString(ce.Block.String())
 	}
 	return out.String()
