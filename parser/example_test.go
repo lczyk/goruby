@@ -3,15 +3,11 @@ package parser_test
 import (
 	"fmt"
 
-	"go/token"
-
 	"github.com/lczyk/goruby/ast"
 	"github.com/lczyk/goruby/parser"
 )
 
 func ExampleParseFile() {
-	fset := token.NewFileSet() // positions are relative to fset
-
 	src := `LANG = "Ruby"
 
 module Foo
@@ -22,7 +18,7 @@ module Foo
 
 end`
 
-	f, err := parser.ParseFile(fset, "", src, parser.AllErrors)
+	f, err := parser.ParseFile("", src, parser.AllErrors)
 	if err != nil {
 		fmt.Println(err)
 		return

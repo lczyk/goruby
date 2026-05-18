@@ -4,7 +4,6 @@ package integrationtest
 
 import (
 	"fmt"
-	gotoken "go/token"
 	"os"
 	"strings"
 	"testing"
@@ -60,8 +59,7 @@ func TestRoundtrip(t *testing.T) {
 			t.Run(name, func(t *testing.T) {
 				t.Parallel()
 
-				fset1 := gotoken.NewFileSet()
-				prog1, parseErr := parser.ParseFile(fset1, row.file, src, parser.AllErrors, parser.WithVersion(ver))
+				prog1, parseErr := parser.ParseFile(row.file, src, parser.AllErrors, parser.WithVersion(ver))
 				if parseErr != nil {
 					t.Skipf("initial parse failed: %v", parseErr)
 				}
@@ -71,8 +69,7 @@ func TestRoundtrip(t *testing.T) {
 				var prog2 *ast.Program
 				var reParseErr error
 				if stringPanic == "" {
-					fset2 := gotoken.NewFileSet()
-					prog2, reParseErr = parser.ParseFile(fset2, row.file+"<roundtrip>", []byte(src2), parser.AllErrors, parser.WithVersion(ver))
+					prog2, reParseErr = parser.ParseFile(row.file+"<roundtrip>", []byte(src2), parser.AllErrors, parser.WithVersion(ver))
 				}
 
 				t.Run("ast", func(t *testing.T) {

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	gotoken "go/token"
 	"io"
 	"io/ioutil"
 	"os"
@@ -81,17 +80,12 @@ func WithVersion(v token.RubyVersion) Option {
 // If src == nil, ParseFile parses the file specified by filename.
 //
 // The mode parameter controls the amount of source text parsed and other
-// optional parser functionality. Position information is recorded in the
-// file set fset, which must not be nil.
+// optional parser functionality.
 //
 // If the source couldn't be read or the source was read but syntax
 // errors were found, the returned AST is nil and the error
 // indicates the specific failure.
-func ParseFile(fset *gotoken.FileSet, filename string, src interface{}, mode Mode, opts ...Option) (*ast.Program, error) {
-	if fset == nil {
-		panic("parser.ParseFile: no token.FileSet provided (fset == nil)")
-	}
-
+func ParseFile(filename string, src interface{}, mode Mode, opts ...Option) (*ast.Program, error) {
 	text, err := readSource(filename, src)
 	if err != nil {
 		return nil, err
@@ -101,7 +95,7 @@ func ParseFile(fset *gotoken.FileSet, filename string, src interface{}, mode Mod
 	for _, o := range opts {
 		o(&p)
 	}
-	p.init(fset, filename, text, mode)
+	p.init(filename, text, mode)
 
 	program, parseErr := p.ParseProgram()
 
@@ -131,11 +125,7 @@ func WithContext(ctx context.Context) Option {
 // The arguments have the same meaning as for ParseFile, but the source must
 // be a valid Go (type or value) expression. Specifically, fset must not
 // be nil.
-func ParseExprFrom(fset *gotoken.FileSet, filename string, src interface{}, mode Mode) (ast.Expression, error) {
-	if fset == nil {
-		panic("parser.ParseExprFrom: no token.FileSet provided (fset == nil)")
-	}
-
+func ParseExprFrom(filename string, src interface{}, mode Mode) (ast.Expression, error) {
 	// get source
 	text, err := readSource(filename, src)
 	if err != nil {
@@ -143,7 +133,7 @@ func ParseExprFrom(fset *gotoken.FileSet, filename string, src interface{}, mode
 	}
 
 	var p parser
-	p.init(fset, filename, text, mode)
+	p.init(filename, text, mode)
 
 	program, err := p.ParseProgram()
 	if err != nil {
@@ -167,5 +157,5 @@ func ParseExprFrom(fset *gotoken.FileSet, filename string, src interface{}, mode
 // The position information recorded in the AST is undefined. The filename used
 // in error messages is the empty string.
 func ParseExpr(x string) (ast.Expression, error) {
-	return ParseExprFrom(gotoken.NewFileSet(), "", []byte(x), 0)
+	return ParseExprFrom("", []byte(x), 0)
 }

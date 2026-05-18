@@ -3,7 +3,6 @@ package ast
 import (
 	"bytes"
 	"fmt"
-	gotoken "go/token"
 	"math/big"
 	"strings"
 
@@ -55,7 +54,7 @@ func IsLiteral(n Node) bool {
 // A Program node is the root node within the AST.
 type Program struct {
 	pos        int
-	File       *gotoken.File
+	File       *token.File
 	Statements []Statement
 }
 

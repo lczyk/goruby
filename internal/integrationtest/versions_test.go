@@ -5,7 +5,6 @@ package integrationtest
 import (
 	"bufio"
 	"fmt"
-	gotoken "go/token"
 	"os"
 	"path/filepath"
 	"strings"
@@ -155,7 +154,6 @@ func runLexWithVersion(src string, ver token.RubyVersion) error {
 }
 
 func runParseWithVersion(name, src string, ver token.RubyVersion) error {
-	fset := gotoken.NewFileSet()
-	_, err := parser.ParseFile(fset, name, []byte(src), parser.AllErrors, parser.WithVersion(ver))
+	_, err := parser.ParseFile(name, []byte(src), parser.AllErrors, parser.WithVersion(ver))
 	return err
 }

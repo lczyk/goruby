@@ -25,7 +25,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	gotoken "go/token"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -345,8 +344,7 @@ func TestMRIParseTreeDiff(t *testing.T) {
 		}
 
 		// Reformat src1 once per fixture (independent of MRI version).
-		fset := gotoken.NewFileSet()
-		prog, gorubyParseErr := parser.ParseFile(fset, row.file, src, parser.AllErrors)
+		prog, gorubyParseErr := parser.ParseFile(row.file, src, parser.AllErrors)
 		var src2 string
 		var stringPanic string
 		if gorubyParseErr == nil {

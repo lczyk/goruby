@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	gotoken "go/token"
 	"os"
 	"reflect"
 	"strconv"
@@ -1029,7 +1028,7 @@ func TestKeyword__FILE__(t *testing.T) {
 	t.Run("keyword found", func(t *testing.T) {
 		input := "__FILE__;"
 
-		program, err := ParseFile(gotoken.NewFileSet(), "a_filename.rb", input, 0)
+		program, err := ParseFile("a_filename.rb", input, 0)
 		checkParserErrors(t, err)
 
 		if len(program.Statements) != 1 {
@@ -4328,14 +4327,14 @@ func TestParsingSingletonClassExpressions(t *testing.T) {
 
 func TestReadSourceIORreader(t *testing.T) {
 	// io.Reader path in readSource
-	_, err := ParseFile(gotoken.NewFileSet(), "", strings.NewReader("1"), 0)
+	_, err := ParseFile("", strings.NewReader("1"), 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 	// *bytes.Buffer path
 	var buf bytes.Buffer
 	buf.WriteString("1")
-	_, err = ParseFile(gotoken.NewFileSet(), "", &buf, 0)
+	_, err = ParseFile("", &buf, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -5586,7 +5585,7 @@ func parseSource(src string, modes ...Mode) (*ast.Program, *Errors) {
 	for _, m := range modes {
 		mode = mode | m
 	}
-	prog, err := ParseFile(gotoken.NewFileSet(), "", src, mode)
+	prog, err := ParseFile("", src, mode)
 	var parserErrors *Errors
 	if err != nil {
 		parserErrors = err.(*Errors)
@@ -5599,7 +5598,7 @@ func parseExpression(src string, modes ...Mode) (ast.Expression, *Errors) {
 	for _, m := range modes {
 		mode = mode | m
 	}
-	expr, err := ParseExprFrom(gotoken.NewFileSet(), "", src, mode)
+	expr, err := ParseExprFrom("", src, mode)
 	var parserErrors *Errors
 	if err != nil {
 		parserErrors = err.(*Errors)
@@ -5677,7 +5676,6 @@ func TestRubyExtraFixtures(t *testing.T) {
 		t.Fatalf("cannot read ruby-extra dir: %v", err)
 	}
 
-	fset := gotoken.NewFileSet()
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".rb") {
 			continue
@@ -5692,7 +5690,7 @@ func TestRubyExtraFixtures(t *testing.T) {
 			}
 			done := make(chan result, 1)
 			go func() {
-				prog, err := ParseFile(fset, path, nil, AllErrors|ParseComments)
+				prog, err := ParseFile(path, nil, AllErrors|ParseComments)
 				done <- result{prog, err}
 			}()
 
@@ -5740,7 +5738,7 @@ func TestRubyExtraFixtures(t *testing.T) {
 }
 
 func TestParserWithVersion(t *testing.T) {
-	prog, err := ParseFile(gotoken.NewFileSet(), "", "x = 1", 0,
+	prog, err := ParseFile("", "x = 1", 0,
 		WithVersion(token.MustParseVersion("3.0")))
 	if err != nil {
 		t.Fatalf("ParseFile with version: %v", err)

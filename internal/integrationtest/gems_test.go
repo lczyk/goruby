@@ -7,7 +7,6 @@ package integrationtest
 import (
 	"errors"
 	"fmt"
-	gotoken "go/token"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -343,8 +342,7 @@ func runLex(src string) error {
 }
 
 func runParse(name, src string) (*ast.Program, error) {
-	fset := gotoken.NewFileSet()
-	return parser.ParseFile(fset, name, []byte(src), parser.AllErrors)
+	return parser.ParseFile(name, []byte(src), parser.AllErrors)
 }
 
 type noopVisitor struct{}

@@ -1,7 +1,6 @@
 package parser
 
 import (
-	gotoken "go/token"
 	"testing"
 	"time"
 
@@ -68,7 +67,7 @@ func FuzzParse(f *testing.F) {
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			prog, err := ParseFile(gotoken.NewFileSet(), "fuzz.rb", []byte(input), ParseComments)
+			prog, err := ParseFile("fuzz.rb", []byte(input), ParseComments)
 			if err != nil || prog == nil {
 				return
 			}

@@ -3,7 +3,6 @@ package parser
 import (
 	"context"
 	"fmt"
-	gotoken "go/token"
 	"math/big"
 	"strconv"
 	"strings"
@@ -199,7 +198,7 @@ var defaultExpressionTerminators = []token.Type{
 // A parser parses the token emitted by the provided lexer.Lexer and returns an
 // AST describing the parsed program.
 type parser struct {
-	file    *gotoken.File
+	file    *token.File
 	l       *lexer.Lexer
 	errors  []error
 	version token.RubyVersion
@@ -208,7 +207,7 @@ type parser struct {
 	mode Mode // parsing mode
 	ctx  context.Context
 
-	pos        gotoken.Pos
+	pos        token.Pos
 	lastLine   string
 	curToken   token.Token
 	peekToken  token.Token
@@ -223,8 +222,8 @@ type parser struct {
 	comments           []*ast.Comment
 }
 
-func (p *parser) init(fset *gotoken.FileSet, filename string, src []byte, mode Mode) {
-	p.file = fset.AddFile(filename, -1, len(src))
+func (p *parser) init(filename string, src []byte, mode Mode) {
+	p.file = token.NewFile(filename, len(src))
 
 	p.l = lexer.New(string(src), lexer.WithVersion(p.version))
 	p.errors = []error{}
@@ -449,7 +448,7 @@ func (p *parser) nextToken() {
 	}
 	p.curToken = p.peekToken
 	p.peekToken = p.peek2Token
-	p.pos = gotoken.Pos(p.file.Base() + p.curToken.Pos)
+	p.pos = p.file.Pos(p.curToken.Pos)
 	p.lastLine += p.curToken.Literal
 	if p.curToken.Type == token.NEWLINE {
 		p.file.AddLine(p.curToken.Pos + 1)

@@ -3,7 +3,6 @@ package parser
 import (
 	"bytes"
 	"fmt"
-	gotoken "go/token"
 
 	"github.com/lczyk/goruby/token"
 	"github.com/pkg/errors"
@@ -42,7 +41,7 @@ func (k ErrorKind) String() string {
 
 // parseError is a structured parser error carrying source position and kind.
 type parseError struct {
-	Pos  gotoken.Position
+	Pos  token.Position
 	Kind ErrorKind
 	Msg  string
 }
@@ -166,7 +165,7 @@ func (t tokens) String() string {
 }
 
 type unexpectedTokenError struct {
-	Pos            gotoken.Position
+	Pos            token.Position
 	expectedTokens []token.Type
 	actualToken    token.Type
 	actualLiteral  string // optional; included in Error() if non-empty
