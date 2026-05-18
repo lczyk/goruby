@@ -4,10 +4,10 @@
 //
 // For each fixture and each MRI version where mri-golden.tsv says it passes:
 //
-//   src1 -> MRI --dump=parsetree     -> tree1
-//   src1 -> goruby Parse -> String() -> src2
-//   src2 -> MRI --dump=parsetree     -> tree2
-//   normalize(tree1) == normalize(tree2) ?
+//	src1 -> MRI --dump=parsetree     -> tree1
+//	src1 -> goruby Parse -> String() -> src2
+//	src2 -> MRI --dump=parsetree     -> tree2
+//	normalize(tree1) == normalize(tree2) ?
 //
 // Three outcome buckets per (file, ver) cell:
 //   - pass             : trees match

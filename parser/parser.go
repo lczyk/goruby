@@ -3872,20 +3872,28 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 		list = append(list, hash)
 		if p.currentTokenOneOf(token.CAPTURE, token.AND) {
 			list = append(list, p.parseExpression(precComma))
-			if p.peekTokenOneOf(end...) { p.acceptOneOf(end...) }
+			if p.peekTokenOneOf(end...) {
+				p.acceptOneOf(end...)
+			}
 			return list
 		}
-		if p.peekTokenOneOf(end...) { p.acceptOneOf(end...) }
+		if p.peekTokenOneOf(end...) {
+			p.acceptOneOf(end...)
+		}
 		return list
 	} else if _, isStr := next.(*ast.StringLiteral); isStr && p.peekTokenOneOf(token.COLON, token.SYMBEG) {
 		hash := p.parseStringLabelHash(next, end...)
 		list = append(list, hash)
 		if p.currentTokenOneOf(token.CAPTURE, token.AND) {
 			list = append(list, p.parseExpression(precComma))
-			if p.peekTokenOneOf(end...) { p.acceptOneOf(end...) }
+			if p.peekTokenOneOf(end...) {
+				p.acceptOneOf(end...)
+			}
 			return list
 		}
-		if p.peekTokenOneOf(end...) { p.acceptOneOf(end...) }
+		if p.peekTokenOneOf(end...) {
+			p.acceptOneOf(end...)
+		}
 		return list
 	} else {
 		list = append(list, next)
@@ -3931,10 +3939,14 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 			list = append(list, hash)
 			if p.currentTokenOneOf(token.CAPTURE, token.AND) {
 				list = append(list, p.parseExpression(precComma))
-				if p.peekTokenOneOf(end...) { p.acceptOneOf(end...) }
+				if p.peekTokenOneOf(end...) {
+					p.acceptOneOf(end...)
+				}
 				return list
 			}
-			if p.peekTokenOneOf(end...) { p.acceptOneOf(end...) }
+			if p.peekTokenOneOf(end...) {
+				p.acceptOneOf(end...)
+			}
 			return list
 		}
 		if _, isStr := next.(*ast.StringLiteral); isStr && p.peekTokenOneOf(token.COLON, token.SYMBEG) {
@@ -3942,10 +3954,14 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 			list = append(list, hash)
 			if p.currentTokenOneOf(token.CAPTURE, token.AND) {
 				list = append(list, p.parseExpression(precComma))
-				if p.peekTokenOneOf(end...) { p.acceptOneOf(end...) }
+				if p.peekTokenOneOf(end...) {
+					p.acceptOneOf(end...)
+				}
 				return list
 			}
-			if p.peekTokenOneOf(end...) { p.acceptOneOf(end...) }
+			if p.peekTokenOneOf(end...) {
+				p.acceptOneOf(end...)
+			}
 			return list
 		}
 		list = append(list, next)

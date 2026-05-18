@@ -1046,7 +1046,7 @@ func (s *SymbolLiteral) End() int { return s.Value.End() }
 
 // TokenLiteral returns the literal from token token.SYMBOL
 func (s *SymbolLiteral) TokenLiteral() string { return s.Token.Literal }
-func (s *SymbolLiteral) String() string { return ":" + s.Value.String() }
+func (s *SymbolLiteral) String() string       { return ":" + s.Value.String() }
 
 // LabelString returns the symbol in label form (without leading colon).
 func (s *SymbolLiteral) LabelString() string { return s.Value.String() }
