@@ -44,7 +44,7 @@ var (
 // Does NOT handle __LINE__ divergence -- callers that have the original
 // source should use NormalizeWithSource instead.
 func Normalize(s string) string {
-	return normalize(s, nil)
+	return normalize(s, nil, true)
 }
 
 // NormalizeWithSource is Normalize with extra __LINE__ awareness. src is
@@ -54,10 +54,25 @@ func Normalize(s string) string {
 // reformatted-but-equivalent sources compare equal even when their
 // `__LINE__` evaluations differ.
 func NormalizeWithSource(dump, src string) string {
-	return normalize(dump, lineMagicLines(src))
+	return normalize(dump, lineMagicLines(src), true)
 }
 
-func normalize(s string, magic map[int]bool) string {
+// NormalizeRaw is Normalize without the final flat-form reparse. Output
+// keeps the original indented tree shape (with cosmetic / positional
+// noise and no-op wrappers stripped, but no path-prefixed flat lines).
+// Useful when downstream consumers want to inspect / further process the
+// tree structure directly.
+func NormalizeRaw(s string) string {
+	return normalize(s, nil, false)
+}
+
+// NormalizeWithSourceRaw is NormalizeWithSource without the flat-form
+// reparse. See NormalizeRaw.
+func NormalizeWithSourceRaw(dump, src string) string {
+	return normalize(dump, lineMagicLines(src), false)
+}
+
+func normalize(s string, magic map[int]bool, flat bool) string {
 	// Fixed-point loop: individual passes are not all mutually idempotent
 	// when run once (e.g. unwrapSingleChildBlocks can expose new lines
 	// starting with `#` that reLeadingHash would then strip). Iterating
@@ -71,6 +86,9 @@ func normalize(s string, magic map[int]bool) string {
 			break
 		}
 		s = next
+	}
+	if !flat {
+		return s
 	}
 	// Final pass: reparse the indented tree and re-emit in flat path form,
 	// one fact per line. Path-prefixed lines are diff-stable -- adding /

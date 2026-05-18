@@ -4,7 +4,10 @@
 // __LINE__ evaluations so two reformatted-but-equivalent sources compare
 // equal.
 //
-//	normalize-parsetree <ruby-bin> <input.rb>
+//	normalize-parsetree [--raw] <ruby-bin> <input.rb>
+//
+// With `--raw`, output keeps the indented tree shape instead of the
+// path-prefixed flat form.
 //
 // Example:
 //
@@ -12,12 +15,13 @@
 //	  <(normalize-parsetree ruby a.rb) \
 //	  <(normalize-parsetree ruby b.rb)
 //
-// Without arguments, reads the parsetree dump from stdin and applies
-// source-agnostic normalisation only (no __LINE__ masking).
+// Without positional arguments, reads the parsetree dump from stdin and
+// applies source-agnostic normalisation only (no __LINE__ masking).
 package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -27,28 +31,39 @@ import (
 )
 
 func main() {
-	switch len(os.Args) {
-	case 1:
-		runStdin()
-	case 3:
-		runDump(os.Args[1], os.Args[2])
+	raw := flag.Bool("raw", false, "skip the flat-form reparse; keep indented tree shape")
+	flag.Usage = func() {
+		fmt.Fprintln(os.Stderr, "usage: normalize-parsetree [--raw] [<ruby-bin> <input.rb>]")
+		flag.PrintDefaults()
+	}
+	flag.Parse()
+	args := flag.Args()
+	switch len(args) {
+	case 0:
+		runStdin(*raw)
+	case 2:
+		runDump(args[0], args[1], *raw)
 	default:
-		fmt.Fprintln(os.Stderr, "usage: normalize-parsetree [<ruby-bin> <input.rb>]")
+		flag.Usage()
 		os.Exit(2)
 	}
 }
 
-func runStdin() {
+func runStdin(raw bool) {
 	data, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		die("read stdin:", err)
 	}
-	if _, err := io.WriteString(os.Stdout, parsetreenorm.Normalize(string(data))); err != nil {
+	fn := parsetreenorm.Normalize
+	if raw {
+		fn = parsetreenorm.NormalizeRaw
+	}
+	if _, err := io.WriteString(os.Stdout, fn(string(data))); err != nil {
 		die("write stdout:", err)
 	}
 }
 
-func runDump(rubyBin, inputPath string) {
+func runDump(rubyBin, inputPath string, raw bool) {
 	src, err := os.ReadFile(inputPath)
 	if err != nil {
 		die("read input:", err)
@@ -62,7 +77,11 @@ func runDump(rubyBin, inputPath string) {
 		fmt.Fprintln(os.Stderr, stderr.String())
 		os.Exit(1)
 	}
-	out := parsetreenorm.NormalizeWithSource(stdout.String(), string(src))
+	fn := parsetreenorm.NormalizeWithSource
+	if raw {
+		fn = parsetreenorm.NormalizeWithSourceRaw
+	}
+	out := fn(stdout.String(), string(src))
 	if _, err := io.WriteString(os.Stdout, out); err != nil {
 		die("write stdout:", err)
 	}

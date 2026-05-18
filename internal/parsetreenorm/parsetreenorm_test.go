@@ -184,6 +184,35 @@ func TestStripNullBeginLastSibling(t *testing.T) {
 	}
 }
 
+func TestNormalizeRawKeepsTreeShape(t *testing.T) {
+	flat := Normalize(sampleDump3x)
+	raw := NormalizeRaw(sampleDump3x)
+	if !strings.Contains(raw, "@ NODE_") {
+		t.Errorf("raw lost tree markers:\n%s", raw)
+	}
+	if strings.Contains(flat, "@ NODE_") {
+		t.Errorf("flat still has tree markers:\n%s", flat)
+	}
+	if strings.Contains(raw, "\n# ") {
+		t.Errorf("raw didn't strip leading hash:\n%s", raw)
+	}
+	if strings.Contains(raw, "(id:") {
+		t.Errorf("raw didn't strip id headers:\n%s", raw)
+	}
+}
+
+func TestNormalizeWithSourceRawMasksLineMagic(t *testing.T) {
+	src := "x = 1\n__LINE__\n"
+	dump := "# @ NODE_LIT (line: 2)\n# +- nd_lit: 2\n"
+	raw := NormalizeWithSourceRaw(dump, src)
+	if !strings.Contains(raw, "<__LINE__>") {
+		t.Errorf("raw didn't mask __LINE__:\n%s", raw)
+	}
+	if !strings.Contains(raw, "@ NODE_LIT") {
+		t.Errorf("raw lost tree shape:\n%s", raw)
+	}
+}
+
 func TestPrismListField(t *testing.T) {
 	// Prism `(length: N)` list field: parent has one `+-- name:` header
 	// followed by N inline `+-- @ ChildNode` entries at bodyDepth.
