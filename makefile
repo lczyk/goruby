@@ -88,8 +88,12 @@ rubies-golden: rubies gems  ## Regenerate MRI golden TSV for version-aware integ
 	@$(MAKE) -C .rubies golden
 
 .PHONY: oracle
-oracle: rubies gems  ## Diff goruby roundtrip against MRI parsetree dump (slow; requires built rubies)
-	$(GOTEST) -v -tags=oracle -timeout 20m -run TestMRIParseTreeDiff ./internal/integrationtest/...
+oracle: rubies gems  ## Diff goruby roundtrip against MRI parsetree dump (slow; pytest-style dots; pass V=1 for verbose)
+	@if [ "$(V)" = "1" ]; then \
+		$(GOTEST) -v -tags=oracle -timeout 20m -run TestMRIParseTreeDiff ./internal/integrationtest/...; \
+	else \
+		./scripts/gotest-dots $(GOTEST) -v -tags=oracle -timeout 20m -run TestMRIParseTreeDiff ./internal/integrationtest/...; \
+	fi
 
 .PHONY: clean
 clean:  ## Remove generated files
