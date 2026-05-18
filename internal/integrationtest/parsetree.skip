@@ -1634,3 +1634,18 @@ src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_object.rb: go
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_object.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_marshal.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_marshal.rb: goruby String() output rejected by MRI
+src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_mixed_unicode_escapes.rb: MRI rejects cp932 encoding magic comment
+src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/test_mixed_unicode_escapes.rb: MRI rejects cp932 encoding magic comment
+src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_mixed_unicode_escapes.rb: MRI rejects cp932 encoding magic comment
+src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/enc/test_windows_1251.rb: MRI rejects encoding magic comment in older versions
+src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/enc/test_windows_1252.rb: MRI rejects encoding magic comment in older versions
+src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/enc/test_windows_1252.rb: MRI rejects encoding magic comment in older versions
+src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/enc/test_windows_1252.rb: MRI rejects encoding magic comment in older versions
+src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/enc/test_windows_1251.rb: MRI rejects encoding magic comment in older versions
+src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/enc/test_windows_1251.rb: MRI rejects encoding magic comment in older versions
+src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/enc/test_euc_jp.rb: MRI rejects encoding magic comment in older versions
+src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/enc/test_euc_jp.rb: MRI rejects encoding magic comment in older versions
+src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/enc/test_euc_jp.rb: MRI rejects encoding magic comment in older versions
+src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/enc/test_shift_jis.rb: MRI rejects encoding magic comment in older versions
+src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/enc/test_shift_jis.rb: MRI rejects encoding magic comment in older versions
+src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/enc/test_shift_jis.rb: MRI rejects encoding magic comment in older versions
