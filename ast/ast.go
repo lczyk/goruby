@@ -780,6 +780,11 @@ func (il *IntegerLiteral) End() int {
 // TokenLiteral returns the literal from the token.INT token
 func (il *IntegerLiteral) TokenLiteral() string { return il.Token.Literal }
 func (il *IntegerLiteral) String() string {
+	// Preserve the original literal form (0xFF, 0b101, 0o7, 0d10, with
+	// underscores, etc) so MRI re-reads the same IntegerBaseFlags.
+	if il.Token.Literal != "" {
+		return il.Token.Literal
+	}
 	if il.BigInt != nil {
 		return il.BigInt.String()
 	}
