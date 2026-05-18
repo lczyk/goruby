@@ -3710,6 +3710,14 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 		return contextCallExpression
 	}
 
+	// Same rule for `a.b*x` / `a.b**x`: with no leading whitespace the
+	// * / ** is infix (multiplication / power), not a (kw)splat arg.
+	if (p.peekTokenIs(token.ASTERISK) || p.peekTokenIs(token.POWER)) &&
+		!p.peekToken.HadWhitespace {
+		contextCallExpression.Arguments = []ast.Expression{}
+		return contextCallExpression
+	}
+
 	p.nextToken()
 
 	blockStops := []token.Type{token.LBRACE, token.DO}
@@ -3765,6 +3773,15 @@ func (p *parser) parseContextCallExpression(context ast.Expression) ast.Expressi
 	}
 
 	if p.peekTokenOneOf(append(tokensNotPossibleInCallArgs, token.RBRACE, token.RPAREN, token.EMBEXPR_END, token.SEMICOLON, token.EOF)...) {
+		return contextCallExpression
+	}
+
+	// `obj.method**x` / `obj.method*x` (no space before * / **) is the infix
+	// power / multiplication operator, not a paren-less call with a (kw)splat
+	// arg. With no whitespace separating method-name from operator, treat it
+	// as infix and let the outer parseExpression loop pick it up.
+	if !p.peekToken.HadWhitespace && p.peekTokenOneOf(token.POWER, token.ASTERISK) {
+		contextCallExpression.Arguments = []ast.Expression{}
 		return contextCallExpression
 	}
 
