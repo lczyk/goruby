@@ -56,10 +56,6 @@ func IsLiteral(n Node) bool {
 type Program struct {
 	pos        int
 	Statements []Statement
-	// Gaps[i] = number of `\n` separators between Statements[i-1] and
-	// Statements[i] (>=1; e.g. 2 = one blank line). Gaps[0] is unused.
-	// Empty slice means "no gap info" -- fall back to single `\n`.
-	Gaps []int
 }
 
 // Pos returns the position of first character belonging to the node
@@ -75,16 +71,12 @@ func (p *Program) End() int {
 func (p *Program) String() string {
 	var out bytes.Buffer
 	first := true
-	for i, s := range p.Statements {
+	for _, s := range p.Statements {
 		if s == nil {
 			continue
 		}
 		if !first {
-			gap := 1
-			if i < len(p.Gaps) && p.Gaps[i] > 1 {
-				gap = p.Gaps[i]
-			}
-			out.WriteString(strings.Repeat("\n", gap))
+			out.WriteByte('\n')
 		}
 		out.WriteString(s.String())
 		first = false

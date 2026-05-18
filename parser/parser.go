@@ -523,51 +523,10 @@ func (p *parser) ParseProgram() (*ast.Program, error) {
 	if p.mode&ParseComments != 0 && len(p.comments) > 0 {
 		program.Statements = mergeComments(program.Statements, p.comments)
 	}
-	program.Gaps = p.computeGaps(program.Statements)
 	if len(p.errors) != 0 {
 		return program, NewErrors("Parsing errors", p.errors...)
 	}
 	return program, nil
-}
-
-// computeGaps returns a slice of len(stmts) where gaps[i] is the number of
-// `\n` separators between stmts[i-1] and stmts[i] (>=1; 2 = one blank line).
-// gaps[0] is 0 (unused). Computed from source line positions via p.file.
-func (p *parser) computeGaps(stmts []ast.Statement) []int {
-	if len(stmts) == 0 {
-		return nil
-	}
-	gaps := make([]int, len(stmts))
-	for i := 1; i < len(stmts); i++ {
-		gaps[i] = p.lineGap(stmts[i-1], stmts[i])
-	}
-	return gaps
-}
-
-func (p *parser) lineGap(prev, next ast.Node) (gap int) {
-	defer func() {
-		if recover() != nil {
-			gap = 1
-		}
-	}()
-	if prev == nil || next == nil {
-		return 1
-	}
-	prevEnd := prev.End()
-	nextPos := next.Pos()
-	if prevEnd <= 0 || nextPos <= 0 || nextPos <= prevEnd {
-		return 1
-	}
-	prevLine := p.file.Position(p.file.Pos(prevEnd)).Line
-	nextLine := p.file.Position(p.file.Pos(nextPos)).Line
-	if prevLine == 0 || nextLine == 0 {
-		return 1
-	}
-	g := nextLine - prevLine
-	if g < 1 {
-		return 1
-	}
-	return g
 }
 
 func stmtPos(s ast.Statement) int {
