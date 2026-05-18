@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -518,7 +519,7 @@ func startLexer(l *Lexer) StateFn {
 			return startLexer
 		}
 		if isExpressionDelimiter(p) {
-			fmt.Printf("warning: invalid character syntax; use ?%c\n", r)
+			fmt.Fprintf(os.Stderr, "warning: invalid character syntax; use ?%c\n", p)
 			l.ignore()
 			return l.errorf("unexpected '?'")
 		}
