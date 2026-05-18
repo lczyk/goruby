@@ -12,7 +12,7 @@ added narrow fix: unary -/+ atomic on StringLiteral (f322e4b) -- handles
 | 1 | adjacent string-literal concatenation | [DONE] 6a78815 |
 | 2 | local-variable tracking (vcall vs LocalVariableRead) | open |
 | 3 | single-line def with `;` separator | tried, reverted (per-version MRI divergence) |
-| 4 | comment / blank-line preservation for `__LINE__` | open (high risk) |
+| 4 | comment / blank-line preservation for `__LINE__` | [PARTIAL] e1fc8a0 (Program-level only; BlockStatement extension caused roundtrip regressions) |
 | 5 | string interpolation `#@var` / `#$var` / `#@@var` shorthand | [DONE] b40f374 |
 | 6 | hash splat key-order preservation | [DONE] 6631b11 |
 | 7 | BlockParametersNode emission when locals exist | blocked on #2 |
