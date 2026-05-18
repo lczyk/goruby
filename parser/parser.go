@@ -660,6 +660,7 @@ var bareCallArgTokens = []token.Type{
 	token.AT, token.CLASS_VAR,
 	token.GLOBAL,
 	token.REGEX_BEG, token.REGEX,
+	token.DEF, // `private def x` -- def returns sym, becomes arg
 }
 
 func (p *parser) parseExpressionStatement() *ast.ExpressionStatement {
