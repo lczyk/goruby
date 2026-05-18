@@ -3500,15 +3500,9 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 
 func (p *parser) parseBlockStatement(t ...token.Type) *ast.BlockStatement {
 	defer trace.TraceCtx(p.ctx)()
-	terminatorTokens := append(
-		[]token.Type{
-			token.END,
-		},
-		t...,
-	)
 	block := &ast.BlockStatement{Token: p.curToken}
 
-	for !p.peekTokenOneOf(terminatorTokens...) {
+	for p.peekToken.Type != token.END && !p.peekTokenOneOf(t...) {
 		if p.peekTokenIs(token.EOF) {
 			p.peekError(token.EOF)
 			return block
