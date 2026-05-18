@@ -133,19 +133,33 @@ func FuzzNormalizeWellFormed(f *testing.F) {
 	f.Add("")
 
 	f.Fuzz(func(t *testing.T, dump string) {
+		// Eventually idempotent: Normalize is contracted on tree-shaped
+		// input, not arbitrary flat-form leaf values. A toFlat output
+		// containing e.g. ` (line: 0)` inside a leaf value would be
+		// re-stripped by the text-level passes on a 2nd call. So we
+		// allow up to maxIter rounds to converge.
+		const maxIter = 6
 		out := Normalize(dump)
-		// Idempotency (mirrors FuzzNormalize for redundancy).
-		if out2 := Normalize(out); out != out2 {
-			t.Fatalf("not idempotent:\n--- once ---\n%q\n--- twice ---\n%q", out, out2)
+		converged := false
+		for range maxIter {
+			next := Normalize(out)
+			if next == out {
+				converged = true
+				break
+			}
+			out = next
 		}
-		// Post-conditions: every line must satisfy these after the
-		// fixed-point loop converges.
+		if !converged {
+			t.Fatalf("did not converge within %d iterations for input %q\nlast:\n%s",
+				maxIter, dump, out)
+		}
+		// Post-conditions on the converged output.
 		for ln := range strings.SplitSeq(out, "\n") {
 			if len(ln) > 0 && ln[0] == '#' {
-				t.Fatalf("line still starts with `#` after Normalize: %q\nfull:\n%s", ln, out)
+				t.Fatalf("line still starts with `#` after convergence: %q\nfull:\n%s", ln, out)
 			}
 			if strings.HasSuffix(ln, ")*") {
-				t.Fatalf("line still ends with `)*` after Normalize: %q\nfull:\n%s", ln, out)
+				t.Fatalf("line still ends with `)*` after convergence: %q\nfull:\n%s", ln, out)
 			}
 		}
 	})

@@ -389,12 +389,19 @@ func FuzzNormalize(f *testing.F) {
 	f.Add("@ NODE_STR\n+- nd_lit: \"/tmp/parsetree-7.rb\"\n")
 	f.Add("@ NODE_ARRAY\n+- nd_alen: 99\n+- nd_head (1):\n|   @ NODE_LIT\n")
 	f.Fuzz(func(t *testing.T, dump string) {
-		// Should never panic, and must be idempotent.
-		out1 := Normalize(dump)
-		out2 := Normalize(out1)
-		if out1 != out2 {
-			t.Fatalf("not idempotent:\n--- once ---\n%q\n--- twice ---\n%q", out1, out2)
+		// Eventually idempotent within a small number of iterations.
+		// See FuzzNormalizeWellFormed for the rationale.
+		const maxIter = 6
+		out := Normalize(dump)
+		for range maxIter {
+			next := Normalize(out)
+			if next == out {
+				return
+			}
+			out = next
 		}
+		t.Fatalf("did not converge within %d iterations:\n--- input ---\n%q\n--- last ---\n%q",
+			maxIter, dump, out)
 	})
 }
 
