@@ -509,6 +509,132 @@ func BenchmarkNormalizeWithSource(b *testing.B) {
 	}
 }
 
+// BenchmarkNormalizePrism34 exercises the Prism (3.4+) strip passes that
+// sampleDump3x doesn't trigger: `_loc:` token lines, `(length: N)` list
+// fields, `+-- @ Child` inline child nodes, and standalone `(location: ...)`
+// headers.
+func BenchmarkNormalizePrism34(b *testing.B) {
+	in := strings.Repeat(samplePrism34, 100)
+	b.ResetTimer()
+	for b.Loop() {
+		_ = Normalize(in)
+	}
+}
+
+// BenchmarkNormalize2x exercises pre-3.x strip passes missing from the
+// 3.x sample: bare `(line: N)` headers, `nd_alen` leakage, and
+// `+- nd_xxx (N):` sibling-index suffix.
+func BenchmarkNormalize2x(b *testing.B) {
+	in := strings.Repeat(sample2x, 100)
+	b.ResetTimer()
+	for b.Loop() {
+		_ = Normalize(in)
+	}
+}
+
+// BenchmarkNormalizeIdempotent measures the fast-path floor: input is
+// already normalised, so every strip helper should hit its
+// no-work-needed branch (zero / minimal alloc).
+func BenchmarkNormalizeIdempotent(b *testing.B) {
+	in := Normalize(strings.Repeat(sampleDump3x, 100))
+	b.ResetTimer()
+	for b.Loop() {
+		_ = Normalize(in)
+	}
+}
+
+// BenchmarkNormalizeRealFixture runs against a real MRI parsetree dump
+// when an MRI binary is locally available. Skips cleanly otherwise.
+func BenchmarkNormalizeRealFixture(b *testing.B) {
+	repoRoot, ok := findRepoRootB(b)
+	if !ok {
+		b.Skip("repo root not found")
+	}
+	rubyBin, ok := findFirstRuby(filepath.Join(repoRoot, ".rubies", "versions"))
+	if !ok {
+		b.Skip("no MRI binary under .rubies/versions/")
+	}
+	fixture := filepath.Join(repoRoot, "internal", "integrationtest",
+		"testdata", "mri-tests", "test_const.rb")
+	src, err := os.ReadFile(fixture)
+	if err != nil {
+		b.Fatalf("read fixture: %v", err)
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := exec.Command(rubyBin, "--disable-gems", "--dump=parsetree", fixture)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		b.Fatalf("ruby dump failed: %v\nstderr: %s", err, stderr.String())
+	}
+	dump := stdout.String()
+	srcStr := string(src)
+	b.ResetTimer()
+	b.SetBytes(int64(len(dump)))
+	for b.Loop() {
+		_ = NormalizeWithSource(dump, srcStr)
+	}
+}
+
+// findRepoRootB is the *testing.B variant of findRepoRoot.
+func findRepoRootB(b *testing.B) (string, bool) {
+	b.Helper()
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", false
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir, true
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", false
+		}
+		dir = parent
+	}
+}
+
+// samplePrism34 mimics a Prism (3.4+) `--dump=parsetree` excerpt:
+// CamelCase node names, `(location: ...)` headers, `_loc:` per-token
+// lines, `(length: N)` list field with inline `+-- @ Child` entries.
+const samplePrism34 = `@ ProgramNode (location: (1,0)-(4,3))
++-- locals: []
++-- statements: (length: 2)
+    +-- @ DefNode (location: (1,0)-(2,3))
+    |   +-- name: :foo
+    |   +-- name_loc: (1,4)-(1,7) = "foo"
+    |   +-- parameters: nil
+    |   +-- body:
+    |       @ StatementsNode (location: (2,0)-(2,2))
+    |       +-- body: (length: 1)
+    |           +-- @ IntegerNode (location: (2,0)-(2,2))
+    |               +-- value_loc: (2,0)-(2,2) = "42"
+    +-- @ CallNode (location: (4,0)-(4,3))
+        +-- name: :bar
+        +-- message_loc: (4,0)-(4,3) = "bar"
+        +-- arguments: nil
+`
+
+// sample2x mimics a 1.9 / 2.x MRI dump: bare `(line: N)` headers (no id,
+// no location), `nd_alen` leakage on the trailing NODE_ARRAY tail, and
+// `+- nd_xxx (N):` sibling-index suffix added by 3.x intermediates but
+// retroactively common in older dumps that got merged through.
+const sample2x = `# @ NODE_SCOPE (line: 1)
+# +- nd_tbl: :a, :b
+# +- nd_args:
+# |   (null node)
+# +- nd_body:
+#     @ NODE_ARRAY (line: 2)
+#     +- nd_alen: 99
+#     +- nd_head (1):
+#     |   @ NODE_LIT (line: 2)
+#     |   +- nd_lit: 1
+#     +- nd_head (2):
+#         @ NODE_LIT (line: 3)
+#         +- nd_lit: 2
+`
+
 const sampleDump3x = `###########################################################
 ## Do NOT use this node dump for any purpose other than  ##
 ## debug and research.  Compatibility is not guaranteed. ##
