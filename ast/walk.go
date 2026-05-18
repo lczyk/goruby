@@ -187,6 +187,9 @@ func Walk(v Visitor, node Node) {
 		*StringContent:
 		// nothing to do
 
+	case *EmbeddedVariable:
+		Walk(v, n.Variable)
+
 	case *BlockExpression:
 		walkParameterList(v, n.Parameters)
 		Walk(v, n.Body)

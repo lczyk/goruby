@@ -2152,15 +2152,19 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 			}
 			p.nextToken() // consume EMBEXPR_END
 		case token.GLOBAL:
-			parts = append(parts, &ast.Global{Token: p.curToken, Value: p.curToken.Literal})
+			parts = append(parts, &ast.EmbeddedVariable{
+				Variable: &ast.Global{Token: p.curToken, Value: p.curToken.Literal},
+			})
 		case token.AT:
 			ivar := &ast.InstanceVariable{Token: p.curToken}
 			p.nextToken()
 			ivar.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-			parts = append(parts, ivar)
+			parts = append(parts, &ast.EmbeddedVariable{Variable: ivar})
 		case token.CLASS_VAR:
+			cv := &ast.ClassVariable{Token: p.curToken}
 			p.nextToken()
-			parts = append(parts, &ast.ClassVariable{Token: p.curToken, Name: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}})
+			cv.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+			parts = append(parts, &ast.EmbeddedVariable{Variable: cv})
 		default:
 			p.expectError(token.STRING_CONTENT, token.EMBEXPR_BEG, token.STRING_END)
 			return nil
@@ -2241,15 +2245,15 @@ func (p *parser) parseInterpolatedRegex() ast.Expression {
 		case token.AT:
 			exp := p.parseInstanceVariable()
 			if exp != nil {
-				parts = append(parts, exp)
+				parts = append(parts, &ast.EmbeddedVariable{Variable: exp})
 			}
 		case token.CLASS_VAR:
 			exp := p.parseClassVariable()
 			if exp != nil {
-				parts = append(parts, exp)
+				parts = append(parts, &ast.EmbeddedVariable{Variable: exp})
 			}
 		case token.GLOBAL:
-			parts = append(parts, p.parseGlobal())
+			parts = append(parts, &ast.EmbeddedVariable{Variable: p.parseGlobal()})
 		default:
 			p.expectError(token.STRING_CONTENT, token.EMBEXPR_BEG, token.REGEX_END)
 			return nil

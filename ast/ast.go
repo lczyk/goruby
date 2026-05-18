@@ -918,9 +918,12 @@ func (sl *StringLiteral) String() string {
 		out.WriteByte(heredocBodyOpen)
 		if sl.Parts != nil {
 			for _, p := range sl.Parts {
-				if sc, ok := p.(*StringContent); ok {
-					out.WriteString(sc.Value)
-				} else {
+				switch x := p.(type) {
+				case *StringContent:
+					out.WriteString(x.Value)
+				case *EmbeddedVariable:
+					out.WriteString(x.String())
+				default:
 					out.WriteString("#{")
 					out.WriteString(p.String())
 					out.WriteString("}")
@@ -966,13 +969,16 @@ func (sl *StringLiteral) String() string {
 		var out bytes.Buffer
 		out.WriteString(open)
 		for _, p := range sl.Parts {
-			if sc, ok := p.(*StringContent); ok {
-				v := sc.Value
+			switch x := p.(type) {
+			case *StringContent:
+				v := x.Value
 				if open == "\"" && strings.Contains(v, "\"") && !strings.Contains(v, "\\\"") {
 					v = strings.ReplaceAll(v, "\"", "\\\"")
 				}
 				out.WriteString(v)
-			} else {
+			case *EmbeddedVariable:
+				out.WriteString(x.String())
+			default:
 				out.WriteString("#{")
 				out.WriteString(p.String())
 				out.WriteString("}")
@@ -1010,6 +1016,19 @@ func (sc *StringContent) End() int { return sc.Token.Pos + len(sc.Value) }
 func (sc *StringContent) TokenLiteral() string { return sc.Token.Literal }
 func (sc *StringContent) String() string       { return sc.Value }
 
+// EmbeddedVariable represents a `#@ivar`, `#@@cvar`, or `#$gvar` shorthand
+// interpolation inside a string -- distinguished from `#{@ivar}` etc., which
+// MRI parses as EmbeddedStatementsNode.
+type EmbeddedVariable struct {
+	Variable Expression // *InstanceVariable, *ClassVariable, or *Global
+}
+
+func (ev *EmbeddedVariable) expressionNode()      {}
+func (ev *EmbeddedVariable) Pos() int             { return ev.Variable.Pos() }
+func (ev *EmbeddedVariable) End() int             { return ev.Variable.End() }
+func (ev *EmbeddedVariable) TokenLiteral() string { return ev.Variable.TokenLiteral() }
+func (ev *EmbeddedVariable) String() string       { return "#" + ev.Variable.String() }
+
 // RegexLiteral represents a regex literal in the AST.
 type RegexLiteral struct {
 	Token   token.Token  // REGEX_BEG
@@ -1036,9 +1055,12 @@ func (rl *RegexLiteral) String() string {
 	out.WriteString("/")
 	if rl.Parts != nil {
 		for _, p := range rl.Parts {
-			if sc, ok := p.(*StringContent); ok {
-				out.WriteString(escapeRegexSlash(sc.Value))
-			} else {
+			switch x := p.(type) {
+			case *StringContent:
+				out.WriteString(escapeRegexSlash(x.Value))
+			case *EmbeddedVariable:
+				out.WriteString(x.String())
+			default:
 				out.WriteString("#{")
 				out.WriteString(p.String())
 				out.WriteString("}")
