@@ -1470,7 +1470,7 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 		},
 		{
 			"!-a",
-			"(!(-a))",
+			"!(-a)",
 		},
 		{
 			"a + b + c",
@@ -1554,7 +1554,7 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 		},
 		{
 			"!(true == true)",
-			"(!(true == true))",
+			"!(true == true)",
 		},
 		{
 			"a + add(b * c) + d",

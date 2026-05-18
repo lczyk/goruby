@@ -2149,14 +2149,25 @@ func pinNeedsParens(right Expression) bool {
 }
 
 func (pe *PrefixExpression) String() string {
-	// Drop the outer parens for unary - / + on a numeric literal so MRI's
-	// parsetree records a single NODE_LIT(-N) rather than NODE_OPCALL(:-,
-	// NODE_LIT(N)). The parens themselves are valid syntax but would emit
-	// an extra ParenthesesNode under prism, changing the tree.
+	// Drop the outer parens when the operand is "atomic" enough that
+	// MRI wouldn't add a ParenthesesNode on re-parse. The exact rules
+	// differ per operator: - / + fold a numeric literal into a single
+	// NODE_LIT; ! / ~ are calls that bind tightly so chaining (!!x,
+	// ~~x) and applying to simple variables / calls doesn't need
+	// parens around the operator.
 	atomic := false
-	if pe.Operator == "-" || pe.Operator == "+" {
+	switch pe.Operator {
+	case "-", "+":
 		switch pe.Right.(type) {
 		case *IntegerLiteral, *FloatLiteral:
+			atomic = true
+		}
+	case "!", "~":
+		switch pe.Right.(type) {
+		case *Identifier, *InstanceVariable, *ClassVariable, *Global,
+			*Boolean, *Nil, *Self, *IntegerLiteral, *FloatLiteral,
+			*ParenExpression, *PrefixExpression, *ContextCallExpression,
+			*IndexExpression, *ScopedIdentifier:
 			atomic = true
 		}
 	}
