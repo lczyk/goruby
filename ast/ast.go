@@ -931,7 +931,10 @@ func (sl *StringLiteral) String() string {
 	case token.XSTR, token.XSTR_BEG:
 		open, close = "`", "`"
 	case token.STRING, token.STRING_BEG:
-		if strings.Contains(sl.Value, "#{") || !strings.Contains(sl.Value, "'") {
+		// Respect source quote style. Lexer stores Value as raw source
+		// bytes; round-tripping through the other quote form would
+		// reinterpret \n etc. and change runtime semantics.
+		if sl.Token.SingleQuoted {
 			open, close = "'", "'"
 		} else {
 			open, close = "\"", "\""

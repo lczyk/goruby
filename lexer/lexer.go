@@ -179,6 +179,18 @@ func (l *Lexer) emitLiteral(t token.Type, literal string) {
 	l.start = l.pos
 }
 
+// emitLiteralSQ is emitLiteral but marks the token as SingleQuoted so the
+// printer renders it with single quotes.
+func (l *Lexer) emitLiteralSQ(t token.Type, literal string) {
+	tok := token.NewToken(t, literal, l.start)
+	tok.HadWhitespace = l.tokenHadWhitespace
+	tok.SingleQuoted = true
+	l.tokenHadWhitespace = false
+	l.lastToken = tok
+	l.tokens <- tok
+	l.start = l.pos
+}
+
 // next returns the next rune in the input.
 func (l *Lexer) next() rune {
 	if l.pos >= len(l.input) {
@@ -1019,7 +1031,13 @@ func lexSingleQuoteString(l *Lexer) StateFn {
 		r = l.next()
 	}
 	l.backup()
-	l.emit(token.STRING)
+	tok := token.NewToken(token.STRING, l.input[l.start:l.pos], l.start)
+	tok.HadWhitespace = l.tokenHadWhitespace
+	tok.SingleQuoted = true
+	l.tokenHadWhitespace = false
+	l.lastToken = tok
+	l.tokens <- tok
+	l.start = l.pos
 	l.next()
 	l.ignore()
 	return startLexer
@@ -1320,9 +1338,9 @@ func lexPercentLiteral(l *Lexer) StateFn {
 	switch typ {
 	case 'q':
 		l.ignore() // skip type char and opener
-		return lexPercentLiteralBody(l, opener, closer, paired, token.STRING)
+		return lexPercentLiteralBodySQ(l, opener, closer, paired, token.STRING)
 	case 'w', 'i', 's':
-		l.emitLiteral(token.STRING_BEG, string(typ))
+		l.emitLiteralSQ(token.STRING_BEG, string(typ))
 		l.ignore() // skip type char and opener
 		return lexPercentLiteralBodyEnd(l, opener, closer, paired, token.STRING_CONTENT, token.STRING_END)
 	case 'Q', 'W', 'I', 0:
@@ -1346,9 +1364,9 @@ func lexPercentLiteral(l *Lexer) StateFn {
 	}
 }
 
-// lexPercentLiteralBody reads a non-interpolating percent literal body
-// and emits a single token of the given type.
-func lexPercentLiteralBody(l *Lexer, opener, closer rune, paired bool, tok token.Type) StateFn {
+// lexPercentLiteralBodySQ is lexPercentLiteralBody but marks the emitted
+// STRING token as SingleQuoted so the printer renders %q[...] as '...'.
+func lexPercentLiteralBodySQ(l *Lexer, opener, closer rune, paired bool, tok token.Type) StateFn {
 	depth := 0
 	if paired {
 		depth = 1
@@ -1359,7 +1377,7 @@ func lexPercentLiteralBody(l *Lexer, opener, closer rune, paired bool, tok token
 			return l.errorf("unterminated percent literal")
 		}
 		if r == '\\' {
-			l.next() // non-interpolating: only escape the next char
+			l.next()
 			continue
 		}
 		if paired {
@@ -1371,7 +1389,13 @@ func lexPercentLiteralBody(l *Lexer, opener, closer rune, paired bool, tok token
 				depth--
 				if depth == 0 {
 					l.backup()
-					l.emit(tok)
+					sq := token.NewToken(tok, l.input[l.start:l.pos], l.start)
+					sq.HadWhitespace = l.tokenHadWhitespace
+					sq.SingleQuoted = true
+					l.tokenHadWhitespace = false
+					l.lastToken = sq
+					l.tokens <- sq
+					l.start = l.pos
 					l.next()
 					l.ignore()
 					return startLexer
@@ -1381,7 +1405,13 @@ func lexPercentLiteralBody(l *Lexer, opener, closer rune, paired bool, tok token
 		} else {
 			if r == closer {
 				l.backup()
-				l.emit(tok)
+				sq := token.NewToken(tok, l.input[l.start:l.pos], l.start)
+				sq.HadWhitespace = l.tokenHadWhitespace
+				sq.SingleQuoted = true
+				l.tokenHadWhitespace = false
+				l.lastToken = sq
+				l.tokens <- sq
+				l.start = l.pos
 				l.next()
 				l.ignore()
 				return startLexer
