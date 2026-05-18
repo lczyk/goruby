@@ -2444,6 +2444,9 @@ func (pe *ParenExpression) String() string {
 		}
 		return "(" + strings.Join(parts, "; ") + ")"
 	}
+	if pe.Expr == nil {
+		return "()"
+	}
 	// Skip the wrap when Expr already emits its own outer parens.
 	switch e := pe.Expr.(type) {
 	case *ParenExpression:

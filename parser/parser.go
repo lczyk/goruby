@@ -2671,7 +2671,8 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 		p.nextToken()
 	}
 	if p.currentTokenIs(token.RPAREN) {
-		return &ast.ParenExpression{Token: lparen, Rparen: p.curToken, Expr: &ast.Nil{Token: p.curToken}}
+		// Empty `()` -- MRI parses as ParenthesesNode with body: nil.
+		return &ast.ParenExpression{Token: lparen, Rparen: p.curToken}
 	}
 	exp := p.parseExpression(precLowest)
 	var stmts []ast.Expression
