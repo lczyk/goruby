@@ -1644,10 +1644,9 @@ func (f *FunctionParameter) String() string {
 
 // An IndexExpression represents an array or hash access in the AST
 type IndexExpression struct {
-	Token  token.Token // The [ token
-	Left   Expression
-	Index  Expression
-	Length Expression
+	Token     token.Token // The [ token
+	Left      Expression
+	Arguments []Expression
 }
 
 func (ie *IndexExpression) expressionNode() {}
@@ -1657,8 +1656,8 @@ func (ie *IndexExpression) Pos() int { return ie.Token.Pos }
 
 // End returns the position of the last character belonging to the node
 func (ie *IndexExpression) End() int {
-	if ie.Index != nil {
-		return ie.Index.End()
+	if n := len(ie.Arguments); n > 0 {
+		return ie.Arguments[n-1].End()
 	}
 	return ie.Token.Pos
 }
@@ -1669,12 +1668,11 @@ func (ie *IndexExpression) String() string {
 	var out bytes.Buffer
 	out.WriteString(ie.Left.String())
 	out.WriteString("[")
-	if ie.Index != nil {
-		out.WriteString(ie.Index.String())
-	}
-	if ie.Length != nil {
-		out.WriteString(", ")
-		out.WriteString(ie.Length.String())
+	for i, a := range ie.Arguments {
+		if i > 0 {
+			out.WriteString(", ")
+		}
+		out.WriteString(a.String())
 	}
 	out.WriteString("]")
 	return out.String()

@@ -2596,12 +2596,7 @@ func (p *parser) parseIndexExpression(left ast.Expression) ast.Expression {
 		p.peekError(token.RBRACKET)
 		return nil
 	}
-	if len(elements) > 0 {
-		exp.Index = elements[0]
-	}
-	if len(elements) > 1 {
-		exp.Length = elements[1]
-	}
+	exp.Arguments = elements
 	return exp
 }
 

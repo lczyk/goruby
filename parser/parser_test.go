@@ -4135,7 +4135,7 @@ func TestParsingIndexExpressions(t *testing.T) {
 			return
 		}
 
-		if !testInfixExpression(t, indexExp.Index, 1, "+", 1) {
+		if !testInfixExpression(t, indexExp.Arguments[0], 1, "+", 1) {
 			return
 		}
 	})
@@ -4155,11 +4155,11 @@ func TestParsingIndexExpressions(t *testing.T) {
 				return
 			}
 
-			if !testIntegerLiteral(t, indexExp.Index, 1) {
+			if !testIntegerLiteral(t, indexExp.Arguments[0], 1) {
 				return
 			}
 
-			if !testIntegerLiteral(t, indexExp.Length, 1) {
+			if !testIntegerLiteral(t, indexExp.Arguments[1], 1) {
 				return
 			}
 		})
@@ -4178,13 +4178,13 @@ func TestParsingIndexExpressions(t *testing.T) {
 				return
 			}
 
-			index := indexExp.Index.String()
+			index := indexExp.Arguments[0].String()
 			if index != "foo.bar" {
 				t.Logf("Expected index arg to equal %s, got %s", "foo.bar", index)
 				t.Fail()
 			}
 
-			if !testIntegerLiteral(t, indexExp.Length, 1) {
+			if !testIntegerLiteral(t, indexExp.Arguments[1], 1) {
 				return
 			}
 		})
@@ -4203,11 +4203,11 @@ func TestParsingIndexExpressions(t *testing.T) {
 				return
 			}
 
-			if !testIntegerLiteral(t, indexExp.Index, 1) {
+			if !testIntegerLiteral(t, indexExp.Arguments[0], 1) {
 				return
 			}
 
-			length := indexExp.Length.String()
+			length := indexExp.Arguments[1].String()
 			if length != "foo.bar" {
 				t.Logf("Expected length arg to equal %s, got %s", "foo.bar", length)
 				t.Fail()

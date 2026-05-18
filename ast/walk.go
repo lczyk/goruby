@@ -246,9 +246,8 @@ func Walk(v Visitor, node Node) {
 
 	case *IndexExpression:
 		Walk(v, n.Left)
-		Walk(v, n.Index)
-		if n.Length != nil {
-			Walk(v, n.Length)
+		for _, a := range n.Arguments {
+			Walk(v, a)
 		}
 
 	case *ContextCallExpression:
