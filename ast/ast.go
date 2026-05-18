@@ -2433,6 +2433,15 @@ func encloseInParensIfNeeded(expr Expression) string {
 	val := expr.String()
 	hasParens := strings.HasPrefix(val, "(") && strings.HasSuffix(val, ")")
 	_, isLiteral := expr.(literal)
+	// Treat - / + on a numeric literal as a (negative/positive) literal --
+	// PrefixExpression.String() emits -1 without wrapping, but it's still
+	// safely an atomic default-value form.
+	if pe, ok := expr.(*PrefixExpression); ok && (pe.Operator == "-" || pe.Operator == "+") {
+		switch pe.Right.(type) {
+		case *IntegerLiteral, *FloatLiteral:
+			isLiteral = true
+		}
+	}
 	if !isLiteral && !hasParens {
 		val = "(" + val + ")"
 	}
