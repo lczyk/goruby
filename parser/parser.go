@@ -3661,13 +3661,12 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 		return contextCallExpression
 	}
 
-	// `a.b-1` / `a.b+1` (no space either side of - / + before a numeric
-	// literal) is subtraction / addition on the call's result, not a
-	// call with -1 / +1 as the arg. MRI distinguishes by whitespace.
+	// `a.b-x` / `a.b+x` (no whitespace before - / +) is subtraction /
+	// addition on the call's result, not a call with -x / +x as the
+	// arg. MRI's rule: a unary - / + requires whitespace before the
+	// operator; with no leading whitespace it's infix.
 	if (p.peekTokenIs(token.MINUS) || p.peekTokenIs(token.PLUS)) &&
-		!p.peekToken.HadWhitespace &&
-		(p.peek2TokenIs(token.INT) || p.peek2TokenIs(token.FLOAT)) &&
-		!p.spacedOperator(p.peekToken, p.peek2Token) {
+		!p.peekToken.HadWhitespace {
 		contextCallExpression.Arguments = []ast.Expression{}
 		return contextCallExpression
 	}
