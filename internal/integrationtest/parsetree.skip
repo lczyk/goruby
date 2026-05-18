@@ -102,7 +102,6 @@ src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_iterator.rb: 
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_lazy_enumerator.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_numeric.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_system.rb: goruby String() output rejected by MRI
-src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_thread.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_whileuntil.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/ruby-extra/parser/loops_control.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/gems/brain-flak/Interpreter.rb: goruby String() output rejected by MRI

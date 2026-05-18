@@ -1974,6 +1974,16 @@ func lexHeredocBody(l *Lexer) StateFn {
 					}
 				}
 			}
+			// Require the delim to occupy the rest of the line: peek the
+			// next char and ensure it's `\n` or eof. Without this check, a
+			// body line like `};#1` matches the `};` delim by prefix and
+			// terminates the heredoc early, swallowing later content.
+			if matched {
+				peek := l.peek()
+				if peek != '\n' && peek != eof {
+					matched = false
+				}
+			}
 
 			if matched {
 				after := l.pos

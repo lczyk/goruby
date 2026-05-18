@@ -1301,8 +1301,10 @@ func TestLexerHeredocBodySquigLiteral(t *testing.T) {
 // --- lexHeredocBody: partial delimiter match ---
 
 func TestLexerHeredocBodyPartialDelimMatch(t *testing.T) {
-	// "ENDING" starts with "END" -- matching loop stops at the prefix, treating it as delim.
-	// The "ING" part is consumed as a trailer on the delim line.
+	// Per MRI, `ENDING` is body content -- only `END` on its own line is the
+	// delim. The earlier behaviour matched `END` as a prefix and treated
+	// `ING` as a trailer, which contradicts MRI and broke nested heredocs
+	// whose body text happened to start a line with a delim-prefix.
 	l := New("<<'END'\ndata\nENDING\nEND\n")
 	tok := l.NextToken()
 	if tok.Type != token.STRING_BEG {
@@ -1312,9 +1314,8 @@ func TestLexerHeredocBodyPartialDelimMatch(t *testing.T) {
 	if tok.Type != token.STRING_CONTENT {
 		t.Fatalf("expected STRING_CONTENT, got %s", tok.Type)
 	}
-	// "data\n" is content. "ENDING" matches "END" prefix, rest is trailer.
-	if tok.Literal != "data\n" {
-		t.Errorf("expected 'data\\n', got %q", tok.Literal)
+	if tok.Literal != "data\nENDING\n" {
+		t.Errorf("expected %q, got %q", "data\nENDING\n", tok.Literal)
 	}
 }
 
