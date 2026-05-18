@@ -44,3 +44,6 @@ bin/
 
 # Local cache for MRI parsetree dumps (parsetree_test.go)
 .cache/
+
+# Fuzz test corpus and failures
+parser/testdata/
