@@ -159,6 +159,11 @@ var (
 	// 1.9 nd_alen leaks an uninitialised value on the tail NODE_ARRAY entry --
 	// drop nd_alen entirely (redundant with sibling count anyway).
 	reNdAlen = regexp.MustCompile(`(?m)^.*\bnd_alen: .*$\n?`)
+	// __FILE__ / __dir__ substitution via SourceFileNode (prism) or
+	// NODE_STR with the tempfile path -- different tempfiles per run so
+	// the path text differs even when the source is identical.
+	rePrismSourceFile = regexp.MustCompile(`(?m)^.*\+-- filepath: ".*parsetree-[0-9]+\.rb".*$\n?`)
+	reNdLitTempPath   = regexp.MustCompile(`(?m)^.*\+- nd_lit: ".*parsetree-[0-9]+\.rb".*$\n?`)
 )
 
 func normalizeParsetree(s string) string {
@@ -170,6 +175,8 @@ func normalizeParsetree(s string) string {
 	s = rePrismTokenLoc.ReplaceAllString(s, "")
 	s = reTrailingStar.ReplaceAllString(s, ")")
 	s = reNdAlen.ReplaceAllString(s, "")
+	s = rePrismSourceFile.ReplaceAllString(s, "")
+	s = reNdLitTempPath.ReplaceAllString(s, "")
 	return s
 }
 
