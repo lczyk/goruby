@@ -4654,12 +4654,12 @@ func TestEncodingKeyword(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	}
-	str, ok := stmt.Expression.(*ast.StringLiteral)
+	enc, ok := stmt.Expression.(*ast.Keyword__ENCODING__)
 	if !ok {
-		t.Fatalf("expected *ast.StringLiteral, got %T", stmt.Expression)
+		t.Fatalf("expected *ast.Keyword__ENCODING__, got %T", stmt.Expression)
 	}
-	if str.Value != "UTF-8" {
-		t.Errorf("expected Value 'UTF-8', got %q", str.Value)
+	if enc.Token.Literal != "__ENCODING__" {
+		t.Errorf("expected Token.Literal '__ENCODING__', got %q", enc.Token.Literal)
 	}
 }
 

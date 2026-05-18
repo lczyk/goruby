@@ -1701,7 +1701,7 @@ func (p *parser) parseKeyword__DIR__() ast.Expression {
 
 func (p *parser) parseEncodingKeyword() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	return &ast.StringLiteral{Token: p.curToken, Value: "UTF-8"}
+	return &ast.Keyword__ENCODING__{Token: p.curToken}
 }
 
 func (p *parser) parseSplatExpression() ast.Expression {

@@ -647,6 +647,18 @@ func (m *Keyword__METHOD__) Pos() int             { return m.Token.Pos }
 func (m *Keyword__METHOD__) End() int             { return m.Token.Pos + 10 }
 func (m *Keyword__METHOD__) TokenLiteral() string { return m.Token.Literal }
 
+// Keyword__ENCODING__ represents __ENCODING__ in the AST
+type Keyword__ENCODING__ struct {
+	Token token.Token
+}
+
+func (e *Keyword__ENCODING__) String() string       { return e.Token.Literal }
+func (e *Keyword__ENCODING__) expressionNode()      {}
+func (e *Keyword__ENCODING__) literalNode()         {}
+func (e *Keyword__ENCODING__) Pos() int             { return e.Token.Pos }
+func (e *Keyword__ENCODING__) End() int             { return e.Token.Pos + 12 }
+func (e *Keyword__ENCODING__) TokenLiteral() string { return e.Token.Literal }
+
 // UsingExpression represents a `using Module` statement
 type UsingExpression struct {
 	Token token.Token // the using keyword

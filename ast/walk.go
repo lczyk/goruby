@@ -302,6 +302,9 @@ func Walk(v Visitor, node Node) {
 	case *Keyword__METHOD__:
 		// leaf
 
+	case *Keyword__ENCODING__:
+		// leaf
+
 	case *UsingExpression:
 		Walk(v, n.Expr)
 
