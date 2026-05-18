@@ -24,16 +24,6 @@ import (
 var (
 	// Warning banner some MRIs prepend to --dump=parsetree output.
 	reHeader = regexp.MustCompile(`(?s)^#+\n## Do NOT.*?\n#+\n+`)
-	// Prism (3.4+) node header: "@ NodeName (location: (L,C)-(L,C))".
-	rePrismLocation = regexp.MustCompile(` \(location: \([^)]+\)-\([^)]+\)\)`)
-	// 1.9 ... 3.0 "(line: N)" or "(line: N, location: ...)" or "(line: N, code_range: ...)".
-	reLineLocation = regexp.MustCompile(` \(line: \d+(?:, (?:location|code_range): \([^)]+\)-\([^)]+\))?\)`)
-	// Prism per-token _loc lines: "+-- foo_loc: nil" or "+-- foo_loc: (L,C)-(L,C) = \"literal\"".
-	// Handles escaped quotes inside the literal.
-	rePrismTokenLoc = regexp.MustCompile(`(?m)^.*_loc: (?:nil|\([^)]+\)-\([^)]+\) = "(?:[^"\\]|\\.)*")$\n?`)
-	// 1.9 nd_alen leaks an uninitialised value on the tail NODE_ARRAY entry;
-	// drop nd_alen entirely (redundant with sibling count anyway).
-	reNdAlen = regexp.MustCompile(`(?m)^.*\bnd_alen: .*$\n?`)
 	// __FILE__ / __dir__ substitution via SourceFileNode (prism) or
 	// NODE_STR with the tempfile path: different tempfiles per run so the
 	// path text differs even when the source is identical.
@@ -108,22 +98,22 @@ func normalizeOnce(s string, magic map[int]bool) (string, bool) {
 		s = maskLineMagic(s, magic)
 	}
 	if strings.Contains(s, "(location: ") {
-		s = rePrismLocation.ReplaceAllString(s, "")
+		s = stripPrismLocation(s)
 	}
 	if strings.Contains(s, "(id: ") {
 		s = stripIDLineLocation(s)
 	}
 	if strings.Contains(s, "(line: ") {
-		s = reLineLocation.ReplaceAllString(s, "")
+		s = stripLineLocation(s)
 	}
 	if strings.Contains(s, "_loc:") {
-		s = rePrismTokenLoc.ReplaceAllString(s, "")
+		s = stripPrismTokenLoc(s)
 	}
 	if strings.Contains(s, "*") {
 		s = stripTrailingStars(s)
 	}
 	if strings.Contains(s, "nd_alen:") {
-		s = reNdAlen.ReplaceAllString(s, "")
+		s = stripNdAlen(s)
 	}
 	if strings.Contains(s, "+- nd_") {
 		s = stripSiblingIndex(s)
@@ -454,6 +444,269 @@ func stripSiblingIndex(s string) string {
 	return b.String()
 }
 
+// stripPrismLocation removes ` (location: (D,D)-(D,D))` substrings.
+// Equivalent to the regex ` \(location: \([^)]+\)-\([^)]+\)\)`. Each
+// `[^)]+` requires >= 1 char (no empty `()`).
+func stripPrismLocation(s string) string {
+	const trigger = " (location: "
+	if !strings.Contains(s, trigger) {
+		return s
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	i := 0
+	for i < len(s) {
+		j := strings.Index(s[i:], trigger)
+		if j < 0 {
+			b.WriteString(s[i:])
+			break
+		}
+		j += i
+		end, ok := scanParenPair(s, j+len(trigger))
+		if !ok || end >= len(s) || s[end] != ')' {
+			b.WriteString(s[i : j+1])
+			i = j + 1
+			continue
+		}
+		b.WriteString(s[i:j])
+		i = end + 1
+	}
+	return b.String()
+}
+
+// stripLineLocation removes ` (line: D)` and
+// ` (line: D, (location|code_range): (D,D)-(D,D))` substrings.
+// Equivalent to the regex ` \(line: \d+(?:, (?:location|code_range): \([^)]+\)-\([^)]+\))?\)`.
+func stripLineLocation(s string) string {
+	const trigger = " (line: "
+	if !strings.Contains(s, trigger) {
+		return s
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	i := 0
+	for i < len(s) {
+		j := strings.Index(s[i:], trigger)
+		if j < 0 {
+			b.WriteString(s[i:])
+			break
+		}
+		j += i
+		end, ok := matchLineLocation(s, j)
+		if !ok {
+			b.WriteString(s[i : j+1])
+			i = j + 1
+			continue
+		}
+		b.WriteString(s[i:j])
+		i = end
+	}
+	return b.String()
+}
+
+// matchLineLocation tries to match the reLineLocation pattern starting at
+// s[start] (which must point at the leading space). Returns the end offset
+// (exclusive) and ok.
+func matchLineLocation(s string, start int) (int, bool) {
+	i := start + len(" (line: ")
+	if i > len(s) {
+		return 0, false
+	}
+	d, ok := scanDigits(s, i)
+	if !ok {
+		return 0, false
+	}
+	i = d
+	if strings.HasPrefix(s[i:], ", location: ") {
+		i += len(", location: ")
+		if i, ok = scanParenPair(s, i); !ok {
+			return 0, false
+		}
+	} else if strings.HasPrefix(s[i:], ", code_range: ") {
+		i += len(", code_range: ")
+		if i, ok = scanParenPair(s, i); !ok {
+			return 0, false
+		}
+	}
+	if i >= len(s) || s[i] != ')' {
+		return 0, false
+	}
+	return i + 1, true
+}
+
+// stripPrismTokenLoc drops matches of the regex
+// `(?m)^.*_loc: (?:nil|\([^)]+\)-\([^)]+\) = "(?:[^"\\]|\\.)*")$\n?`. Match
+// can span newlines because `[^)]` and `[^"\\]` accept `\n` in RE2 / Go's
+// regexp. So we scan the whole string, not line-by-line.
+func stripPrismTokenLoc(s string) string {
+	if !strings.Contains(s, "_loc:") {
+		return s
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	i := 0
+	for i < len(s) {
+		// `i` is at start of a line. Find the line's end (for greedy `.*`
+		// rightmost-first search of `_loc: ` on this line) and try to
+		// match starting from each candidate position on this line.
+		nl := strings.IndexByte(s[i:], '\n')
+		var lineEnd int
+		if nl < 0 {
+			lineEnd = len(s)
+		} else {
+			lineEnd = i + nl
+		}
+		if end, ok := tryMatchPrismTokenLoc(s, i, lineEnd); ok {
+			// Match found. Skip up to end + optional trailing `\n`.
+			i = end
+			if i < len(s) && s[i] == '\n' {
+				i++
+			}
+			continue
+		}
+		b.WriteString(s[i:lineEnd])
+		if nl < 0 {
+			break
+		}
+		b.WriteByte('\n')
+		i = lineEnd + 1
+	}
+	return b.String()
+}
+
+// tryMatchPrismTokenLoc tries to find a match of
+// `^.*_loc: (?:nil|\([^)]+\)-\([^)]+\) = "(?:[^"\\]|\\.)*")$`
+// whose start is on the line s[lineStart:lineEnd]. Returns the offset
+// where the match ends (`$` anchor position), exclusive of the optional
+// trailing `\n`. Match body may extend past lineEnd if the string literal
+// contains an unescaped newline.
+func tryMatchPrismTokenLoc(s string, lineStart, lineEnd int) (int, bool) {
+	tag := "_loc: "
+	line := s[lineStart:lineEnd]
+	// Try `_loc: ` positions on the line rightmost-first to mirror the
+	// greedy `.*` preference.
+	from := len(line)
+	for {
+		rel := strings.LastIndex(line[:from], tag)
+		if rel < 0 {
+			return 0, false
+		}
+		start := lineStart + rel + len(tag)
+		if end, ok := matchPrismTokenLocSuffix(s, start); ok {
+			return end, true
+		}
+		from = rel
+		if from == 0 {
+			return 0, false
+		}
+	}
+}
+
+// matchPrismTokenLocSuffix tries the suffix
+// `(?:nil|\([^)]+\)-\([^)]+\) = "(?:[^"\\]|\\.)*")$` starting at s[start].
+// Returns the end offset (where the `$` anchor must hold -- just before
+// `\n` or at EOF).
+func matchPrismTokenLocSuffix(s string, start int) (int, bool) {
+	// Branch 1: `nil`.
+	if strings.HasPrefix(s[start:], "nil") {
+		end := start + 3
+		if end == len(s) || s[end] == '\n' {
+			return end, true
+		}
+	}
+	// Branch 2: `\([^)]+\)-\([^)]+\) = "(?:[^"\\]|\\.)*"`.
+	i, ok := scanParenPair(s, start)
+	if !ok {
+		return 0, false
+	}
+	if !strings.HasPrefix(s[i:], " = \"") {
+		return 0, false
+	}
+	i += len(" = \"")
+	for i < len(s) {
+		c := s[i]
+		if c == '"' {
+			end := i + 1
+			if end == len(s) || s[end] == '\n' {
+				return end, true
+			}
+			return 0, false
+		}
+		if c == '\\' {
+			if i+1 >= len(s) {
+				return 0, false
+			}
+			i += 2
+			continue
+		}
+		i++
+	}
+	return 0, false
+}
+
+// stripNdAlen drops whole lines containing `nd_alen:`. Equivalent to the
+// regex `(?m)^.*\bnd_alen: .*$\n?`. The `\b` requires `nd_alen` to start
+// at a word boundary -- a non-`[A-Za-z0-9_]` (or start of line) before `n`.
+func stripNdAlen(s string) string {
+	const tag = "nd_alen: "
+	if !strings.Contains(s, tag) {
+		return s
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	i := 0
+	for i < len(s) {
+		nl := strings.IndexByte(s[i:], '\n')
+		var lineEnd int
+		if nl < 0 {
+			lineEnd = len(s)
+		} else {
+			lineEnd = i + nl
+		}
+		line := s[i:lineEnd]
+		if lineHasWordBoundaryTag(line, tag) {
+			if nl < 0 {
+				break
+			}
+			i = lineEnd + 1
+			continue
+		}
+		b.WriteString(line)
+		if nl < 0 {
+			break
+		}
+		b.WriteByte('\n')
+		i = lineEnd + 1
+	}
+	return b.String()
+}
+
+// lineHasWordBoundaryTag reports whether line contains tag at a position
+// preceded by a non-word char (or the start of the line) -- mirrors the
+// regex `\b<tag>` semantics.
+func lineHasWordBoundaryTag(line, tag string) bool {
+	from := 0
+	for from <= len(line) {
+		j := strings.Index(line[from:], tag)
+		if j < 0 {
+			return false
+		}
+		j += from
+		if j == 0 || !isWordByte(line[j-1]) {
+			return true
+		}
+		from = j + 1
+	}
+	return false
+}
+
+func isWordByte(c byte) bool {
+	return (c >= 'A' && c <= 'Z') ||
+		(c >= 'a' && c <= 'z') ||
+		(c >= '0' && c <= '9') ||
+		c == '_'
+}
+
 // lineMagicLines returns the 1-indexed source lines that contain a
 // `__LINE__` token. Cheap textual scan -- string literals / comments that
 // contain the literal text `__LINE__` would also match, but those almost
@@ -493,6 +746,11 @@ func maskLineMagic(dump string, magic map[int]bool) string {
 	lines := strings.Split(dump, "\n")
 	changed := false
 	for i, l := range lines {
+		// Per-line gate: skip the regex unless the line at least contains
+		// the header marker. Most lines don't and the regex is hot.
+		if !strings.Contains(l, "NODE_LIT") {
+			continue
+		}
 		m := reNodeLitHeader.FindStringSubmatch(l)
 		if m == nil {
 			continue

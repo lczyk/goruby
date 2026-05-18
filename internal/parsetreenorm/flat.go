@@ -37,6 +37,11 @@ func toFlat(s string) string {
 	if strings.TrimSpace(s) == "" {
 		return s
 	}
+	// Fast-path: already-flat input has no `@ ` header anywhere. Skip
+	// parseTree entirely (saves 1 alloc on the idempotent path).
+	if !strings.Contains(s, "@ ") {
+		return s
+	}
 	root, ok := parseTree(s)
 	if !ok || root == nil {
 		return s
