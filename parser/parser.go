@@ -3479,17 +3479,9 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 		}
 		if p.peekTokenOneOf(token.CAPTURE, token.AND) {
 			p.acceptOneOf(token.CAPTURE, token.AND)
-			// Anonymous block forwarding: & without name -- ruby 3.1+
-			if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.NEWLINE, token.SEMICOLON, token.EOF) {
-				if !p.version.AtLeast(ruby31) {
-					p.versionError(ruby31, "anonymous block forwarding")
-				}
-				if hasDelimiters {
-					p.accept(endToken)
-				}
-				return identifiers
-			}
-			// Named block capture: let parseFunctionLiteral handle it
+			// Leave curToken at `&` so parseFunctionLiteral /
+			// parseBlock can build the CapturedBlock node. Anonymous
+			// (ruby 3.1+) and named both fall through to the caller.
 			return identifiers
 		}
 		// Destructured or regular param
