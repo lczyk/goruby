@@ -5426,11 +5426,11 @@ func TestPercentLiterals(t *testing.T) {
 		// bare % -- same as %Q
 		{"bare % simple", "%(hello)", "'hello'"},
 		// %w -- word array (non-interpolating)
-		{"%w words", "%w[a b c]", `["a", "b", "c"]`},
+		{"%w words", "%w[a b c]", "['a', 'b', 'c']"},
 		{"%w empty", "%w[]", `[]`},
-		{"%w extra whitespace", "%w[  a  b  ]", `["a", "b"]`},
+		{"%w extra whitespace", "%w[  a  b  ]", "['a', 'b']"},
 		// %W -- word array (interpolating)
-		{"%W words", "%W[a b c]", `["a", "b", "c"]`},
+		{"%W words", "%W[a b c]", "['a', 'b', 'c']"},
 		// %i -- symbol array (non-interpolating)
 		{"%i symbols", "%i[foo bar]", "[:foo, :bar]"},
 		// %I -- symbol array (interpolating)

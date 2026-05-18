@@ -4114,7 +4114,7 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 					flushWord()
 				}
 				if isSymbol {
-					var symValue ast.Expression = &ast.StringLiteral{Value: w}
+					var symValue ast.Expression = &ast.StringLiteral{Token: beg, Value: w}
 					if isSimpleIdent(w) {
 						symValue = &ast.Identifier{Value: w}
 					}
@@ -4123,7 +4123,7 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 						Value: symValue,
 					})
 				} else {
-					curWord = append(curWord, &ast.StringLiteral{Value: w})
+					curWord = append(curWord, &ast.StringLiteral{Token: beg, Value: w})
 				}
 				if j == len(words)-1 && hasTrailingWS {
 					flushWord()
@@ -4241,7 +4241,7 @@ func (p *parser) buildSymbolFromPercent(beg token.Token, parts []ast.Expression)
 	}
 	if len(parts) == 1 {
 		if sc, ok := parts[0].(*ast.StringContent); ok {
-			var symValue ast.Expression = &ast.StringLiteral{Value: sc.Value}
+			var symValue ast.Expression = &ast.StringLiteral{Token: beg, Value: sc.Value}
 			if isSimpleIdent(sc.Value) {
 				symValue = &ast.Identifier{Value: sc.Value}
 			}

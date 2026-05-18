@@ -921,7 +921,11 @@ func (sl *StringLiteral) String() string {
 			open, close = "\"", "\""
 		}
 	default:
-		open, close = "\"", "\""
+		if sl.Parts == nil && (strings.Contains(sl.Value, "#{") || !strings.Contains(sl.Value, "'")) {
+			open, close = "'", "'"
+		} else {
+			open, close = "\"", "\""
+		}
 	}
 	if sl.Parts != nil {
 		if open == "'" {
