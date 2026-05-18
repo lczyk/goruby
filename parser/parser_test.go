@@ -3140,7 +3140,7 @@ func TestCallExpressionParameterParsing(t *testing.T) {
 		{
 			input:         `add "foo";`,
 			expectedIdent: "add",
-			expectedArgs:  []string{`"foo"`},
+			expectedArgs:  []string{"'foo'"},
 		},
 		{
 			input:         `add :foo;`,
@@ -4039,7 +4039,7 @@ func TestSymbolExpression(t *testing.T) {
 		},
 		{
 			`:"symbol";`,
-			`"symbol"`,
+			"'symbol'",
 		},
 		{
 			`:'symbol';`,
@@ -5422,9 +5422,9 @@ func TestPercentLiterals(t *testing.T) {
 		{"%q parens", "%q(hello)", `'hello'`},
 		{"%q braces", "%q{hello world}", `'hello world'`},
 		// %Q -- double-quoted string (interpolating)
-		{"%Q simple", "%Q(hello)", `"hello"`},
+		{"%Q simple", "%Q(hello)", "'hello'"},
 		// bare % -- same as %Q
-		{"bare % simple", "%(hello)", `"hello"`},
+		{"bare % simple", "%(hello)", "'hello'"},
 		// %w -- word array (non-interpolating)
 		{"%w words", "%w[a b c]", `["a", "b", "c"]`},
 		{"%w empty", "%w[]", `[]`},

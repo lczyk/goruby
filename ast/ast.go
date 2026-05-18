@@ -914,7 +914,7 @@ func (sl *StringLiteral) String() string {
 	switch sl.Token.Type {
 	case token.XSTR, token.XSTR_BEG:
 		open, close = "`", "`"
-	case token.STRING:
+	case token.STRING, token.STRING_BEG:
 		if strings.Contains(sl.Value, "#{") || !strings.Contains(sl.Value, "'") {
 			open, close = "'", "'"
 		} else {
