@@ -3228,6 +3228,15 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 			identifiers = append(identifiers, &ast.FunctionParameter{IsSplat: true})
 			return p.parseParametersTail(identifiers, hasDelimiters, endToken)
 		}
+		// Named rest: *x
+		if p.peekTokenOneOf(token.IDENT, token.CONST) {
+			p.acceptOneOf(token.IDENT, token.CONST)
+		}
+		identifiers = append(identifiers, &ast.FunctionParameter{
+			Name:    &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
+			IsSplat: true,
+		})
+		return p.parseParametersTail(identifiers, hasDelimiters, endToken)
 	}
 	if p.peekTokenOneOf(token.CAPTURE, token.AND) {
 		p.acceptOneOf(token.CAPTURE, token.AND)
@@ -3293,6 +3302,15 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 				identifiers = append(identifiers, &ast.FunctionParameter{IsSplat: true})
 				continue
 			}
+			// Named rest: *x
+			if p.peekTokenOneOf(token.IDENT, token.CONST) {
+				p.acceptOneOf(token.IDENT, token.CONST)
+			}
+			identifiers = append(identifiers, &ast.FunctionParameter{
+				Name:    &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
+				IsSplat: true,
+			})
+			continue
 		}
 		if p.peekTokenOneOf(token.CAPTURE, token.AND) {
 			p.acceptOneOf(token.CAPTURE, token.AND)
