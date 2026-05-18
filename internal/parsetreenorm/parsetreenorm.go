@@ -92,25 +92,59 @@ func normalize(s string, magic map[int]bool) string {
 }
 
 func normalizeOnce(s string, magic map[int]bool) string {
-	s = reHeader.ReplaceAllString(s, "")
-	s = reLeadingHash.ReplaceAllString(s, "")
+	// Each pass is gated by a cheap substring check -- the regex engine is
+	// ~60% of normalisation CPU and a full match-attempt on a multi-MB dump
+	// dwarfs a strings.Contains scan. Triggers are necessary substrings of
+	// any match the regex could find; absence means the regex can't match.
+	if strings.Contains(s, "## Do NOT") {
+		s = reHeader.ReplaceAllString(s, "")
+	}
+	if strings.HasPrefix(s, "#") || strings.Contains(s, "\n#") {
+		s = reLeadingHash.ReplaceAllString(s, "")
+	}
 	// __LINE__ masking depends on (line: N) / (location: (L,C)-...) info
 	// that the strip passes below remove, so it must run first.
 	if len(magic) > 0 {
 		s = maskLineMagic(s, magic)
 	}
-	s = rePrismLocation.ReplaceAllString(s, "")
-	s = reLineIDLocation.ReplaceAllString(s, "")
-	s = reLineLocation.ReplaceAllString(s, "")
-	s = rePrismTokenLoc.ReplaceAllString(s, "")
-	s = reTrailingStar.ReplaceAllString(s, ")")
-	s = reNodeNameStar.ReplaceAllString(s, "$1")
-	s = reNdAlen.ReplaceAllString(s, "")
-	s = reSiblingIndex.ReplaceAllString(s, "$1:")
-	s = rePrismSourceFile.ReplaceAllString(s, "")
-	s = reNdLitTempPath.ReplaceAllString(s, "")
-	s = stripNullBeginChildren(s)
-	s = unwrapSingleChildBlocks(s)
+	if strings.Contains(s, "(location: ") {
+		s = rePrismLocation.ReplaceAllString(s, "")
+	}
+	if strings.Contains(s, "(id: ") {
+		s = reLineIDLocation.ReplaceAllString(s, "")
+	}
+	if strings.Contains(s, "(line: ") {
+		s = reLineLocation.ReplaceAllString(s, "")
+	}
+	if strings.Contains(s, "_loc:") {
+		s = rePrismTokenLoc.ReplaceAllString(s, "")
+	}
+	if strings.Contains(s, ")*") {
+		s = reTrailingStar.ReplaceAllString(s, ")")
+	}
+	if strings.Contains(s, "*") {
+		s = reNodeNameStar.ReplaceAllString(s, "$1")
+	}
+	if strings.Contains(s, "nd_alen:") {
+		s = reNdAlen.ReplaceAllString(s, "")
+	}
+	if strings.Contains(s, "+- nd_") {
+		s = reSiblingIndex.ReplaceAllString(s, "$1:")
+	}
+	if strings.Contains(s, "parsetree-") {
+		if strings.Contains(s, "+-- filepath:") {
+			s = rePrismSourceFile.ReplaceAllString(s, "")
+		}
+		if strings.Contains(s, "+- nd_lit:") {
+			s = reNdLitTempPath.ReplaceAllString(s, "")
+		}
+	}
+	if strings.Contains(s, "NODE_BEGIN") {
+		s = stripNullBeginChildren(s)
+	}
+	if strings.Contains(s, "NODE_BLOCK") {
+		s = unwrapSingleChildBlocks(s)
+	}
 	return s
 }
 
