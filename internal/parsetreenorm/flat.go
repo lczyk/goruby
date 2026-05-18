@@ -46,6 +46,7 @@ func toFlat(s string) string {
 	if !ok || root == nil {
 		return s
 	}
+	normalizeTree(root)
 	var b strings.Builder
 	b.Grow(len(s))
 	// Root: just the kind as a single line.
@@ -53,6 +54,84 @@ func toFlat(s string) string {
 	b.WriteByte('\n')
 	emitFlat(&b, root, root.kind)
 	return b.String()
+}
+
+// normalizeTree recursively collapses BLOCK chains made trivial by earlier
+// text-level passes:
+//
+//  1. The text-level stripNullBeginChildren removes nd_head children that
+//     point to NODE_BEGIN(null). On MRI 2.x single-line def bodies
+//     (`def f(); X; end`), this leaves a NODE_BLOCK node with no nd_head,
+//     only an nd_next pointing into the rest of the stmt-chain. That
+//     dangling BLOCK is semantically a no-op wrapper around the chain --
+//     collapse it.
+//  2. After (1), a NODE_BLOCK with a single nd_head and nil nd_next
+//     (or no nd_next) is a 1-element list -- replace with the head.
+//
+// Together these produce the canonical body shape that matches what
+// multi-line def emits naturally.
+func normalizeTree(n *ptNode) {
+	if n == nil {
+		return
+	}
+	for i := range n.fields {
+		f := &n.fields[i]
+		if f.child == nil {
+			continue
+		}
+		normalizeTree(f.child)
+		// After recursion, the child may itself be a now-trivial BLOCK.
+		// Hoist its content up one level.
+		if replacement, ok := blockTrivialContent(f.child); ok {
+			if replacement == nil {
+				// Empty content -> mark as null.
+				f.child = nil
+				f.null = true
+			} else {
+				f.child = replacement
+			}
+		}
+	}
+}
+
+// blockTrivialContent returns (replacement, true) if n is a NODE_BLOCK
+// that should be collapsed: either it has only an nd_next chain (head
+// was stripped) or a single nd_head with no surviving nd_next.
+// Returns (nil, true) for a fully-empty BLOCK (caller should set null).
+func blockTrivialContent(n *ptNode) (*ptNode, bool) {
+	if n.kind != "NODE_BLOCK" {
+		return nil, false
+	}
+	var head *ptNode
+	var next *ptNode
+	var nextNull bool
+	for _, f := range n.fields {
+		switch f.name {
+		case "nd_head":
+			if head != nil { // already have one head -- this is a multi-head BLOCK
+				return nil, false
+			}
+			head = f.child
+		case "nd_next":
+			next = f.child
+			nextNull = f.null
+		}
+	}
+	switch {
+	case head == nil && next == nil && !nextNull:
+		// no children at all -- empty
+		return nil, true
+	case head == nil && nextNull:
+		// `BLOCK[<stripped>, nil]` -> empty
+		return nil, true
+	case head == nil && next != nil:
+		// `BLOCK[<stripped>, REST]` -> REST
+		return next, true
+	case head != nil && (next == nil || nextNull):
+		// `BLOCK[X, nil]` -> X
+		return head, true
+	}
+	return nil, false
 }
 
 // --- parser -----------------------------------------------------------------
