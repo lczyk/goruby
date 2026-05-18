@@ -184,7 +184,7 @@ func mriDumpParsetree(rubyBin, src string) mriDumpResult {
 		}
 		return mriDumpResult{fatal: fmt.Errorf("MRI run: %w", runErr)}
 	}
-	return mriDumpResult{tree: normalizeParsetree(stdout.String())}
+	return mriDumpResult{tree: parsetreenorm.Normalize(stdout.String())}
 }
 
 // --- cache layer (tree1 only -- src1 never changes per fixture) -------------
@@ -202,7 +202,7 @@ func cachePath(fullVer, src string) string {
 func mriDumpCached(rubyBin, fullVer, src string) mriDumpResult {
 	cp := cachePath(fullVer, src)
 	if data, err := os.ReadFile(cp); err == nil {
-		return mriDumpResult{tree: normalizeParsetree(string(data))}
+		return mriDumpResult{tree: parsetreenorm.Normalize(string(data))}
 	}
 	res := mriDumpParsetree(rubyBin, src)
 	if res.fatal == nil && res.parseErr == nil {
