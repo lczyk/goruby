@@ -1812,6 +1812,15 @@ func parseUndefName(p *parser) *ast.Identifier {
 		}
 		return &ast.Identifier{Token: p.curToken, Value: sym.(*ast.SymbolLiteral).Value.String()}
 	}
+	if p.currentTokenIs(token.LBRACKET) && p.peekTokenIs(token.RBRACKET) {
+		p.nextToken()
+		name := "[]"
+		if p.peekTokenIs(token.ASSIGN) {
+			name = "[]="
+			p.nextToken()
+		}
+		return &ast.Identifier{Token: p.curToken, Value: name}
+	}
 	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 }
 
