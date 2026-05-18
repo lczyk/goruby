@@ -3474,7 +3474,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 			pName = strings.TrimSuffix(pName, ":")
 		}
 		pIdent := &ast.FunctionParameter{Name: &ast.Identifier{Token: p.curToken, Value: pName}, IsKeyword: isKw}
-		defPrecLoop := precPrefix
+		defPrecLoop := precAssignment
 		if endToken == token.PIPE {
 			defPrecLoop = precOr
 		}
@@ -3657,6 +3657,17 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 	if p.peekToken.HadWhitespace && p.peekToken.Type.IsOperator() &&
 		!p.peek2TokenIs(token.NEWLINE) && !p.peek2TokenIs(token.EOF) &&
 		p.spacedOperator(p.peekToken, p.peek2Token) {
+		contextCallExpression.Arguments = []ast.Expression{}
+		return contextCallExpression
+	}
+
+	// `a.b-1` / `a.b+1` (no space either side of - / + before a numeric
+	// literal) is subtraction / addition on the call's result, not a
+	// call with -1 / +1 as the arg. MRI distinguishes by whitespace.
+	if (p.peekTokenIs(token.MINUS) || p.peekTokenIs(token.PLUS)) &&
+		!p.peekToken.HadWhitespace &&
+		(p.peek2TokenIs(token.INT) || p.peek2TokenIs(token.FLOAT)) &&
+		!p.spacedOperator(p.peekToken, p.peek2Token) {
 		contextCallExpression.Arguments = []ast.Expression{}
 		return contextCallExpression
 	}
