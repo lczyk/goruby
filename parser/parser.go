@@ -2509,7 +2509,23 @@ func (p *parser) parseInfixExpression(left ast.Expression) ast.Expression {
 		p.nextToken()
 	}
 	expression.Right = p.parseExpression(precedence)
+	// MRI: && RHS absorbs assignment (a && b = c -> a && (b = c)). Can't lower
+	// && precedence wholesale -- that would also absorb ||, breaking
+	// a && b || c. Post-process instead.
+	if expression.Operator == "&&" && p.peekTokenIs(token.ASSIGN) && isAssignableTarget(expression.Right) {
+		p.nextToken() // = becomes current
+		expression.Right = p.parseAssignment(expression.Right)
+	}
 	return expression
+}
+
+func isAssignableTarget(e ast.Expression) bool {
+	switch e.(type) {
+	case *ast.Identifier, *ast.Global, *ast.ClassVariable, *ast.IndexExpression,
+		*ast.InstanceVariable, *ast.ScopedIdentifier, *ast.ContextCallExpression:
+		return true
+	}
+	return false
 }
 
 func (p *parser) parseIndexExpression(left ast.Expression) ast.Expression {
