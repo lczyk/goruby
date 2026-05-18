@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Wrap `go test` output in pytest-style dots.
+#   .  = PASS, F = FAIL, s = SKIP
+# Failing test names are buffered and replayed at the end with their captured
+# output. Successful / skipped test logs (t.Log / t.Skip messages) are
+# suppressed -- they would otherwise hide the dot stream behind noise.
+# `ok pkg` / `FAIL pkg` summary lines pass through unchanged.
+# Exit code mirrors the wrapped command.
+set -o pipefail
+
+"$@" | awk '
+function flush_dots() { if (in_dots) { printf "\n"; in_dots = 0; cnt_in_row = 0 } }
+function emit(ch) {
+    printf "%s", ch
+    fflush()
+    in_dots = 1
+    if (++cnt_in_row >= 80) { printf "\n"; cnt_in_row = 0 }
+}
+{
+    # collect captured output for failing tests
+    if (capturing) {
+        if ($0 ~ /^[[:space:]]*--- (PASS|FAIL|SKIP):/ || $0 ~ /^[[:space:]]*=== /) {
+            capturing = 0
+        } else {
+            fail_buf[nf] = fail_buf[nf] $0 "\n"
+        }
+    }
+
+    if ($0 ~ /^[[:space:]]*--- PASS:/) { emit("."); npass++; next }
+    if ($0 ~ /^[[:space:]]*--- FAIL:/) {
+        emit("F"); fails[++nf] = $0; capturing = 1; next
+    }
+    if ($0 ~ /^[[:space:]]*--- SKIP:/) { emit("s"); nskip++; next }
+    if ($0 ~ /^[[:space:]]*=== (RUN|PAUSE|CONT|NAME)/) { next }
+    if ($0 == "PASS" || $0 == "FAIL") { next }
+    # suppress in-test t.Log noise (file.go:NN: msg) -- shown on FAIL via fail_buf
+    if (match($0, "^[[:space:]]+[A-Za-z0-9_./-]+\\.go:[0-9]+:")) { next }
+    flush_dots()
+    print
+}
+END {
+    flush_dots()
+    if (nf > 0) {
+        printf "\nfailures:\n"
+        for (i = 1; i <= nf; i++) {
+            print fails[i]
+            if (length(fail_buf[i]) > 0) printf "%s", fail_buf[i]
+        }
+    }
+    printf "totals: %d passed, %d failed, %d skipped\n", npass+0, nf+0, nskip+0
+}
+'

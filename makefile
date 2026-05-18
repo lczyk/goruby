@@ -9,8 +9,12 @@ help:  ## Show this help
 GOTEST := $(shell command -v gotest 2>/dev/null || echo go test)
 
 .PHONY: unit
-unit:  ## Run unit tests with race detection
-	$(GOTEST) -race -timeout 2m ./...
+unit:  ## Run unit tests with race detection (pytest-style dots; pass V=1 for verbose)
+	@if [ "$(V)" = "1" ]; then \
+		$(GOTEST) -v -race -timeout 2m ./...; \
+	else \
+		./scripts/gotest-dots $(GOTEST) -v -race -timeout 2m ./...; \
+	fi
 
 .PHONY: test
 test: unit integration  ## Run all tests (unit + integration)
@@ -60,8 +64,12 @@ gems-clean:  ## Remove fetched gem fixtures
 	rm -rf internal/integrationtest/testdata/gems/
 
 .PHONY: integration
-integration: gems  ## Run integration smoke suite (requires fetched fixtures)
-	$(GOTEST) -v -tags=integration -race -timeout 10m ./internal/integrationtest/...
+integration: gems  ## Run integration smoke suite (pytest-style dots; pass V=1 for verbose)
+	@if [ "$(V)" = "1" ]; then \
+		$(GOTEST) -v -tags=integration -race -timeout 10m ./internal/integrationtest/...; \
+	else \
+		./scripts/gotest-dots $(GOTEST) -v -tags=integration -race -timeout 10m ./internal/integrationtest/...; \
+	fi
 
 .PHONY: rubies
 rubies:  ## Fetch and compile MRI ruby binaries for syntax verification
