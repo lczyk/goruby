@@ -631,21 +631,18 @@ func startLexer(l *Lexer) StateFn {
 			l.emit(token.ANDASSIGN_BITWISE)
 			return startLexer
 		}
-		// CAPTURE (block-pass &foo) vs AND (bitwise infix). MRI's rule
-		// (paraphrased): `&` is block-pass when followed by a letter
-		// with no whitespace after, AND either there's no value-like
-		// token before it (start of expression) OR there IS whitespace
-		// before it (so `a &b` is `a(&b)`, but `a&b` and `a & b` are
-		// infix).
-		if p := l.peek(); isLetter(p) {
-			afterLetter := true
-			noWSAfter := afterLetter // letter immediately follows &
-			if noWSAfter {
-				prevValue := lastTokIsValue(l.lastToken.Type)
-				if !prevValue || l.tokenHadWhitespace {
-					l.emit(token.CAPTURE)
-					return startLexer
-				}
+		// CAPTURE (block-pass &foo / &:sym) vs AND (bitwise infix).
+		// MRI's rule (paraphrased): `&` is block-pass when followed by
+		// a valid operand-start (letter, `:` for symbol, `@`/`$` for
+		// ivars/globals) with no whitespace after, AND either there's
+		// no value-like token before it (start of expression) OR there
+		// IS whitespace before it (so `a &b` is `a(&b)`, but `a&b` and
+		// `a & b` are infix).
+		if p := l.peek(); isLetter(p) || p == ':' || p == '@' || p == '$' {
+			prevValue := lastTokIsValue(l.lastToken.Type)
+			if !prevValue || l.tokenHadWhitespace {
+				l.emit(token.CAPTURE)
+				return startLexer
 			}
 		}
 		l.emit(token.AND)
