@@ -199,7 +199,11 @@ func (l *Lexer) ignore() {
 // backup steps back one rune.
 // Can be called only once per call of next.
 func (l *Lexer) backup() {
-	l.pos -= l.width
+	if l.pos >= l.width {
+		l.pos -= l.width
+	} else {
+		l.pos = 0
+	}
 }
 
 // consumeEscape advances past the remainder of an escape sequence.

@@ -681,7 +681,12 @@ type Identifier struct {
 	Value string
 }
 
-func (i *Identifier) String() string  { return i.Value }
+func (i *Identifier) String() string {
+	if i == nil {
+		return ""
+	}
+	return i.Value
+}
 func (i *Identifier) expressionNode() {}
 func (i *Identifier) literalNode()    {}
 
