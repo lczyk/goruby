@@ -55,8 +55,11 @@ func IsLiteral(n Node) bool {
 // A Program node is the root node within the AST.
 type Program struct {
 	pos        int
-	File       *token.File
 	Statements []Statement
+	// Gaps[i] = number of `\n` separators between Statements[i-1] and
+	// Statements[i] (>=1; e.g. 2 = one blank line). Gaps[0] is unused.
+	// Empty slice means "no gap info" -- fall back to single `\n`.
+	Gaps []int
 }
 
 // Pos returns the position of first character belonging to the node
@@ -70,57 +73,23 @@ func (p *Program) End() int {
 	return p.Statements[len(p.Statements)-1].End()
 }
 func (p *Program) String() string {
-	// Preserve blank lines between top-level statements (using source line
-	// positions) so re-parse sees the same `__LINE__` values. Only applies
-	// when File is set and both adjacent stmts have non-zero Pos.
 	var out bytes.Buffer
+	first := true
 	for i, s := range p.Statements {
 		if s == nil {
 			continue
 		}
-		if i > 0 && p.File != nil {
-			prev := p.Statements[i-1]
-			if prev != nil {
-				gap := blankLinesBetween(p.File, prev, s)
-				if gap > 0 {
-					out.WriteString(strings.Repeat("\n", gap))
-				} else {
-					out.WriteByte('\n')
-				}
-			} else {
-				out.WriteByte('\n')
+		if !first {
+			gap := 1
+			if i < len(p.Gaps) && p.Gaps[i] > 1 {
+				gap = p.Gaps[i]
 			}
+			out.WriteString(strings.Repeat("\n", gap))
 		}
 		out.WriteString(s.String())
+		first = false
 	}
 	return relocateHeredocBodies(out.String())
-}
-
-// blankLinesBetween returns the number of `\n` chars to emit between two
-// adjacent statements to mirror the source's line spacing. Returns 0 if
-// either statement lacks position info (synthesised), in which case the
-// caller falls back to a single `\n`.
-func blankLinesBetween(f *token.File, prev, next Node) (gap int) {
-	defer func() {
-		if recover() != nil {
-			gap = 0
-		}
-	}()
-	prevEnd := prev.End()
-	nextPos := next.Pos()
-	if prevEnd <= 0 || nextPos <= 0 || nextPos <= prevEnd {
-		return 0
-	}
-	prevLine := f.Position(f.Pos(prevEnd)).Line
-	nextLine := f.Position(f.Pos(nextPos)).Line
-	if prevLine == 0 || nextLine == 0 {
-		return 0
-	}
-	gap = nextLine - prevLine
-	if gap < 1 {
-		gap = 1
-	}
-	return gap
 }
 
 // Heredoc body markers used internally by StringLiteral.String() and
