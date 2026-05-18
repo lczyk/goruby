@@ -222,6 +222,7 @@ type parser struct {
 	inPattern          bool // true when parsing a pattern matching clause
 	suppressDoBlock    bool // true inside while/until/for conditions
 	suppressHashrocket bool // true in call-arg lists to prevent => as rightward assignment
+	suppressKwAndOr    bool // true in paren-less call args -- `foo x and y` is `foo(x) and y`
 	comments           []*ast.Comment
 }
 
@@ -721,6 +722,9 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 			return leftExp
 		}
 		if p.suppressHashrocket && p.peekTokenIs(token.HASHROCKET) {
+			return leftExp
+		}
+		if p.suppressKwAndOr && p.peekTokenOneOf(token.KW_AND, token.KW_OR) {
 			return leftExp
 		}
 		// `ident [array]` (with leading space on `[`) is a command call with
@@ -2433,6 +2437,11 @@ func (p *parser) parseBlockExpr() *ast.BlockExpression {
 
 func (p *parser) parseBlock() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
+	// blocks introduce a new statement scope; the paren-less-call kw and/or
+	// suppression from the enclosing call must not leak into the body.
+	prevAO := p.suppressKwAndOr
+	p.suppressKwAndOr = false
+	defer func() { p.suppressKwAndOr = prevAO }()
 	block := &ast.BlockExpression{Token: p.curToken}
 	if p.peekTokenIs(token.NEWLINE) && p.peek2TokenIs(token.PIPE) {
 		p.nextToken()
@@ -3768,7 +3777,10 @@ func (p *parser) parseCallArgument(function ast.Expression) ast.Expression {
 			Context:  fn.Outer,
 			Function: innerIdent,
 		}
+		prevAO := p.suppressKwAndOr
+		p.suppressKwAndOr = true
 		exp.Arguments = p.parseExpressionList(token.SEMICOLON, token.NEWLINE, token.SCOPE)
+		p.suppressKwAndOr = prevAO
 		if p.peekTokenOneOf(token.LBRACE, token.DO) {
 			p.acceptOneOf(token.LBRACE, token.DO)
 			exp.Block = p.parseBlockExpr()
@@ -3784,7 +3796,10 @@ func (p *parser) parseCallArgument(function ast.Expression) ast.Expression {
 		return exp
 	}
 
+	prevAO := p.suppressKwAndOr
+	p.suppressKwAndOr = true
 	exp.Arguments = p.parseExpressionList(token.SEMICOLON, token.NEWLINE, token.SCOPE)
+	p.suppressKwAndOr = prevAO
 	if p.peekTokenOneOf(token.LBRACE, token.DO) {
 		p.acceptOneOf(token.LBRACE, token.DO)
 		exp.Block = p.parseBlockExpr()
