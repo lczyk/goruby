@@ -764,6 +764,35 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 				continue
 			}
 		}
+		// `ident -x` / `ident +x` (whitespace before -/+, none after) is a
+		// command call with a unary-negated arg, not infix subtraction /
+		// addition. `ident - x` / `ident-x` stay infix.
+		isOperandStart := func(t token.Type) bool {
+			switch t {
+			case token.IDENT, token.CONST, token.INT, token.FLOAT,
+				token.AT, token.CLASS_VAR, token.GLOBAL, token.LPAREN, token.LBRACKET:
+				return true
+			}
+			return false
+		}
+		if p.peekTokenOneOf(token.MINUS, token.PLUS) && p.peekToken.HadWhitespace &&
+			!p.peek2Token.HadWhitespace && isOperandStart(p.peek2Token.Type) {
+			if id, ok := leftExp.(*ast.Identifier); ok && !id.IsConstant() {
+				call := &ast.ContextCallExpression{Token: id.Token, Function: id}
+				p.nextToken() // advance to - / +
+				prevAO := p.suppressKwAndOr
+				p.suppressKwAndOr = true
+				call.Arguments = p.parseCallArguments(
+					token.SEMICOLON, token.NEWLINE, token.LBRACE, token.DO,
+				)
+				p.suppressKwAndOr = prevAO
+				if p.currentTokenOneOf(token.LBRACE, token.DO) {
+					call.Block = p.parseBlockExpr()
+				}
+				leftExp = call
+				continue
+			}
+		}
 		infix := infixParseFns[p.peekToken.Type]
 		if infix == nil {
 			return leftExp
