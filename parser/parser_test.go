@@ -314,7 +314,7 @@ func TestVariableExpression(t *testing.T) {
 			{"x = 5_0;", "x", "50"},
 			{"y = true;", "y", "true"},
 			{"foobar = y;", "foobar", "y"},
-			{"foobar = (12 + 2 * bar) - x;", "foobar", "((12 + (2 * bar)) - x)"},
+			{"foobar = (12 + 2 * bar) - x;", "foobar", "(12 + 2 * bar) - x"},
 		}
 
 		for _, tt := range tests {
@@ -1091,11 +1091,11 @@ func TestYieldExpression(t *testing.T) {
 		},
 		{
 			input:        "yield 1, 2 + 3;",
-			expectedArgs: []string{"1", "(2 + 3)"},
+			expectedArgs: []string{"1", "2 + 3"},
 		},
 		{
 			input:        "yield(1, 2 + 3);",
-			expectedArgs: []string{"1", "(2 + 3)"},
+			expectedArgs: []string{"1", "2 + 3"},
 		},
 	}
 
@@ -1466,7 +1466,7 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 	}{
 		{
 			"-a * b",
-			"((-a) * b)",
+			"(-a) * b",
 		},
 		{
 			"!-a",
@@ -1474,79 +1474,79 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 		},
 		{
 			"a + b + c",
-			"((a + b) + c)",
+			"a + b + c",
 		},
 		{
 			"a + b - c",
-			"((a + b) - c)",
+			"a + b - c",
 		},
 		{
 			"a * b * c",
-			"((a * b) * c)",
+			"a * b * c",
 		},
 		{
 			"a * b / c",
-			"((a * b) / c)",
+			"a * b / c",
 		},
 		{
 			"a + b / c",
-			"(a + (b / c))",
+			"a + b / c",
 		},
 		{
 			"a + b * c + d / e - f",
-			"(((a + (b * c)) + (d / e)) - f)",
+			"a + b * c + d / e - f",
 		},
 		{
 			"3 + 4; -5 * 5",
-			"(3 + 4)\n((-5) * 5)",
+			"3 + 4\n(-5) * 5",
 		},
 		{
 			"5 > 4 == 3 < 4",
-			"((5 > 4) == (3 < 4))",
+			"5 > 4 == 3 < 4",
 		},
 		{
 			"5 < 4 != 3 > 4",
-			"((5 < 4) != (3 > 4))",
+			"5 < 4 != 3 > 4",
 		},
 		{
 			"3 + 4 * 5 == 3 * 1 + 4 * 5",
-			"((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
+			"3 + 4 * 5 == 3 * 1 + 4 * 5",
 		},
 		{
 			"3 + 4 * 5 == 3 * 1 + 4 * 5",
-			"((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
+			"3 + 4 * 5 == 3 * 1 + 4 * 5",
 		},
 		{
 			"true | true",
-			"(true | true)",
+			"true | true",
 		},
 		{
 			"true & true",
-			"(true & true)",
+			"true & true",
 		},
 		{
 			"3 > 5 == false",
-			"((3 > 5) == false)",
+			"3 > 5 == false",
 		},
 		{
 			"3 < 5 == true",
-			"((3 < 5) == true)",
+			"3 < 5 == true",
 		},
 		{
 			"1 + (2 + 3) + 4",
-			"((1 + (2 + 3)) + 4)",
+			"1 + (2 + 3) + 4",
 		},
 		{
 			"(5 + 5) * 2",
-			"((5 + 5) * 2)",
+			"(5 + 5) * 2",
 		},
 		{
 			"2 / (5 + 5)",
-			"(2 / (5 + 5))",
+			"2 / (5 + 5)",
 		},
 		{
 			"(5 + 5) * 2 * (5 + 5)",
-			"(((5 + 5) * 2) * (5 + 5))",
+			"(5 + 5) * 2 * (5 + 5)",
 		},
 		{
 			"-(5 + 5)",
@@ -1558,35 +1558,35 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 		},
 		{
 			"a + add(b * c) + d",
-			"((a + add((b * c))) + d)",
+			"a + add(b * c) + d",
 		},
 		{
 			"add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))",
-			"add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))",
+			"add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))",
 		},
 		{
 			"add(a + b + c * d / f + g)",
-			"add((((a + b) + ((c * d) / f)) + g))",
+			"add(a + b + c * d / f + g)",
 		},
 		{
 			"add(a + b + c * d / f + g)",
-			"add((((a + b) + ((c * d) / f)) + g))",
+			"add(a + b + c * d / f + g)",
 		},
 		{
 			"x = 12 * 3;",
-			"x = (12 * 3)",
+			"x = 12 * 3",
 		},
 		{
 			"x = 3 + 4 * 3;",
-			"x = (3 + (4 * 3))",
+			"x = 3 + 4 * 3",
 		},
 		{
 			"x = add(4) * 3;",
-			"x = (add(4) * 3)",
+			"x = add(4) * 3",
 		},
 		{
 			"add(x = add(4) * 3);",
-			"add(x = (add(4) * 3))",
+			"add(x = add(4) * 3)",
 		},
 		{
 			"a = b = 0;",
@@ -1594,11 +1594,11 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 		},
 		{
 			"a * [1, 2, 3, 4][b * c] * d",
-			"((a * [1, 2, 3, 4][(b * c)]) * d)",
+			"a * [1, 2, 3, 4][b * c] * d",
 		},
 		{
 			"add(a * b[2], b[1], 2 * [1, 2][1])",
-			"add((a * b[2]), b[1], (2 * [1, 2][1]))",
+			"add(a * b[2], b[1], 2 * [1, 2][1])",
 		},
 	}
 
@@ -1807,7 +1807,7 @@ func TestConditionalExpression(t *testing.T) {
 			y
 			end
 			x
-			end`, "x", "<", "y", "if (x == 3)\ny\nendx"},
+			end`, "x", "<", "y", "if x == 3\ny\nendx"},
 			{`if x < y
 			x = Object x
 			end`, "x", "<", "y", "x = Object(x)"},
@@ -1828,7 +1828,7 @@ func TestConditionalExpression(t *testing.T) {
 			y
 			end
 			x
-			end`, "x", "<", "y", "if (x == 3)\ny\nendx"},
+			end`, "x", "<", "y", "if x == 3\ny\nendx"},
 			{`unless x < y
 			x = Object x
 			end`, "x", "<", "y", "x = Object(x)"},
@@ -2332,7 +2332,7 @@ func TestFunctionLiteralParsing(t *testing.T) {
 				{name: "x", defaultValue: nil},
 				{name: "y", defaultValue: nil},
 			},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"without parens",
@@ -2345,7 +2345,7 @@ func TestFunctionLiteralParsing(t *testing.T) {
 				{name: "x", defaultValue: nil},
 				{name: "y", defaultValue: nil},
 			},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"without arguments",
@@ -2355,7 +2355,7 @@ func TestFunctionLiteralParsing(t *testing.T) {
 			"",
 			"qux",
 			[]funcParam{},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"expression separator semicolon no arguments",
@@ -2363,7 +2363,7 @@ func TestFunctionLiteralParsing(t *testing.T) {
 			"",
 			"qux",
 			[]funcParam{},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"expression separator semicolon two arguments",
@@ -2374,7 +2374,7 @@ func TestFunctionLiteralParsing(t *testing.T) {
 				{name: "x", defaultValue: nil},
 				{name: "y", defaultValue: nil},
 			},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"expression separator semicolon with parens and two arguments",
@@ -2385,7 +2385,7 @@ func TestFunctionLiteralParsing(t *testing.T) {
 				{name: "x", defaultValue: nil},
 				{name: "y", defaultValue: nil},
 			},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"upcase function name",
@@ -2396,7 +2396,7 @@ func TestFunctionLiteralParsing(t *testing.T) {
 			"",
 			"Qux",
 			[]funcParam{},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"two arguments with defaults without parens",
@@ -2410,7 +2410,7 @@ func TestFunctionLiteralParsing(t *testing.T) {
 				{name: "x", defaultValue: 2},
 				{name: "y", defaultValue: 3},
 			},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"operator as function name",
@@ -2421,7 +2421,7 @@ func TestFunctionLiteralParsing(t *testing.T) {
 			"",
 			"<=>",
 			[]funcParam{},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"function on local variable context",
@@ -2431,7 +2431,7 @@ func TestFunctionLiteralParsing(t *testing.T) {
 			"a",
 			"qux",
 			[]funcParam{},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"function on const context",
@@ -2441,7 +2441,7 @@ func TestFunctionLiteralParsing(t *testing.T) {
 			"A",
 			"qux",
 			[]funcParam{},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"upcase function on const context",
@@ -2451,7 +2451,7 @@ func TestFunctionLiteralParsing(t *testing.T) {
 			"A",
 			"Qux",
 			[]funcParam{},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"function on self context",
@@ -2461,7 +2461,7 @@ func TestFunctionLiteralParsing(t *testing.T) {
 			"self",
 			"qux",
 			[]funcParam{},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"single-line body after parens",
@@ -2469,7 +2469,7 @@ func TestFunctionLiteralParsing(t *testing.T) {
 			"",
 			"right",
 			[]funcParam{},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"single-line body after parens with args",
@@ -2480,7 +2480,7 @@ func TestFunctionLiteralParsing(t *testing.T) {
 				{name: "x", defaultValue: nil},
 				{name: "y", defaultValue: nil},
 			},
-			"(x + y)",
+			"x + y",
 		},
 	}
 
@@ -2617,58 +2617,58 @@ func TestBlockExpressionParsing(t *testing.T) {
           x + y
           end`,
 			[]string{"x", "y"},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			`method do
           x + y
           end`,
 			[]string{},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"method do ; x + y; end",
 			[]string{},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"method do |x, y|; x + y; end",
 			[]string{"x", "y"},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"method do |x, y|; x + y; end",
 			[]string{"x", "y"},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			`method { |x, y|
 			  x + y
 			  }`,
 			[]string{"x", "y"},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			`method {
           x + y
           }`,
 			[]string{},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"method { x + y; }",
 			[]string{},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"method { |x, y|; x + y; }",
 			[]string{"x", "y"},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"method { |x, y|; x + y; }",
 			[]string{"x", "y"},
-			"(x + y)",
+			"x + y",
 		},
 		{
 			"method { |x, y|; x.add y }",
@@ -3130,7 +3130,7 @@ func TestCallExpressionParameterParsing(t *testing.T) {
 		{
 			input:         "add(1, 2 * 3, 4 + 5);",
 			expectedIdent: "add",
-			expectedArgs:  []string{"1", "(2 * 3)", "(4 + 5)"},
+			expectedArgs:  []string{"1", "2 * 3", "4 + 5"},
 		},
 		{
 			input:         "add 1;",

@@ -1901,7 +1901,13 @@ func (s *SplatExpression) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.Operator)
 	if s.Right != nil {
-		out.WriteString(s.Right.String())
+		inner := s.Right.String()
+		// Wrap when the operand is a bare infix expression so *a + b
+		// (which would parse as (*a) + b) becomes *(a + b).
+		if _, isInfix := s.Right.(*InfixExpression); isInfix {
+			inner = "(" + inner + ")"
+		}
+		out.WriteString(inner)
 	}
 	return out.String()
 }
@@ -2012,17 +2018,12 @@ type DefinedExpression struct {
 }
 
 func (d *DefinedExpression) String() string {
-	// Use space form when the inner expression is one whose String() adds
-	// its own outer parens. defined?((x + y)) parses as defined?(paren(x+y))
-	// in MRI (paren node wraps the binary), changing both the parse tree
-	// and runtime semantics (returns "expression" vs "method"). The space
-	// form `defined? x + y` consumes the whole expression with no paren
-	// node.
-	inner := d.Expr.String()
+	// Space form for InfixExpression so defined? x + y (no paren node)
+	// rather than defined?((x + y)) (paren node, changes parse tree).
 	if _, isInfix := d.Expr.(*InfixExpression); isInfix {
-		return "defined? " + inner[1:len(inner)-1]
+		return "defined? " + d.Expr.String()
 	}
-	return "defined?(" + inner + ")"
+	return "defined?(" + d.Expr.String() + ")"
 }
 func (d *DefinedExpression) expressionNode() {}
 
@@ -2118,9 +2119,12 @@ func pinNeedsParens(right Expression) bool {
 	case *Identifier, *InstanceVariable, *ClassVariable, *Global,
 		*IntegerLiteral, *FloatLiteral, *StringLiteral, *SymbolLiteral,
 		*Boolean, *Nil, *ParenExpression,
-		*InfixExpression, *PrefixExpression:
+		*PrefixExpression:
 		return false
 	}
+	// InfixExpression no longer self-wraps in parens after the
+	// precedence-aware printer; pin operator (^) needs to wrap them
+	// explicitly so ^n * 2 doesn't bind as (^n) * 2.
 	return true
 }
 
@@ -2189,22 +2193,106 @@ func (oe *InfixExpression) End() int {
 
 // TokenLiteral returns the literal from the infix operator token
 func (oe *InfixExpression) TokenLiteral() string { return oe.Token.Literal }
+// rubyInfixPrec returns Ruby operator precedence (higher = binds tighter).
+// Returns 0 for unknown operators, which falls back to the conservative
+// always-wrap behaviour in InfixExpression.String().
+func rubyInfixPrec(op string) int {
+	switch op {
+	case "**":
+		return 15
+	case "*", "/", "%":
+		return 13
+	case "+", "-":
+		return 12
+	case "<<", ">>":
+		return 11
+	case "&":
+		return 10
+	case "|", "^":
+		return 9
+	case "<", "<=", ">", ">=":
+		return 8
+	case "==", "!=", "===", "=~", "!~", "<=>":
+		return 7
+	case "&&":
+		return 6
+	case "||":
+		return 5
+	case "..", "...":
+		return 4
+	case "?:":
+		return 3
+	case "=", "+=", "-=", "*=", "/=", "%=", "**=", "<<=", ">>=", "&=", "|=", "^=", "&&=", "||=":
+		return 2
+	case "and", "or":
+		return 1
+	}
+	return 0
+}
+
+// rubyInfixRightAssoc reports whether the operator is right-associative.
+// Only ** and the assignment operators are right-associative in Ruby.
+func rubyInfixRightAssoc(op string) bool {
+	switch op {
+	case "**", "=", "+=", "-=", "*=", "/=", "%=", "**=", "<<=", ">>=", "&=", "|=", "^=", "&&=", "||=":
+		return true
+	}
+	return false
+}
+
 func (oe *InfixExpression) String() string {
 	if oe.Operator == ":" {
 		if sym, ok := oe.Left.(*SymbolLiteral); ok && sym.Token.Type == token.LABEL {
 			return sym.Token.Literal + " " + oe.Right.String()
 		}
 	}
+	parentPrec := rubyInfixPrec(oe.Operator)
+	rightAssoc := rubyInfixRightAssoc(oe.Operator)
+	// parentPrec == 0 means unknown operator -- fall back to conservative
+	// always-wrap so unfamiliar ops can't change parse on re-read.
+	wrapAll := parentPrec == 0
+
+	render := func(child Expression, isLeft bool) string {
+		if child == nil {
+			return ""
+		}
+		s := child.String()
+		inf, ok := child.(*InfixExpression)
+		if !ok {
+			return s
+		}
+		childPrec := rubyInfixPrec(inf.Operator)
+		if childPrec == 0 {
+			return s // child already wraps itself
+		}
+		var need bool
+		switch {
+		case childPrec < parentPrec:
+			need = true
+		case childPrec == parentPrec:
+			if isLeft {
+				need = rightAssoc
+			} else {
+				need = !rightAssoc
+			}
+		}
+		if !need {
+			// strip the child's own outer wrap if it added one
+			return s
+		}
+		return "(" + s + ")"
+	}
+
 	var out bytes.Buffer
-	out.WriteString("(")
-	if oe.Left != nil {
-		out.WriteString(oe.Left.String())
+	if wrapAll {
+		out.WriteString("(")
 	}
+	out.WriteString(render(oe.Left, true))
 	out.WriteString(" " + oe.Operator + " ")
-	if oe.Right != nil {
-		out.WriteString(oe.Right.String())
+	out.WriteString(render(oe.Right, false))
+	if wrapAll {
+		out.WriteString(")")
 	}
-	out.WriteString(")")
 	return out.String()
 }
 
@@ -2241,12 +2329,22 @@ func (pe *ParenExpression) Pos() int             { return pe.Token.Pos }
 func (pe *ParenExpression) End() int             { return pe.Rparen.Pos }
 func (pe *ParenExpression) TokenLiteral() string { return pe.Token.Literal }
 func (pe *ParenExpression) String() string {
-	s := pe.Expr.String()
-	// Don't double-wrap an expression that already produces outer parens.
-	if strings.HasPrefix(s, "(") && strings.HasSuffix(s, ")") {
-		return s
+	// Skip the wrap when Expr already emits its own outer parens.
+	switch e := pe.Expr.(type) {
+	case *ParenExpression, *PrefixExpression:
+		return pe.Expr.String()
+	case *ConditionalExpression:
+		// Ternary self-wraps in ().
+		if e.Token.Type == token.QMARK {
+			return e.String()
+		}
+	case *InfixExpression:
+		// Unknown-operator fallback in InfixExpression.String() wraps in ().
+		if rubyInfixPrec(e.Operator) == 0 {
+			return e.String()
+		}
 	}
-	return "(" + s + ")"
+	return "(" + pe.Expr.String() + ")"
 }
 
 func escapeRegexSlash(s string) string {

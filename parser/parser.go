@@ -2543,16 +2543,12 @@ func (p *parser) parseInfixExpression(left ast.Expression) ast.Expression {
 			return expression
 		}
 	}
-	// Many operators allow assignment on RHS: a && b = c -> a && (b = c)
-	// Also << (shovel/append), ternary patterns, etc.
-	// ||, or, and absorb assignment (|=, = etc.) on the right:
-	//   a || b = c  ->  a || (b = c)
-	//   a or b = c  ->  a or (b = c)
-	// && does NOT absorb || on the right:
-	//   a && b || c  ->  (a && b) || c
-	if expression.Operator == "||" ||
-		expression.Operator == "and" || expression.Operator == "or" ||
-		expression.Operator == "<<" {
+	// `and` / `or` have lower precedence than `=` in Ruby, so their RHS
+	// must be allowed to absorb assignment. Lower the precedence wholesale
+	// for those two; chained occurrences end up right-associative but
+	// remain semantically equivalent.
+	switch expression.Operator {
+	case "and", "or":
 		precedence = precAssignment - 1
 	}
 	p.nextToken()
@@ -2560,12 +2556,19 @@ func (p *parser) parseInfixExpression(left ast.Expression) ast.Expression {
 		p.nextToken()
 	}
 	expression.Right = p.parseExpression(precedence)
-	// MRI: && RHS absorbs assignment (a && b = c -> a && (b = c)). Can't lower
-	// && precedence wholesale -- that would also absorb ||, breaking
-	// a && b || c. Post-process instead.
-	if expression.Operator == "&&" && p.peekTokenIs(token.ASSIGN) && isAssignableTarget(expression.Right) {
-		p.nextToken() // = becomes current
-		expression.Right = p.parseAssignment(expression.Right)
+	// MRI: &&, ||, << RHS absorbs assignment.
+	//   a && b = c  ->  a && (b = c)
+	//   a || b = c  ->  a || (b = c)
+	//   a << b = c  ->  a << (b = c)
+	// Can't lower precedence wholesale -- that would absorb chained operators
+	// too, making them right-associative (a || b || c -> a || (b || c)).
+	// Post-process to absorb only the assignment.
+	switch expression.Operator {
+	case "&&", "||", "<<":
+		if p.peekTokenIs(token.ASSIGN) && isAssignableTarget(expression.Right) {
+			p.nextToken() // = becomes current
+			expression.Right = p.parseAssignment(expression.Right)
+		}
 	}
 	return expression
 }
