@@ -9,7 +9,6 @@ import (
 
 	"github.com/lczyk/trace"
 	"github.com/lczyk/goruby/ast"
-	"github.com/lczyk/goruby/internal/pratt"
 	"github.com/lczyk/goruby/lexer"
 	"github.com/lczyk/goruby/token"
 	"github.com/pkg/errors"
@@ -187,8 +186,8 @@ var tokensNotPossibleInCallArgs = []token.Type{
 }
 
 type (
-	prefixParseFn = pratt.PrefixFn[parser, ast.Expression]
-	infixParseFn  = pratt.InfixFn[parser, ast.Expression]
+	prefixParseFn func(*parser) ast.Expression
+	infixParseFn  func(*parser, ast.Expression) ast.Expression
 )
 
 // Parse-fn dispatch tables. Populated once in package init via method
@@ -404,56 +403,6 @@ func init() {
 	infixParseFns[token.ORASSIGN] = (*parser).parseAssignmentOperator
 	infixParseFns[token.ANDASSIGN] = (*parser).parseAssignmentOperator
 	infixParseFns[token.SCOPE] = (*parser).parseScopedIdentifierExpression
-
-	prattConfig = &pratt.Config[parser, ast.Expression]{
-		Prefix:     prefixParseFns,
-		Infix:      infixParseFns,
-		CurType:    func(p *parser) token.Type { return p.curToken.Type },
-		PeekType:   func(p *parser) token.Type { return p.peekToken.Type },
-		Advance:    (*parser).nextToken,
-		PeekPrec:   (*parser).peekPrecedence,
-		OnNoPrefix: func(p *parser, t token.Type) { p.noPrefixParseFnError(t) },
-		Hook:       prattHook,
-	}
-}
-
-// prattConfig is the shared pratt.Config used by every parseExpression
-// invocation. Built once in package init from the prefix/infix dispatch
-// tables.
-var prattConfig *pratt.Config[parser, ast.Expression]
-
-// prattHook expresses the ruby-specific grammar quirks that interleave with
-// precedence climbing: early-exit conditions (nil left, NEWLINE/SEMICOLON
-// at curToken, suppressDoBlock, suppressHashrocket) and the
-// command-call-with-array-literal special case for
-// `ident [array]` (with leading space on `[`).
-func prattHook(p *parser, left ast.Expression) pratt.HookResult[ast.Expression] {
-	if left == nil {
-		return pratt.HookResult[ast.Expression]{Stop: true}
-	}
-	if p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
-		return pratt.HookResult[ast.Expression]{Stop: true}
-	}
-	if p.suppressDoBlock && p.peekTokenIs(token.DO) {
-		return pratt.HookResult[ast.Expression]{Stop: true}
-	}
-	if p.suppressHashrocket && p.peekTokenIs(token.HASHROCKET) {
-		return pratt.HookResult[ast.Expression]{Stop: true}
-	}
-	if p.peekTokenIs(token.LBRACKET) && p.peekToken.HadWhitespace {
-		if id, ok := left.(*ast.Identifier); ok && !id.IsConstant() {
-			call := &ast.ContextCallExpression{Token: id.Token, Function: id}
-			p.nextToken() // advance to [
-			call.Arguments = p.parseCallArguments(
-				token.SEMICOLON, token.NEWLINE, token.LBRACE, token.DO,
-			)
-			if p.currentTokenOneOf(token.LBRACE, token.DO) {
-				call.Block = p.parseBlockExpr()
-			}
-			return pratt.HookResult[ast.Expression]{Replace: call, Handled: true}
-		}
-	}
-	return pratt.HookResult[ast.Expression]{}
 }
 
 func (p *parser) nextNonCommentToken() token.Token {
@@ -755,48 +704,74 @@ func (p *parser) parseExpressionStatement() *ast.ExpressionStatement {
 
 func (p *parser) parseExpression(precedence int) ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	leftExp := pratt.Climb(p, prattConfig, precedence)
+	prefix := prefixParseFns[p.curToken.Type]
+	if prefix == nil {
+		p.noPrefixParseFnError(p.curToken.Type)
+		return nil
+	}
+	leftExp := prefix(p)
+	for precedence < p.peekPrecedence() {
+		if leftExp == nil {
+			return nil // fail early and stop parsing
+		}
+		if p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+			return leftExp
+		}
+		if p.suppressDoBlock && p.peekTokenIs(token.DO) {
+			return leftExp
+		}
+		if p.suppressHashrocket && p.peekTokenIs(token.HASHROCKET) {
+			return leftExp
+		}
+		// `ident [array]` (with leading space on `[`) is a command call with
+		// an array literal as its first arg, not an index expression.
+		if p.peekTokenIs(token.LBRACKET) && p.peekToken.HadWhitespace {
+			if id, ok := leftExp.(*ast.Identifier); ok && !id.IsConstant() {
+				call := &ast.ContextCallExpression{Token: id.Token, Function: id}
+				p.nextToken() // advance to [
+				call.Arguments = p.parseCallArguments(
+					token.SEMICOLON, token.NEWLINE, token.LBRACE, token.DO,
+				)
+				if p.currentTokenOneOf(token.LBRACE, token.DO) {
+					call.Block = p.parseBlockExpr()
+				}
+				leftExp = call
+				continue
+			}
+		}
+		infix := infixParseFns[p.peekToken.Type]
+		if infix == nil {
+			return leftExp
+		}
+		p.nextToken()
+		leftExp = infix(p, leftExp)
+	}
 	// Leading-dot continuation: expr\n.method
 	for p.peekTokenIs(token.NEWLINE) && p.peek2TokenIs(token.DOT) {
 		p.nextToken() // consume NEWLINE
 		p.nextToken() // consume DOT (now curToken)
 		leftExp = p.parseMethodCall(leftExp)
 	}
-	// After an identifier, { is always a block (not a hash). Reuses the
-	// shared pratt.Climb for the trailing infix tail; the Hook's
-	// suppressHashrocket / command-call branches are no-ops at this point
-	// (left is no longer an Identifier after parseCallBlock returns).
+	// After an identifier, { is always a block (not a hash).
 	if _, ok := leftExp.(*ast.Identifier); ok && p.peekTokenIs(token.LBRACE) {
 		p.nextToken()
 		leftExp = p.parseCallBlock(leftExp)
-		leftExp = prattClimbContinue(p, leftExp, precedence)
+		for precedence < p.peekPrecedence() {
+			if p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+				return leftExp
+			}
+			if p.suppressDoBlock && p.peekTokenIs(token.DO) {
+				return leftExp
+			}
+			infix := infixParseFns[p.peekToken.Type]
+			if infix == nil {
+				return leftExp
+			}
+			p.nextToken()
+			leftExp = infix(p, leftExp)
+		}
 	}
 	return leftExp
-}
-
-// prattClimbContinue runs pratt.Climb's loop body using leftExp as the
-// already-parsed prefix result. Used for the ident-then-LBRACE
-// continuation, which must skip the initial prefix dispatch but otherwise
-// behaves identically to Climb.
-func prattClimbContinue(p *parser, left ast.Expression, minPrec int) ast.Expression {
-	cfg := prattConfig
-	for minPrec < cfg.PeekPrec(p) {
-		r := cfg.Hook(p, left)
-		if r.Stop {
-			return left
-		}
-		if r.Handled {
-			left = r.Replace
-			continue
-		}
-		infix := cfg.Infix[cfg.PeekType(p)]
-		if infix == nil {
-			return left
-		}
-		cfg.Advance(p)
-		left = infix(p, left)
-	}
-	return left
 }
 
 func (p *parser) parseExceptionHandlingBlock() ast.Expression {
