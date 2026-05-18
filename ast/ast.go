@@ -79,13 +79,47 @@ func (p *Program) String() string {
 	return relocateHeredocBodies(strings.Join(stmts, "\n"))
 }
 
-// relocateHeredocBodies moves NUL-delimited heredoc bodies from their
-// inline position to after the line that contains their tag. Heredoc
-// String() emits <<TAG\x00body\nDELIM\n\x00 inline; this function
-// extracts the \x00...\x00 segments and appends them after the
-// enclosing line's newline.
+// Heredoc body markers used internally by StringLiteral.String() and
+// relocateHeredocBodies. \x01 opens a body, \x02 closes it. Balanced like
+// brackets so nested heredocs (e.g. `<<OUTER ... #{<<INNER ... INNER} ...
+// OUTER`) can be paired correctly without left-to-right ambiguity.
+const (
+	heredocBodyOpen  = '\x01'
+	heredocBodyClose = '\x02'
+)
+
+// findHeredocBodyEnd returns the index of the matching heredocBodyClose for
+// the heredocBodyOpen at openIdx, balancing nested pairs. Returns -1 if
+// unbalanced.
+func findHeredocBodyEnd(s string, openIdx int) int {
+	depth := 1
+	for j := openIdx + 1; j < len(s); j++ {
+		switch s[j] {
+		case heredocBodyOpen:
+			depth++
+		case heredocBodyClose:
+			depth--
+			if depth == 0 {
+				return j
+			}
+		}
+	}
+	return -1
+}
+
+// relocateHeredocBodies moves heredoc bodies from their inline position
+// (right after the tag, inside `\x01...\x02` markers emitted by
+// StringLiteral.String()) to after the line containing the tag.
+//
+// At the top level, multiple tags can share a line (chained heredocs:
+// `puts <<A, <<B`), so bodies are deferred and flushed in order at the next
+// `\n`. Inside another heredoc's body (recursive call), a nested heredoc tag
+// has no following `\n` in the linearised string -- the source `\n` lived
+// inside the outer body but doesn't appear in the printed Parts -- so the
+// body is inserted immediately after the tag, prefixed with `\n` to break
+// the tag line.
 func relocateHeredocBodies(s string) string {
-	if !strings.ContainsRune(s, '\x00') {
+	if !strings.ContainsRune(s, heredocBodyOpen) {
 		return s
 	}
 	var result strings.Builder
@@ -94,30 +128,61 @@ func relocateHeredocBodies(s string) string {
 
 	i := 0
 	for i < len(s) {
-		if s[i] == '\x00' {
-			end := strings.IndexByte(s[i+1:], '\x00')
+		if s[i] == heredocBodyOpen {
+			end := findHeredocBodyEnd(s, i)
 			if end >= 0 {
-				pending = append(pending, s[i+1:i+1+end])
-				i = i + 1 + end + 1
+				pending = append(pending, relocateHeredocBodiesNested(s[i+1:end]))
+				i = end + 1
 				continue
 			}
 		}
+		result.WriteByte(s[i])
 		if s[i] == '\n' && len(pending) > 0 {
-			result.WriteByte('\n')
 			for _, body := range pending {
 				result.WriteString(body)
 			}
 			pending = pending[:0]
-		} else {
-			result.WriteByte(s[i])
 		}
 		i++
 	}
 	if len(pending) > 0 {
-		result.WriteByte('\n')
+		if result.Len() == 0 || result.String()[result.Len()-1] != '\n' {
+			result.WriteByte('\n')
+		}
 		for _, body := range pending {
 			result.WriteString(body)
 		}
+	}
+	return result.String()
+}
+
+// relocateHeredocBodiesNested processes a heredoc body that itself may
+// contain nested heredoc bodies. A nested body is inserted immediately at
+// the tag position (with a `\n` to break the tag line), because the outer
+// body string does not carry a `\n` between the tag and the rest of the
+// outer body's content.
+func relocateHeredocBodiesNested(s string) string {
+	if !strings.ContainsRune(s, heredocBodyOpen) {
+		return s
+	}
+	var result strings.Builder
+	result.Grow(len(s))
+	i := 0
+	for i < len(s) {
+		if s[i] == heredocBodyOpen {
+			end := findHeredocBodyEnd(s, i)
+			if end >= 0 {
+				body := relocateHeredocBodiesNested(s[i+1 : end])
+				if result.Len() > 0 && result.String()[result.Len()-1] != '\n' {
+					result.WriteByte('\n')
+				}
+				result.WriteString(body)
+				i = end + 1
+				continue
+			}
+		}
+		result.WriteByte(s[i])
+		i++
 	}
 	return result.String()
 }
@@ -815,7 +880,7 @@ func (sl *StringLiteral) String() string {
 		delim := heredocDelimFromTag(sl.HeredocTag)
 		var out bytes.Buffer
 		out.WriteString(sl.HeredocTag)
-		out.WriteByte('\x00')
+		out.WriteByte(heredocBodyOpen)
 		if sl.Parts != nil {
 			for _, p := range sl.Parts {
 				if sc, ok := p.(*StringContent); ok {
@@ -831,7 +896,7 @@ func (sl *StringLiteral) String() string {
 		}
 		out.WriteString(delim)
 		out.WriteByte('\n')
-		out.WriteByte('\x00')
+		out.WriteByte(heredocBodyClose)
 		return out.String()
 	}
 	var open, close string

@@ -39,6 +39,40 @@ type interpState struct {
 	stateFn      StateFn // state to return to (e.g. lexStringContent)
 	returnOnNext bool    // if true, pop on next checkInterpStack call (for #$var style)
 	braceDepth   int     // outer braceDepth, restored on pop
+
+	// Heredoc state captured at push time. If the interpolation contains a
+	// nested heredoc (e.g. `<<OUTER ... #{<<INNER ... INNER} ... OUTER`),
+	// the inner heredoc clobbers the lexer's heredoc fields, so the outer
+	// heredoc body lexer would fail to find its closing delimiter on pop.
+	// Restored on pop so the outer heredoc resumes with its own state.
+	heredocDelim    string
+	heredocIndent   bool
+	heredocSquig    bool
+	heredocQuote    rune
+	heredocPostBody string
+}
+
+// pushInterp pushes an interpState, capturing the current heredoc-related
+// lexer fields. If the interpolation body starts a nested heredoc (e.g.
+// `<<OUTER ... #{<<INNER ... INNER} ... OUTER`), the inner heredoc clobbers
+// the lexer's heredoc fields, so without snapshotting the outer heredoc
+// body lexer would fail to find its closing delimiter on pop.
+func (l *Lexer) pushInterp(s interpState) {
+	s.heredocDelim = l.heredocDelim
+	s.heredocIndent = l.heredocIndent
+	s.heredocSquig = l.heredocSquig
+	s.heredocQuote = l.heredocQuote
+	s.heredocPostBody = l.heredocPostBody
+	l.interpStack = append(l.interpStack, s)
+}
+
+// restoreHeredocState writes the saved heredoc fields back to the lexer.
+func (l *Lexer) restoreHeredocState(s interpState) {
+	l.heredocDelim = s.heredocDelim
+	l.heredocIndent = s.heredocIndent
+	l.heredocSquig = s.heredocSquig
+	l.heredocQuote = s.heredocQuote
+	l.heredocPostBody = s.heredocPostBody
 }
 
 // Option configures the lexer.
@@ -662,6 +696,7 @@ func startLexer(l *Lexer) StateFn {
 				top := l.interpStack[len(l.interpStack)-1]
 				l.interpStack = l.interpStack[:len(l.interpStack)-1]
 				l.braceDepth = top.braceDepth
+				l.restoreHeredocState(top)
 				return top.stateFn
 			}
 		}
@@ -754,8 +789,10 @@ func checkInterpStack(l *Lexer) StateFn {
 	if len(l.interpStack) > 0 {
 		top := &l.interpStack[len(l.interpStack)-1]
 		if top.returnOnNext {
+			saved := *top
 			l.interpStack = l.interpStack[:len(l.interpStack)-1]
-			return top.stateFn
+			l.restoreHeredocState(saved)
+			return saved.stateFn
 		}
 	}
 	return startLexer
@@ -1093,7 +1130,7 @@ func lexStringContent(l *Lexer) StateFn {
 				}
 				l.next() // consume {
 				l.emit(token.EMBEXPR_BEG)
-				l.interpStack = append(l.interpStack, interpState{stateFn: lexStringContent, braceDepth: l.braceDepth})
+				l.pushInterp(interpState{stateFn: lexStringContent, braceDepth: l.braceDepth})
 				l.braceDepth = 1
 				return startLexer
 			}
@@ -1104,7 +1141,7 @@ func lexStringContent(l *Lexer) StateFn {
 					l.next() // re-consume #
 				}
 				l.ignore() // skip the # character
-				l.interpStack = append(l.interpStack, interpState{stateFn: lexStringContent, returnOnNext: true, braceDepth: l.braceDepth})
+				l.pushInterp(interpState{stateFn: lexStringContent, returnOnNext: true, braceDepth: l.braceDepth})
 				if p == '@' {
 					l.next() // consume @
 					if l.peek() == '@' {
@@ -1450,7 +1487,7 @@ func lexPercentContentInner(l *Lexer, opener, closer rune, paired bool,
 				}
 				l.next() // consume {
 				l.emit(token.EMBEXPR_BEG)
-				l.interpStack = append(l.interpStack, interpState{stateFn: resumeFn, braceDepth: l.braceDepth})
+				l.pushInterp(interpState{stateFn: resumeFn, braceDepth: l.braceDepth})
 				l.braceDepth = 1
 				return startLexer
 			}
@@ -1461,7 +1498,7 @@ func lexPercentContentInner(l *Lexer, opener, closer rune, paired bool,
 					l.next()
 				}
 				l.ignore() // skip #
-				l.interpStack = append(l.interpStack, interpState{stateFn: resumeFn, returnOnNext: true, braceDepth: l.braceDepth})
+				l.pushInterp(interpState{stateFn: resumeFn, returnOnNext: true, braceDepth: l.braceDepth})
 				if p == '@' {
 					l.next()
 					if l.peek() == '@' {
@@ -1524,7 +1561,7 @@ func lexBacktickContent(l *Lexer) StateFn {
 				}
 				l.next() // consume {
 				l.emit(token.EMBEXPR_BEG)
-				l.interpStack = append(l.interpStack, interpState{stateFn: lexBacktickContent, braceDepth: l.braceDepth})
+				l.pushInterp(interpState{stateFn: lexBacktickContent, braceDepth: l.braceDepth})
 				l.braceDepth = 1
 				return startLexer
 			}
@@ -1535,7 +1572,7 @@ func lexBacktickContent(l *Lexer) StateFn {
 					l.next() // re-consume #
 				}
 				l.ignore() // skip #
-				l.interpStack = append(l.interpStack, interpState{stateFn: lexBacktickContent, returnOnNext: true, braceDepth: l.braceDepth})
+				l.pushInterp(interpState{stateFn: lexBacktickContent, returnOnNext: true, braceDepth: l.braceDepth})
 				if p == '@' {
 					l.next()
 					if l.peek() == '@' {
@@ -1970,7 +2007,7 @@ func lexHeredocContent(l *Lexer) StateFn {
 				}
 				l.next() // consume {
 				l.emit(token.EMBEXPR_BEG)
-				l.interpStack = append(l.interpStack, interpState{stateFn: lexHeredocContent, braceDepth: l.braceDepth})
+				l.pushInterp(interpState{stateFn: lexHeredocContent, braceDepth: l.braceDepth})
 				l.braceDepth = 1
 				return startLexer
 			}
@@ -1981,7 +2018,7 @@ func lexHeredocContent(l *Lexer) StateFn {
 					l.next()
 				}
 				l.ignore() // skip #
-				l.interpStack = append(l.interpStack, interpState{stateFn: lexHeredocContent, returnOnNext: true, braceDepth: l.braceDepth})
+				l.pushInterp(interpState{stateFn: lexHeredocContent, returnOnNext: true, braceDepth: l.braceDepth})
 				if p == '@' {
 					l.next()
 					if l.peek() == '@' {
@@ -2170,7 +2207,7 @@ func lexRegexContent(l *Lexer) StateFn {
 				}
 				l.next() // consume {
 				l.emit(token.EMBEXPR_BEG)
-				l.interpStack = append(l.interpStack, interpState{stateFn: lexRegexContent, braceDepth: l.braceDepth})
+				l.pushInterp(interpState{stateFn: lexRegexContent, braceDepth: l.braceDepth})
 				l.braceDepth = 1
 				return startLexer
 			}
@@ -2181,7 +2218,7 @@ func lexRegexContent(l *Lexer) StateFn {
 					l.next()
 				}
 				l.ignore() // skip #
-				l.interpStack = append(l.interpStack, interpState{stateFn: lexRegexContent, returnOnNext: true, braceDepth: l.braceDepth})
+				l.pushInterp(interpState{stateFn: lexRegexContent, returnOnNext: true, braceDepth: l.braceDepth})
 				if p == '@' {
 					l.next()
 					if l.peek() == '@' {
