@@ -2200,7 +2200,13 @@ func (pe *PrefixExpression) String() string {
 	switch pe.Operator {
 	case "-", "+":
 		switch pe.Right.(type) {
-		case *IntegerLiteral, *FloatLiteral:
+		case *IntegerLiteral, *FloatLiteral,
+			*ContextCallExpression, *IndexExpression,
+			*Identifier, *InstanceVariable, *ClassVariable, *Global,
+			*Self, *Nil, *Boolean, *ScopedIdentifier:
+			// MRI folds leading negative numeric via tUMINUS_NUM; for
+			// other terminals / call / index chains the unary binds to
+			// the result either way so no parens needed.
 			atomic = true
 		}
 	case "!", "~":
@@ -2434,16 +2440,15 @@ func (pe *ParenExpression) String() string {
 	case *ParenExpression:
 		return pe.Expr.String()
 	case *PrefixExpression:
-		// PrefixExpression self-wraps EXCEPT for - / + on numeric literals
-		// (which were folded into the literal). For those, ParenExpression
-		// still needs to wrap.
-		if e.Operator == "-" || e.Operator == "+" {
-			switch e.Right.(type) {
-			case *IntegerLiteral, *FloatLiteral:
-				return "(" + e.String() + ")"
-			}
+		// PrefixExpression self-wraps for -/+ ONLY when operand is non-atomic;
+		// for atomic operands (literals, simple terminals, call/index chains)
+		// it emits bare, and ParenExpression must wrap to preserve grouping.
+		s := e.String()
+		if (e.Operator == "-" || e.Operator == "+") &&
+			!(strings.HasPrefix(s, "(") && strings.HasSuffix(s, ")")) {
+			return "(" + s + ")"
 		}
-		return e.String()
+		return s
 	case *InfixExpression:
 		// Unknown-operator fallback in InfixExpression.String() wraps in ().
 		if rubyInfixPrec(e.Operator) == 0 {
