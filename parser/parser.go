@@ -1660,7 +1660,11 @@ func (p *parser) parseSplatExpression() ast.Expression {
 		return expr
 	}
 	p.nextToken()
-	expr.Right = p.parseExpression(precPrefix)
+	// Splat absorbs the full arg expression up to the next comma -- including
+	// range (`*a..z`) and other infix forms MRI treats as one splattable arg.
+	// precAssignment stops at COMMA and HASHROCKET, both of which are arg /
+	// hash separators, not part of the splatted value.
+	expr.Right = p.parseExpression(precAssignment)
 	return expr
 }
 

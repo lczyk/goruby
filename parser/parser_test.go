@@ -4553,10 +4553,22 @@ func TestRescueModifier(t *testing.T) {
 }
 
 func TestSplatExpression(t *testing.T) {
-	tests := []string{"*x", "*call(1, 2)"}
-	for _, input := range tests {
-		t.Run(input, func(t *testing.T) {
-			program, err := parseSource(input)
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"*x", "*x"},
+		{"*call(1, 2)", "*call(1, 2)"},
+		// Splat absorbs the full expression up to the next comma / hashrocket.
+		{"*a..z", "*(a .. z)"},
+		{"*a...z", "*(a ... z)"},
+		{"*a + b", "*(a + b)"},
+		{"*a * b", "*(a * b)"},
+		{"*a == b", "*(a == b)"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			program, err := parseSource(tt.input)
 			checkParserErrors(t, err)
 			if len(program.Statements) != 1 {
 				t.Fatalf("expected 1 statement, got %d", len(program.Statements))
@@ -4565,9 +4577,13 @@ func TestSplatExpression(t *testing.T) {
 			if !ok {
 				t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
 			}
-			_, ok = stmt.Expression.(*ast.SplatExpression)
+			splat, ok := stmt.Expression.(*ast.SplatExpression)
 			if !ok {
 				t.Fatalf("expected *ast.SplatExpression, got %T", stmt.Expression)
+			}
+			got := splat.String()
+			if got != tt.expected {
+				t.Fatalf("wrong String() output: expected=%q, got=%q", tt.expected, got)
 			}
 		})
 	}
