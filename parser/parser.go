@@ -2897,6 +2897,9 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 		if !p.accept(token.RPAREN) {
 			return nil
 		}
+		if receiver == nil {
+			return nil
+		}
 		lit.Receiver = &ast.Identifier{Token: p.curToken, Value: receiver.String()}
 		if !p.accept(token.DOT) {
 			return nil
