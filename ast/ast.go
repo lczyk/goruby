@@ -2310,6 +2310,11 @@ func rubyInfixPrec(op string) int {
 		return 4
 	case "?:":
 		return 3
+	case "rescue":
+		// Modifier rescue binds tighter than assignment but looser than ternary
+		// so `a = b rescue c` parses as `a = (b rescue c)` and `a ? b : c rescue d`
+		// parses as `(a ? b : c) rescue d`.
+		return 3
 	case "=", "+=", "-=", "*=", "/=", "%=", "**=", "<<=", ">>=", "&=", "|=", "^=", "&&=", "||=":
 		return 2
 	case "and", "or":
