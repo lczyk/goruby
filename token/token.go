@@ -164,6 +164,10 @@ const (
 	keyword_end
 )
 
+// TypeMax is the largest valid Type value (exclusive upper bound: TypeMax+1
+// is enough capacity for a Type-indexed table).
+const TypeMax = keyword_end - 1
+
 var tokens = [...]string{
 	ILLEGAL: "ILLEGAL",
 	EOF:     "EOF",

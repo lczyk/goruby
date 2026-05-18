@@ -208,13 +208,12 @@ type parser struct {
 	ctx  context.Context
 
 	pos        token.Pos
-	lastLine   string
 	curToken   token.Token
 	peekToken  token.Token
 	peek2Token token.Token
 
-	prefixParseFns map[token.Type]prefixParseFn
-	infixParseFns  map[token.Type]infixParseFn
+	prefixParseFns [token.TypeMax + 1]prefixParseFn
+	infixParseFns  [token.TypeMax + 1]infixParseFn
 
 	inPattern          bool // true when parsing a pattern matching clause
 	suppressDoBlock    bool // true inside while/until/for conditions
@@ -236,7 +235,6 @@ func (p *parser) init(filename string, src []byte, mode Mode) {
 		}
 	}
 
-	p.prefixParseFns = make(map[token.Type]prefixParseFn)
 	p.registerPrefix(token.ILLEGAL, p.parseIllegal)
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
 	p.registerPrefix(token.CONST, p.parseIdentifier)
@@ -319,7 +317,6 @@ func (p *parser) init(filename string, src []byte, mode Mode) {
 	p.registerPrefix(token.RANGE, p.parseBeginlessRange)
 	p.registerPrefix(token.RANGEEX, p.parseRangeOrForwarding)
 
-	p.infixParseFns = make(map[token.Type]infixParseFn)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
 	p.registerInfix(token.MINUS, p.parseInfixExpression)
 	p.registerInfix(token.SLASH, p.parseInfixExpression)
@@ -435,7 +432,7 @@ func (p *parser) nextNonCommentToken() token.Token {
 }
 
 func (p *parser) nextToken() {
-	if p.pos.IsValid() {
+	if p.pos.IsValid() && trace.GetTracer(p.ctx) != nil {
 		s := p.curToken.Type.String()
 		switch {
 		case p.curToken.IsLiteral():
@@ -449,10 +446,8 @@ func (p *parser) nextToken() {
 	p.curToken = p.peekToken
 	p.peekToken = p.peek2Token
 	p.pos = p.file.Pos(p.curToken.Pos)
-	p.lastLine += p.curToken.Literal
 	if p.curToken.Type == token.NEWLINE {
 		p.file.AddLine(p.curToken.Pos + 1)
-		p.lastLine = ""
 	}
 	p.peek2Token = p.nextNonCommentToken()
 }
