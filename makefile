@@ -95,6 +95,14 @@ oracle: rubies gems  ## Diff goruby roundtrip against MRI parsetree dump (slow; 
 		./scripts/gotest-dots --name=oracle $(GOTEST) -v -tags=oracle -timeout 20m -run TestMRIParseTreeDiff ./internal/integrationtest/...; \
 	fi
 
+.PHONY: little-oracle
+little-oracle: rubies gems  ## Like `oracle` but only against MRI 2.6 (fast iteration)
+	@if [ "$(V)" = "1" ]; then \
+		ORACLE_VER=2.6 $(GOTEST) -v -tags=oracle -timeout 5m -run TestMRIParseTreeDiff ./internal/integrationtest/...; \
+	else \
+		ORACLE_VER=2.6 ./scripts/gotest-dots --name=little-oracle $(GOTEST) -v -tags=oracle -timeout 5m -run TestMRIParseTreeDiff ./internal/integrationtest/...; \
+	fi
+
 .PHONY: clean
 clean:  ## Remove generated files
 	rm -f cover.out cover.html

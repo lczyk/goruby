@@ -292,6 +292,10 @@ const (
 
 func TestMRIParseTreeDiff(t *testing.T) {
 	binsMap := rubies(t)
+	// ORACLE_VER=2.6 restricts the run to a single MRI version. Used by
+	// the `little-oracle` make target for fast iteration; full sweep still
+	// available via `oracle`.
+	onlyVer := os.Getenv("ORACLE_VER")
 
 	versions, rows := loadGoldenTSV(t)
 	skips, err := loadGoldenSkips(parsetreeSkipFile, bucketSrc2Rejected, bucketTreeMismatch)
@@ -317,6 +321,9 @@ func TestMRIParseTreeDiff(t *testing.T) {
 		}
 
 		for _, verStr := range versions {
+			if onlyVer != "" && verStr != onlyVer {
+				continue // ORACLE_VER restricts to a single version
+			}
 			if !row.results[verStr] {
 				continue // MRI rejects src1 at this version -- not our concern
 			}
