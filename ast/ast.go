@@ -205,7 +205,15 @@ func (rs *ReturnStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(rs.TokenLiteral() + " ")
 	if rs.ReturnValue != nil {
-		out.WriteString(rs.ReturnValue.String())
+		if al, ok := rs.ReturnValue.(*ArrayLiteral); ok && al.Token.Type != token.LBRACKET {
+			elems := make([]string, len(al.Elements))
+			for i, e := range al.Elements {
+				elems[i] = e.String()
+			}
+			out.WriteString(strings.Join(elems, ", "))
+		} else {
+			out.WriteString(rs.ReturnValue.String())
+		}
 	}
 	return out.String()
 }
@@ -2063,6 +2071,13 @@ type JumpExpression struct {
 
 func (j *JumpExpression) String() string {
 	if j.Value != nil {
+		if al, ok := j.Value.(*ArrayLiteral); ok && al.Token.Type != token.LBRACKET {
+			elems := make([]string, len(al.Elements))
+			for i, e := range al.Elements {
+				elems[i] = e.String()
+			}
+			return j.Token.Literal + " " + strings.Join(elems, ", ")
+		}
 		return j.Token.Literal + " " + j.Value.String()
 	}
 	return j.Token.Literal
