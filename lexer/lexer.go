@@ -1463,12 +1463,12 @@ func lexPercentContentInner(l *Lexer, opener, closer rune, paired bool,
 						l.emit(contentTok)
 						l.next()
 					}
-						l.ignore() // consume closer
-						if endTok == token.REGEX_END {
-							consumeRegexFlags(l)
-						}
-						l.emit(endTok)
-						return checkInterpStack
+					l.ignore() // consume closer
+					if endTok == token.REGEX_END {
+						consumeRegexFlags(l)
+					}
+					l.emit(endTok)
+					return checkInterpStack
 				}
 				continue
 			}

@@ -576,17 +576,17 @@ func (p *parser) parseStatement() ast.Statement {
 		// Compound expressions leave these terminators at curToken.
 		// Silently skip rather than producing an error.
 		return nil
-		case token.RETURN:
-			// Bare return with modifier: route through expression path
-			// so the modifier infix handler (if/unless/while/until) can
-			// attach to the JumpExpression.
-			if p.peekTokenOneOf(token.IF, token.UNLESS, token.WHILE, token.UNTIL) {
-				return p.parseExpressionStatement()
-			}
-			return p.parseReturnStatement()
-		default:
+	case token.RETURN:
+		// Bare return with modifier: route through expression path
+		// so the modifier infix handler (if/unless/while/until) can
+		// attach to the JumpExpression.
+		if p.peekTokenOneOf(token.IF, token.UNLESS, token.WHILE, token.UNTIL) {
 			return p.parseExpressionStatement()
 		}
+		return p.parseReturnStatement()
+	default:
+		return p.parseExpressionStatement()
+	}
 }
 
 func (p *parser) parseReturnExpression() ast.Expression {
