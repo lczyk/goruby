@@ -2013,7 +2013,17 @@ type DefinedExpression struct {
 }
 
 func (d *DefinedExpression) String() string {
-	return "defined?(" + d.Expr.String() + ")"
+	// Use space form when the inner expression is one whose String() adds
+	// its own outer parens. defined?((x + y)) parses as defined?(paren(x+y))
+	// in MRI (paren node wraps the binary), changing both the parse tree
+	// and runtime semantics (returns "expression" vs "method"). The space
+	// form `defined? x + y` consumes the whole expression with no paren
+	// node.
+	inner := d.Expr.String()
+	if _, isInfix := d.Expr.(*InfixExpression); isInfix {
+		return "defined? " + inner[1:len(inner)-1]
+	}
+	return "defined?(" + inner + ")"
 }
 func (d *DefinedExpression) expressionNode() {}
 
