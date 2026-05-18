@@ -51,18 +51,10 @@ func FuzzParse(f *testing.F) {
 		f.Add(s)
 	}
 
-	// TODO: parser hangs on these inputs -- skip until fixed.
-	knownHangs := map[string]bool{
-		"def$((0)": true,
-	}
-
 	f.Fuzz(func(t *testing.T, input string) {
 		// Skip empty or whitespace-only inputs -- they're uninteresting.
 		if len(input) == 0 {
 			return
-		}
-		if knownHangs[input] {
-			t.Skip("known parser hang")
 		}
 
 		done := make(chan struct{})

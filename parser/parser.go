@@ -2620,6 +2620,9 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 	if !p.accept(token.RPAREN) {
 		return nil
 	}
+	if exp == nil {
+		return nil
+	}
 	return &ast.ParenExpression{Token: lparen, Rparen: p.curToken, Expr: exp}
 }
 
@@ -3192,6 +3195,9 @@ func (p *parser) parseOneParameter(endToken token.Type) []*ast.FunctionParameter
 				continue
 			}
 			one := p.parseOneParameter(token.RPAREN)
+			if one == nil {
+				break
+			}
 			inner = append(inner, one...)
 		}
 		p.accept(token.RPAREN)
