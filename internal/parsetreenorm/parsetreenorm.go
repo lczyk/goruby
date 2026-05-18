@@ -55,6 +55,13 @@ var (
 	// path text differs even when the source is identical.
 	rePrismSourceFile = regexp.MustCompile(`(?m)^.*\+-- filepath: ".*parsetree-[0-9]+\.rb".*$\n?`)
 	reNdLitTempPath   = regexp.MustCompile(`(?m)^.*\+- nd_lit: ".*parsetree-[0-9]+\.rb".*$\n?`)
+	// The tempfile path can also appear as a substring inside a larger
+	// string literal (e.g. `__FILE__` interpolated, eval source banners
+	// like `"(eval at /tmp/.../parsetree-NNN.rb:"`). Replace just the path
+	// fragment with <TEMPFILE> to keep the rest of the literal intact.
+	// Path may contain `/` but never `"` or `\n` -- so [^"\n]* up to the
+	// `parsetree-NNN.rb` suffix matches the full path component safely.
+	reTempPathSubstr = regexp.MustCompile(`/[^"\n]*parsetree-[0-9]+\.rb`)
 )
 
 // Normalize returns s with cosmetic / positional noise stripped and
@@ -143,6 +150,9 @@ func normalizeOnce(s string, magic map[int]bool) string {
 		if strings.Contains(s, "+- nd_lit:") {
 			s = reNdLitTempPath.ReplaceAllString(s, "")
 		}
+		// Final pass: in-string substitutions that the line-strippers above
+		// don't catch (path embedded in a larger literal).
+		s = reTempPathSubstr.ReplaceAllString(s, "<TEMPFILE>")
 	}
 	if strings.Contains(s, "NODE_BEGIN") {
 		s = stripNullBeginChildren(s)
