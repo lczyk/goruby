@@ -19,10 +19,26 @@ if [ -z "$width" ] && [ -r /dev/tty ]; then
 fi
 [ -n "$width" ] && [ "$width" -gt 0 ] 2>/dev/null || width=80
 
-"$@" | awk -v width="$width" '
+# Color when stdout is a tty and NO_COLOR is unset (per no-color.org).
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+    c_green=$'\033[32m'
+    c_yellow=$'\033[33m'
+    c_red=$'\033[31m'
+    c_reset=$'\033[0m'
+else
+    c_green='' c_yellow='' c_red='' c_reset=''
+fi
+
+"$@" | awk -v width="$width" \
+    -v c_green="$c_green" -v c_yellow="$c_yellow" \
+    -v c_red="$c_red" -v c_reset="$c_reset" '
 function flush_dots() { if (in_dots) { printf "\n"; in_dots = 0; cnt_in_row = 0 } }
 function emit(ch) {
-    printf "%s", ch
+    if (ch == ".") col = c_green
+    else if (ch == "s" || ch == "x") col = c_yellow
+    else if (ch == "F" || ch == "e") col = c_red
+    else col = ""
+    printf "%s%s%s", col, ch, (col == "" ? "" : c_reset)
     fflush()
     in_dots = 1
     if (++cnt_in_row >= width) { printf "\n"; cnt_in_row = 0 }
