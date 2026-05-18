@@ -182,6 +182,22 @@ func TestStripNullBeginLastSibling(t *testing.T) {
 	}
 }
 
+func TestPrismListField(t *testing.T) {
+	// Prism `(length: N)` list field: parent has one `+-- name:` header
+	// followed by N inline `+-- @ ChildNode` entries at bodyDepth.
+	// Flat output should emit N separate `name[i]` lines.
+	in := "@ NODE_SCOPE\n" +
+		"+-- statements: (length: 2)\n" +
+		"    +-- @ NODE_LIT\n" +
+		"    |   +- nd_lit: 1\n" +
+		"    +-- @ NODE_LIT\n" +
+		"        +- nd_lit: 2\n"
+	out := Normalize(in)
+	if !strings.Contains(out, "statements[0]") || !strings.Contains(out, "statements[1]") {
+		t.Errorf("list field not expanded to indexed entries:\n%s", out)
+	}
+}
+
 func TestLineMagicLinesEmptyShortcut(t *testing.T) {
 	if got := lineMagicLines("x = 1\nputs y\n"); got != nil {
 		t.Errorf("non-nil map for source w/out __LINE__: %v", got)
