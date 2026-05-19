@@ -95,43 +95,29 @@ func (p *Program) String() string {
 }
 
 // hasLeadingMagicEncoding reports whether the first or second line of body
-// is a Ruby magic encoding/coding comment (`# encoding: ...` / `# coding: ...`).
-// Mirrors lexer.detectMagicEncoding's recognition rules.
+// carries a Ruby magic encoding comment. Mirrors MRI's recognition: the
+// line must be a `#` comment containing `coding:` or `coding=` somewhere.
+// That covers the explicit `# encoding: X` / `# coding: X` form, the emacs
+// modeline `# -*- coding: X -*-`, and the vim modeline
+// `# vim: set fileencoding=X` (which MRI accepts because the substring
+// `encoding=X` matches the keyword scan).
 func hasLeadingMagicEncoding(body string) bool {
 	for i, line := 0, 0; line < 2 && i < len(body); line++ {
 		end := i
 		for end < len(body) && body[end] != '\n' {
 			end++
 		}
-		s := body[i:end]
-		if isMagicEncodingLine(s) {
-			return true
-		}
+		raw := body[i:end]
 		if end >= len(body) {
-			break
+			i = end
+		} else {
+			i = end + 1
 		}
-		i = end + 1
-	}
-	return false
-}
-
-func isMagicEncodingLine(s string) bool {
-	// Strip leading whitespace.
-	j := 0
-	for j < len(s) && (s[j] == ' ' || s[j] == '\t') {
-		j++
-	}
-	if j >= len(s) || s[j] != '#' {
-		return false
-	}
-	j++
-	for j < len(s) && (s[j] == ' ' || s[j] == '\t') {
-		j++
-	}
-	rest := s[j:]
-	// Match "encoding:" or "coding:" (case-insensitive on the keyword).
-	for _, kw := range []string{"encoding:", "coding:", "Encoding:", "Coding:"} {
-		if strings.HasPrefix(rest, kw) {
+		trimmed := strings.TrimLeft(raw, " \t")
+		if !strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if strings.Contains(trimmed, "coding:") || strings.Contains(trimmed, "coding=") {
 			return true
 		}
 	}
