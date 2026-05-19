@@ -1220,6 +1220,9 @@ func (p *parser) parseLabelExpression() ast.Expression {
 		// Store with Right=nil so the printer preserves the omitted form
 		// instead of expanding it (which would re-parse as ImplicitNode in
 		// MRI, diverging from a source written as `foo: foo`).
+		if !p.version.AtLeast(ruby31) {
+			p.versionError(ruby31, "hash value omission")
+		}
 		return &ast.InfixExpression{
 			Token:    key.Token,
 			Left:     key,
