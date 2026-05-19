@@ -2601,6 +2601,10 @@ func rubyInfixPrec(op string) int {
 		// InfixExpression by the pattern parser. The grammar already
 		// delimits the guard, so no defensive wrap is needed.
 		return 1
+	case "=>":
+		// Pattern capture (`in Integer => n`) -- stored as InfixExpression
+		// by the pattern parser. Grammar-delimited, no wrap needed.
+		return 1
 	}
 	return 0
 }
