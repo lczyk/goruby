@@ -286,6 +286,11 @@ func (l *Lexer) next() rune {
 		l.width = 0
 		return eof
 	}
+	if b := l.input[l.pos]; b < utf8.RuneSelf {
+		l.width = 1
+		l.pos++
+		return rune(b)
+	}
 	var r rune
 	r, l.width = utf8.DecodeRuneInString(l.input[l.pos:])
 	l.pos += l.width
@@ -389,10 +394,13 @@ func (l *Lexer) consumeEscape() {
 // peek returns but does not consume
 // the next rune in the input.
 func (l *Lexer) peek() rune {
-	w := l.width
-	r := l.next()
-	l.backup()
-	l.width = w
+	if l.pos >= len(l.input) {
+		return eof
+	}
+	if b := l.input[l.pos]; b < utf8.RuneSelf {
+		return rune(b)
+	}
+	r, _ := utf8.DecodeRuneInString(l.input[l.pos:])
 	return r
 }
 
