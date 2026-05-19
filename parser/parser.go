@@ -3902,9 +3902,12 @@ func (p *parser) parseCallArgument(function ast.Expression) ast.Expression {
 			Function: innerIdent,
 		}
 		prevAO := p.suppressKwAndOr
+		prevSDB := p.suppressDoBlock
 		p.suppressKwAndOr = true
+		p.suppressDoBlock = true
 		exp.Arguments = p.parseExpressionList(token.SEMICOLON, token.NEWLINE, token.SCOPE)
 		p.suppressKwAndOr = prevAO
+		p.suppressDoBlock = prevSDB
 		if p.peekTokenOneOf(token.LBRACE, token.DO) {
 			p.acceptOneOf(token.LBRACE, token.DO)
 			exp.Block = p.parseBlockExpr()
@@ -3921,9 +3924,15 @@ func (p *parser) parseCallArgument(function ast.Expression) ast.Expression {
 	}
 
 	prevAO := p.suppressKwAndOr
+	prevSDB := p.suppressDoBlock
 	p.suppressKwAndOr = true
+	// `do` binds to the outermost call; suppress on nested calls in the
+	// arg list so the outer call below captures it. `{...}` still attaches
+	// inner (high precedence) -- matches MRI.
+	p.suppressDoBlock = true
 	exp.Arguments = p.parseExpressionList(token.SEMICOLON, token.NEWLINE, token.SCOPE)
 	p.suppressKwAndOr = prevAO
+	p.suppressDoBlock = prevSDB
 	if p.peekTokenOneOf(token.LBRACE, token.DO) {
 		p.acceptOneOf(token.LBRACE, token.DO)
 		exp.Block = p.parseBlockExpr()
