@@ -17,11 +17,5 @@
 # To regenerate after fixing parser/AST bugs, prune stale entries (test will fail
 # loudly on any entry where the test now passes).
 
-src2-rejected 1.9 internal/integrationtest/testdata/gems/kaiser-ruby/lib/kaiser_ruby/cli.rb: goruby String() output rejected by MRI
-src2-rejected 2.0 internal/integrationtest/testdata/gems/kaiser-ruby/lib/kaiser_ruby/cli.rb: goruby String() output rejected by MRI
-src2-rejected 2.1 internal/integrationtest/testdata/gems/kaiser-ruby/lib/kaiser_ruby/cli.rb: goruby String() output rejected by MRI
-
 # === auto-added after parser/printer fix run ===
-tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/test_module.rb: tree diff vs MRI parsetree
-tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_module.rb: tree diff vs MRI parsetree
 

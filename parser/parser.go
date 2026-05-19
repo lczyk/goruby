@@ -4743,10 +4743,18 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 	}
 	flushWord()
 
+	multiline := false
+	for _, part := range parts {
+		if sc, ok := part.(*ast.StringContent); ok && strings.Contains(sc.Value, "\n") {
+			multiline = true
+			break
+		}
+	}
 	return &ast.ArrayLiteral{
-		Token:    beg,
-		Rbracket: p.curToken, // STRING_END
-		Elements: elements,
+		Token:     beg,
+		Rbracket:  p.curToken, // STRING_END
+		Elements:  elements,
+		Multiline: multiline,
 	}
 }
 

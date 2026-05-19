@@ -1593,6 +1593,11 @@ type ArrayLiteral struct {
 	Token    token.Token // the '['
 	Rbracket token.Token // the ']'
 	Elements []Expression
+	// Multiline marks a %w/%W/%i/%I array whose source body spanned more
+	// than one line. Prism's `forced_utf8_encoding` propagates from a `\u`
+	// escape to subsequent same-line symbols, so layout has to be preserved
+	// on re-emit -- multi-line stays multi-line, single-line stays so.
+	Multiline bool
 }
 
 func (al *ArrayLiteral) expressionNode() {}
@@ -1641,16 +1646,22 @@ func (al *ArrayLiteral) percentArrayString() (string, bool) {
 	default:
 		return "", false
 	}
+	// Lowercase %w / %i resolve `\<delim>` -> `<delim>` and `\\` -> `\` in
+	// content, so a Value containing a backslash can't be safely re-emitted
+	// without knowing the original delim. Uppercase %W / %I store source
+	// bytes verbatim (escapes are preserved raw), so backslash content is
+	// fine to re-emit.
+	allowBackslash := typ == "W" || typ == "I"
+	badChars := " \t\n[]"
+	if !allowBackslash {
+		badChars += "\\"
+	}
 	words := make([]string, 0, len(al.Elements))
 	for _, el := range al.Elements {
 		var w string
 		switch e := el.(type) {
 		case *StringLiteral:
-			// Backslash content escapes differently between delim choices
-			// (`%w(\()` -> "(" vs `%w[\(]` -> "\("). Without preserving the
-			// source delim we can't safely re-emit, so fall back to `[...]`
-			// when any word would carry a backslash.
-			if e.Parts != nil || strings.ContainsAny(e.Value, " \t\n[]\\") {
+			if e.Parts != nil || strings.ContainsAny(e.Value, badChars) {
 				return "", false
 			}
 			w = e.Value
@@ -1659,7 +1670,7 @@ func (al *ArrayLiteral) percentArrayString() (string, bool) {
 			case *Identifier:
 				w = v.Value
 			case *StringLiteral:
-				if v.Parts != nil || strings.ContainsAny(v.Value, " \t\n[]\\") {
+				if v.Parts != nil || strings.ContainsAny(v.Value, badChars) {
 					return "", false
 				}
 				w = v.Value
@@ -1670,6 +1681,9 @@ func (al *ArrayLiteral) percentArrayString() (string, bool) {
 			return "", false
 		}
 		words = append(words, w)
+	}
+	if al.Multiline {
+		return "%" + typ + "[\n" + strings.Join(words, "\n") + "\n]", true
 	}
 	return "%" + typ + "[" + strings.Join(words, " ") + "]", true
 }
@@ -2150,10 +2164,23 @@ func (ce *ContextCallExpression) String() string {
 			args = append(args, a.String())
 		}
 	}
-	if len(args) > 0 || ce.ExplicitParens {
+	if ce.ExplicitParens {
 		out.WriteString("(")
 		out.WriteString(strings.Join(args, ", "))
 		out.WriteString(")")
+	} else if len(args) > 0 {
+		// Paren-less source: preserve paren-less on re-emit when any arg is
+		// a heredoc. Older MRI (1.9-2.1) lacks `<<~` and rejects
+		// `foo(<<~TAG)` as a parse error, but lexes `foo <<~TAG` as
+		// `foo << ~TAG` (binary `<<` of unary `~TAG`) which parses fine.
+		if containsHeredocArg(ce.Arguments) {
+			out.WriteString(" ")
+			out.WriteString(strings.Join(args, ", "))
+		} else {
+			out.WriteString("(")
+			out.WriteString(strings.Join(args, ", "))
+			out.WriteString(")")
+		}
 	}
 	if ce.Block != nil {
 		if ce.Block.Token.Type == token.LBRACE {
@@ -2162,6 +2189,15 @@ func (ce *ContextCallExpression) String() string {
 		out.WriteString(ce.Block.String())
 	}
 	return out.String()
+}
+
+func containsHeredocArg(args []Expression) bool {
+	for _, a := range args {
+		if sl, ok := a.(*StringLiteral); ok && sl.HeredocTag != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // A BlockExpression represents a Ruby block
