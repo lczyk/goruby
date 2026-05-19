@@ -2402,7 +2402,10 @@ func (pe *PrefixExpression) String() string {
 			atomic = true
 		}
 	}
-	wrap := pe.Operator != "^" && !atomic
+	// `not` is the lowest-precedence unary; any embedding context (assign rhs,
+	// arg list, infix operand, if/while head) accepts `not X` without parens.
+	// Wrapping as `(not X)` would introduce a ParenthesesNode on MRI re-parse.
+	wrap := pe.Operator != "^" && pe.Operator != "not" && !atomic
 
 	var out bytes.Buffer
 	if wrap {
