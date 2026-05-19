@@ -1630,21 +1630,51 @@ func (p *parser) parsePatternHashPair(pairs *ast.OrderedExprMap) {
 		pairs.Set(key, val)
 		return
 	}
-	// key => pattern or "string": pattern
+	// String-key pattern: `"foo": pat` or `"foo":` (ruby 3.1+ value omission).
+	// Parse the string directly to keep parseExpression from consuming the
+	// following `:` / SYMBEG (which would otherwise be picked up as an infix
+	// call-argument continuation and fail).
+	if p.currentTokenOneOf(token.STRING, token.STRING_BEG) {
+		var strKey *ast.StringLiteral
+		if p.currentTokenIs(token.STRING_BEG) {
+			if sl, ok := p.parseInterpolatedString().(*ast.StringLiteral); ok {
+				strKey = sl
+			}
+		} else {
+			if sl, ok := p.parseStringLiteral().(*ast.StringLiteral); ok {
+				strKey = sl
+			}
+		}
+		if strKey != nil && p.peekTokenOneOf(token.COLON, token.SYMBEG) {
+			p.acceptOneOf(token.COLON, token.SYMBEG)
+			symKey := &ast.SymbolLiteral{Token: p.curToken, Value: strKey}
+			// Value-omission: `"a":` is shorthand for `"a": a` (ruby 3.1+).
+			if p.peekTokenOneOf(token.COMMA, token.RBRACE, token.THEN, token.NEWLINE, token.SEMICOLON) {
+				pairs.Set(symKey, &ast.Identifier{Token: strKey.Token, Value: strKey.Value})
+				pairs.SetOmitted(symKey)
+				return
+			}
+			p.nextToken()
+			val := p.parsePatternBinding()
+			pairs.Set(symKey, val)
+			return
+		}
+		// Not a string-key pair; fall through to error/hashrocket path.
+		if !p.accept(token.HASHROCKET) {
+			return
+		}
+		p.nextToken()
+		val := p.parsePatternBinding()
+		pairs.Set(strKey, val)
+		return
+	}
+	// key => pattern
 	p.inPattern = false
 	prevSuppressHR := p.suppressHashrocket
 	p.suppressHashrocket = true
 	key := p.parseExpression(precLowest)
 	p.suppressHashrocket = prevSuppressHR
 	p.inPattern = true
-	if _, isStr := key.(*ast.StringLiteral); isStr && p.peekTokenOneOf(token.COLON, token.SYMBEG) {
-		p.acceptOneOf(token.COLON, token.SYMBEG)
-		symKey := &ast.SymbolLiteral{Token: p.curToken, Value: key.(*ast.StringLiteral)}
-		p.nextToken()
-		val := p.parsePatternBinding()
-		pairs.Set(symKey, val)
-		return
-	}
 	if !p.accept(token.HASHROCKET) {
 		return
 	}
