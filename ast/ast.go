@@ -2493,14 +2493,46 @@ func (pe *PrefixExpression) String() string {
 	}
 	out.WriteString(pe.Operator)
 	if pe.Right != nil {
-		// `not` always uses call-paren form `not(X)` -- pre-2.0 MRI rejects
-		// `not X` for non-trivial operands, and on modern MRI `not(X)` and
-		// `not X` normalise to the same CallNode (opening_loc / closing_loc
-		// are dropped by the parsetree normaliser).
+		// `not` form selection:
+		// - pre-2.0 MRI rejects `not X` for non-atomic X (require parens).
+		// - on modern MRI, `not(X)` and `not X` normalise to the same
+		//   CallNode (opening_loc / closing_loc are stripped).
+		// - empty grouped expr `not ()` -> ParenExpression{Expr:nil}.
+		//   Emit with a space to keep the source-level form (`not()` is a
+		//   different MRI shape -- call-paren with no args, NODE_BEGIN(nil)
+		//   recv vs receiver=nil).
 		if pe.Operator == "not" {
-			out.WriteString("(")
-			out.WriteString(pe.Right.String())
-			out.WriteString(")")
+			needWrap := true
+			switch r := pe.Right.(type) {
+			case *Identifier, *InstanceVariable, *ClassVariable, *Global,
+				*Boolean, *Nil, *Self, *IntegerLiteral, *FloatLiteral,
+				*ScopedIdentifier, *RegexLiteral, *StringLiteral,
+				*SymbolLiteral, *ArrayLiteral, *HashLiteral:
+				// Atomic-enough that pre-2.0 MRI accepts `not X` without
+				// requiring parens. ContextCallExpression / IndexExpression
+				// are NOT here -- pre-2.0 rejects `not x.foo` / `not x[0]`.
+				needWrap = false
+			case *ParenExpression:
+				if r.Expr == nil && len(r.Stmts) == 0 {
+					// `not ()` -- preserve with space + inner empty parens
+					out.WriteString(" ")
+					out.WriteString(r.String())
+					if wrap {
+						out.WriteString(")")
+					}
+					return out.String()
+				}
+				// `not (X)` already provides outer parens via ParenExpression
+				needWrap = false
+			}
+			if needWrap {
+				out.WriteString("(")
+				out.WriteString(pe.Right.String())
+				out.WriteString(")")
+			} else {
+				out.WriteString(" ")
+				out.WriteString(pe.Right.String())
+			}
 			if wrap {
 				out.WriteString(")")
 			}

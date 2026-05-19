@@ -82,16 +82,6 @@ src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/enc/test_shift_jis
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/enc/test_shift_jis.rb: MRI rejects encoding magic comment in older versions
 
 # === auto-added after parser/printer fix run ===
-src2-rejected 1.9 internal/integrationtest/testdata/gems/ropy/ruby/ropy.rb: goruby String() output rejected by MRI
-src2-rejected 2.0 internal/integrationtest/testdata/gems/ropy/ruby/ropy.rb: goruby String() output rejected by MRI
-src2-rejected 2.1 internal/integrationtest/testdata/gems/ropy/ruby/ropy.rb: goruby String() output rejected by MRI
-src2-rejected 2.3 internal/integrationtest/testdata/gems/ropy/ruby/ropy.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/gems/ropy/ruby/ropy.rb: goruby String() output rejected by MRI
-src2-rejected 2.6 internal/integrationtest/testdata/gems/ropy/ruby/ropy.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/gems/ropy/ruby/ropy.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/gems/ropy/ruby/ropy.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/gems/ropy/ruby/ropy.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/gems/ropy/ruby/ropy.rb: goruby String() output rejected by MRI
 tree-mismatch 1.9 internal/integrationtest/testdata/mri-tests/test_flip.rb: tree diff vs MRI parsetree
 tree-mismatch 2.0 internal/integrationtest/testdata/mri-tests/test_flip.rb: tree diff vs MRI parsetree
 tree-mismatch 2.1 internal/integrationtest/testdata/mri-tests/test_flip.rb: tree diff vs MRI parsetree
