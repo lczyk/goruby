@@ -51,6 +51,7 @@ type interpState struct {
 	heredocStripped bool
 	heredocQuote    rune
 	heredocPostBody string
+	heredocRest     segment
 }
 
 // pushInterp pushes an interpState, capturing the current heredoc-related
@@ -79,6 +80,7 @@ func (l *Lexer) pushInterp(s interpState) {
 	s.heredocStripped = l.heredocStripped
 	s.heredocQuote = l.heredocQuote
 	s.heredocPostBody = l.heredocPostBody
+	s.heredocRest = l.heredocRest
 	l.interpStack = append(l.interpStack, s)
 }
 
@@ -90,6 +92,7 @@ func (l *Lexer) restoreHeredocState(s interpState) {
 	l.heredocStripped = s.heredocStripped
 	l.heredocQuote = s.heredocQuote
 	l.heredocPostBody = s.heredocPostBody
+	l.heredocRest = s.heredocRest
 }
 
 // Option configures the lexer.
@@ -211,9 +214,14 @@ type Lexer struct {
 	heredocSquig    bool // <<~
 	heredocStripped bool // <<~ source had a positive common indent that was stripped
 	heredocQuote    rune
-	heredocPostBody string // bytes from after delim to end-of-line (incl. \n);
+	heredocPostBody string // legacy: bytes from after delim to end-of-line (incl. \n);
 	// spliced back into input after the heredoc body's STRING_END so trailers
 	// like <<EOS.chop and chained heredocs like <<A, <<B both lex naturally.
+	// Phase 2+ migrates from heredocPostBody splicing to heredocRest cursor.
+	heredocRest segment // range in l.input holding rest-of-line; queued onto
+	// l.pending at body-end so the lexer reads it after STRING_END. Zero value
+	// means cursor mode is not active for the current heredoc -- legacy
+	// heredocPostBody splice path is used instead.
 
 	// Interpolation state.
 	braceDepth  int
@@ -305,15 +313,61 @@ func (l *Lexer) advanceSegment() bool {
 	return true
 }
 
+// byteAt returns the byte at logical offset from l.pos, walking pending
+// segments when the offset crosses l.segEnd. Used by lookahead paths that
+// must respect cursor boundaries (otherwise they'd see "physical" bytes
+// past segEnd that don't belong to the current logical stream).
+func (l *Lexer) byteAt(off int) (byte, bool) {
+	p := l.pos + off
+	if p < l.segEnd {
+		return l.input[p], true
+	}
+	over := p - l.segEnd
+	for _, seg := range l.pending {
+		size := seg.end - seg.start
+		if over < size {
+			return l.input[seg.start+over], true
+		}
+		over -= size
+	}
+	return 0, false
+}
+
 // syncSegEnd keeps l.segEnd consistent with the current length of l.input
 // after a splice mutation. Phase 1 of the heredoc cursor migration: existing
 // splice paths still mutate l.input, so segEnd must follow. Phase 2+ converts
 // the splice sites to pending segments and this helper goes away.
 func (l *Lexer) syncSegEnd() { l.segEnd = len(l.input) }
 
+// finishHeredoc handles the transition at heredoc body end. Cursor mode
+// (heredocRest set, phase 2+): queues the after-body continuation as the
+// next pending segment and switches the view to the rest-of-line segment.
+// Legacy splice mode (heredocPostBody non-empty): re-injects postBody into
+// l.input. Either way, leaves the lexer positioned to consume rest-of-line
+// content next, followed by what was after the heredoc.
+func (l *Lexer) finishHeredoc() {
+	l.heredocDelim = ""
+	if l.heredocRest != (segment{}) {
+		rest := l.heredocRest
+		l.heredocRest = segment{}
+		// Push current continuation {l.pos, l.segEnd} to the front of pending
+		// so it's consumed after the rest-of-line segment.
+		l.pending = append([]segment{{l.pos, l.segEnd}}, l.pending...)
+		l.pos = rest.start
+		l.segEnd = rest.end
+		l.start = l.pos
+		return
+	}
+	if l.heredocPostBody != "" {
+		l.input = l.input[:l.pos] + l.heredocPostBody + l.input[l.pos:]
+		l.heredocPostBody = ""
+		l.syncSegEnd()
+	}
+}
+
 // next returns the next rune in the input.
 func (l *Lexer) next() rune {
-	if l.pos >= l.segEnd {
+	for l.pos >= l.segEnd {
 		if !l.advanceSegment() {
 			l.width = 0
 			return eof
@@ -428,19 +482,19 @@ func (l *Lexer) consumeEscape() {
 // the next rune in the input.
 func (l *Lexer) peek() rune {
 	if l.pos >= l.segEnd {
-		// Look ahead into next pending segment without popping.
-		if len(l.pending) == 0 {
-			return eof
+		// Look ahead into the next non-empty pending segment without popping.
+		for i := 0; i < len(l.pending); i++ {
+			seg := l.pending[i]
+			if seg.start >= seg.end {
+				continue
+			}
+			if b := l.input[seg.start]; b < utf8.RuneSelf {
+				return rune(b)
+			}
+			r, _ := utf8.DecodeRuneInString(l.input[seg.start:seg.end])
+			return r
 		}
-		seg := l.pending[0]
-		if seg.start >= seg.end {
-			return eof
-		}
-		if b := l.input[seg.start]; b < utf8.RuneSelf {
-			return rune(b)
-		}
-		r, _ := utf8.DecodeRuneInString(l.input[seg.start:seg.end])
-		return r
+		return eof
 	}
 	if b := l.input[l.pos]; b < utf8.RuneSelf {
 		return rune(b)
@@ -522,21 +576,26 @@ func startLexer(l *Lexer) StateFn {
 	case '\n':
 		// Leading-dot: suppress NEWLINE when followed by . or &.
 		// Only skip horizontal whitespace (spaces, tabs), not newlines.
-		pos := l.pos
-		for pos < len(l.input) {
-			r := rune(l.input[pos])
-			if r != ' ' && r != '\t' {
+		// Lookahead respects cursor-segment boundaries via byteAt so that the
+		// rest-of-line `\n` emitted at heredoc end doesn't peek into body
+		// bytes that physically follow restEnd in l.input.
+		off := 0
+		for {
+			c, ok := l.byteAt(off)
+			if !ok || (c != ' ' && c != '\t') {
 				break
 			}
-			pos++
+			off++
 		}
+		c0, ok0 := l.byteAt(off)
+		c1, ok1 := l.byteAt(off + 1)
 		// Suppress NEWLINE before .method or &.method, but NOT before
 		// .. or ... (range literals).
-		if pos < len(l.input) && l.input[pos] == '.' && pos+1 < len(l.input) && l.input[pos+1] != '.' {
+		if ok0 && c0 == '.' && ok1 && c1 != '.' {
 			l.ignore()
 			return startLexer
 		}
-		if pos < len(l.input) && l.input[pos] == '&' && pos+1 < len(l.input) && l.input[pos+1] == '.' {
+		if ok0 && c0 == '&' && ok1 && c1 == '.' {
 			l.ignore()
 			return startLexer
 		}
@@ -547,12 +606,13 @@ func startLexer(l *Lexer) StateFn {
 		}
 		// Ruby 4.0+: leading logical operators as line continuation.
 		// Only when version is explicitly set -- this changes existing behaviour.
-		if l.version.IsSet() && l.version.AtLeast(ruby40) && pos < len(l.input) {
-			rest := l.input[pos:]
-			if (len(rest) >= 2 && rest[:2] == "||") ||
-				(len(rest) >= 2 && rest[:2] == "&&") ||
-				(len(rest) >= 3 && rest[:3] == "or " || len(rest) >= 3 && rest[:3] == "or\t") ||
-				(len(rest) >= 4 && rest[:4] == "and " || len(rest) >= 4 && rest[:4] == "and\t") {
+		if l.version.IsSet() && l.version.AtLeast(ruby40) && ok0 {
+			c2, _ := l.byteAt(off + 2)
+			c3, _ := l.byteAt(off + 3)
+			if (c0 == '|' && c1 == '|') ||
+				(c0 == '&' && c1 == '&') ||
+				(c0 == 'o' && c1 == 'r' && (c2 == ' ' || c2 == '\t')) ||
+				(c0 == 'a' && c1 == 'n' && c2 == 'd' && (c3 == ' ' || c3 == '\t')) {
 				l.ignore()
 				return startLexer
 			}
@@ -1959,7 +2019,15 @@ func lexHeredocStart(l *Lexer, indent, squig bool) StateFn {
 	nlPos := restStart
 	braces := 0
 	inInterp := len(l.interpStack) > 0
-	for nlPos < len(l.input) && l.input[nlPos] != '\n' {
+	// Non-interp scans within the current cursor segment so nested heredocs
+	// on rest-of-line of an outer heredoc see the segment-trailing \n. The
+	// interp path still uses splice (phase 3) and needs full-input scope to
+	// find the unmatched } that bounds the rest-of-line capture.
+	scanEnd := l.segEnd
+	if inInterp {
+		scanEnd = len(l.input)
+	}
+	for nlPos < scanEnd && l.input[nlPos] != '\n' {
 		if inInterp {
 			switch l.input[nlPos] {
 			case '{':
@@ -1974,9 +2042,32 @@ func lexHeredocStart(l *Lexer, indent, squig bool) StateFn {
 		nlPos++
 	}
 foundEnd:
-	if nlPos < len(l.input) && l.input[nlPos] == '\n' {
+	cursorMode := false
+	if !inInterp && nlPos < l.segEnd && l.input[nlPos] == '\n' {
+		// Cursor mode: queue rest-of-line as a pending segment to be lexed
+		// after STRING_END. Jump l.pos directly to body start; no input
+		// mutation.
+		l.heredocRest = segment{restStart, nlPos + 1}
+		if nlPos+1 == l.segEnd && len(l.pending) > 0 {
+			// Nested heredoc: the \n is at the end of the current segment
+			// (e.g. trailing \n of an outer heredoc's rest-of-line). Body
+			// source is the next pending segment (the outer heredoc's
+			// after-body continuation).
+			body := l.pending[0]
+			l.pending = l.pending[1:]
+			l.pos = body.start
+			l.segEnd = body.end
+		} else {
+			l.pos = nlPos + 1
+		}
+		l.start = l.pos
+		cursorMode = true
+	} else if nlPos < len(l.input) && l.input[nlPos] == '\n' {
+		// Splice fallback when inInterp (or any other path that hasn't been
+		// converted to cursor mode yet).
 		l.heredocPostBody = l.input[restStart : nlPos+1]
 		l.input = l.input[:restStart] + "\n" + l.input[nlPos+1:]
+		l.syncSegEnd()
 	} else if inInterp && nlPos < len(l.input) && l.input[nlPos] == '}' {
 		// Inside interpolation: capture up to (not including) } so the
 		// interpolation handler can process }. Find the real newline for
@@ -1992,19 +2083,22 @@ foundEnd:
 		} else {
 			l.input = l.input[:restStart]
 		}
+		l.syncSegEnd()
 	} else {
 		l.heredocPostBody = l.input[restStart:nlPos]
 		l.input = l.input[:restStart]
+		l.syncSegEnd()
 	}
-	l.syncSegEnd()
-	// Consume the inserted \n (or hit eof on unterminated input).
-	for {
-		r := l.next()
-		if r == eof || r == '\n' {
-			break
+	if !cursorMode {
+		// Consume the inserted \n (or hit eof on unterminated input).
+		for {
+			r := l.next()
+			if r == eof || r == '\n' {
+				break
+			}
 		}
+		l.ignore()
 	}
-	l.ignore()
 	// All heredocs (including single-quoted) emit STRING_BEG + STRING_CONTENT + STRING_END.
 	if l.heredocQuote == '\'' {
 		if l.heredocSquig {
@@ -2137,12 +2231,7 @@ func lexHeredocBody(l *Lexer) StateFn {
 			}
 		}
 		l.ignore()
-		l.heredocDelim = ""
-		if l.heredocPostBody != "" {
-			l.input = l.input[:l.pos] + l.heredocPostBody + l.input[l.pos:]
-			l.heredocPostBody = ""
-			l.syncSegEnd()
-		}
+		l.finishHeredoc()
 		return startLexer
 	}
 	for {
@@ -2205,12 +2294,7 @@ func lexHeredocBody(l *Lexer) StateFn {
 					}
 				}
 				l.ignore()
-				l.heredocDelim = ""
-				if l.heredocPostBody != "" {
-					l.input = l.input[:l.pos] + l.heredocPostBody + l.input[l.pos:]
-					l.heredocPostBody = ""
-					l.syncSegEnd()
-				}
+				l.finishHeredoc()
 				return startLexer
 			}
 
@@ -2241,12 +2325,7 @@ func lexHeredocContent(l *Lexer) StateFn {
 		}
 		l.ignore()
 		l.emit(endTok)
-		l.heredocDelim = ""
-		if l.heredocPostBody != "" {
-			l.input = l.input[:l.pos] + l.heredocPostBody + l.input[l.pos:]
-			l.heredocPostBody = ""
-			l.syncSegEnd()
-		}
+		l.finishHeredoc()
 		return startLexer
 	}
 	for {
@@ -2307,12 +2386,7 @@ func lexHeredocContent(l *Lexer) StateFn {
 				}
 				l.ignore()
 				l.emit(endTok)
-				l.heredocDelim = ""
-				if l.heredocPostBody != "" {
-					l.input = l.input[:l.pos] + l.heredocPostBody + l.input[l.pos:]
-					l.heredocPostBody = ""
-					l.syncSegEnd()
-				}
+				l.finishHeredoc()
 				return startLexer
 			}
 			// Not a delimiter -- rewind so content includes the full line.
