@@ -209,7 +209,6 @@ parse ..2.0 internal/integrationtest/testdata/mri-tests/test_rational.rb: versio
 parse 2.3 internal/integrationtest/testdata/mri-tests/test_regexp.rb: version-aware rejection not implemented
 parse 3.0 internal/integrationtest/testdata/mri-tests/test_regexp.rb: version-aware rejection not implemented
 parse ..2.0 internal/integrationtest/testdata/mri-tests/test_sprintf.rb: version-aware rejection not implemented
-parse 3.0 internal/integrationtest/testdata/mri-tests/test_syntax.rb: version-aware rejection not implemented
 parse 2.0 internal/integrationtest/testdata/mri-tests/test_time.rb: version-aware rejection not implemented
 parse ..2.0 internal/integrationtest/testdata/mri-tests/test_time_tz.rb: version-aware rejection not implemented
 parse 2.7..3.0 internal/integrationtest/testdata/mri-tests/test_yjit.rb: version-aware rejection not implemented
