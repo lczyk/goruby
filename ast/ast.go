@@ -1764,9 +1764,15 @@ type ArrayLiteral struct {
 	EndPos   int         // pos of the closing `]`
 	Elements []Expression
 	// Multiline marks a %w/%W/%i/%I array whose source body spanned more
-	// than one line. Prism's `forced_utf8_encoding` propagates from a `\u`
-	// escape to subsequent same-line symbols, so layout has to be preserved
-	// on re-emit -- multi-line stays multi-line, single-line stays so.
+	// than one line. Prism's encoding-inference for the surrounding
+	// program (not just elements inside the array) depends on whether a
+	// `\u` escape sits alone on its line versus shares one with other
+	// content: a single-line layout propagates `forced_utf8_encoding`
+	// onto subsequent symbols/strings outside the array body, while a
+	// multi-line layout contains the propagation to the line of the
+	// escape. Layout has to be preserved on re-emit -- multi-line stays
+	// multi-line, single-line stays so -- or downstream SymbolFlags /
+	// StringFlags diverge.
 	Multiline bool
 }
 

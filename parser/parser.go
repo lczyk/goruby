@@ -5226,7 +5226,7 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 	}
 	return ast.Init(p.arena.NewArrayLiteral(), ast.ArrayLiteral{
 		Token:     beg,
-		EndPos: p.curToken.Pos, // STRING_END
+		EndPos:    p.curToken.Pos, // STRING_END
 		Elements:  elements,
 		Multiline: multiline,
 	})
