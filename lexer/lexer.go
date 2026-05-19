@@ -861,7 +861,16 @@ func lexIdentifier(l *Lexer) StateFn {
 		// ? and ! are valid method name suffixes in Ruby (e.g. nil?, run!).
 		// r has already been consumed by l.next() and is within l.pos,
 		// so we just break -- no need to consume the next character.
+		// Exception: `!=` is the not-equal operator; `foo!=x` is
+		// `foo != x`, not setter `foo!=` on receiver. Don't absorb `!`
+		// when followed by `=` (unless it's `==` which would belong to
+		// `!==`, not a valid token -- but `!=` then `=` would be `!==`
+		// which Ruby treats as `!=` then `=`, so still want to leave it).
 		if r == '?' || r == '!' {
+			if r == '!' && l.peek() == '=' {
+				l.backup()
+				break
+			}
 			// already part of the identifier
 		} else if r != eof {
 			l.backup()
