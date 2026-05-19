@@ -2453,7 +2453,6 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 
 	sl := &ast.StringLiteral{Token: begToken}
 	if strings.HasPrefix(begToken.Literal, "<<") {
-		sl.HeredocTag = begToken.Literal
 		if p.curToken.HeredocStripped || p.embExprDepth > 0 {
 			sl.HeredocStripped = true
 		}

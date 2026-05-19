@@ -894,12 +894,27 @@ func (b *Boolean) String() string       { return fmt.Sprintf("%t", b.Value) }
 // Value holds the content and Parts is nil. For interpolated strings, Parts
 // holds StringContent and expression nodes.
 type StringLiteral struct {
-	Token           token.Token      // STRING_BEG or STRING
+	Token           token.Token      // STRING_BEG or STRING; Literal carries the heredoc tag (e.g. "<<EOS") for heredoc strings
 	Value           string           // for non-interpolated strings
 	Parts           []Expression     // for interpolated strings
-	HeredocTag      string           // e.g. "<<~EOS", "<<-'DOC'" -- empty for non-heredocs
 	HeredocStripped bool             // true on `<<~` heredocs whose source had a positive common indent that was stripped -- preserves MRI's NODE_DSTR (vs NODE_STR) classification on roundtrip
 	Adjacent        []*StringLiteral // adjacent string literals: `"a" "b"` -- MRI parses each separately and wraps in an outer InterpolatedString
+}
+
+// HeredocTag returns the heredoc tag (e.g. "<<EOS", "<<~'DOC'") for heredoc-
+// origin literals, or "" for non-heredocs. The parser sets Token to the
+// STRING_BEG / XSTR_BEG token for interpolated forms, and only heredoc
+// begin-tokens carry a "<<"-prefixed literal there. Bare STRING-token
+// literals can incidentally start with "<<" (e.g. the content of '<<') and
+// must not be misread as heredoc tags -- so the type check is load-bearing.
+func (sl *StringLiteral) HeredocTag() string {
+	switch sl.Token.Type {
+	case token.STRING_BEG, token.XSTR_BEG:
+		if strings.HasPrefix(sl.Token.Literal, "<<") {
+			return sl.Token.Literal
+		}
+	}
+	return ""
 }
 
 func (sl *StringLiteral) expressionNode() {}
@@ -1032,8 +1047,8 @@ func (sl *StringLiteral) String() string {
 }
 
 func (sl *StringLiteral) stringOnce() string {
-	if sl.HeredocTag != "" {
-		delim := heredocDelimFromTag(sl.HeredocTag)
+	if sl.HeredocTag() != "" {
+		delim := heredocDelimFromTag(sl.HeredocTag())
 		// Heredoc style affects col-0 vs indented body handling. MRI's
 		// parser fails to recognise the closing delimiter for *chained*
 		// heredocs in interp (e.g. `"#{<<~A}#{<<~B}"`) when both body
@@ -1046,7 +1061,7 @@ func (sl *StringLiteral) stringOnce() string {
 		//     verbatim; indenting only the delim is safe.
 		//   - `<<` (plain) requires delim at column 0 and preserves body
 		//     verbatim; no safe indent possible. Untouched.
-		style := heredocStyle(sl.HeredocTag)
+		style := heredocStyle(sl.HeredocTag())
 		var body bytes.Buffer
 		if sl.Parts != nil {
 			for _, p := range sl.Parts {
@@ -1065,7 +1080,7 @@ func (sl *StringLiteral) stringOnce() string {
 			body.WriteString(sl.Value)
 		}
 		var out bytes.Buffer
-		out.WriteString(sl.HeredocTag)
+		out.WriteString(sl.HeredocTag())
 		out.WriteByte(heredocBodyOpen)
 		// Compute delim indentation so that MRI strips exactly the body's
 		// current leading WS (preserves squiggly content) but is also at
@@ -1832,7 +1847,7 @@ func (hl *HashLiteral) StringNoBraces() string {
 					} else {
 						elements = append(elements, label+" "+kv.Value.String())
 					}
-				} else if sl, ok := kv.Key.(*StringLiteral); ok && sl.HeredocTag == "" {
+				} else if sl, ok := kv.Key.(*StringLiteral); ok && sl.HeredocTag() == "" {
 					elements = append(elements, sl.String()+": "+kv.Value.String())
 				} else {
 					elements = append(elements, kv.Key.String()+" => "+kv.Value.String())
@@ -2229,7 +2244,7 @@ func bareSplatPattern(p Expression) bool {
 
 func containsHeredocArg(args []Expression) bool {
 	for _, a := range args {
-		if sl, ok := a.(*StringLiteral); ok && sl.HeredocTag != "" {
+		if sl, ok := a.(*StringLiteral); ok && sl.HeredocTag() != "" {
 			return true
 		}
 	}
