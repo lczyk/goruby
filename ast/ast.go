@@ -1582,6 +1582,16 @@ func (al *ArrayLiteral) End() int {
 // TokenLiteral returns the literal of the token token.LBRACKET
 func (al *ArrayLiteral) TokenLiteral() string { return al.Token.Literal }
 func (al *ArrayLiteral) String() string {
+	// Preserve percent-literal arrays (`%w[a b]` / `%i[foo bar]` / `%W[...]`
+	// / `%I[...]`) on roundtrip. MRI assigns these symbols/strings a
+	// `forced_us_ascii_encoding` SymbolFlag when the literal source bytes
+	// are ASCII -- a flag that diverges if we re-emit as a bracketed array
+	// of explicit `:foo` / `"a"` elements.
+	if al.Token.Type == token.STRING_BEG {
+		if s, ok := al.percentArrayString(); ok {
+			return s
+		}
+	}
 	var out bytes.Buffer
 	elements := []string{}
 	for _, el := range al.Elements {
@@ -1591,6 +1601,46 @@ func (al *ArrayLiteral) String() string {
 	out.WriteString(strings.Join(elements, ", "))
 	out.WriteString("]")
 	return out.String()
+}
+
+// percentArrayString re-emits a `%w` / `%W` / `%i` / `%I` array. Returns
+// false if the array element shape doesn't fit the simple word-list form
+// (e.g. an interpolated symbol with embedded spaces) -- the caller falls
+// back to `[...]` form.
+func (al *ArrayLiteral) percentArrayString() (string, bool) {
+	typ := al.Token.Literal
+	switch typ {
+	case "w", "W", "i", "I":
+	default:
+		return "", false
+	}
+	words := make([]string, 0, len(al.Elements))
+	for _, el := range al.Elements {
+		var w string
+		switch e := el.(type) {
+		case *StringLiteral:
+			if e.Parts != nil || strings.ContainsAny(e.Value, " \t\n[]") {
+				return "", false
+			}
+			w = e.Value
+		case *SymbolLiteral:
+			switch v := e.Value.(type) {
+			case *Identifier:
+				w = v.Value
+			case *StringLiteral:
+				if v.Parts != nil || strings.ContainsAny(v.Value, " \t\n[]") {
+					return "", false
+				}
+				w = v.Value
+			default:
+				return "", false
+			}
+		default:
+			return "", false
+		}
+		words = append(words, w)
+	}
+	return "%" + typ + "[" + strings.Join(words, " ") + "]", true
 }
 
 // HashLiteral represents an Hash literal within the AST

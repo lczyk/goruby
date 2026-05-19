@@ -27,9 +27,7 @@ tree-mismatch 3.1 internal/integrationtest/testdata/mri-tests/test_pattern_match
 tree-mismatch 3.2 internal/integrationtest/testdata/mri-tests/test_pattern_matching.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/test_pattern_matching.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_pattern_matching.rb: tree diff vs MRI parsetree
-tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/test_econv.rb: tree diff vs MRI parsetree
 tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/test_regexp.rb: tree diff vs MRI parsetree
-tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_econv.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_regexp.rb: tree diff vs MRI parsetree
 src2-rejected 2.1 internal/integrationtest/testdata/mri-tests/test_rational2.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/mri-tests/test_rational2.rb: goruby String() output rejected by MRI
