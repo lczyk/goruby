@@ -1181,13 +1181,27 @@ func (rl *RegexLiteral) End() int {
 }
 func (rl *RegexLiteral) TokenLiteral() string { return rl.Token.Literal }
 func (rl *RegexLiteral) String() string {
+	// If the regex content includes `/`, switch to %r-style delimiters so we
+	// don't have to insert `\/` escapes (which MRI's parsetree records as
+	// part of the literal content -- diverging from the original).
+	openDelim, closeDelim := "/", "/"
+	if regexContentHasSlash(rl) {
+		openDelim, closeDelim = pickRegexDelim(rl)
+	}
 	var out bytes.Buffer
-	out.WriteString("/")
+	if openDelim != "/" {
+		out.WriteString("%r")
+	}
+	out.WriteString(openDelim)
 	if rl.Parts != nil {
 		for _, p := range rl.Parts {
 			switch x := p.(type) {
 			case *StringContent:
-				out.WriteString(escapeRegexSlash(x.Value))
+				if openDelim == "/" {
+					out.WriteString(escapeRegexSlash(x.Value))
+				} else {
+					out.WriteString(x.Value)
+				}
 			case *EmbeddedVariable:
 				out.WriteString(x.String())
 			default:
@@ -1203,11 +1217,57 @@ func (rl *RegexLiteral) String() string {
 			}
 		}
 	} else {
-		out.WriteString(escapeRegexSlash(rl.Value))
+		if openDelim == "/" {
+			out.WriteString(escapeRegexSlash(rl.Value))
+		} else {
+			out.WriteString(rl.Value)
+		}
 	}
-	out.WriteString("/")
+	out.WriteString(closeDelim)
 	out.WriteString(rl.Options)
 	return out.String()
+}
+
+func regexContentHasSlash(rl *RegexLiteral) bool {
+	if rl.Parts == nil {
+		return strings.Contains(rl.Value, "/") && !strings.Contains(rl.Value, "\\/")
+	}
+	for _, p := range rl.Parts {
+		if sc, ok := p.(*StringContent); ok {
+			if strings.Contains(sc.Value, "/") && !strings.Contains(sc.Value, "\\/") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func pickRegexDelim(rl *RegexLiteral) (string, string) {
+	pairs := [][2]string{
+		{"{", "}"},
+		{"!", "!"},
+		{"|", "|"},
+		{"#", "#"},
+	}
+	contains := func(s string) bool {
+		if rl.Parts == nil {
+			return strings.Contains(rl.Value, s)
+		}
+		for _, p := range rl.Parts {
+			if sc, ok := p.(*StringContent); ok {
+				if strings.Contains(sc.Value, s) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	for _, dp := range pairs {
+		if !contains(dp[0]) && !contains(dp[1]) {
+			return dp[0], dp[1]
+		}
+	}
+	return "{", "}"
 }
 
 // Comment represents a double quoted string in the AST
