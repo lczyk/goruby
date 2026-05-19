@@ -22,6 +22,7 @@ var (
 	ruby27 = token.MustParseVersion("2.7")
 	ruby30 = token.MustParseVersion("3.0")
 	ruby31 = token.MustParseVersion("3.1")
+	ruby32 = token.MustParseVersion("3.2")
 )
 
 // Possible precendece values
@@ -1982,7 +1983,11 @@ func (p *parser) parseSplatExpression() ast.Expression {
 	if expr.Operator == "**" && !p.version.AtLeast(ruby20) {
 		p.versionError(ruby20, "double-splat (**) in arguments")
 	}
-	// Anonymous forwarding: bare * or ** as argument (ruby 3.2+)
+	// Anonymous forwarding: bare * or ** as argument (ruby 3.2+).
+	// Skipping the version check here: detecting non-pattern usage from
+	// this context is unreliable because parsePatternAtom forwards
+	// CONST/IDENT through parseExpression with inPattern flipped off,
+	// so the same `*` can come from either side. Leaving it permissive.
 	if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.RBRACKET, token.RBRACE,
 		token.NEWLINE, token.SEMICOLON, token.EOF, token.ASSIGN) {
 		return expr
