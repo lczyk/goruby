@@ -3800,9 +3800,16 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 	if p.suppressDoBlock {
 		blockStops = []token.Type{token.LBRACE}
 	}
+	// `do` binds to the leftmost call -- the outer (this) call -- not to
+	// inner paren-less calls inside its arg list. Suppress `do`-block on
+	// nested calls so the outer parseBlockExpr below captures the block.
+	// `{...}` still binds tight (high precedence) and stays with the inner.
+	prevSDB := p.suppressDoBlock
+	p.suppressDoBlock = true
 	contextCallExpression.Arguments = p.parseCallArguments(
 		blockStops...,
 	)
+	p.suppressDoBlock = prevSDB
 	if p.currentTokenOneOf(blockStops...) {
 		contextCallExpression.Block = p.parseBlockExpr()
 	}
