@@ -201,6 +201,13 @@ var tokensNotPossibleInCallArgs = []token.Type{
 	token.RANGEEX,
 }
 
+// callArgTerminator marks token types that cannot start a paren-less call
+// argument. Built from tokensNotPossibleInCallArgs plus the structural
+// closers / separators every parseMethodCall arg-list check shares. Indexed
+// by token.Type so the check is O(1) instead of scanning a ~55-entry slice
+// (which the previous append+spread call shape also allocated for).
+var callArgTerminator [token.TypeMax + 1]bool
+
 type (
 	prefixParseFn func(*parser) ast.Expression
 	infixParseFn  func(*parser, ast.Expression) ast.Expression
@@ -264,6 +271,15 @@ func (p *parser) init(filename string, src []byte, mode Mode) {
 }
 
 func init() {
+	for _, t := range tokensNotPossibleInCallArgs {
+		callArgTerminator[t] = true
+	}
+	for _, t := range [...]token.Type{
+		token.RBRACE, token.RPAREN, token.EMBEXPR_END, token.SEMICOLON, token.EOF,
+	} {
+		callArgTerminator[t] = true
+	}
+
 	prefixParseFns[token.ILLEGAL] = (*parser).parseIllegal
 	prefixParseFns[token.IDENT] = (*parser).parseIdentifier
 	prefixParseFns[token.CONST] = (*parser).parseIdentifier
@@ -4068,7 +4084,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 		return contextCallExpression
 	}
 
-	if p.peekTokenOneOf(append(tokensNotPossibleInCallArgs, token.RBRACE, token.RPAREN, token.EMBEXPR_END, token.SEMICOLON, token.EOF, token.LONELY)...) {
+	if t := p.peekToken.Type; callArgTerminator[t] || t == token.LONELY {
 		return contextCallExpression
 	}
 
@@ -4178,7 +4194,7 @@ func (p *parser) parseContextCallExpression(context ast.Expression) ast.Expressi
 		return contextCallExpression
 	}
 
-	if p.peekTokenOneOf(append(tokensNotPossibleInCallArgs, token.RBRACE, token.RPAREN, token.EMBEXPR_END, token.SEMICOLON, token.EOF)...) {
+	if callArgTerminator[p.peekToken.Type] {
 		return contextCallExpression
 	}
 
