@@ -1988,10 +1988,10 @@ func (p *parser) parseSplatExpression() ast.Expression {
 		p.versionError(ruby20, "double-splat (**) in arguments")
 	}
 	// Anonymous forwarding: bare * or ** as argument (ruby 3.2+).
-	// Skipping the version check here: detecting non-pattern usage from
-	// this context is unreliable because parsePatternAtom forwards
-	// CONST/IDENT through parseExpression with inPattern flipped off,
-	// so the same `*` can come from either side. Leaving it permissive.
+	// Not gated -- the same code path serves find-patterns (Class(*, x, *)
+	// in 3.0+) and multi-assign LHS rest (a, * = ..., 1.9+). Distinguishing
+	// genuine forwarding from those cases here requires more context than
+	// the parser currently threads. Leaving permissive.
 	if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.RBRACKET, token.RBRACE,
 		token.NEWLINE, token.SEMICOLON, token.EOF, token.ASSIGN) {
 		return expr
