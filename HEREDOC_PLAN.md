@@ -171,4 +171,16 @@ rough per-phase alloc delta (from current 4368 allocs/op on LexRealFiles):
 ## status
 
 - (4-partial) delim O(n^2) fix landed -- commit `52e895e`. LexRealFiles allocs -26%.
-- phases 1-6 above: not started.
+- **phase 1 done** -- commit `77fe3d2`. cursor primitives added; behavior unchanged.
+- **phase 2 done** -- commit `330ee17`. Non-interp main path + 4 body-end sites use cursor. byteAt lookahead added.
+- **phase 3 deferred** -- inInterp cursor entangled with stripSquigInterpBody splice. Will move once phase 5 lands.
+- **phase 4 done** -- commit `330ee17` (folded in). Nested heredocs (`<<A, <<B`) handled via `pending[0]` pop when `\n` at segment boundary.
+- **phase 5 deferred** -- stripSquigInterpBody splice cursor conversion requires generalizing `segment` with overlay data and updating ~53 direct `l.input[...]` reads across body lex / matchHeredocDelimLine. Too invasive for current session; needs dedicated effort.
+- **phase 6 deferred** -- depends on phase 3 / 5 to remove heredocPostBody field.
+
+### measured outcome (vs pre-(4-partial) baseline)
+
+- `BenchmarkLexRealFiles` bytes/op: 9.3MB -> 4.4MB **(-52%)**.
+- `BenchmarkParseRealFiles` bytes/op: 27.6MB -> 21.9MB **(-21%)**.
+- `BenchmarkParseRealFiles` MB/s: 60.7 -> 63.0 (+4%).
+- `BenchmarkLexRealFiles` allocs/op: 5901 -> 4197 (-29%).
