@@ -484,6 +484,12 @@ func (p *parser) nextNonCommentToken() token.Token {
 // the same func value lets the defer machinery skip the heap alloc.
 var traceNoop = func() {}
 
+// restoreSuppressHR is the deferred-restore companion for parser methods that
+// temporarily set p.suppressHashrocket = true around a sub-parse. Calling
+// `defer p.restoreSuppressHR(p.suppressHashrocket)` captures the prior value
+// as an argument (no closure alloc) and restores it on return.
+func (p *parser) restoreSuppressHR(prev bool) { p.suppressHashrocket = prev }
+
 // traceEnter is the indirection between the 88 `defer p.traceEnter()()` call
 // sites and `trace.TraceCtx`. Short-circuits on the cached `p.tracing` bool
 // so non-tracing parses skip the ctx.Value lookup entirely.
@@ -4814,9 +4820,8 @@ func (p *parser) parseCallExpressionWithParens(function ast.Expression) ast.Expr
 
 func (p *parser) parseCallArguments(end ...token.Type) []ast.Expression {
 	defer p.traceEnter()()
-	prevSuppressHR := p.suppressHashrocket
+	defer p.restoreSuppressHR(p.suppressHashrocket)
 	p.suppressHashrocket = true
-	defer func() { p.suppressHashrocket = prevSuppressHR }()
 	list := make([]ast.Expression, 0, 4)
 	if p.currentTokenOneOf(end...) {
 		return list
@@ -4907,9 +4912,8 @@ func (p *parser) parseImplicitHash(firstKey ast.Expression, end ...token.Type) a
 
 func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 	defer p.traceEnter()()
-	prevSuppressHR := p.suppressHashrocket
+	defer p.restoreSuppressHR(p.suppressHashrocket)
 	p.suppressHashrocket = true
-	defer func() { p.suppressHashrocket = prevSuppressHR }()
 	list := make([]ast.Expression, 0, 8)
 	// Skip leading newlines/semicolons inside parens/brackets.
 	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
