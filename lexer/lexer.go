@@ -319,14 +319,21 @@ func (l *Lexer) advanceSegment() bool {
 // past segEnd that don't belong to the current logical stream).
 func (l *Lexer) byteAt(off int) (byte, bool) {
 	p := l.pos + off
-	if p < l.segEnd {
+	if p < l.segEnd && p < len(l.input) {
 		return l.input[p], true
+	}
+	if p < l.segEnd {
+		return 0, false
 	}
 	over := p - l.segEnd
 	for _, seg := range l.pending {
 		size := seg.end - seg.start
 		if over < size {
-			return l.input[seg.start+over], true
+			idx := seg.start + over
+			if idx >= len(l.input) {
+				return 0, false
+			}
+			return l.input[idx], true
 		}
 		over -= size
 	}
@@ -2019,10 +2026,10 @@ func lexHeredocStart(l *Lexer, indent, squig bool) StateFn {
 	nlPos := restStart
 	braces := 0
 	inInterp := len(l.interpStack) > 0
-	// Non-interp scans within the current cursor segment so nested heredocs
-	// on rest-of-line of an outer heredoc see the segment-trailing \n. The
-	// interp path still uses splice (phase 3) and needs full-input scope to
-	// find the unmatched } that bounds the rest-of-line capture.
+	// Scan within the current cursor segment so nested heredocs on rest-of-
+	// line of an outer heredoc see the segment-trailing \n. inInterp still
+	// uses the splice path and needs full-input scope to find the unmatched
+	// } that bounds the rest-of-line capture.
 	scanEnd := l.segEnd
 	if inInterp {
 		scanEnd = len(l.input)
@@ -2062,29 +2069,29 @@ foundEnd:
 		}
 		l.start = l.pos
 		cursorMode = true
-	} else if nlPos < len(l.input) && l.input[nlPos] == '\n' {
-		// Splice fallback when inInterp (or any other path that hasn't been
-		// converted to cursor mode yet).
+	} else if inInterp && nlPos < l.segEnd && l.input[nlPos] == '\n' {
+		// inInterp + \n: keep splice path. Cursor route here is entangled
+		// with stripSquigInterpBody mutations; phase 5 will revisit.
 		l.heredocPostBody = l.input[restStart : nlPos+1]
 		l.input = l.input[:restStart] + "\n" + l.input[nlPos+1:]
 		l.syncSegEnd()
 	} else if inInterp && nlPos < len(l.input) && l.input[nlPos] == '}' {
-		// Inside interpolation: capture up to (not including) } so the
-		// interpolation handler can process }. Find the real newline for
-		// the heredoc body boundary.
+		// Inside interpolation: rest-of-line stops at the unmatched }. Keep
+		// splice path here too. Phase 5 will untangle.
 		realNl := nlPos
 		for realNl < len(l.input) && l.input[realNl] != '\n' {
 			realNl++
 		}
 		l.heredocPostBody = l.input[restStart:realNl]
 		if realNl < len(l.input) {
-			l.heredocPostBody += string(l.input[realNl]) // include \n
+			l.heredocPostBody += string(l.input[realNl])
 			l.input = l.input[:restStart] + "\n" + l.input[realNl+1:]
 		} else {
 			l.input = l.input[:restStart]
 		}
 		l.syncSegEnd()
 	} else {
+		// No \n and no } -- unterminated heredoc (eof). Use splice fallback.
 		l.heredocPostBody = l.input[restStart:nlPos]
 		l.input = l.input[:restStart]
 		l.syncSegEnd()
