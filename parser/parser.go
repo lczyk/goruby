@@ -23,6 +23,7 @@ var (
 	ruby30 = token.MustParseVersion("3.0")
 	ruby31 = token.MustParseVersion("3.1")
 	ruby32 = token.MustParseVersion("3.2")
+	ruby34 = token.MustParseVersion("3.4")
 )
 
 // Possible precendece values
@@ -2991,6 +2992,9 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 	hadLeadingSemi := false
 	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 		if p.currentTokenIs(token.SEMICOLON) {
+			if !hadLeadingSemi && !p.version.AtLeast(ruby34) {
+				p.versionError(ruby34, "leading `;` inside grouped expression")
+			}
 			hadLeadingSemi = true
 		}
 		p.nextToken()
