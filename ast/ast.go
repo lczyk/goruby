@@ -1151,13 +1151,30 @@ func (sl *StringLiteral) stringOnce() string {
 			case *EmbeddedVariable:
 				out.WriteString(x.String())
 			default:
-				if pe, ok := p.(*ParenExpression); ok && pe.Expr == nil && len(pe.Stmts) == 0 {
-					out.WriteString("#{}")
-				} else {
-					out.WriteString("#{")
-					out.WriteString(p.String())
-					out.WriteString("}")
+				if pe, ok := p.(*ParenExpression); ok {
+					if pe.Expr == nil && len(pe.Stmts) == 0 {
+						out.WriteString("#{}")
+						break
+					}
+					if len(pe.Stmts) > 0 {
+						// Multi-statement interp `#{a; b; c}` -- emit the
+						// statements bare inside `#{...}` (no outer parens)
+						// so MRI re-parses as EmbeddedStatementsNode with
+						// multiple body entries, not a wrapping
+						// ParenthesesNode.
+						parts := make([]string, len(pe.Stmts))
+						for i, s := range pe.Stmts {
+							parts[i] = s.String()
+						}
+						out.WriteString("#{")
+						out.WriteString(strings.Join(parts, "; "))
+						out.WriteString("}")
+						break
+					}
 				}
+				out.WriteString("#{")
+				out.WriteString(p.String())
+				out.WriteString("}")
 			}
 		}
 		out.WriteString(close)
@@ -1251,15 +1268,25 @@ func (rl *RegexLiteral) String() string {
 			case *EmbeddedVariable:
 				out.WriteString(x.String())
 			default:
-				if pe, ok := p.(*ParenExpression); ok && pe.Expr == nil && len(pe.Stmts) == 0 {
-					// Empty `#{}` placeholder -- emit bare to match MRI
-					// EmbeddedStatementsNode(statements=nil) shape.
-					out.WriteString("#{}")
-				} else {
-					out.WriteString("#{")
-					out.WriteString(p.String())
-					out.WriteString("}")
+				if pe, ok := p.(*ParenExpression); ok {
+					if pe.Expr == nil && len(pe.Stmts) == 0 {
+						out.WriteString("#{}")
+						break
+					}
+					if len(pe.Stmts) > 0 {
+						parts := make([]string, len(pe.Stmts))
+						for i, s := range pe.Stmts {
+							parts[i] = s.String()
+						}
+						out.WriteString("#{")
+						out.WriteString(strings.Join(parts, "; "))
+						out.WriteString("}")
+						break
+					}
 				}
+				out.WriteString("#{")
+				out.WriteString(p.String())
+				out.WriteString("}")
 			}
 		}
 	} else {
@@ -1619,7 +1646,11 @@ func (al *ArrayLiteral) percentArrayString() (string, bool) {
 		var w string
 		switch e := el.(type) {
 		case *StringLiteral:
-			if e.Parts != nil || strings.ContainsAny(e.Value, " \t\n[]") {
+			// Backslash content escapes differently between delim choices
+			// (`%w(\()` -> "(" vs `%w[\(]` -> "\("). Without preserving the
+			// source delim we can't safely re-emit, so fall back to `[...]`
+			// when any word would carry a backslash.
+			if e.Parts != nil || strings.ContainsAny(e.Value, " \t\n[]\\") {
 				return "", false
 			}
 			w = e.Value
@@ -1628,7 +1659,7 @@ func (al *ArrayLiteral) percentArrayString() (string, bool) {
 			case *Identifier:
 				w = v.Value
 			case *StringLiteral:
-				if v.Parts != nil || strings.ContainsAny(v.Value, " \t\n[]") {
+				if v.Parts != nil || strings.ContainsAny(v.Value, " \t\n[]\\") {
 					return "", false
 				}
 				w = v.Value

@@ -2326,12 +2326,12 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 				parts = append(parts, &ast.ParenExpression{Token: embTok, Rparen: p.curToken})
 				break
 			}
-			var lastExp ast.Expression
 			p.embExprDepth++
+			var stmts []ast.Expression
 			for !p.currentTokenIs(token.EMBEXPR_END) && !p.currentTokenIs(token.EOF) {
 				exp := p.parseExpression(precLowest)
 				if exp != nil {
-					lastExp = exp
+					stmts = append(stmts, exp)
 				}
 				for p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 					p.nextToken()
@@ -2342,8 +2342,12 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 				p.nextToken()
 			}
 			p.embExprDepth--
-			if lastExp != nil {
-				parts = append(parts, lastExp)
+			if len(stmts) == 1 {
+				parts = append(parts, stmts[0])
+			} else if len(stmts) > 1 {
+				// Multi-statement interp `"#{a; b; c}"` -- MRI keeps all
+				// statements under EVSTR. Wrap in ParenExpression.Stmts.
+				parts = append(parts, &ast.ParenExpression{Token: embTok, Rparen: p.curToken, Stmts: stmts})
 			}
 			if !p.peekTokenIs(token.EMBEXPR_END) {
 				p.peekError(token.EMBEXPR_END)
@@ -2429,11 +2433,11 @@ func (p *parser) parseInterpolatedRegex() ast.Expression {
 				parts = append(parts, &ast.ParenExpression{Token: embTok, Rparen: p.curToken})
 				break
 			}
-			var lastExp ast.Expression
+			var stmts []ast.Expression
 			for !p.currentTokenIs(token.EMBEXPR_END) && !p.currentTokenIs(token.EOF) {
 				exp := p.parseExpression(precLowest)
 				if exp != nil {
-					lastExp = exp
+					stmts = append(stmts, exp)
 				}
 				for p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 					p.nextToken()
@@ -2443,8 +2447,14 @@ func (p *parser) parseInterpolatedRegex() ast.Expression {
 				}
 				p.nextToken()
 			}
-			if lastExp != nil {
-				parts = append(parts, lastExp)
+			if len(stmts) == 1 {
+				parts = append(parts, stmts[0])
+			} else if len(stmts) > 1 {
+				// Multi-statement interp `#{a; b; c}` -- MRI preserves the
+				// statement sequence under the EVSTR/DREGX. Wrap in
+				// ParenExpression.Stmts so the printer re-emits as `(a; b; c)`
+				// inside `#{...}`.
+				parts = append(parts, &ast.ParenExpression{Token: embTok, Rparen: p.curToken, Stmts: stmts})
 			}
 			if !p.peekTokenIs(token.EMBEXPR_END) {
 				p.peekError(token.EMBEXPR_END)
