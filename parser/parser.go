@@ -4105,7 +4105,10 @@ func (p *parser) parseStringConcat(left ast.Expression) ast.Expression {
 	if !ok {
 		return p.parseCallArgument(left)
 	}
-	right := p.parseExpression(precCallArg)
+	// Parse the adjacent string at precCall so a trailing infix DOT (or
+	// other higher-prec operator) is left to the outer Pratt loop --
+	// `"a" "b".c` is `("a" "b").c`, not `"a" + ("b".c)`.
+	right := p.parseExpression(precCall)
 	rstr, ok := right.(*ast.StringLiteral)
 	if !ok {
 		return left
@@ -4113,7 +4116,7 @@ func (p *parser) parseStringConcat(left ast.Expression) ast.Expression {
 	p.concatStringPart(str, rstr)
 	for p.peekTokenOneOf(token.STRING, token.STRING_BEG) {
 		p.nextToken()
-		next := p.parseExpression(precCallArg)
+		next := p.parseExpression(precCall)
 		if ns, ok := next.(*ast.StringLiteral); ok {
 			p.concatStringPart(str, ns)
 		}
