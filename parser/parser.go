@@ -34,6 +34,7 @@ const (
 	precComma       // , in expression lists
 	precAssignment  // x = 5
 	precTenary      // ?, :
+	precRange       // .., ... (above ?: but below ||)
 	precLogicalOr   // ||
 	precLogicalAnd  // &&
 	precEquals      // ==, !=, <=>
@@ -125,8 +126,8 @@ var precedences = map[token.Type]int{
 	token.FALSE:              precCallArg,
 	token.CAPTURE:           precCapture,
 	token.POWER:             precPower,
-	token.RANGE:             precLessGreater,
-	token.RANGEEX:           precLessGreater,
+	token.RANGE:             precRange,
+	token.RANGEEX:           precRange,
 	token.LONELY:            precCall,
 	token.KW_AND:            precLogicalAnd,
 	token.KW_OR:             precLogicalOr,
@@ -1372,9 +1373,9 @@ func (p *parser) parsePatternAtom() ast.Expression {
 		return expr
 	default:
 		// Use normal expression parsing for literals, constants, identifiers, etc.
-		// Parse at precLessGreater-1 so range operators (.. / ...) are included.
+		// Parse at precRange-1 so range operators (.. / ...) are included.
 		p.inPattern = false
-		expr := p.parseExpression(precLessGreater - 1)
+		expr := p.parseExpression(precRange - 1)
 		p.inPattern = true
 		return expr
 	}
