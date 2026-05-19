@@ -589,24 +589,29 @@ func startLexer(l *Lexer) StateFn {
 			l.emit(token.MODASSIGN)
 			return startLexer
 		}
-		// %q, %Q, %w, %W, %i, %I, %r, %x, %s start percent literals
-		// when followed by a valid delimiter (not alphanumeric/whitespace).
-		if p := l.peek(); isPercentTypeChar(p) {
-			delim := l.peekSecond()
-			if !isLetter(delim) && !isDigit(delim) && !isWhitespace(delim) && delim != eof {
-				return lexPercentLiteral
+		// Percent literal vs binary modulo: literal only legal where a fresh
+		// expression can start. After an operand (string, ident value, `)` ...)
+		// `%` is binary mod; the exception is a spaced %literal as a method arg
+		// (`foo %w[a b]`), allowed only when the prior token is a call target.
+		regexCtx := isRegexBeginContext(l.lastToken.Type)
+		methodArgCtx := hadWhitespace && isMethodCallTarget(l.lastToken.Type)
+		if regexCtx || methodArgCtx {
+			// %q, %Q, %w, %W, %i, %I, %r, %x, %s -- typed literal w/ delim.
+			if p := l.peek(); isPercentTypeChar(p) {
+				delim := l.peekSecond()
+				if !isLetter(delim) && !isDigit(delim) && !isWhitespace(delim) && delim != eof {
+					return lexPercentLiteral
+				}
 			}
 		}
-		// bare % literal (e.g. %{...}, %(...)) in regex-begin context
-		// or as method argument (method %{str}).
-		if isRegexBeginContext(l.lastToken.Type) {
+		if regexCtx {
+			// bare % literal in regex-begin context (e.g. `= %{str}`, after
+			// `(`, `,`, etc. -- delim shape decided downstream).
 			return lexPercentLiteral
 		}
-		if hadWhitespace && isMethodCallTarget(l.lastToken.Type) {
-			p := l.peek()
-			if isPercentDelimiter(p) {
-				return lexPercentLiteral
-			}
+		if methodArgCtx && isPercentDelimiter(l.peek()) {
+			// bare % literal as method arg (`foo %{str}`).
+			return lexPercentLiteral
 		}
 		l.emit(token.MODULO)
 		return startLexer
