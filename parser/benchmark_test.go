@@ -210,3 +210,110 @@ func BenchmarkParseFuzzCorpus(b *testing.B) {
 func unquoteGoString(s string) (string, error) {
 	return strconv.Unquote(s)
 }
+
+// BenchmarkParseDoBlocks -- `xs.each do |x| ... end` repeated. Stresses
+// parseBlock through the `do`/`end` form.
+func BenchmarkParseDoBlocks(b *testing.B) {
+	var sb strings.Builder
+	for i := 0; i < 100; i++ {
+		sb.WriteString("xs.each do |x|\n  x + 1\nend\n")
+	}
+	runBench(b, sb.String())
+}
+
+// BenchmarkParseBraceBlocks -- `xs.map { |x| x + 1 }` repeated. Brace block
+// goes through a different precedence path than do/end.
+func BenchmarkParseBraceBlocks(b *testing.B) {
+	var sb strings.Builder
+	for i := 0; i < 100; i++ {
+		sb.WriteString("xs.map { |x| x + 1 }\n")
+	}
+	runBench(b, sb.String())
+}
+
+// BenchmarkParseIfElsifChain -- long elsif ladder, parseIfExpression recursion.
+func BenchmarkParseIfElsifChain(b *testing.B) {
+	var sb strings.Builder
+	sb.WriteString("if a == 0\n  x\n")
+	for i := 1; i < 50; i++ {
+		sb.WriteString("elsif a == ")
+		sb.WriteString(strconv.Itoa(i))
+		sb.WriteString("\n  x\n")
+	}
+	sb.WriteString("else\n  y\nend\n")
+	runBench(b, sb.String())
+}
+
+// BenchmarkParseCaseWhen -- long when ladder, parseCaseExpression.
+func BenchmarkParseCaseWhen(b *testing.B) {
+	var sb strings.Builder
+	sb.WriteString("case x\n")
+	for i := 0; i < 50; i++ {
+		sb.WriteString("when ")
+		sb.WriteString(strconv.Itoa(i))
+		sb.WriteString("\n  y\n")
+	}
+	sb.WriteString("else\n  z\nend\n")
+	runBench(b, sb.String())
+}
+
+// BenchmarkParseClassBody -- class with many method defs. Different shape
+// than top-level defs in BenchmarkParseManyDefs.
+func BenchmarkParseClassBody(b *testing.B) {
+	var sb strings.Builder
+	sb.WriteString("class Foo\n")
+	for i := 0; i < 100; i++ {
+		sb.WriteString("  def m")
+		sb.WriteString(strconv.Itoa(i))
+		sb.WriteString("(a, b)\n    a + b\n  end\n")
+	}
+	sb.WriteString("end\n")
+	runBench(b, sb.String())
+}
+
+// BenchmarkParseLambda -- arrow lambdas with bodies.
+func BenchmarkParseLambda(b *testing.B) {
+	var sb strings.Builder
+	for i := 0; i < 100; i++ {
+		sb.WriteString("f = ->(x, y) { x + y }\n")
+	}
+	runBench(b, sb.String())
+}
+
+// BenchmarkParseModifierIf -- `expr if cond` form, repeated. Hits the
+// trailing-modifier path off statement parsing.
+func BenchmarkParseModifierIf(b *testing.B) {
+	var sb strings.Builder
+	for i := 0; i < 200; i++ {
+		sb.WriteString("puts x if cond\n")
+	}
+	runBench(b, sb.String())
+}
+
+// BenchmarkParseTernaryNested -- right-associative `?:` chain.
+func BenchmarkParseTernaryNested(b *testing.B) {
+	var sb strings.Builder
+	for i := 0; i < 100; i++ {
+		sb.WriteString("a ? b : ")
+	}
+	sb.WriteString("c")
+	runBench(b, sb.String())
+}
+
+// BenchmarkParseRangeLiteral -- many range literals, exercises `..` / `...`.
+func BenchmarkParseRangeLiteral(b *testing.B) {
+	parts := make([]string, 200)
+	for i := range parts {
+		parts[i] = "1..10"
+	}
+	runBench(b, "["+strings.Join(parts, ", ")+"]")
+}
+
+// BenchmarkParseMultiAssign -- `a, b, c = 1, 2, 3` form, mlhs/mrhs parsing.
+func BenchmarkParseMultiAssign(b *testing.B) {
+	var sb strings.Builder
+	for i := 0; i < 100; i++ {
+		sb.WriteString("a, b, c, d = 1, 2, 3, 4\n")
+	}
+	runBench(b, sb.String())
+}
