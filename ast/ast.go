@@ -278,7 +278,7 @@ func (es *ExpressionStatement) TokenLiteral() string { return es.Token.Literal }
 type BlockStatement struct {
 	// the { token or the first token from the first statement
 	Token      token.Token
-	EndToken   token.Token // the } token
+	EndPos     int // pos of the closing token (} / end / etc); 0 if unterminated
 	Statements []Statement
 }
 
@@ -288,7 +288,7 @@ func (bs *BlockStatement) statementNode() {}
 func (bs *BlockStatement) Pos() int { return bs.Token.Pos }
 
 // End returns the position of first character immediately after the node
-func (bs *BlockStatement) End() int { return bs.EndToken.Pos }
+func (bs *BlockStatement) End() int { return bs.EndPos }
 
 // TokenLiteral returns '{' or the first token from the first statement
 func (bs *BlockStatement) TokenLiteral() string { return bs.Token.Literal }
@@ -305,7 +305,7 @@ func (bs *BlockStatement) String() string {
 // ExceptionHandlingBlock represents a begin/end block where exceptions are rescued
 type ExceptionHandlingBlock struct {
 	BeginToken token.Token
-	EndToken   token.Token
+	EndPos     int // pos of the closing `end`
 	TryBody    *BlockStatement
 	Rescues    []*RescueBlock
 	ElseBody   *BlockStatement
@@ -318,7 +318,7 @@ func (eh *ExceptionHandlingBlock) expressionNode() {}
 func (eh *ExceptionHandlingBlock) Pos() int { return eh.BeginToken.Pos }
 
 // End returns the position of first character immediately after the node
-func (eh *ExceptionHandlingBlock) End() int { return eh.EndToken.Pos }
+func (eh *ExceptionHandlingBlock) End() int { return eh.EndPos }
 
 // TokenLiteral returns the token literal from 'begin'
 func (eh *ExceptionHandlingBlock) TokenLiteral() string { return eh.BeginToken.Literal }
@@ -706,15 +706,15 @@ func (u *UsingExpression) String() string {
 
 // RefineExpression represents a `refine Class do ... end` block
 type RefineExpression struct {
-	Token    token.Token // the refine keyword
-	EndToken token.Token // the end token
-	Expr     Expression  // the target class
-	Body     *BlockStatement
+	Token  token.Token // the refine keyword
+	EndPos int         // pos of the closing `end`
+	Expr   Expression  // the target class
+	Body   *BlockStatement
 }
 
 func (r *RefineExpression) expressionNode()      {}
 func (r *RefineExpression) Pos() int             { return r.Token.Pos }
-func (r *RefineExpression) End() int             { return r.EndToken.Pos }
+func (r *RefineExpression) End() int             { return r.EndPos }
 func (r *RefineExpression) TokenLiteral() string { return r.Token.Literal }
 func (r *RefineExpression) String() string {
 	if r.Body == nil {
@@ -1404,7 +1404,7 @@ func (s *SymbolLiteral) LabelString() string { return s.Value.String() }
 // ConditionalExpression represents an if expression within the AST
 type ConditionalExpression struct {
 	Token       token.Token // The 'if' or 'unless' token
-	EndToken    token.Token // The 'end' token
+	EndPos      int         // pos of the closing `end`; 0 for ternary / modifier (no closer in source)
 	Condition   Expression
 	Consequence *BlockStatement
 	Alternative *BlockStatement
@@ -1419,7 +1419,7 @@ func (ce *ConditionalExpression) expressionNode() {}
 
 // Pos returns the position of first character belonging to the node
 func (ce *ConditionalExpression) Pos() int {
-	if ce.EndToken.Type == token.ILLEGAL {
+	if ce.EndPos == 0 {
 		return ce.Consequence.Pos()
 	}
 	return ce.Token.Pos
@@ -1427,10 +1427,10 @@ func (ce *ConditionalExpression) Pos() int {
 
 // End returns the position of first character immediately after the node
 func (ce *ConditionalExpression) End() int {
-	if ce.EndToken.Type == token.ILLEGAL {
+	if ce.EndPos == 0 {
 		return ce.Consequence.Pos()
 	}
-	return ce.EndToken.Pos
+	return ce.EndPos
 }
 
 // TokenLiteral returns the literal from token token.IF or token.UNLESS
@@ -1449,7 +1449,7 @@ func (ce *ConditionalExpression) String() string {
 		}
 		return out.String()
 	}
-	if ce.EndToken.Type == token.ILLEGAL && ce.Token.Type != token.KW_ELSIF && ce.Alternative == nil {
+	if ce.EndPos == 0 && ce.Token.Type != token.KW_ELSIF && ce.Alternative == nil {
 		out.WriteString(ce.Consequence.String())
 		out.WriteString(" ")
 		out.WriteString(ce.Token.Literal)
@@ -1494,7 +1494,7 @@ func extractElsif(alt *BlockStatement) *ConditionalExpression {
 // A LoopExpression represents a loop
 type LoopExpression struct {
 	Token     token.Token // while
-	EndToken  token.Token // end
+	EndPos    int         // pos of the closing `end`; 0 for modifier-form (no closer in source)
 	Condition Expression
 	Block     *BlockStatement
 	// PostTest marks `begin ... end while cond` (do-while) form, where
@@ -1512,7 +1512,7 @@ func (ce *LoopExpression) Pos() int {
 
 // End returns the position of first character immediately after the node
 func (ce *LoopExpression) End() int {
-	return ce.EndToken.Pos
+	return ce.EndPos
 }
 
 // TokenLiteral returns the literal from token token.WHILE
@@ -1608,7 +1608,7 @@ func (el ExpressionList) String() string {
 // ArrayLiteral represents an Array literal within the AST
 type ArrayLiteral struct {
 	Token    token.Token // the '['
-	Rbracket token.Token // the ']'
+	EndPos   int         // pos of the closing `]`
 	Elements []Expression
 	// Multiline marks a %w/%W/%i/%I array whose source body spanned more
 	// than one line. Prism's `forced_utf8_encoding` propagates from a `\u`
@@ -1625,7 +1625,7 @@ func (al *ArrayLiteral) Pos() int { return al.Token.Pos }
 
 // End returns the position of first character immediately after the node
 func (al *ArrayLiteral) End() int {
-	return al.Rbracket.Pos
+	return al.EndPos
 }
 
 // TokenLiteral returns the literal of the token token.LBRACKET
@@ -1708,7 +1708,7 @@ func (al *ArrayLiteral) percentArrayString() (string, bool) {
 // HashLiteral represents an Hash literal within the AST
 type HashLiteral struct {
 	Token    token.Token // the '{'
-	Rbrace   token.Token // the '}'
+	EndPos   int         // pos of the closing `}`
 	Map      *OrderedExprMap
 	Splats   []Expression // **expr keyword-splat entries
 	Implicit bool         // true for implicit hash arg (no braces in source)
@@ -1721,7 +1721,7 @@ func (hl *HashLiteral) literalNode()    {}
 func (hl *HashLiteral) Pos() int { return hl.Token.Pos }
 
 // End returns the position of the right brace
-func (hl *HashLiteral) End() int { return hl.Rbrace.Pos }
+func (hl *HashLiteral) End() int { return hl.EndPos }
 
 // TokenLiteral returns the literal of the token token.LBRACE
 func (hl *HashLiteral) TokenLiteral() string { return hl.Token.Literal }
@@ -1897,7 +1897,7 @@ func (b *BlockCapture) TokenLiteral() string { return b.Token.Literal }
 // A FunctionLiteral represents a function definition in the AST
 type FunctionLiteral struct {
 	Token         token.Token // The 'def' or '->' token
-	EndToken      token.Token // the 'end' or '}' token
+	EndPos        int         // pos of the closing `end` / `}` / endless-body last token; 0 if unterminated
 	Receiver      *Identifier
 	Name          *Identifier
 	Parameters    []*FunctionParameter
@@ -1907,6 +1907,7 @@ type FunctionLiteral struct {
 	ElseBody      *BlockStatement
 	EnsureBody    *BlockStatement
 	IsLambda      bool // true for -> lambda literals
+	IsEndless     bool // true for endless methods: `def foo = expr` (ruby 3.0+)
 	// ExplicitParens marks lambdas written as ->() with an explicit (possibly
 	// empty) parameter list, distinct from bare -> (no parens).
 	ExplicitParens bool
@@ -1921,13 +1922,13 @@ func (fl *FunctionLiteral) Pos() int { return fl.Token.Pos }
 // End returns the position of the `end` keyword, or the end of the body
 // for endless methods (def foo = expr).
 func (fl *FunctionLiteral) End() int {
-	if fl.EndToken.Type == token.ILLEGAL {
+	if fl.EndPos == 0 {
 		if fl.Body != nil && len(fl.Body.Statements) > 0 {
 			return fl.Body.End()
 		}
 		return fl.Token.Pos + 3
 	}
-	return fl.EndToken.Pos
+	return fl.EndPos
 }
 
 // TokenLiteral returns the literal from token.DEF
@@ -1958,7 +1959,7 @@ func (fl *FunctionLiteral) String() string {
 		}
 		out.WriteString(fl.Name.String())
 	}
-	if !fl.IsLambda && fl.EndToken.Type != token.END && fl.EndToken.Type != token.ILLEGAL {
+	if !fl.IsLambda && fl.IsEndless {
 		if len(params) > 0 || fl.ExplicitParens {
 			out.WriteString("(")
 			out.WriteString(strings.Join(params, ", "))
@@ -2238,7 +2239,7 @@ func containsHeredocArg(args []Expression) bool {
 // A BlockExpression represents a Ruby block
 type BlockExpression struct {
 	Token         token.Token          // token.DO or token.LBRACE
-	EndToken      token.Token          // token.END or token.RBRACE
+	EndPos        int                  // pos of the closing `end` / `}`
 	Parameters    []*FunctionParameter // the block parameters
 	BlockLocals   []*Identifier        // block-local variables (after ; in |x; y|)
 	CapturedBlock *BlockCapture        // block capture: |..., &blk|
@@ -2258,7 +2259,7 @@ func (b *BlockExpression) expressionNode() {}
 func (b *BlockExpression) Pos() int { return b.Token.Pos }
 
 // End returns the position of the end token
-func (b *BlockExpression) End() int { return b.EndToken.Pos }
+func (b *BlockExpression) End() int { return b.EndPos }
 
 // TokenLiteral returns the literal from the Token
 func (b *BlockExpression) TokenLiteral() string { return b.Token.Literal }
@@ -2316,11 +2317,11 @@ func (b *BlockExpression) String() string {
 
 // ModuleExpression represents a module definition
 type ModuleExpression struct {
-	Token    token.Token // The module keyword
-	EndToken token.Token // The end token
-	Name     *Identifier // The module name, will always be a const
-	Body     *BlockStatement
-	Rescues  []*RescueBlock
+	Token   token.Token // The module keyword
+	EndPos  int         // pos of the closing `end`
+	Name    *Identifier // The module name, will always be a const
+	Body    *BlockStatement
+	Rescues []*RescueBlock
 }
 
 func (m *ModuleExpression) expressionNode() {}
@@ -2329,7 +2330,7 @@ func (m *ModuleExpression) expressionNode() {}
 func (m *ModuleExpression) Pos() int { return m.Token.Pos }
 
 // End returns the position of the `end` token
-func (m *ModuleExpression) End() int { return m.EndToken.Pos }
+func (m *ModuleExpression) End() int { return m.EndPos }
 
 // TokenLiteral returns the literal from token.MODULE
 func (m *ModuleExpression) TokenLiteral() string { return m.Token.Literal }
@@ -2352,7 +2353,7 @@ func (m *ModuleExpression) String() string {
 // ClassExpression represents a module definition
 type ClassExpression struct {
 	Token      token.Token // The class keyword
-	EndToken   token.Token // The end token
+	EndPos     int         // pos of the closing `end`
 	Name       *Identifier // The class name, will always be a const
 	SuperClass Expression  // The superclass, if any
 	Body       *BlockStatement
@@ -2365,7 +2366,7 @@ func (m *ClassExpression) expressionNode() {}
 func (m *ClassExpression) Pos() int { return m.Token.Pos }
 
 // End returns the position of the `end` token
-func (m *ClassExpression) End() int { return m.EndToken.Pos }
+func (m *ClassExpression) End() int { return m.EndPos }
 
 // TokenLiteral returns the literal from token.CLASS
 func (m *ClassExpression) TokenLiteral() string { return m.Token.Literal }
@@ -2392,11 +2393,11 @@ func (m *ClassExpression) String() string {
 
 // SingletonClassExpression represents a singleton class definition: class << self; ...; end
 type SingletonClassExpression struct {
-	Token    token.Token // the 'class' token
-	EndToken token.Token // the 'end' token
-	Expr     Expression  // the expression after << (e.g. self)
-	Body     *BlockStatement
-	Rescues  []*RescueBlock
+	Token   token.Token // the 'class' token
+	EndPos  int         // pos of the closing `end`
+	Expr    Expression  // the expression after << (e.g. self)
+	Body    *BlockStatement
+	Rescues []*RescueBlock
 }
 
 func (s *SingletonClassExpression) expressionNode() {}
@@ -2405,7 +2406,7 @@ func (s *SingletonClassExpression) expressionNode() {}
 func (s *SingletonClassExpression) Pos() int { return s.Token.Pos }
 
 // End returns the position of the 'end' token
-func (s *SingletonClassExpression) End() int { return s.EndToken.Pos }
+func (s *SingletonClassExpression) End() int { return s.EndPos }
 
 // TokenLiteral returns the literal from token.CLASS
 func (s *SingletonClassExpression) TokenLiteral() string { return s.Token.Literal }
@@ -2472,7 +2473,7 @@ func (af *ArgumentForwarding) String() string       { return "..." }
 // A CaseExpression represents a case/when or case/in expression
 type CaseExpression struct {
 	Token       token.Token // case
-	EndToken    token.Token // end
+	EndPos      int         // pos of the closing `end`
 	Condition   Expression  // optional, nil for case without expr
 	WhenClauses []*WhenClause
 	InClauses   []*WhenClause // pattern-matching in clauses (reuse WhenClause for now)
@@ -2504,7 +2505,7 @@ func (c *CaseExpression) String() string {
 func (c *CaseExpression) expressionNode() {}
 
 func (c *CaseExpression) Pos() int             { return c.Token.Pos }
-func (c *CaseExpression) End() int             { return c.EndToken.Pos }
+func (c *CaseExpression) End() int             { return c.EndPos }
 func (c *CaseExpression) TokenLiteral() string { return c.Token.Literal }
 
 // A WhenClause represents a single when branch in a case expression
@@ -3014,7 +3015,7 @@ func (ra *RightwardAssignment) String() string {
 // stored in Stmts; the single-expression case uses Expr.
 type ParenExpression struct {
 	Token         token.Token // the '(' token
-	Rparen        token.Token // the ')' token
+	EndPos        int         // pos of the closing `)`
 	Expr          Expression
 	Stmts         []Expression // multi-statement form: (a; b; c). nil for single-expr.
 	MultipleStmts bool         // true when source had leading/trailing void `;` (e.g. `(;x)` / `(x;)`) -- MRI tags this ParenthesesNodeFlags=multiple_statements
@@ -3022,7 +3023,7 @@ type ParenExpression struct {
 
 func (pe *ParenExpression) expressionNode()      {}
 func (pe *ParenExpression) Pos() int             { return pe.Token.Pos }
-func (pe *ParenExpression) End() int             { return pe.Rparen.Pos }
+func (pe *ParenExpression) End() int             { return pe.EndPos }
 func (pe *ParenExpression) TokenLiteral() string { return pe.Token.Literal }
 func (pe *ParenExpression) String() string {
 	if len(pe.Stmts) > 0 {

@@ -685,7 +685,7 @@ func (p *parser) parseReturnStatement() ast.Statement {
 		p.consume(token.COMMA)
 		arr.Elements = append(arr.Elements, p.parseExpression(precLowest))
 	}
-	arr.Rbracket = p.curToken
+	arr.EndPos = p.curToken.Pos
 	stmt.ReturnValue = arr
 
 	if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
@@ -938,7 +938,7 @@ func (p *parser) parseExceptionHandlingBlock() ast.Expression {
 	if !p.accept(token.END) {
 		return nil
 	}
-	block.EndToken = p.curToken
+	block.EndPos = p.curToken.Pos
 	return block
 }
 
@@ -1161,7 +1161,7 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 	// Modifier-loop on assignment: `a = b while c` -> `(a = b) while c`.
 	// Restructure so the assignment is the loop body, not the loop the
 	// assignment value.
-	if loop, ok := expr.(*ast.LoopExpression); ok && loop.EndToken.Type != token.END {
+	if loop, ok := expr.(*ast.LoopExpression); ok && loop.EndPos == 0 {
 		if len(loop.Block.Statements) == 1 {
 			if es, ok := loop.Block.Statements[0].(*ast.ExpressionStatement); ok {
 				assign.Right = es.Expression
@@ -1175,7 +1175,7 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 		}
 	}
 	right, ok := expr.(*ast.ConditionalExpression)
-	if !ok || right.Token.Type == token.QMARK || right.EndToken.Type == token.END {
+	if !ok || right.Token.Type == token.QMARK || right.EndPos > 0 {
 		assign.Right = expr
 		return assign
 	}
@@ -1790,13 +1790,13 @@ func (p *parser) parseCaseExpression() ast.Expression {
 		expr.ElseBody = p.parseBlockStatement(token.END)
 	}
 	if p.currentTokenIs(token.END) {
-		expr.EndToken = p.curToken
+		expr.EndPos = p.curToken.Pos
 		return expr
 	}
 	if !p.accept(token.END) {
 		return nil
 	}
-	expr.EndToken = p.curToken
+	expr.EndPos = p.curToken.Pos
 	return expr
 }
 
@@ -1954,7 +1954,7 @@ func (p *parser) parseRefine() ast.Expression {
 	// are already consumed. Just record the end token and return.
 	if cc, ok := expr.Expr.(*ast.ContextCallExpression); ok && cc.Block != nil {
 		expr.Body = cc.Block.Body
-		expr.EndToken = cc.Block.EndToken
+		expr.EndPos = cc.Block.EndPos
 		cc.Block = nil // Move ownership -- avoid double printing in String()
 		return expr
 	}
@@ -1972,7 +1972,7 @@ func (p *parser) parseRefine() ast.Expression {
 	if !p.accept(endToken) {
 		return nil
 	}
-	expr.EndToken = p.curToken
+	expr.EndPos = p.curToken.Pos
 	return expr
 }
 
@@ -2259,7 +2259,7 @@ func (p *parser) parseLambda() ast.Expression {
 			lit.Parameters = blk.Parameters
 		}
 		lit.Body = blk.Body
-		lit.EndToken = blk.EndToken
+		lit.EndPos = blk.EndPos
 	}
 	return lit
 }
@@ -2388,7 +2388,7 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 				// Empty `#{ }` -- preserve as DSTR-shaping placeholder so
 				// MRI re-parses to EVSTR(BEGIN(nil)) instead of collapsing
 				// to a static STR. See same handling in parseInterpolatedRegex.
-				parts = append(parts, &ast.ParenExpression{Token: embTok, Rparen: p.curToken})
+				parts = append(parts, &ast.ParenExpression{Token: embTok, EndPos: p.curToken.Pos})
 				break
 			}
 			p.embExprDepth++
@@ -2412,7 +2412,7 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 			} else if len(stmts) > 1 {
 				// Multi-statement interp `"#{a; b; c}"` -- MRI keeps all
 				// statements under EVSTR. Wrap in ParenExpression.Stmts.
-				parts = append(parts, &ast.ParenExpression{Token: embTok, Rparen: p.curToken, Stmts: stmts})
+				parts = append(parts, &ast.ParenExpression{Token: embTok, EndPos: p.curToken.Pos, Stmts: stmts})
 			}
 			if !p.peekTokenIs(token.EMBEXPR_END) {
 				p.peekError(token.EMBEXPR_END)
@@ -2495,7 +2495,7 @@ func (p *parser) parseInterpolatedRegex() ast.Expression {
 				// shape (not a static REGX/STR). Use ParenExpression{Expr:
 				// nil} as a placeholder; it prints as `#{()}` which MRI
 				// parses back to the same EVSTR(BEGIN(nil)) shape.
-				parts = append(parts, &ast.ParenExpression{Token: embTok, Rparen: p.curToken})
+				parts = append(parts, &ast.ParenExpression{Token: embTok, EndPos: p.curToken.Pos})
 				break
 			}
 			var stmts []ast.Expression
@@ -2519,7 +2519,7 @@ func (p *parser) parseInterpolatedRegex() ast.Expression {
 				// statement sequence under the EVSTR/DREGX. Wrap in
 				// ParenExpression.Stmts so the printer re-emits as `(a; b; c)`
 				// inside `#{...}`.
-				parts = append(parts, &ast.ParenExpression{Token: embTok, Rparen: p.curToken, Stmts: stmts})
+				parts = append(parts, &ast.ParenExpression{Token: embTok, EndPos: p.curToken.Pos, Stmts: stmts})
 			}
 			if !p.peekTokenIs(token.EMBEXPR_END) {
 				p.peekError(token.EMBEXPR_END)
@@ -2640,7 +2640,7 @@ func (p *parser) parseArrayLiteral() ast.Expression {
 
 	p.nextToken()
 	array.Elements = p.parseExpressionList(token.RBRACKET)
-	array.Rbracket = p.curToken
+	array.EndPos = p.curToken.Pos
 	return array
 }
 
@@ -2659,7 +2659,7 @@ func (p *parser) parseHash() ast.Expression {
 	}
 
 	if p.currentTokenIs(token.RBRACE) {
-		hash.Rbrace = p.curToken
+		hash.EndPos = p.curToken.Pos
 		return hash
 	}
 
@@ -2688,7 +2688,7 @@ func (p *parser) parseHash() ast.Expression {
 			p.nextToken()
 		}
 		if p.currentTokenIs(token.RBRACE) {
-			hash.Rbrace = p.curToken
+			hash.EndPos = p.curToken.Pos
 			return hash
 		}
 		for p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) {
@@ -2722,7 +2722,7 @@ func (p *parser) parseHash() ast.Expression {
 	if !p.accept(token.RBRACE) {
 		return nil
 	}
-	hash.Rbrace = p.curToken
+	hash.EndPos = p.curToken.Pos
 	return hash
 }
 
@@ -2867,7 +2867,7 @@ func (p *parser) parseBlock() ast.Expression {
 		block.Body = p.parseBlockStatement(endToken)
 	}
 	p.nextToken()
-	block.EndToken = p.curToken
+	block.EndPos = p.curToken.Pos
 	return block
 }
 
@@ -3024,7 +3024,7 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 		if !p.version.AtLeast(ruby20) {
 			p.versionError(ruby20, "empty grouped expression `()`")
 		}
-		return &ast.ParenExpression{Token: lparen, Rparen: p.curToken}
+		return &ast.ParenExpression{Token: lparen, EndPos: p.curToken.Pos}
 	}
 	exp := p.parseExpression(precLowest)
 	var stmts []ast.Expression
@@ -3074,7 +3074,7 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 	if exp == nil {
 		return nil
 	}
-	pe := &ast.ParenExpression{Token: lparen, Rparen: p.curToken, Expr: exp}
+	pe := &ast.ParenExpression{Token: lparen, EndPos: p.curToken.Pos, Expr: exp}
 	if len(stmts) > 1 {
 		pe.Stmts = stmts
 	}
@@ -3154,7 +3154,7 @@ func (p *parser) parseIfExpression() ast.Expression {
 	if !p.accept(token.END) {
 		return nil
 	}
-	expression.EndToken = p.curToken
+	expression.EndPos = p.curToken.Pos
 	return expression
 }
 
@@ -3287,7 +3287,7 @@ func (p *parser) parseModule() ast.Expression {
 	if !p.accept(token.END) {
 		return nil
 	}
-	expr.EndToken = p.curToken
+	expr.EndPos = p.curToken.Pos
 	return expr
 }
 
@@ -3322,7 +3322,7 @@ func (p *parser) parseClass() ast.Expression {
 	if !p.accept(token.END) {
 		return nil
 	}
-	expr.EndToken = p.curToken
+	expr.EndPos = p.curToken.Pos
 	return expr
 }
 
@@ -3351,7 +3351,7 @@ func (p *parser) parseSingletonClass() ast.Expression {
 	if !p.accept(token.END) {
 		return nil
 	}
-	expr.EndToken = p.curToken
+	expr.EndPos = p.curToken.Pos
 	return expr
 }
 
@@ -3505,7 +3505,8 @@ parseParams:
 				p.accept(token.END)
 			}
 		}
-		lit.EndToken = p.curToken
+		lit.EndPos = p.curToken.Pos
+		lit.IsEndless = true
 		return lit
 	}
 
@@ -3535,7 +3536,7 @@ parseParams:
 	if !p.accept(token.END) {
 		return nil
 	}
-	lit.EndToken = p.curToken
+	lit.EndPos = p.curToken.Pos
 	return lit
 }
 
@@ -4825,7 +4826,7 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 	}
 	return &ast.ArrayLiteral{
 		Token:     beg,
-		Rbracket:  p.curToken, // STRING_END
+		EndPos: p.curToken.Pos, // STRING_END
 		Elements:  elements,
 		Multiline: multiline,
 	}
