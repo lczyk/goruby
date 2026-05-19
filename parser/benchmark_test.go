@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/lczyk/goruby/ast"
 )
 
 // BenchmarkParseRealFiles parses every .rb under the integration test corpus.
@@ -46,6 +48,53 @@ func BenchmarkParseRealFiles(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, f := range files {
 			_, _ = ParseFile(f, srcs[f], 0)
+		}
+	}
+	b.SetBytes(totalBytes)
+}
+
+// BenchmarkParseRealFilesArenaReuse mirrors BenchmarkParseRealFiles but
+// hands every ParseFile call the same Arena via WithArena. The first file
+// per iteration warms the slabs up to peak chunk count; subsequent files
+// re-fill those chunks, paying zero mallocgc for AST nodes once the
+// footprint is reached. Measures the steady-state win of long-lived
+// parser sessions (REPL, language server, batch tools).
+func BenchmarkParseRealFilesArenaReuse(b *testing.B) {
+	var files []string
+	dirs := []string{
+		"../internal/integrationtest/testdata/gems",
+		"../internal/integrationtest/testdata/ruby",
+	}
+	for _, dir := range dirs {
+		filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+			if err != nil || d.IsDir() || !strings.HasSuffix(d.Name(), ".rb") {
+				return err
+			}
+			files = append(files, path)
+			return nil
+		})
+	}
+	if len(files) == 0 {
+		b.Skip("no .rb files in corpus")
+	}
+
+	srcs := make(map[string][]byte, len(files))
+	var totalBytes int64
+	for _, f := range files {
+		buf, err := os.ReadFile(f)
+		if err != nil {
+			b.Fatal(err)
+		}
+		srcs[f] = buf
+		totalBytes += int64(len(buf))
+	}
+
+	arena := ast.NewArena()
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, f := range files {
+			_, _ = ParseFile(f, srcs[f], 0, WithArena(arena))
 		}
 	}
 	b.SetBytes(totalBytes)

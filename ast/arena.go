@@ -42,29 +42,61 @@ package ast
 // padding multiplied across ~60 node types and many small files.
 const arenaChunkSize = 16
 
-// slab tracks the most recently allocated chunk and the index of the next
-// free slot. Generic over the element type so all per-type slabs share one
-// implementation.
+// slab is a per-type bump allocator with rewind support.
+//
+// chunks holds every chunk this slab has ever allocated, in order of
+// allocation. cur is the index of the chunk currently being filled; idx
+// is the next free slot within chunks[cur]. Arena.Reset() rewinds cur
+// and idx back to 0 so a subsequent parse re-fills the same chunks from
+// the start -- no new mallocs while the chunk count stays under peak.
+//
+// Generic over the element type so every per-type slab on Arena shares
+// one implementation.
 type slab[T any] struct {
-	head *chunk[T]
-	idx  int
+	chunks []*chunk[T]
+	cur    int // current chunk index in chunks (0..len(chunks)-1)
+	idx    int // next free slot in chunks[cur]
 }
 
 type chunk[T any] struct {
 	items [arenaChunkSize]T
-	next  *chunk[T]
 }
 
 // arenaAlloc returns a pointer to the next free slot in slab s, growing
-// the linked chunk list when the current head fills.
+// the chunk list only when no previously-allocated chunk has room.
 func arenaAlloc[T any](s *slab[T]) *T {
-	if s.head == nil || s.idx == arenaChunkSize {
-		s.head = &chunk[T]{next: s.head}
+	if s.idx == arenaChunkSize {
+		s.cur++
 		s.idx = 0
 	}
-	p := &s.head.items[s.idx]
+	if s.cur >= len(s.chunks) {
+		s.chunks = append(s.chunks, &chunk[T]{})
+	}
+	p := &s.chunks[s.cur].items[s.idx]
 	s.idx++
 	return p
+}
+
+// reset rewinds the slab so subsequent allocations refill existing
+// chunks from the start. Stored items are not zeroed; callers must not
+// hold pointers into chunks that survived a Reset.
+func (s *slab[T]) reset() {
+	// Zero the items slots we used so any pointers inside become
+	// collectible -- T may embed interface / slice / string fields whose
+	// targets the GC otherwise keeps live until the chunk itself dies.
+	for i := 0; i <= s.cur && i < len(s.chunks); i++ {
+		limit := arenaChunkSize
+		if i == s.cur {
+			limit = s.idx
+		}
+		c := s.chunks[i]
+		var zero T
+		for j := 0; j < limit; j++ {
+			c.items[j] = zero
+		}
+	}
+	s.cur = 0
+	s.idx = 0
 }
 
 // Arena holds one slab per AST node type. Slabs grow lazily -- a slab that
@@ -134,6 +166,78 @@ type Arena struct {
 
 // NewArena returns a fresh, empty Arena.
 func NewArena() *Arena { return &Arena{} }
+
+// Reset rewinds every slab so subsequent allocations re-fill the chunks
+// allocated by prior parses. The chunks themselves stay in memory; only
+// the cur/idx pointers move back to 0. Callers MUST NOT retain pointers
+// into AST nodes built before the Reset -- those slots get overwritten
+// by the next parse.
+//
+// Use case: long-lived parser sessions parsing many files. The first
+// parse warms each slab up to its peak chunk count; subsequent parses
+// pay zero mallocgc for AST nodes until they exceed the warmed footprint.
+func (a *Arena) Reset() {
+	a.returnStatementSlab.reset()
+	a.expressionStatementSlab.reset()
+	a.blockStatementSlab.reset()
+	a.exceptionHandlingBlockSlab.reset()
+	a.rescueBlockSlab.reset()
+	a.assignmentSlab.reset()
+	a.instanceVariableSlab.reset()
+	a.classVariableSlab.reset()
+	a.multiAssignmentSlab.reset()
+	a.selfSlab.reset()
+	a.yieldExpressionSlab.reset()
+	a.superExpressionSlab.reset()
+	a.beginBlockSlab.reset()
+	a.endBlockSlab.reset()
+	a.keywordFILESlab.reset()
+	a.keywordDIRSlab.reset()
+	a.keywordCALLEESlab.reset()
+	a.keywordMETHODSlab.reset()
+	a.keywordENCODINGSlab.reset()
+	a.usingExpressionSlab.reset()
+	a.refineExpressionSlab.reset()
+	a.identifierSlab.reset()
+	a.globalSlab.reset()
+	a.scopedIdentifierSlab.reset()
+	a.integerLiteralSlab.reset()
+	a.floatLiteralSlab.reset()
+	a.nilSlab.reset()
+	a.booleanSlab.reset()
+	a.stringLiteralSlab.reset()
+	a.stringContentSlab.reset()
+	a.embeddedVariableSlab.reset()
+	a.regexLiteralSlab.reset()
+	a.commentSlab.reset()
+	a.symbolLiteralSlab.reset()
+	a.conditionalExpressionSlab.reset()
+	a.loopExpressionSlab.reset()
+	a.implicitRestSlab.reset()
+	a.arrayLiteralSlab.reset()
+	a.hashLiteralSlab.reset()
+	a.blockCaptureSlab.reset()
+	a.functionLiteralSlab.reset()
+	a.functionParameterSlab.reset()
+	a.indexExpressionSlab.reset()
+	a.contextCallExpressionSlab.reset()
+	a.blockExpressionSlab.reset()
+	a.moduleExpressionSlab.reset()
+	a.classExpressionSlab.reset()
+	a.singletonClassExpressionSlab.reset()
+	a.splatExpressionSlab.reset()
+	a.argumentForwardingSlab.reset()
+	a.caseExpressionSlab.reset()
+	a.whenClauseSlab.reset()
+	a.definedExpressionSlab.reset()
+	a.jumpExpressionSlab.reset()
+	a.aliasExpressionSlab.reset()
+	a.undefExpressionSlab.reset()
+	a.prefixExpressionSlab.reset()
+	a.infixExpressionSlab.reset()
+	a.rightwardAssignmentSlab.reset()
+	a.parenExpressionSlab.reset()
+}
 
 // Init copies src into the slot dst points at and returns dst. Lets
 // callers keep struct-literal field syntax at the construction site while

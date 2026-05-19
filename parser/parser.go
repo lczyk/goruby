@@ -256,7 +256,9 @@ func (p *parser) init(filename string, src []byte, mode Mode) {
 
 	p.l = lexer.New(string(src), lexer.WithVersion(p.version))
 	p.errors = []error{}
-	p.arena = ast.NewArena()
+	if p.arena == nil {
+		p.arena = ast.NewArena()
+	}
 
 	p.mode = mode
 	if p.ctx == nil {

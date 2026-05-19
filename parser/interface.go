@@ -114,6 +114,25 @@ func ParseFile(filename string, src interface{}, mode Mode, opts ...Option) (*as
 	return program, parseErr
 }
 
+// WithArena lets the caller supply a pre-allocated Arena. The parser uses
+// it for all AST node allocations and calls Reset() on it at start so the
+// arena's chunks get re-filled rather than freshly allocated. Reusing one
+// arena across many ParseFile calls amortises mallocgc overhead to ~zero
+// for steady-state workloads (REPL, language server, batch tools that
+// parse many files in a process).
+//
+// IMPORTANT: callers MUST NOT retain references to AST nodes built by a
+// prior parse on this arena. The next ParseFile will overwrite those
+// slots. To inspect across parses, deep-copy the relevant nodes first.
+func WithArena(a *ast.Arena) Option {
+	return func(p *parser) {
+		p.arena = a
+		if a != nil {
+			a.Reset()
+		}
+	}
+}
+
 // WithContext sets a custom context on the parser, allowing callers to
 // provide their own tracer. When a context with a tracer is provided,
 // the Trace mode flag is not needed.
