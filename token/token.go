@@ -327,39 +327,10 @@ func (tok Type) String() string {
 
 var keywords map[string]Type
 
-// typeFixedLits[t] is the canonical literal text for Type t when t is a
-// keyword, operator, or punctuation token whose source text is fully
-// determined by its type. Empty for variable-content types (IDENT, INT,
-// STRING, NEWLINE-as-name etc).
-var typeFixedLits [TypeMax + 1]string
-
 func init() {
 	keywords = make(map[string]Type)
 	for i := keyword_beg + 1; i < keyword_end; i++ {
 		keywords[tokens[i]] = i
-	}
-	// Populate typeFixedLits from the tokens table. tokens[t] is the
-	// canonical literal for fixed types and the type-name (e.g. "IDENT")
-	// for variable types; mark the variable ones with empty strings so
-	// callers can detect "no fixed literal" cheaply.
-	variable := map[Type]bool{
-		ILLEGAL: true, EOF: true,
-		IDENT: true, CONST: true, GLOBAL: true, CLASS_VAR: true,
-		INT: true, FLOAT: true, STRING: true, REGEX: true, XSTR: true,
-		STRING_BEG: true, STRING_CONTENT: true, STRING_END: true,
-		XSTR_BEG: true, XSTR_CONTENT: true, XSTR_END: true,
-		REGEX_BEG: true, REGEX_END: true,
-		NEWLINE: true, HASH: true,
-		EMBEXPR_BEG: true, EMBEXPR_END: true,
-		LABEL: true, SYMBEG: true,
-	}
-	for i := Type(0); i <= TypeMax; i++ {
-		if variable[i] {
-			continue
-		}
-		if int(i) < len(tokens) {
-			typeFixedLits[i] = tokens[i]
-		}
 	}
 }
 
@@ -401,17 +372,6 @@ type Token struct {
 	SingleQuoted    bool // true for STRING tokens emitted from a single-quoted source literal
 	IsCharLit       bool // true for STRING tokens emitted from a `?X` character literal
 	HeredocStripped bool // true on STRING_BEG for `<<~` heredocs whose source had a positive common indent
-}
-
-// Literal returns the compile-time-constant literal text for fixed-literal
-// types (keywords, operators, punctuation). Returns "" for variable-content
-// types (IDENT, INT, STRING, ...) -- callers without source access can use
-// this for the fixed subset; variable types need source-resolution.
-func (t Type) Literal() string {
-	if 0 <= t && t < Type(len(typeFixedLits)) {
-		return typeFixedLits[t]
-	}
-	return ""
 }
 
 // IsLiteral returns true for tokens corresponding to identifiers
