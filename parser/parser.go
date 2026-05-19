@@ -2663,6 +2663,29 @@ func (p *parser) parseInfixExpression(left ast.Expression) ast.Expression {
 			p.nextToken() // = becomes current
 			expression.Right = p.parseAssignment(expression.Right)
 		}
+	case "and", "or":
+		// We parsed RHS at precAssignment-1 above so it would absorb `=` /
+		// ternary / etc., but that makes chained `and`/`or` right-associative
+		// (a and b and c -> a and (b and c)). MRI is left-associative for
+		// these. Rotate the tree to restore left-associativity for any chain
+		// of the same operator. Stops at the first right child that isn't
+		// the same operator -- leaving e.g. assignment / ternary absorbed.
+		for {
+			rinf, ok := expression.Right.(*ast.InfixExpression)
+			if !ok || rinf.Operator != expression.Operator {
+				break
+			}
+			// Rotate: this(L, Inf(op, M, R)) -> Inf(op, Inf(op, L, M), R).
+			newLeft := &ast.InfixExpression{
+				Token:    expression.Token,
+				Operator: expression.Operator,
+				Left:     expression.Left,
+				Right:    rinf.Left,
+			}
+			expression.Left = newLeft
+			expression.Right = rinf.Right
+			expression.Token = rinf.Token
+		}
 	}
 	return expression
 }
