@@ -1184,11 +1184,15 @@ func (p *parser) parseLabelExpression() ast.Expression {
 		Value: &ast.StringLiteral{Value: name},
 	}
 	if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.RBRACE, token.RBRACKET, token.NEWLINE, token.SEMICOLON, token.PIPE) {
+		// Hash-value-omission (Ruby 3.1+): `foo:` is shorthand for `foo: foo`.
+		// Store with Right=nil so the printer preserves the omitted form
+		// instead of expanding it (which would re-parse as ImplicitNode in
+		// MRI, diverging from a source written as `foo: foo`).
 		return &ast.InfixExpression{
 			Token:    key.Token,
 			Left:     key,
 			Operator: ":",
-			Right:    &ast.Identifier{Token: p.curToken, Value: name},
+			Right:    nil,
 		}
 	}
 	p.nextToken()

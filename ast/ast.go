@@ -2618,6 +2618,11 @@ func rubyInfixRightAssoc(op string) bool {
 func (oe *InfixExpression) String() string {
 	if oe.Operator == ":" {
 		if sym, ok := oe.Left.(*SymbolLiteral); ok && sym.Token.Type == token.LABEL {
+			if oe.Right == nil {
+				// Hash-value-omission shorthand (Ruby 3.1+): `foo:` with
+				// implicit value. Preserve the omitted form on re-emit.
+				return sym.Token.Literal
+			}
 			return sym.Token.Literal + " " + oe.Right.String()
 		}
 	}
