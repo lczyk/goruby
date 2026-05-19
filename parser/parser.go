@@ -702,10 +702,11 @@ func (p *parser) parseExpressionStatement() *ast.ExpressionStatement {
 		exp.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE, token.LBRACE, token.DO)
 		if p.currentTokenOneOf(token.LBRACE, token.DO) {
 			exp.Block = p.parseBlockExpr()
-		} else if p.peekTokenOneOf(token.LBRACE, token.DO) {
-			p.acceptOneOf(token.LBRACE, token.DO)
-			exp.Block = p.parseBlockExpr()
 		}
+		// Peek-across-newline block attach would be wrong: in MRI, a block
+		// (`{...}` or `do...end`) on a fresh line after a paren-less call
+		// is a separate statement (hash / unrelated block-of-code), not a
+		// block argument.
 		stmt.Expression = exp
 		// Re-enter the expression loop for modifier if/unless/while/until.
 		if p.peekTokenOneOf(token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.RESCUE) {
@@ -717,7 +718,10 @@ func (p *parser) parseExpressionStatement() *ast.ExpressionStatement {
 		}
 	}
 	// Block attachment: expr do...end or expr { ... }
-	if p.peekTokenOneOf(token.DO, token.LBRACE) {
+	// Only attach if the block opener is contiguous with the call (no
+	// intervening NEWLINE/SEMICOLON). In MRI, `foo\n{...}` is two
+	// statements, not a call with a block argument.
+	if p.peekTokenOneOf(token.DO, token.LBRACE) && !p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 		if _, isIdent := stmt.Expression.(*ast.Identifier); !isIdent {
 			p.nextToken()
 			stmt.Expression = p.parseCallBlock(stmt.Expression)
@@ -1410,17 +1414,18 @@ func (p *parser) parsePattern() ast.Expression {
 			pat = &ast.ArrayLiteral{Token: p.curToken, Elements: elements}
 		}
 	}
-	// Guard clause: pattern if condition
-	if p.peekTokenIs(token.IF) {
-		p.accept(token.IF)
+	// Guard clause: pattern if / unless condition
+	if p.peekTokenOneOf(token.IF, token.UNLESS) {
+		p.acceptOneOf(token.IF, token.UNLESS)
+		guardTok := p.curToken
 		p.nextToken()
 		p.inPattern = false
 		guard := p.parseExpression(precLowest)
 		p.inPattern = true
 		pat = &ast.InfixExpression{
-			Token:    token.NewToken(token.IF, "if", 0),
+			Token:    guardTok,
 			Left:     pat,
-			Operator: "if",
+			Operator: guardTok.Literal,
 			Right:    guard,
 		}
 	}
@@ -4149,7 +4154,10 @@ func (p *parser) parseCallArgument(function ast.Expression) ast.Expression {
 	exp.Arguments = p.parseExpressionList(token.SEMICOLON, token.NEWLINE, token.SCOPE)
 	p.suppressKwAndOr = prevAO
 	p.suppressDoBlock = prevSDB
-	if p.peekTokenOneOf(token.LBRACE, token.DO) {
+	// Block attach only if contiguous: `foo a, b { ... }` attaches, but
+	// `foo a, b\n{...}` is two statements (the brace starts a fresh hash /
+	// expression), matching MRI.
+	if p.peekTokenOneOf(token.LBRACE, token.DO) && !p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 		p.acceptOneOf(token.LBRACE, token.DO)
 		exp.Block = p.parseBlockExpr()
 	}
