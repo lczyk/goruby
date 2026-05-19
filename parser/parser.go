@@ -124,6 +124,12 @@ var precedences = map[token.Type]int{
 	token.NIL:                precCallArg,
 	token.TRUE:               precCallArg,
 	token.FALSE:              precCallArg,
+	token.KEYWORD__FILE__:    precCallArg,
+	token.KEYWORD__LINE__:    precCallArg,
+	token.KEYWORD__METHOD__:  precCallArg,
+	token.KEYWORD__DIR__:     precCallArg,
+	token.KEYWORD__ENCODING__: precCallArg,
+	token.KEYWORD__CALLEE__:  precCallArg,
 	token.CAPTURE:           precCapture,
 	token.POWER:             precPower,
 	token.RANGE:             precRange,
@@ -400,6 +406,12 @@ func init() {
 	infixParseFns[token.NIL] = (*parser).parseCallArgument
 	infixParseFns[token.TRUE] = (*parser).parseCallArgument
 	infixParseFns[token.FALSE] = (*parser).parseCallArgument
+	infixParseFns[token.KEYWORD__FILE__] = (*parser).parseCallArgument
+	infixParseFns[token.KEYWORD__LINE__] = (*parser).parseCallArgument
+	infixParseFns[token.KEYWORD__METHOD__] = (*parser).parseCallArgument
+	infixParseFns[token.KEYWORD__DIR__] = (*parser).parseCallArgument
+	infixParseFns[token.KEYWORD__ENCODING__] = (*parser).parseCallArgument
+	infixParseFns[token.KEYWORD__CALLEE__] = (*parser).parseCallArgument
 	infixParseFns[token.LBRACE] = (*parser).parseCallBlock
 	infixParseFns[token.DO] = (*parser).parseCallBlock
 	infixParseFns[token.DOT] = (*parser).parseMethodCall
@@ -672,6 +684,10 @@ var bareCallArgTokens = []token.Type{
 	token.GLOBAL,
 	token.REGEX_BEG, token.REGEX,
 	token.DEF, // `private def x` -- def returns sym, becomes arg
+	// __FILE__ / __LINE__ / __method__ / __dir__ / __ENCODING__ / __callee__
+	// are atomic ident-like expressions and can start a paren-less arg.
+	token.KEYWORD__FILE__, token.KEYWORD__LINE__, token.KEYWORD__METHOD__,
+	token.KEYWORD__DIR__, token.KEYWORD__ENCODING__, token.KEYWORD__CALLEE__,
 }
 
 func (p *parser) parseExpressionStatement() *ast.ExpressionStatement {
