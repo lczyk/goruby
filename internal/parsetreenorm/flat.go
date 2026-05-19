@@ -78,6 +78,13 @@ func toFlat(s string) string {
 //
 // The inner loop cascades replacements -- collapsing BeginNode can yield
 // a node whose own collapse rule applies (e.g. an inner ParenthesesNode).
+//
+// After 1:1 collapse, a multi-stmt no-clause BeginNode left in a
+// StatementsNode body slot is spliced into the parent's body list (one
+// child becomes N) -- standalone `begin; a; b; end` and bare `a; b` then
+// produce the same flat tree. Splice is gated on parent being a
+// StatementsNode so we never splice into expression-value slots, where
+// the BeginNode wrapper has real last-value semantics.
 func normalizeTree(n *ptNode) {
 	if n == nil {
 		return
@@ -101,6 +108,84 @@ func normalizeTree(n *ptNode) {
 			f.child = replacement
 		}
 	}
+	if n.kind == "StatementsNode" {
+		spliceMultiStmtBegin(n)
+	}
+}
+
+// spliceMultiStmtBegin expands any no-clause multi-stmt BeginNode in n's
+// body fields into the parent's body list inline. Single-stmt BeginNodes
+// have already been collapsed by trivialWrapperContent before this runs,
+// so the BeginNodes seen here have multi-stmt statements bodies.
+func spliceMultiStmtBegin(n *ptNode) {
+	// Pre-scan: skip allocation entirely when there's nothing to splice.
+	expand := false
+	for _, f := range n.fields {
+		if f.name == "body" && f.child != nil && f.child.kind == "BeginNode" {
+			if _, ok := beginMultiStmtBodies(f.child); ok {
+				expand = true
+				break
+			}
+		}
+	}
+	if !expand {
+		return
+	}
+	out := make([]ptField, 0, len(n.fields))
+	for _, f := range n.fields {
+		if f.name == "body" && f.child != nil && f.child.kind == "BeginNode" {
+			if bodies, ok := beginMultiStmtBodies(f.child); ok {
+				for _, b := range bodies {
+					out = append(out, ptField{name: "body", child: b})
+				}
+				continue
+			}
+		}
+		out = append(out, f)
+	}
+	n.fields = out
+}
+
+// beginMultiStmtBodies returns the inner StatementsNode body children of
+// a no-clause BeginNode with multi-stmt statements (len > 1). Returns
+// (nil, false) for single-stmt (handled by beginTrivialContent), empty
+// statements, or any clause set.
+func beginMultiStmtBodies(n *ptNode) ([]*ptNode, bool) {
+	if n.kind != "BeginNode" {
+		return nil, false
+	}
+	var stmts *ptNode
+	for _, f := range n.fields {
+		switch f.name {
+		case "statements":
+			stmts = f.child
+		case "rescue_clause", "else_clause", "ensure_clause":
+			if !(f.null || f.leaf == "nil") {
+				return nil, false
+			}
+		case "BeginNodeFlags":
+			// Cosmetic flag, ignore.
+		default:
+			return nil, false
+		}
+	}
+	if stmts == nil || stmts.kind != "StatementsNode" {
+		return nil, false
+	}
+	var bodies []*ptNode
+	for _, f := range stmts.fields {
+		if f.name != "body" {
+			return nil, false
+		}
+		if f.child == nil {
+			return nil, false
+		}
+		bodies = append(bodies, f.child)
+	}
+	if len(bodies) < 2 {
+		return nil, false
+	}
+	return bodies, true
 }
 
 // trivialWrapperContent returns the inner content of n iff n is one of

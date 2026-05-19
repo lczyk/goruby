@@ -422,6 +422,35 @@ func TestKeepsBeginWithRescue(t *testing.T) {
 	}
 }
 
+// TestSplicesMultiStmtBegin locks in that a no-clause multi-stmt
+// BeginNode sitting in a StatementsNode body slot has its inner
+// statements expanded inline. `begin; a; b; end` and bare `a; b` then
+// produce the same flat tree, matching MRI 2.x behaviour which collapses
+// these natively. The splice is gated on the parent being a
+// StatementsNode -- BeginNode in expression-value slots keeps its
+// wrapper (last-value semantics).
+func TestSplicesMultiStmtBegin(t *testing.T) {
+	wrapped := "@ ProgramNode\n+-- locals: []\n+-- statements:\n    @ StatementsNode\n    +-- body: (length: 1)\n        +-- @ BeginNode\n            +-- statements:\n                @ StatementsNode\n                +-- body: (length: 2)\n                    +-- @ CallNode\n                    |   +-- name: :a\n                    +-- @ CallNode\n                        +-- name: :b\n            +-- rescue_clause: nil\n            +-- else_clause: nil\n            +-- ensure_clause: nil\n"
+	bare := "@ ProgramNode\n+-- locals: []\n+-- statements:\n    @ StatementsNode\n    +-- body: (length: 2)\n        +-- @ CallNode\n        |   +-- name: :a\n        +-- @ CallNode\n            +-- name: :b\n"
+	nw := Normalize(wrapped)
+	nb := Normalize(bare)
+	if nw != nb {
+		t.Errorf("multi-stmt BeginNode not spliced\n--- wrapped ---\n%s\n--- bare ---\n%s", nw, nb)
+	}
+}
+
+// TestKeepsBeginInExprPosition verifies the multi-stmt splice does NOT
+// touch a BeginNode whose parent is not a StatementsNode (e.g. as the
+// value of an assignment). The wrapper carries real semantics there --
+// the assignment receives the last statement's value, not the first.
+func TestKeepsBeginInExprPosition(t *testing.T) {
+	exprWrapped := "@ ProgramNode\n+-- locals: [:x]\n+-- statements:\n    @ StatementsNode\n    +-- body: (length: 1)\n        +-- @ LocalVariableWriteNode\n            +-- name: :x\n            +-- depth: 0\n            +-- value:\n                @ BeginNode\n                +-- statements:\n                    @ StatementsNode\n                    +-- body: (length: 2)\n                        +-- @ CallNode\n                        |   +-- name: :a\n                        +-- @ CallNode\n                            +-- name: :b\n                +-- rescue_clause: nil\n                +-- else_clause: nil\n                +-- ensure_clause: nil\n"
+	out := Normalize(exprWrapped)
+	if !strings.Contains(out, "BeginNode") {
+		t.Errorf("BeginNode in expression-value position incorrectly spliced:\n%s", out)
+	}
+}
+
 // TestCosmeticLiteralEquivalence locks in that the normalizer collapses
 // cosmetic source-level differences that produce identical runtime values:
 //

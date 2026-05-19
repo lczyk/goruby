@@ -42,7 +42,7 @@ import (
 const (
 	parsetreeSkipFile = "parsetree.skip"
 	mriExecTimeout    = 30 * time.Second
-	parsetreeCacheDir = ".cache/mri-parsetree-v2"
+	parsetreeCacheDir = ".cache/mri-parsetree-v3"
 )
 
 var (
