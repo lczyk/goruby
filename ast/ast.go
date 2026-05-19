@@ -209,8 +209,9 @@ type ReturnStatement struct {
 
 func (rs *ReturnStatement) String() string {
 	var out bytes.Buffer
-	out.WriteString(rs.TokenLiteral() + " ")
+	out.WriteString(rs.TokenLiteral())
 	if rs.ReturnValue != nil {
+		out.WriteString(" ")
 		if al, ok := rs.ReturnValue.(*ArrayLiteral); ok && al.Token.Type != token.LBRACKET {
 			elems := make([]string, len(al.Elements))
 			for i, e := range al.Elements {
