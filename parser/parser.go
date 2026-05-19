@@ -3236,6 +3236,12 @@ parseParams:
 		p.accept(token.ASSIGN)
 		lit.Name.Value += "="
 	}
+	// Record whether the def has an explicit `()` param list -- MRI keeps
+	// NODE_ARGS / ParametersNode on the tree even when empty, distinct
+	// from a paren-less def.
+	if p.peekTokenIs(token.LPAREN) {
+		lit.ExplicitParens = true
+	}
 	lit.Parameters = p.parseParameters(token.LPAREN, token.RPAREN)
 
 	if p.currentTokenOneOf(token.CAPTURE, token.AND) {

@@ -1793,7 +1793,7 @@ func (fl *FunctionLiteral) String() string {
 		out.WriteString(fl.Name.String())
 	}
 	if !fl.IsLambda && fl.EndToken.Type != token.END && fl.EndToken.Type != token.ILLEGAL {
-		if len(params) > 0 {
+		if len(params) > 0 || fl.ExplicitParens {
 			out.WriteString("(")
 			out.WriteString(strings.Join(params, ", "))
 			out.WriteString(")")
