@@ -1751,6 +1751,14 @@ func (p *parser) parseEndBlock() ast.Expression {
 
 func (p *parser) parseUsing() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
+	// `using(...)` (no whitespace before `(`) is a normal method call --
+	// MRI doesn't treat `using` as a keyword. Route to the call path so
+	// args / block parse the standard way.
+	if p.peekTokenIs(token.LPAREN) && !p.peekToken.HadWhitespace {
+		ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		p.nextToken() // -> LPAREN
+		return p.parseCallExpressionWithParens(ident)
+	}
 	expr := &ast.UsingExpression{Token: p.curToken}
 	p.nextToken()
 	expr.Expr = p.parseExpression(precLowest)
