@@ -791,6 +791,9 @@ func TestLexerEscapedCharInPercentLiteral(t *testing.T) {
 			},
 		},
 		{
+			// MRI strips the escape from `\<delim>` in %w/%i/%s bodies
+			// (the `\)` here becomes a literal `)`), matching Ruby's
+			// non-interpolating percent-literal escape semantics.
 			name:  "escaped closer in non-interpolating %w",
 			input: "%w(foo \\) bar)",
 			expected: []struct {
@@ -798,7 +801,7 @@ func TestLexerEscapedCharInPercentLiteral(t *testing.T) {
 				literal string
 			}{
 				{token.STRING_BEG, "w"},
-				{token.STRING_CONTENT, "foo \\) bar"},
+				{token.STRING_CONTENT, "foo ) bar"},
 				{token.STRING_END, ""},
 			},
 		},
@@ -820,7 +823,7 @@ func TestLexerEscapedCharInPercentLiteral(t *testing.T) {
 				literal string
 			}{
 				{token.STRING_BEG, "w"},
-				{token.STRING_CONTENT, "foo \\/ bar"},
+				{token.STRING_CONTENT, "foo / bar"},
 				{token.STRING_END, ""},
 			},
 		},

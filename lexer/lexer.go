@@ -1495,47 +1495,60 @@ func lexPercentLiteralBodyEnd(l *Lexer, opener, closer rune, paired bool, conten
 	if paired {
 		depth = 1
 	}
+	// Build content with delim escapes resolved -- MRI strips `\<delim>` to
+	// just `<delim>` and `\\` to `\` inside %w/%i/%s bodies. Splitting and
+	// downstream consumers see the stripped form.
+	var buf []byte
 	for {
 		r := l.next()
 		if r == eof {
 			return l.errorf("unterminated percent literal")
 		}
 		if r == '\\' {
-			l.next() // non-interpolating: only escape the next char
+			nxt := l.next()
+			if nxt == eof {
+				return l.errorf("unterminated percent literal")
+			}
+			switch nxt {
+			case '\\', opener, closer:
+				buf = append(buf, byte(nxt))
+			default:
+				buf = append(buf, '\\')
+				buf = utf8AppendRune(buf, nxt)
+			}
 			continue
 		}
-		if paired {
-			if r == opener {
-				depth++
-				continue
-			}
-			if r == closer {
-				depth--
-				if depth == 0 {
-					if l.pos-l.width > l.start {
-						l.backup()
-						l.emit(contentTok)
-						l.next()
-					}
-					l.ignore() // skip closer
-					l.emit(endTok)
-					return startLexer
-				}
-				continue
-			}
-		} else {
-			if r == closer {
-				if l.pos-l.width > l.start {
-					l.backup()
-					l.emit(contentTok)
-					l.next()
-				}
-				l.ignore() // skip closer
-				l.emit(endTok)
-				return startLexer
-			}
+		if paired && r == opener {
+			depth++
+			buf = utf8AppendRune(buf, r)
+			continue
 		}
+		if r == closer {
+			if paired {
+				depth--
+				if depth > 0 {
+					buf = utf8AppendRune(buf, r)
+					continue
+				}
+			}
+			if len(buf) > 0 {
+				l.emitLiteralSQ(contentTok, string(buf))
+			}
+			l.ignore()
+			l.emit(endTok)
+			return startLexer
+		}
+		buf = utf8AppendRune(buf, r)
 	}
+}
+
+func utf8AppendRune(b []byte, r rune) []byte {
+	if r < 0x80 {
+		return append(b, byte(r))
+	}
+	var tmp [4]byte
+	n := utf8.EncodeRune(tmp[:], r)
+	return append(b, tmp[:n]...)
 }
 
 // lexPercentContent scans through an interpolating percent literal body,
