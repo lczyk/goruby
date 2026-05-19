@@ -1389,7 +1389,7 @@ func (p *parser) parsePattern() ast.Expression {
 	// Implicit hash with string label key: in "key": val
 	if _, isStr := pat.(*ast.StringLiteral); isStr && p.peekTokenOneOf(token.COLON, token.SYMBEG) {
 		p.acceptOneOf(token.COLON, token.SYMBEG)
-		pairs := ast.NewOrderedExprMap()
+		var pairs ast.OrderedExprMap
 		key := &ast.SymbolLiteral{Token: p.curToken, Value: pat.(*ast.StringLiteral)}
 		var val ast.Expression
 		if !p.peekTokenOneOf(token.COMMA, token.RBRACE, token.NEWLINE, token.SEMICOLON, token.THEN, token.EOF) {
@@ -1400,7 +1400,7 @@ func (p *parser) parsePattern() ast.Expression {
 		for p.peekTokenIs(token.COMMA) {
 			p.accept(token.COMMA)
 			p.nextToken()
-			p.parsePatternHashPair(pairs)
+			p.parsePatternHashPair(&pairs)
 		}
 		pat = &ast.HashLiteral{Token: p.curToken, Map: pairs}
 	}
@@ -1428,11 +1428,11 @@ func (p *parser) parsePattern() ast.Expression {
 		// hash pairs. Wrapping in `[...]` would re-parse with implicit-hash-in-
 		// array which MRI rejects.
 		if allLabelPairs(elements) {
-			pairs := ast.NewOrderedExprMap()
+			var pairs ast.OrderedExprMap
 			var splats []ast.Expression
 			for _, e := range elements {
 				if isLabelPair(e) {
-					appendLabelPair(pairs, e)
+					appendLabelPair(&pairs, e)
 				} else {
 					// `**X` rest pattern -- record as a splat entry on the
 					// HashLiteral so the printer emits it with the other pairs.
@@ -1585,13 +1585,13 @@ func (p *parser) parsePatternArray() ast.Expression {
 func (p *parser) parsePatternHash() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	tok := p.curToken
-	pairs := ast.NewOrderedExprMap()
+	var pairs ast.OrderedExprMap
 	if p.peekTokenIs(token.RBRACE) {
 		p.accept(token.RBRACE)
 		return &ast.HashLiteral{Token: tok, Map: pairs}
 	}
 	p.nextToken()
-	p.parsePatternHashPair(pairs)
+	p.parsePatternHashPair(&pairs)
 	for {
 		p.skipNewlines()
 		if p.peekTokenIs(token.RBRACE) {
@@ -1606,7 +1606,7 @@ func (p *parser) parsePatternHash() ast.Expression {
 			break
 		}
 		p.nextToken()
-		p.parsePatternHashPair(pairs)
+		p.parsePatternHashPair(&pairs)
 	}
 	if !p.accept(token.RBRACE) {
 		return nil
@@ -2650,7 +2650,7 @@ func (p *parser) parseBoolean() ast.Expression {
 }
 
 func (p *parser) parseHash() ast.Expression {
-	hash := &ast.HashLiteral{Token: p.curToken, Map: ast.NewOrderedExprMap()}
+	hash := &ast.HashLiteral{Token: p.curToken}
 	defer trace.TraceCtx(p.ctx)()
 	p.nextToken()
 	// Skip leading newlines/semicolons inside the hash.
@@ -4469,7 +4469,7 @@ func (p *parser) parseCallArguments(end ...token.Type) []ast.Expression {
 }
 
 func (p *parser) parseImplicitHash(firstKey ast.Expression, end ...token.Type) ast.Expression {
-	hash := &ast.HashLiteral{Token: p.curToken, Map: ast.NewOrderedExprMap(), Implicit: true}
+	hash := &ast.HashLiteral{Token: p.curToken, Implicit: true}
 	p.accept(token.HASHROCKET)
 	p.nextToken()
 	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
@@ -4669,7 +4669,7 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 }
 
 func (p *parser) parseStringLabelHash(firstKey ast.Expression, end ...token.Type) ast.Expression {
-	hash := &ast.HashLiteral{Token: p.curToken, Map: ast.NewOrderedExprMap(), Implicit: true}
+	hash := &ast.HashLiteral{Token: p.curToken, Implicit: true}
 	p.acceptOneOf(token.COLON, token.SYMBEG)
 	key := &ast.SymbolLiteral{Token: p.curToken, Value: firstKey.(*ast.StringLiteral)}
 	if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.RBRACE, token.NEWLINE) {

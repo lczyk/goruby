@@ -5401,7 +5401,7 @@ func testHashLiteral(t *testing.T, expr ast.Expression, value map[string]string)
 		return false
 	}
 	hashMap := make(map[string]string)
-	if hash.Map != nil {
+	if hash.Map.Len() > 0 {
 		for _, kv := range hash.Map.Entries() {
 			hashMap[kv.Key.String()] = kv.Value.String()
 		}

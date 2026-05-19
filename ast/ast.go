@@ -1709,7 +1709,7 @@ func (al *ArrayLiteral) percentArrayString() (string, bool) {
 type HashLiteral struct {
 	Token    token.Token // the '{'
 	EndPos   int         // pos of the closing `}`
-	Map      *OrderedExprMap
+	Map      OrderedExprMap
 	Splats   []Expression // **expr keyword-splat entries
 	Implicit bool         // true for implicit hash arg (no braces in source)
 }
@@ -1731,7 +1731,7 @@ func (hl *HashLiteral) hashElements() []string {
 		s   string
 	}
 	items := []posStr{}
-	if hl.Map != nil {
+	if hl.Map.Len() > 0 {
 		for _, kv := range hl.Map.Entries() {
 			var s string
 			if kv.Value != nil {
@@ -1819,7 +1819,7 @@ func (hl *HashLiteral) String() string {
 // symbol keys so the output re-parses as an implicit hash pattern.
 func (hl *HashLiteral) StringNoBraces() string {
 	elements := []string{}
-	if hl.Map != nil {
+	if hl.Map.Len() > 0 {
 		for _, kv := range hl.Map.Entries() {
 			if kv.Value != nil {
 				if sym, ok := kv.Key.(*SymbolLiteral); ok {
