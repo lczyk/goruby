@@ -1809,6 +1809,14 @@ func (p *parser) parseSuper() ast.Expression {
 	if prefixParseFns[p.peekToken.Type] == nil && !p.peekTokenOneOf(token.LBRACE, token.DO, token.LPAREN) {
 		return sup
 	}
+	// `super + x` (spaced binary operator) is binary infix on bare super,
+	// not a paren-less call with unary +x. Same rule as for bare method
+	// calls (see parseMethodCall's spaced-operator branch).
+	if p.peekToken.HadWhitespace && p.peekToken.Type.IsOperator() &&
+		!p.peek2TokenIs(token.NEWLINE) && !p.peek2TokenIs(token.EOF) &&
+		p.spacedOperator(p.peekToken, p.peek2Token) {
+		return sup
+	}
 	p.nextToken()
 	if p.currentTokenOneOf(token.LBRACE, token.DO) {
 		sup.Block = p.parseBlockExpr()
