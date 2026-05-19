@@ -74,8 +74,3 @@ tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_defined.rb: t
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_flip.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_module.rb: tree diff vs MRI parsetree
 
-# === auto-added after parser/printer fix run ===
-
-# === auto-added after parser/printer fix run ===
-tree-mismatch 2.3 internal/integrationtest/testdata/mri-tests/test_ast.rb: tree diff vs MRI parsetree
-tree-mismatch 2.5 internal/integrationtest/testdata/mri-tests/test_ast.rb: tree diff vs MRI parsetree

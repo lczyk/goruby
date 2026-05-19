@@ -363,9 +363,10 @@ type Token struct {
 	Type          Type
 	Literal       string
 	Pos           int
-	HadWhitespace bool // true if whitespace was skipped before this token
-	SingleQuoted  bool // true for STRING tokens emitted from a single-quoted source literal
-	IsCharLit     bool // true for STRING tokens emitted from a `?X` character literal
+	HadWhitespace   bool // true if whitespace was skipped before this token
+	SingleQuoted    bool // true for STRING tokens emitted from a single-quoted source literal
+	IsCharLit       bool // true for STRING tokens emitted from a `?X` character literal
+	HeredocStripped bool // true on STRING_BEG for `<<~` heredocs whose source had a positive common indent
 }
 
 // IsLiteral returns true for tokens corresponding to identifiers

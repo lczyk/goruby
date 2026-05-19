@@ -877,11 +877,12 @@ func (b *Boolean) String() string       { return fmt.Sprintf("%t", b.Value) }
 // Value holds the content and Parts is nil. For interpolated strings, Parts
 // holds StringContent and expression nodes.
 type StringLiteral struct {
-	Token      token.Token       // STRING_BEG or STRING
-	Value      string            // for non-interpolated strings
-	Parts      []Expression      // for interpolated strings
-	HeredocTag string            // e.g. "<<~EOS", "<<-'DOC'" -- empty for non-heredocs
-	Adjacent   []*StringLiteral  // adjacent string literals: `"a" "b"` -- MRI parses each separately and wraps in an outer InterpolatedString
+	Token           token.Token      // STRING_BEG or STRING
+	Value           string           // for non-interpolated strings
+	Parts           []Expression     // for interpolated strings
+	HeredocTag      string           // e.g. "<<~EOS", "<<-'DOC'" -- empty for non-heredocs
+	HeredocStripped bool             // true on `<<~` heredocs whose source had a positive common indent that was stripped -- preserves MRI's NODE_DSTR (vs NODE_STR) classification on roundtrip
+	Adjacent        []*StringLiteral // adjacent string literals: `"a" "b"` -- MRI parses each separately and wraps in an outer InterpolatedString
 }
 
 func (sl *StringLiteral) expressionNode() {}
@@ -1060,7 +1061,12 @@ func (sl *StringLiteral) stringOnce() string {
 		case "squiggly":
 			bodyMin := minLeadingWS(bodyStr)
 			target := bodyMin
-			if target < 1 {
+			// Re-indent the body (and delim) by 1 space only when the source
+			// had a positive common indent that was stripped (HeredocStripped)
+			// OR this heredoc was constructed inside `#{...}` (chained-in-interp
+			// quirk). Otherwise leave at col 0 so MRI emits NODE_STR rather than
+			// NODE_DSTR.
+			if target < 1 && sl.HeredocStripped {
 				target = 1
 			}
 			// Skip the indent workaround when the body has no non-whitespace

@@ -236,6 +236,7 @@ type parser struct {
 	suppressDoBlock    bool // true inside while/until/for conditions
 	suppressHashrocket bool // true in call-arg lists to prevent => as rightward assignment
 	suppressKwAndOr    bool // true in paren-less call args -- `foo x and y` is `foo(x) and y`
+	embExprDepth       int  // depth of `#{...}` interpolation nesting; heredocs constructed here need the chain-quirk workaround
 	comments           []*ast.Comment
 }
 
@@ -2244,6 +2245,7 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 				break
 			}
 			var lastExp ast.Expression
+			p.embExprDepth++
 			for !p.currentTokenIs(token.EMBEXPR_END) && !p.currentTokenIs(token.EOF) {
 				exp := p.parseExpression(precLowest)
 				if exp != nil {
@@ -2257,6 +2259,7 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 				}
 				p.nextToken()
 			}
+			p.embExprDepth--
 			if lastExp != nil {
 				parts = append(parts, lastExp)
 			}
@@ -2300,6 +2303,9 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 	sl := &ast.StringLiteral{Token: begToken}
 	if strings.HasPrefix(begToken.Literal, "<<") {
 		sl.HeredocTag = begToken.Literal
+		if p.curToken.HeredocStripped || p.embExprDepth > 0 {
+			sl.HeredocStripped = true
+		}
 	}
 	// Optimisation: simple string without interpolation.
 	if len(parts) == 1 {

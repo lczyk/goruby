@@ -48,6 +48,7 @@ type interpState struct {
 	heredocDelim    string
 	heredocIndent   bool
 	heredocSquig    bool
+	heredocStripped bool
 	heredocQuote    rune
 	heredocPostBody string
 }
@@ -75,6 +76,7 @@ func (l *Lexer) pushInterp(s interpState) {
 	s.heredocDelim = l.heredocDelim
 	s.heredocIndent = l.heredocIndent
 	s.heredocSquig = l.heredocSquig
+	s.heredocStripped = l.heredocStripped
 	s.heredocQuote = l.heredocQuote
 	s.heredocPostBody = l.heredocPostBody
 	l.interpStack = append(l.interpStack, s)
@@ -85,6 +87,7 @@ func (l *Lexer) restoreHeredocState(s interpState) {
 	l.heredocDelim = s.heredocDelim
 	l.heredocIndent = s.heredocIndent
 	l.heredocSquig = s.heredocSquig
+	l.heredocStripped = s.heredocStripped
 	l.heredocQuote = s.heredocQuote
 	l.heredocPostBody = s.heredocPostBody
 }
@@ -129,6 +132,7 @@ type Lexer struct {
 	heredocDelim    string
 	heredocIndent   bool // <<-
 	heredocSquig    bool // <<~
+	heredocStripped bool // <<~ source had a positive common indent that was stripped
 	heredocQuote    rune
 	heredocPostBody string // bytes from after delim to end-of-line (incl. \n);
 	// spliced back into input after the heredoc body's STRING_END so trailers
@@ -176,6 +180,10 @@ func (l *Lexer) HasNext() bool {
 func (l *Lexer) emit(t token.Type) {
 	tok := token.NewToken(t, l.input[l.start:l.pos], l.start)
 	tok.HadWhitespace = l.tokenHadWhitespace
+	if t == token.STRING_END || t == token.XSTR_END {
+		tok.HeredocStripped = l.heredocStripped
+		l.heredocStripped = false
+	}
 	l.tokenHadWhitespace = false
 	l.lastToken = tok
 	l.tokens <- tok
@@ -187,6 +195,10 @@ func (l *Lexer) emit(t token.Type) {
 func (l *Lexer) emitLiteral(t token.Type, literal string) {
 	tok := token.NewToken(t, literal, l.start)
 	tok.HadWhitespace = l.tokenHadWhitespace
+	if t == token.STRING_END || t == token.XSTR_END {
+		tok.HeredocStripped = l.heredocStripped
+		l.heredocStripped = false
+	}
 	l.tokenHadWhitespace = false
 	l.lastToken = tok
 	l.tokens <- tok
@@ -1910,6 +1922,9 @@ func stripSquigInterpBody(l *Lexer) {
 	}
 	if minIndent < 0 {
 		minIndent = 0
+	}
+	if minIndent > 0 {
+		l.heredocStripped = true
 	}
 	var b strings.Builder
 	b.Grow(delimLineStart - bodyStart)
