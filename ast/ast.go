@@ -2636,14 +2636,12 @@ func (pe *ParenExpression) String() string {
 	case *ParenExpression:
 		return pe.Expr.String()
 	case *PrefixExpression:
-		// PrefixExpression self-wraps for -/+/!/~ ONLY when operand is
-		// non-atomic; for atomic operands it emits bare, and
-		// ParenExpression must wrap to preserve grouping (otherwise
-		// MRI doesn't see a ParenthesesNode on re-parse).
+		// PrefixExpression never self-wraps `not`, and self-wraps -/+/!/~
+		// only when operand is non-atomic; otherwise it emits bare and
+		// ParenExpression must wrap to preserve grouping (otherwise MRI
+		// doesn't see a ParenthesesNode on re-parse).
 		s := e.String()
-		if (e.Operator == "-" || e.Operator == "+" ||
-			e.Operator == "!" || e.Operator == "~") &&
-			!(strings.HasPrefix(s, "(") && strings.HasSuffix(s, ")")) {
+		if !(strings.HasPrefix(s, "(") && strings.HasSuffix(s, ")")) {
 			return "(" + s + ")"
 		}
 		return s
