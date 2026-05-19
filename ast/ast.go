@@ -1579,7 +1579,23 @@ func (hl *HashLiteral) hashElements() []string {
 		}
 	}
 	for _, s := range hl.Splats {
-		items = append(items, posStr{pos: s.Pos(), s: "**" + s.String()})
+		rendered := s.String()
+		// PrefixExpression / SplatExpression with `**` already emit `**`
+		// (or `**X`) -- don't double-prepend. Other operand shapes are
+		// bare and need the `**` prefix.
+		switch e := s.(type) {
+		case *PrefixExpression:
+			if e.Operator == "**" {
+				items = append(items, posStr{pos: s.Pos(), s: rendered})
+				continue
+			}
+		case *SplatExpression:
+			if e.Operator == "**" {
+				items = append(items, posStr{pos: s.Pos(), s: rendered})
+				continue
+			}
+		}
+		items = append(items, posStr{pos: s.Pos(), s: "**" + rendered})
 	}
 	sort.SliceStable(items, func(i, j int) bool { return items[i].pos < items[j].pos })
 	elements := make([]string, len(items))
