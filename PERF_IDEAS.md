@@ -86,13 +86,26 @@ defer g.restore()
 ```
 escape analysis usually keeps stack-bound.
 
-### 5. arena AST nodes -- mostly good, one squeeze left -- small to medium
+### 5. arena AST nodes -- mostly good -- ~~one squeeze left~~ SKIPPED
 
-arena slabs eliminate per-node `runtime.newobject`. but `arenaAlloc[Identifier]` tops 1GB / 1.2M objects -- proportional to source size, not directly avoidable. one more squeeze:
-- `*ast.Identifier` has `Token` (large) + `Value string`. when `Value == Token.Literal`, dedup. or drop `Value` field; add `func (i *Identifier) Value() string { return i.Token.Literal }`. shrinks node, reduces slab size.
-- worth profiling: does `Value` ever differ from `Token.Literal`? if no -- straight removal.
+arena slabs eliminate per-node `runtime.newobject`. `arenaAlloc[Identifier]` tops 1GB / 1.2M objects -- proportional to source size, not directly avoidable.
 
-similar audit for other arena types where Token + something-from-Token coexist.
+**audit done -- drop-`Value` not feasible.** scanned ~70 Identifier construction sites in `parser/parser.go`:
+- ~28 trivial sites: `Value = p.curToken.Literal` (would be safe to drop).
+- ~42 computed-name sites where `Value != Token.Literal`:
+    - method suffix: `name + "="` (parseAliasName)
+    - bracket methods: `"[]"`, `"[]="` (parseAliasName, parseUndefName, multiple parseMethodName paths)
+    - lambda call: `"call"`
+    - placeholder: `"nil"` (parseOneParameter forwarding paths)
+    - computed: `receiver.String()`, `ivar.String()`, `sym.String()`, `sym.Value.String()`, locally-computed `name :=` (alias, hash sym keys, method declarations, parameter destructuring, etc.)
+    - empty placeholder: `""` (parseUndefName error path)
+
+dropping the field saves 16B x 1.2M = ~19MB total. modest. options for the 42 computed sites all have issues:
+- **mutate `Token.Literal`** + accessor: risks breaking `End()` (`Token.Pos + len(Value)` -- if Value=="[]=" but Token spans only "[", End() is wrong); also other code treats `Token.Literal` as source text.
+- **separate override field**: same 16B, no saving.
+- **keep field, drop trivial writes**: saves nothing (struct size unchanged).
+
+none clean. moving on. similar audit for other arena types where Token + something-from-Token coexist -- `ContextCallExpression` (#2 byte-hotspot, 624MB) most promising.
 
 ### 6. lexer's `New(string(src))` -- small
 
