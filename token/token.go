@@ -349,8 +349,10 @@ func LookupIdent(ident string) Type {
 	return IDENT
 }
 
-// A Type represents a type of a known token
-type Type int
+// A Type represents a type of a known token.
+// Sized int32: ~265 distinct token types in this package fit comfortably,
+// and the narrower field lets Token pack to 32B instead of 40B.
+type Type int32
 
 // NewToken returns a new Token associated with the given Type typ, the Literal
 // literal and the Position pos
@@ -358,11 +360,14 @@ func NewToken(typ Type, literal string, pos int) Token {
 	return Token{Type: typ, Literal: literal, Pos: pos}
 }
 
-// A Token represents a known token with its literal representation
+// A Token represents a known token with its literal representation.
+// Field order is tuned for compact layout: the 16B string header sits first
+// (8B align), then the 8B Pos, then int32 Type and four trailing bools pack
+// into the final 8B without padding. Total: 32B.
 type Token struct {
-	Type          Type
-	Literal       string
-	Pos           int
+	Literal         string
+	Pos             int
+	Type            Type
 	HadWhitespace   bool // true if whitespace was skipped before this token
 	SingleQuoted    bool // true for STRING tokens emitted from a single-quoted source literal
 	IsCharLit       bool // true for STRING tokens emitted from a `?X` character literal
