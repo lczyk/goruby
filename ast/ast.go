@@ -2511,6 +2511,11 @@ func rubyInfixPrec(op string) int {
 		return 2
 	case "and", "or":
 		return 1
+	case "in":
+		// `in` only appears as part of `for X in Y` and pattern-match
+		// `case ... in ...`. Treat as low-precedence non-wrapping so the
+		// printer doesn't add ParenthesesNode around `i in 0..10`.
+		return 1
 	}
 	return 0
 }
