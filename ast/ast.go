@@ -2481,11 +2481,9 @@ func (pe *PrefixExpression) String() string {
 		}
 	}
 	// `not` is the lowest-precedence unary; any embedding context (assign rhs,
-	// arg list, infix operand, if/while head) accepts `not X` without parens.
-	// Wrapping as `(not X)` would introduce a ParenthesesNode on MRI re-parse.
-	// `*` / `**` (splat / double-splat) only appear in positions where the
-	// grammar already delimits them (array elements, call args, multi-assign
-	// LHS, pattern matching); no wrap needed.
+	// arg list, infix operand, if/while head) accepts `not X` without an
+	// outer ParenthesesNode wrap. `*` / `**` (splat / double-splat) only
+	// appear in grammar-delimited positions and don't need a wrap either.
 	wrap := pe.Operator != "^" && pe.Operator != "not" &&
 		pe.Operator != "*" && pe.Operator != "**" && !atomic
 
@@ -2495,7 +2493,20 @@ func (pe *PrefixExpression) String() string {
 	}
 	out.WriteString(pe.Operator)
 	if pe.Right != nil {
-		if pe.Operator == "not" || pe.Operator == "defined?" {
+		// `not` always uses call-paren form `not(X)` -- pre-2.0 MRI rejects
+		// `not X` for non-trivial operands, and on modern MRI `not(X)` and
+		// `not X` normalise to the same CallNode (opening_loc / closing_loc
+		// are dropped by the parsetree normaliser).
+		if pe.Operator == "not" {
+			out.WriteString("(")
+			out.WriteString(pe.Right.String())
+			out.WriteString(")")
+			if wrap {
+				out.WriteString(")")
+			}
+			return out.String()
+		}
+		if pe.Operator == "defined?" {
 			out.WriteString(" ")
 		}
 		needsParens := pe.Operator == "^" && pinNeedsParens(pe.Right)
