@@ -1616,10 +1616,12 @@ func (p *parser) parsePatternHashPair(pairs *ast.OrderedExprMap) {
 		}
 		if p.peekTokenOneOf(token.COMMA, token.RBRACE, token.THEN) {
 			pairs.Set(key, &ast.Identifier{Token: p.curToken, Value: name})
+			pairs.SetOmitted(key)
 			return
 		}
 		if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) && (p.peek2TokenIs(token.RBRACE) || p.peek2TokenIs(token.COMMA) || p.peek2TokenIs(token.KW_IN) || p.peek2TokenIs(token.WHEN) || p.peek2TokenIs(token.END)) {
 			pairs.Set(key, &ast.Identifier{Token: p.curToken, Value: name})
+			pairs.SetOmitted(key)
 			return
 		}
 		p.skipNewlines()
