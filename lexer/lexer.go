@@ -950,8 +950,11 @@ func lexDigit(l *Lexer) StateFn {
 			return l.errorf("trailing '%c' in number", r)
 		}
 	}
-	// Rational or complex suffix (Ruby 2.1+).
+	// Rational or complex suffix (Ruby 2.1+). `ri` = rational+imaginary.
 	if (r == 'r' || r == 'i') && l.version.AtLeast(ruby21) {
+		if r == 'r' && l.peek() == 'i' {
+			l.next() // consume the trailing `i`
+		}
 		l.emit(token.INT)
 		return startLexer
 	}
