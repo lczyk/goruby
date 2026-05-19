@@ -2522,6 +2522,7 @@ func (p *parser) parseBlock() ast.Expression {
 		p.nextToken()
 	}
 	if p.peekTokenIs(token.PIPE) {
+		block.HasParameterBars = true
 		block.Parameters = p.parseParameters(token.PIPE, token.PIPE)
 		if p.currentTokenOneOf(token.CAPTURE, token.AND) {
 			capture := p.parseBlockCapture()

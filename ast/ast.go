@@ -1105,9 +1105,13 @@ func (sl *StringLiteral) stringOnce() string {
 			case *EmbeddedVariable:
 				out.WriteString(x.String())
 			default:
-				out.WriteString("#{")
-				out.WriteString(p.String())
-				out.WriteString("}")
+				if pe, ok := p.(*ParenExpression); ok && pe.Expr == nil && len(pe.Stmts) == 0 {
+					out.WriteString("#{}")
+				} else {
+					out.WriteString("#{")
+					out.WriteString(p.String())
+					out.WriteString("}")
+				}
 			}
 		}
 		out.WriteString(close)
@@ -1187,9 +1191,15 @@ func (rl *RegexLiteral) String() string {
 			case *EmbeddedVariable:
 				out.WriteString(x.String())
 			default:
-				out.WriteString("#{")
-				out.WriteString(p.String())
-				out.WriteString("}")
+				if pe, ok := p.(*ParenExpression); ok && pe.Expr == nil && len(pe.Stmts) == 0 {
+					// Empty `#{}` placeholder -- emit bare to match MRI
+					// EmbeddedStatementsNode(statements=nil) shape.
+					out.WriteString("#{}")
+				} else {
+					out.WriteString("#{")
+					out.WriteString(p.String())
+					out.WriteString("}")
+				}
 			}
 		}
 	} else {
@@ -1933,6 +1943,10 @@ type BlockExpression struct {
 	Rescues       []*RescueBlock       // rescue clauses (ruby 2.5+ in do/end)
 	ElseBody      *BlockStatement      // else clause (ruby 2.5+ in do/end)
 	EnsureBody    *BlockStatement      // ensure clause (ruby 2.5+ in do/end)
+	// HasParameterBars: source had `|...|` (possibly empty `||`). MRI Prism
+	// distinguishes `{ || ... }` from `{ ... }` -- empty bars produce a
+	// BlockParametersNode wrapper; absent bars omit the wrapper entirely.
+	HasParameterBars bool
 }
 
 func (b *BlockExpression) expressionNode() {}
@@ -1954,7 +1968,7 @@ func (b *BlockExpression) String() string {
 	} else {
 		out.WriteString(" do")
 	}
-	if len(b.Parameters) != 0 || len(b.BlockLocals) != 0 || b.CapturedBlock != nil {
+	if b.HasParameterBars || len(b.Parameters) != 0 || len(b.BlockLocals) != 0 || b.CapturedBlock != nil {
 		args := []string{}
 		for _, a := range b.Parameters {
 			args = append(args, a.String())
