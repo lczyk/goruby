@@ -1386,13 +1386,21 @@ func (p *parser) parsePattern() ast.Expression {
 	// Implicit array pattern: in a, b, c == in [a, b, c]
 	if p.peekTokenIs(token.COMMA) {
 		elements := []ast.Expression{pat}
+		trailingComma := false
 		for p.peekTokenIs(token.COMMA) {
 			p.accept(token.COMMA)
 			if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.THEN, token.IF, token.UNLESS, token.EOF) {
+				trailingComma = true
 				break
 			}
 			p.nextToken()
 			elements = append(elements, p.parsePatternOr())
+		}
+		if trailingComma {
+			// `in 0,` matches `[0, ...anything]` -- MRI tags this with
+			// ImplicitRestNode on the pattern. Preserve via the sentinel
+			// so the printer emits the trailing comma back.
+			elements = append(elements, &ast.ImplicitRest{Token: p.curToken})
 		}
 		// All-label-pair elements collapse to an implicit hash pattern: MRI
 		// parses `in a: 0, b: 1` as a hash pattern, not an array containing
@@ -1538,6 +1546,10 @@ func (p *parser) parsePatternArray() ast.Expression {
 	for p.peekTokenIs(token.COMMA) {
 		p.accept(token.COMMA)
 		if p.peekTokenIs(token.RBRACKET) {
+			// Trailing comma marks an implicit-rest match in array patterns:
+			// `in [0,]` matches `[0, ...anything]`. MRI tags this with an
+			// ImplicitRestNode on the pattern -- preserve via the sentinel.
+			elements = append(elements, &ast.ImplicitRest{Token: p.curToken})
 			break
 		}
 		p.nextToken()
