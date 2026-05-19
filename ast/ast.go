@@ -2544,6 +2544,13 @@ func (oe *InfixExpression) String() string {
 		if !ok {
 			return s
 		}
+		// Modifier `rescue` parses its RHS via the `expr` grammar (not `arg`),
+		// so anything down to `and`/`or` is absorbed without parens. Skipping
+		// the defensive wrap matches MRI's parsetree (rescue_expression =
+		// AndNode directly, not ParenthesesNode(AndNode)).
+		if oe.Operator == "rescue" && !isLeft {
+			return s
+		}
 		childPrec := rubyInfixPrec(inf.Operator)
 		if childPrec == 0 {
 			return s // child already wraps itself
