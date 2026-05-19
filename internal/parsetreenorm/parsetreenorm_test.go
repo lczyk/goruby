@@ -359,6 +359,114 @@ func TestStripIDLineLocationFastPath(t *testing.T) {
 	}
 }
 
+// TestCollapsesRedundantParens locks in that the normalizer strips
+// prism's ParenthesesNode wrapper around a single-statement body.
+// MRI 2.x collapses the parens natively, so without this rule prism
+// (3.3+) dumps diverge from 2.x dumps for any redundant `(...)` form.
+// Multi-stmt parens like `(a; b)` keep last-value semantics and are
+// NOT covered -- they retain a real shape difference.
+func TestCollapsesRedundantParens(t *testing.T) {
+	cases := []struct {
+		name    string
+		wrapped string
+		bare    string
+	}{
+		{
+			name: "around-integer",
+			wrapped: "@ ProgramNode\n+-- locals: []\n+-- statements:\n    @ StatementsNode\n    +-- body: (length: 1)\n        +-- @ ParenthesesNode\n            +-- body:\n                @ StatementsNode\n                +-- body: (length: 1)\n                    +-- @ IntegerNode\n                        +-- value: 1\n",
+			bare:    "@ ProgramNode\n+-- locals: []\n+-- statements:\n    @ StatementsNode\n    +-- body: (length: 1)\n        +-- @ IntegerNode\n            +-- value: 1\n",
+		},
+		{
+			name: "around-integer-4.0-with-flags",
+			wrapped: "@ ProgramNode\n+-- locals: []\n+-- statements:\n    @ StatementsNode\n    +-- body: (length: 1)\n        +-- @ ParenthesesNode\n            +-- ParenthesesNodeFlags: nil\n            +-- body:\n                @ StatementsNode\n                +-- body: (length: 1)\n                    +-- @ IntegerNode\n                        +-- value: 1\n",
+			bare:    "@ ProgramNode\n+-- locals: []\n+-- statements:\n    @ StatementsNode\n    +-- body: (length: 1)\n        +-- @ IntegerNode\n            +-- value: 1\n",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			nw := Normalize(c.wrapped)
+			nb := Normalize(c.bare)
+			if nw != nb {
+				t.Errorf("redundant parens not collapsed\n--- wrapped ---\n%s\n--- bare ---\n%s", nw, nb)
+			}
+		})
+	}
+}
+
+// TestCollapsesEmptyBegin locks in that the normalizer strips prism's
+// `BeginNode { statements: X, rescue: nil, else: nil, ensure: nil }` to
+// X's body, matching MRI 2.x which never wraps a no-clause `begin...end`
+// in a distinct node. Begin forms with any non-nil clause keep their
+// structure (they encode real control flow).
+func TestCollapsesEmptyBegin(t *testing.T) {
+	wrapped := "@ ProgramNode\n+-- locals: []\n+-- statements:\n    @ StatementsNode\n    +-- body: (length: 1)\n        +-- @ BeginNode\n            +-- statements:\n                @ StatementsNode\n                +-- body: (length: 1)\n                    +-- @ IntegerNode\n                        +-- value: 1\n            +-- rescue_clause: nil\n            +-- else_clause: nil\n            +-- ensure_clause: nil\n"
+	bare := "@ ProgramNode\n+-- locals: []\n+-- statements:\n    @ StatementsNode\n    +-- body: (length: 1)\n        +-- @ IntegerNode\n            +-- value: 1\n"
+	nw := Normalize(wrapped)
+	nb := Normalize(bare)
+	if nw != nb {
+		t.Errorf("empty BeginNode not collapsed\n--- wrapped ---\n%s\n--- bare ---\n%s", nw, nb)
+	}
+}
+
+// TestKeepsBeginWithRescue verifies the BeginNode collapse is gated on
+// all clauses being nil. A BeginNode with a non-nil rescue_clause
+// encodes real control flow and must be preserved as a distinct node.
+func TestKeepsBeginWithRescue(t *testing.T) {
+	withRescue := "@ ProgramNode\n+-- locals: []\n+-- statements:\n    @ StatementsNode\n    +-- body: (length: 1)\n        +-- @ BeginNode\n            +-- statements:\n                @ StatementsNode\n                +-- body: (length: 1)\n                    +-- @ IntegerNode\n                        +-- value: 1\n            +-- rescue_clause:\n                @ RescueNode\n                +-- exceptions: (length: 0)\n            +-- else_clause: nil\n            +-- ensure_clause: nil\n"
+	out := Normalize(withRescue)
+	if !strings.Contains(out, "BeginNode") {
+		t.Errorf("BeginNode with rescue clause incorrectly stripped:\n%s", out)
+	}
+	if !strings.Contains(out, "RescueNode") {
+		t.Errorf("RescueNode child lost:\n%s", out)
+	}
+}
+
+// TestCosmeticLiteralEquivalence locks in that the normalizer collapses
+// cosmetic source-level differences that produce identical runtime values:
+//
+//   - digit-group underscores in numerics: 5_000 vs 5000
+//   - base-prefix case: 0xFF vs 0Xff
+//   - float exponent case: 1e10 vs 1E10
+//   - string quote style (prism `*_loc:` lines): "x" vs 'x'
+//
+// Each pair feeds dumps that MRI / prism could plausibly emit. After
+// Normalize, they must be byte-identical. NOT covered (intentionally):
+// `0xFF` vs `255` -- prism emits `IntegerBaseFlags: hexadecimal` vs
+// `decimal`, which the normalizer correctly preserves as a real semantic
+// distinction.
+func TestCosmeticLiteralEquivalence(t *testing.T) {
+	cases := []struct {
+		name string
+		a, b string
+	}{
+		{
+			name: "underscore-grouping-1.9-NODE_LIT",
+			a:    "@ NODE_SCOPE (line: 1, location: (1,0)-(1,5))\n+- nd_body:\n    @ NODE_LIT (line: 1, location: (1,0)-(1,5))\n    +- nd_lit: 5000\n",
+			b:    "@ NODE_SCOPE (line: 1, location: (1,0)-(1,4))\n+- nd_body:\n    @ NODE_LIT (line: 1, location: (1,0)-(1,4))\n    +- nd_lit: 5000\n",
+		},
+		{
+			name: "underscore-grouping-prism-IntegerNode",
+			a:    "@ ProgramNode (location: (1,0)-(1,5))\n+-- @ StatementsNode (location: (1,0)-(1,5))\n    +-- body:\n        +-- @ IntegerNode (location: (1,0)-(1,5))\n            +-- IntegerBaseFlags: decimal\n",
+			b:    "@ ProgramNode (location: (1,0)-(1,4))\n+-- @ StatementsNode (location: (1,0)-(1,4))\n    +-- body:\n        +-- @ IntegerNode (location: (1,0)-(1,4))\n            +-- IntegerBaseFlags: decimal\n",
+		},
+		{
+			name: "string-quote-prism-loc",
+			a:    "@ ProgramNode\n+-- @ StringNode\n    +-- opening_loc: (1,0)-(1,1) = \"\\\"\"\n    +-- content_loc: (1,1)-(1,6) = \"hello\"\n    +-- closing_loc: (1,6)-(1,7) = \"\\\"\"\n    +-- unescaped: \"hello\"\n",
+			b:    "@ ProgramNode\n+-- @ StringNode\n    +-- opening_loc: (1,0)-(1,1) = \"'\"\n    +-- content_loc: (1,1)-(1,6) = \"hello\"\n    +-- closing_loc: (1,6)-(1,7) = \"'\"\n    +-- unescaped: \"hello\"\n",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			na := Normalize(c.a)
+			nb := Normalize(c.b)
+			if na != nb {
+				t.Errorf("normalize should collapse cosmetic diff but didn't\n--- a ---\n%s\n--- b ---\n%s", na, nb)
+			}
+		})
+	}
+}
+
 func TestStripIDLineLocationCodeRange(t *testing.T) {
 	in := "@ NODE_LIT (id: 5, line: 2, code_range: (2,0)-(2,8))\n+- nd_lit: 2\n"
 	out := stripIDLineLocation(in)

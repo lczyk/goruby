@@ -56,20 +56,28 @@ func toFlat(s string) string {
 	return b.String()
 }
 
-// normalizeTree recursively collapses BLOCK chains made trivial by earlier
-// text-level passes:
+// normalizeTree recursively collapses no-op wrappers made trivial by
+// earlier passes or introduced by prism but absent from MRI 2.x dumps:
 //
-//  1. The text-level stripNullBeginChildren removes nd_head children that
-//     point to NODE_BEGIN(null). On MRI 2.x single-line def bodies
-//     (`def f(); X; end`), this leaves a NODE_BLOCK node with no nd_head,
-//     only an nd_next pointing into the rest of the stmt-chain. That
-//     dangling BLOCK is semantically a no-op wrapper around the chain --
-//     collapse it.
-//  2. After (1), a NODE_BLOCK with a single nd_head and nil nd_next
-//     (or no nd_next) is a 1-element list -- replace with the head.
+//  1. NODE_BLOCK collapse (see blockTrivialContent):
+//     a. stripNullBeginChildren removes nd_head children pointing to
+//        NODE_BEGIN(null). On MRI 2.x single-line def bodies
+//        (`def f(); X; end`), this leaves a NODE_BLOCK with no nd_head,
+//        only an nd_next pointing into the rest of the stmt-chain --
+//        collapse the dangling BLOCK.
+//     b. After (a), a NODE_BLOCK with a single nd_head and nil nd_next
+//        (or no nd_next) is a 1-element list -- replace with the head.
+//  2. ParenthesesNode around a single-statement StatementsNode (see
+//     parenthesesTrivialContent): `(1)` and `1` evaluate identically, but
+//     prism preserves the ParenthesesNode wrapper while MRI 2.x collapses
+//     it. Strip the wrapper so cross-version comparisons match.
+//  3. BeginNode with no rescue / else / ensure clauses and a single-stmt
+//     statements child (see beginTrivialContent): `begin; X; end` and `X`
+//     evaluate identically; prism keeps the BeginNode where MRI 2.x
+//     collapses.
 //
-// Together these produce the canonical body shape that matches what
-// multi-line def emits naturally.
+// The inner loop cascades replacements -- collapsing BeginNode can yield
+// a node whose own collapse rule applies (e.g. an inner ParenthesesNode).
 func normalizeTree(n *ptNode) {
 	if n == nil {
 		return
@@ -80,18 +88,119 @@ func normalizeTree(n *ptNode) {
 			continue
 		}
 		normalizeTree(f.child)
-		// After recursion, the child may itself be a now-trivial BLOCK.
-		// Hoist its content up one level.
-		if replacement, ok := blockTrivialContent(f.child); ok {
+		for {
+			replacement, ok := trivialWrapperContent(f.child)
+			if !ok {
+				break
+			}
 			if replacement == nil {
-				// Empty content -> mark as null.
 				f.child = nil
 				f.null = true
-			} else {
-				f.child = replacement
+				break
 			}
+			f.child = replacement
 		}
 	}
+}
+
+// trivialWrapperContent returns the inner content of n iff n is one of
+// the recognised no-op wrapper shapes. See normalizeTree for the list.
+func trivialWrapperContent(n *ptNode) (*ptNode, bool) {
+	if n == nil {
+		return nil, false
+	}
+	if r, ok := blockTrivialContent(n); ok {
+		return r, true
+	}
+	if r, ok := parenthesesTrivialContent(n); ok {
+		return r, true
+	}
+	if r, ok := beginTrivialContent(n); ok {
+		return r, true
+	}
+	return nil, false
+}
+
+// parenthesesTrivialContent collapses `ParenthesesNode -> StatementsNode
+// -> single body` to the bare body. Multi-stmt parens (`(a; b; c)`) keep
+// last-value semantics that the bare body wouldn't -- leave alone.
+// Empty parens (`()` -> nil) and parens whose body isn't a StatementsNode
+// are also left alone (the latter shouldn't occur in valid prism dumps).
+func parenthesesTrivialContent(n *ptNode) (*ptNode, bool) {
+	if n.kind != "ParenthesesNode" {
+		return nil, false
+	}
+	var body *ptNode
+	for _, f := range n.fields {
+		switch f.name {
+		case "body":
+			if f.child == nil {
+				return nil, false
+			}
+			if body != nil {
+				return nil, false
+			}
+			body = f.child
+		case "ParenthesesNodeFlags":
+			// Cosmetic flag field (prism 4.0). Ignore.
+		default:
+			// Unknown field -- be conservative.
+			return nil, false
+		}
+	}
+	if body == nil || body.kind != "StatementsNode" {
+		return nil, false
+	}
+	return statementsSingleChild(body)
+}
+
+// beginTrivialContent collapses `BeginNode { statements: stmts, rescue:
+// nil, else: nil, ensure: nil }` to the single child of stmts when stmts
+// is a single-stmt StatementsNode. Multi-stmt body would need splicing
+// into the parent's statement list, which the current list-field model
+// doesn't support -- leave alone.
+func beginTrivialContent(n *ptNode) (*ptNode, bool) {
+	if n.kind != "BeginNode" {
+		return nil, false
+	}
+	var stmts *ptNode
+	for _, f := range n.fields {
+		switch f.name {
+		case "statements":
+			stmts = f.child
+		case "rescue_clause", "else_clause", "ensure_clause":
+			if !(f.null || f.leaf == "nil") {
+				return nil, false
+			}
+		case "BeginNodeFlags":
+			// Cosmetic flag, ignore.
+		default:
+			return nil, false
+		}
+	}
+	if stmts == nil || stmts.kind != "StatementsNode" {
+		return nil, false
+	}
+	return statementsSingleChild(stmts)
+}
+
+// statementsSingleChild returns the single body child of a StatementsNode
+// or (nil, false) if it has zero or more-than-one body fields.
+func statementsSingleChild(stmts *ptNode) (*ptNode, bool) {
+	var single *ptNode
+	for _, f := range stmts.fields {
+		if f.name != "body" {
+			return nil, false
+		}
+		if single != nil {
+			return nil, false
+		}
+		single = f.child
+	}
+	if single == nil {
+		return nil, false
+	}
+	return single, true
 }
 
 // blockTrivialContent returns (replacement, true) if n is a NODE_BLOCK
