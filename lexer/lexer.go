@@ -105,6 +105,7 @@ func WithVersion(v token.RubyVersion) Option {
 func New(input string, opts ...Option) *Lexer {
 	l := &Lexer{
 		input:  input,
+		segEnd: len(input),
 		state:  startLexer,
 		tokens: make([]token.Token, 0, 16),
 	}
@@ -178,11 +179,20 @@ func hasNonAsciiOutsideComments(input string) bool {
 	return false
 }
 
+// segment denotes a contiguous range of l.input to be consumed by the lexer.
+// Used by the cursor mechanism (see segEnd / pending below) so heredoc paths
+// can splice in rest-of-line content WITHOUT mutating l.input.
+type segment struct {
+	start, end int
+}
+
 // Lexer is the engine to process input and emit Tokens
 type Lexer struct {
-	input              string           // the string being scanned.
+	input              string           // the string being scanned (immutable post-New).
 	state              StateFn          // the next lexing function to enter
 	pos                int              // current position in the input.
+	segEnd             int              // end of current view of input; when pos reaches segEnd, pop pending
+	pending            []segment        // upcoming ranges of input to consume after current view exhausts
 	start              int              // start position of this item.
 	width              int              // width of last rune read from input.
 	tokens             []token.Token // queue of scanned tokens, drained by NextToken.
@@ -280,11 +290,34 @@ func (l *Lexer) emitLiteralSQ(t token.Type, literal string) {
 	l.start = l.pos
 }
 
+// advanceSegment pops the next pending segment, jumping l.pos / l.segEnd to
+// its range. Resets l.start so tokens never span a segment boundary. Returns
+// false (and leaves pos at segEnd) when no pending segments remain.
+func (l *Lexer) advanceSegment() bool {
+	if len(l.pending) == 0 {
+		return false
+	}
+	seg := l.pending[0]
+	l.pending = l.pending[1:]
+	l.pos = seg.start
+	l.segEnd = seg.end
+	l.start = l.pos
+	return true
+}
+
+// syncSegEnd keeps l.segEnd consistent with the current length of l.input
+// after a splice mutation. Phase 1 of the heredoc cursor migration: existing
+// splice paths still mutate l.input, so segEnd must follow. Phase 2+ converts
+// the splice sites to pending segments and this helper goes away.
+func (l *Lexer) syncSegEnd() { l.segEnd = len(l.input) }
+
 // next returns the next rune in the input.
 func (l *Lexer) next() rune {
-	if l.pos >= len(l.input) {
-		l.width = 0
-		return eof
+	if l.pos >= l.segEnd {
+		if !l.advanceSegment() {
+			l.width = 0
+			return eof
+		}
 	}
 	if b := l.input[l.pos]; b < utf8.RuneSelf {
 		l.width = 1
@@ -292,7 +325,7 @@ func (l *Lexer) next() rune {
 		return rune(b)
 	}
 	var r rune
-	r, l.width = utf8.DecodeRuneInString(l.input[l.pos:])
+	r, l.width = utf8.DecodeRuneInString(l.input[l.pos:l.segEnd])
 	l.pos += l.width
 	return r
 }
@@ -394,13 +427,25 @@ func (l *Lexer) consumeEscape() {
 // peek returns but does not consume
 // the next rune in the input.
 func (l *Lexer) peek() rune {
-	if l.pos >= len(l.input) {
-		return eof
+	if l.pos >= l.segEnd {
+		// Look ahead into next pending segment without popping.
+		if len(l.pending) == 0 {
+			return eof
+		}
+		seg := l.pending[0]
+		if seg.start >= seg.end {
+			return eof
+		}
+		if b := l.input[seg.start]; b < utf8.RuneSelf {
+			return rune(b)
+		}
+		r, _ := utf8.DecodeRuneInString(l.input[seg.start:seg.end])
+		return r
 	}
 	if b := l.input[l.pos]; b < utf8.RuneSelf {
 		return rune(b)
 	}
-	r, _ := utf8.DecodeRuneInString(l.input[l.pos:])
+	r, _ := utf8.DecodeRuneInString(l.input[l.pos:l.segEnd])
 	return r
 }
 
@@ -1951,6 +1996,7 @@ foundEnd:
 		l.heredocPostBody = l.input[restStart:nlPos]
 		l.input = l.input[:restStart]
 	}
+	l.syncSegEnd()
 	// Consume the inserted \n (or hit eof on unterminated input).
 	for {
 		r := l.next()
@@ -2054,6 +2100,7 @@ func stripSquigInterpBody(l *Lexer) {
 	stripped := b.String()
 	delimLineContentStart := delimLineStart + delimLineWS
 	l.input = l.input[:bodyStart] + stripped + l.input[delimLineContentStart:]
+	l.syncSegEnd()
 }
 
 // matchHeredocDelimLine reports whether the line beginning at pos is the
@@ -2094,6 +2141,7 @@ func lexHeredocBody(l *Lexer) StateFn {
 		if l.heredocPostBody != "" {
 			l.input = l.input[:l.pos] + l.heredocPostBody + l.input[l.pos:]
 			l.heredocPostBody = ""
+			l.syncSegEnd()
 		}
 		return startLexer
 	}
@@ -2161,6 +2209,7 @@ func lexHeredocBody(l *Lexer) StateFn {
 				if l.heredocPostBody != "" {
 					l.input = l.input[:l.pos] + l.heredocPostBody + l.input[l.pos:]
 					l.heredocPostBody = ""
+					l.syncSegEnd()
 				}
 				return startLexer
 			}
@@ -2196,6 +2245,7 @@ func lexHeredocContent(l *Lexer) StateFn {
 		if l.heredocPostBody != "" {
 			l.input = l.input[:l.pos] + l.heredocPostBody + l.input[l.pos:]
 			l.heredocPostBody = ""
+			l.syncSegEnd()
 		}
 		return startLexer
 	}
@@ -2261,6 +2311,7 @@ func lexHeredocContent(l *Lexer) StateFn {
 				if l.heredocPostBody != "" {
 					l.input = l.input[:l.pos] + l.heredocPostBody + l.input[l.pos:]
 					l.heredocPostBody = ""
+					l.syncSegEnd()
 				}
 				return startLexer
 			}
