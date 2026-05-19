@@ -2614,6 +2614,18 @@ func (p *parser) parsePrefixExpression() ast.Expression {
 		Token:    p.curToken,
 		Operator: p.curToken.Literal,
 	}
+	// `not(X)` (no space) is call-style syntax for `not X` in MRI -- the
+	// parens belong to the not-call, not to a grouping ParenExpression
+	// around X. `not (X)` (with space) is real grouping (preserved).
+	if expression.Operator == "not" && p.peekTokenIs(token.LPAREN) && !p.peekToken.HadWhitespace {
+		p.nextToken() // to LPAREN
+		p.nextToken() // past LPAREN
+		expression.Right = p.parseExpression(precLowest)
+		if p.peekTokenIs(token.RPAREN) {
+			p.accept(token.RPAREN)
+		}
+		return expression
+	}
 	p.nextToken()
 	expression.Right = p.parseExpression(precPrefix)
 	return expression
@@ -2669,24 +2681,33 @@ func (p *parser) parseInfixExpression(left ast.Expression) ast.Expression {
 		// We parsed RHS at precAssignment-1 above so it would absorb `=` /
 		// ternary / etc., but that makes chained `and`/`or` right-associative
 		// (a and b and c -> a and (b and c)). MRI is left-associative for
-		// these. Rotate the tree to restore left-associativity for any chain
-		// of the same operator. Stops at the first right child that isn't
-		// the same operator -- leaving e.g. assignment / ternary absorbed.
-		for {
-			rinf, ok := expression.Right.(*ast.InfixExpression)
-			if !ok || rinf.Operator != expression.Operator {
-				break
+		// these. Flatten the whole same-op tree and rebuild left-leaning.
+		// Stops descending at the first non-same-op subtree -- leaving e.g.
+		// assignment / ternary absorbed.
+		var leaves []ast.Expression
+		var collect func(e ast.Expression)
+		collect = func(e ast.Expression) {
+			if inf, ok := e.(*ast.InfixExpression); ok && inf.Operator == expression.Operator {
+				collect(inf.Left)
+				collect(inf.Right)
+				return
 			}
-			// Rotate: this(L, Inf(op, M, R)) -> Inf(op, Inf(op, L, M), R).
-			newLeft := &ast.InfixExpression{
-				Token:    expression.Token,
-				Operator: expression.Operator,
-				Left:     expression.Left,
-				Right:    rinf.Left,
+			leaves = append(leaves, e)
+		}
+		collect(expression)
+		if len(leaves) > 2 {
+			rebuilt := leaves[0]
+			for i := 1; i < len(leaves); i++ {
+				rebuilt = &ast.InfixExpression{
+					Token:    expression.Token,
+					Operator: expression.Operator,
+					Left:     rebuilt,
+					Right:    leaves[i],
+				}
 			}
-			expression.Left = newLeft
-			expression.Right = rinf.Right
-			expression.Token = rinf.Token
+			if ri, ok := rebuilt.(*ast.InfixExpression); ok {
+				*expression = *ri
+			}
 		}
 	}
 	return expression
