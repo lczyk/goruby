@@ -968,12 +968,15 @@ func lexDigit(l *Lexer) StateFn {
 		}
 	}
 	// Rational or complex suffix (Ruby 2.1+). `ri` = rational+imaginary.
-	if (r == 'r' || r == 'i') && l.version.AtLeast(ruby21) {
-		if r == 'r' && l.peek() == 'i' {
-			l.next() // consume the trailing `i`
+	if r == 'r' || r == 'i' {
+		if l.version.AtLeast(ruby21) {
+			if r == 'r' && l.peek() == 'i' {
+				l.next() // consume the trailing `i`
+			}
+			l.emit(token.INT)
+			return startLexer
 		}
-		l.emit(token.INT)
-		return startLexer
+		return l.errorf("rational/complex literal suffix requires Ruby 2.1+")
 	}
 
 	l.backup()
@@ -1014,11 +1017,17 @@ func lexFloatFraction(l *Lexer) StateFn {
 		}
 	}
 	// Optional rational/complex suffix (Ruby 2.1+). `ri` = rational+imaginary.
-	if (r == 'r' || r == 'i') && l.version.AtLeast(ruby21) {
-		if r == 'r' && l.peek() == 'i' {
-			l.next() // consume the trailing `i`
+	if r == 'r' || r == 'i' {
+		if l.version.AtLeast(ruby21) {
+			if r == 'r' && l.peek() == 'i' {
+				l.next() // consume the trailing `i`
+			}
+			l.next()
+			l.backup()
+			l.emit(token.FLOAT)
+			return startLexer
 		}
-		l.next()
+		return l.errorf("rational/complex literal suffix requires Ruby 2.1+")
 	}
 	l.backup()
 	l.emit(token.FLOAT)
@@ -1032,11 +1041,17 @@ func lexFloatExponent(l *Lexer) StateFn {
 	}
 	// Optional rational/complex suffix after exponent (Ruby 2.1+).
 	// `ri` = rational+imaginary.
-	if (r == 'r' || r == 'i') && l.version.AtLeast(ruby21) {
-		if r == 'r' && l.peek() == 'i' {
+	if r == 'r' || r == 'i' {
+		if l.version.AtLeast(ruby21) {
+			if r == 'r' && l.peek() == 'i' {
+				l.next()
+			}
 			l.next()
+			l.backup()
+			l.emit(token.FLOAT)
+			return startLexer
 		}
-		l.next()
+		return l.errorf("rational/complex literal suffix requires Ruby 2.1+")
 	}
 	l.backup()
 	l.emit(token.FLOAT)

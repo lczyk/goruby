@@ -1638,17 +1638,12 @@ func TestVersionGating(t *testing.T) {
 
 	t.Run("rational suffix rejected before 2.1", func(t *testing.T) {
 		l := New("42r", WithVersion(token.MustParseVersion("2.0")))
+		// 42 emits, then ILLEGAL on the suffix -- MRI 2.0 rejects `42r` as a
+		// syntax error (an INT immediately followed by IDENT on the same
+		// line isn't valid), so emit ILLEGAL rather than silently splitting.
 		tok := l.NextToken()
-		if tok.Type != token.INT {
-			t.Fatalf("expected INT, got %s", tok.Type)
-		}
-		// Without rational support, "42" should be consumed as INT, then "r" as IDENT.
-		if tok.Literal != "42" {
-			t.Errorf("expected literal %q, got %q", "42", tok.Literal)
-		}
-		tok = l.NextToken()
-		if tok.Type != token.IDENT || tok.Literal != "r" {
-			t.Errorf("expected IDENT %q, got %s %q", "r", tok.Type, tok.Literal)
+		if tok.Type != token.ILLEGAL {
+			t.Errorf("expected ILLEGAL for `42r` on Ruby 2.0, got %s %q", tok.Type, tok.Literal)
 		}
 	})
 
@@ -1663,8 +1658,8 @@ func TestVersionGating(t *testing.T) {
 	t.Run("complex suffix on float rejected before 2.1", func(t *testing.T) {
 		l := New("1.5i", WithVersion(token.MustParseVersion("2.0")))
 		tok := l.NextToken()
-		if tok.Type != token.FLOAT || tok.Literal != "1.5" {
-			t.Errorf("expected FLOAT %q on Ruby 2.0, got %s %q", "1.5", tok.Type, tok.Literal)
+		if tok.Type != token.ILLEGAL {
+			t.Errorf("expected ILLEGAL for `1.5i` on Ruby 2.0, got %s %q", tok.Type, tok.Literal)
 		}
 	})
 
