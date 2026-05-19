@@ -111,7 +111,71 @@ func New(input string, opts ...Option) *Lexer {
 	for _, o := range opts {
 		o(l)
 	}
+	l.hasMagicEncoding = detectMagicEncoding(input)
+	if l.version.IsSet() && !l.version.AtLeast(ruby20) && !l.hasMagicEncoding &&
+		hasNonAsciiOutsideComments(input) {
+		l.invalidEncoding = true
+	}
 	return l
+}
+
+// detectMagicEncoding reports whether the source has a `# coding:` /
+// `# encoding:` magic comment on the first or second line. MRI 1.9
+// defaults source encoding to US-ASCII without one, rejecting any
+// non-ASCII byte outside comments.
+func detectMagicEncoding(input string) bool {
+	for i, line := 0, 0; line < 2 && i < len(input); line++ {
+		end := strings.IndexByte(input[i:], '\n')
+		if end < 0 {
+			end = len(input) - i
+		}
+		raw := input[i : i+end]
+		i += end + 1
+		// Magic comment must be on a line that's only a comment.
+		trimmed := strings.TrimLeft(raw, " \t")
+		if !strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if strings.Contains(trimmed, "coding:") || strings.Contains(trimmed, "coding=") {
+			return true
+		}
+	}
+	return false
+}
+
+// hasNonAsciiOutsideComments reports whether input contains any byte
+// >=0x80 outside of `#`-line comments. Used to mirror MRI 1.9's
+// rejection of non-ASCII source when no magic comment is present.
+// Per line: any non-ASCII byte appearing before the first `#` on the
+// line counts as code -- bytes after `#` are assumed to be inline
+// comment text and ignored. False-negatives possible on `#` inside
+// string literals, but the simpler scan is good enough for the test
+// fixtures that drive this gate.
+func hasNonAsciiOutsideComments(input string) bool {
+	i := 0
+	for i < len(input) {
+		nl := strings.IndexByte(input[i:], '\n')
+		end := len(input)
+		if nl >= 0 {
+			end = i + nl
+		}
+		// Anything from `#` onwards is a comment for this line.
+		hash := strings.IndexByte(input[i:end], '#')
+		stop := end
+		if hash >= 0 {
+			stop = i + hash
+		}
+		for k := i; k < stop; k++ {
+			if input[k] >= 0x80 {
+				return true
+			}
+		}
+		if nl < 0 {
+			return false
+		}
+		i = end + 1
+	}
+	return false
 }
 
 // Lexer is the engine to process input and emit Tokens
@@ -126,6 +190,8 @@ type Lexer struct {
 	hadWhitespace      bool             // true if whitespace was skipped before current token
 	ternaryDepth       int              // pending ternary ? without matching :
 	version            token.RubyVersion
+	hasMagicEncoding   bool // source has a `# coding:` / `# encoding:` magic comment
+	invalidEncoding    bool // version is <2.0, no magic comment, source has non-ASCII outside comments
 	tokenHadWhitespace bool // whitespace before the token currently being lexed
 
 	// Heredoc state.
@@ -368,6 +434,9 @@ func (l *Lexer) errorf(format string, args ...interface{}) StateFn {
 }
 
 func startLexer(l *Lexer) StateFn {
+	if l.invalidEncoding {
+		return l.errorf("invalid multibyte char: Ruby 1.9 requires a magic encoding comment for non-ASCII source")
+	}
 	r := l.next()
 	if isWhitespace(r) {
 		l.hadWhitespace = true

@@ -20,17 +20,9 @@
 
 # --- parse phase -------------------------------------------------------------
 
-parse 1.9 internal/integrationtest/testdata/esolangs/la_wea.rb: version-aware rejection not implemented
-parse 1.9 internal/integrationtest/testdata/gems/esolang-book-sources/1-3/06.rb: version-aware rejection not implemented
-parse 1.9 internal/integrationtest/testdata/gems/esolang-book-sources/1-3/08.rb: version-aware rejection not implemented
-parse 1.9 internal/integrationtest/testdata/gems/esolang-book-sources/1-3/09.rb: version-aware rejection not implemented
-parse 1.9 internal/integrationtest/testdata/gems/esolang-book-sources/1-4/05.rb: version-aware rejection not implemented
-parse 1.9 internal/integrationtest/testdata/gems/esolang-book-sources/2-2/03.rb: version-aware rejection not implemented
 parse 1.9 internal/integrationtest/testdata/gems/pyramid-scheme/pyra.rb: version-aware rejection not implemented
-parse 1.9 internal/integrationtest/testdata/mri-tests/enc/test_case_mapping.rb: version-aware rejection not implemented
 parse 2.0..2.1 internal/integrationtest/testdata/mri-tests/enc/test_euc_jp.rb: version-aware rejection not implemented
 parse 3.0 internal/integrationtest/testdata/mri-tests/enc/test_euc_jp.rb: version-aware rejection not implemented
-parse 1.9 internal/integrationtest/testdata/mri-tests/enc/test_grapheme_breaks.rb: version-aware rejection not implemented
 parse 2.0..2.1 internal/integrationtest/testdata/mri-tests/enc/test_shift_jis.rb: version-aware rejection not implemented
 parse 3.0 internal/integrationtest/testdata/mri-tests/enc/test_shift_jis.rb: version-aware rejection not implemented
 parse 2.0..2.1 internal/integrationtest/testdata/mri-tests/enc/test_windows_1251.rb: version-aware rejection not implemented

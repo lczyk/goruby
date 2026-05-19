@@ -81,7 +81,23 @@ func (p *Program) String() string {
 		out.WriteString(s.String())
 		first = false
 	}
-	return relocateHeredocBodies(out.String())
+	body := relocateHeredocBodies(out.String())
+	// Re-add a magic encoding comment when the body contains non-ASCII
+	// bytes: the source likely had one (we drop comments on re-emit) and
+	// without it MRI 1.9 / our 1.9-mode lexer rejects the file.
+	if containsNonAscii(body) {
+		body = "# encoding: utf-8\n" + body
+	}
+	return body
+}
+
+func containsNonAscii(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= 0x80 {
+			return true
+		}
+	}
+	return false
 }
 
 // Heredoc body markers used internally by StringLiteral.String() and
