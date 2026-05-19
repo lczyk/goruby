@@ -40,22 +40,22 @@ ranked by ROI / size of change.
 
 **refactor:** gate tracing behind build tag (`//go:build trace`) or parser-level bool sampled once. zero-tracer path should be `if p.trace { ... }` inlined check, not generic ctx lookup. expected gain: ~5-10% cpu + removes 88 defer setups per non-trivial parse.
 
-### 2. heredoc lexer rewrites entire input string -- big
+### 2. heredoc lexer rewrites entire input string -- big -- **PARTIAL**
 
 `lexHeredocStart` at `lexer/lexer.go:1931`:
 ```go
 l.input = l.input[:restStart] + "\n" + l.input[nlPos+1:]
 ```
-allocates fresh full-input string **every heredoc**. same pattern in `stripSquigInterpBody` (line 2053). combined ~1.3GB allocs.
+allocates fresh full-input string **every heredoc**. same pattern in `stripSquigInterpBody` (line 2053) and at 4 heredoc-body re-injection sites (~2092, ~2159, ~2194, ~2260). combined ~1.3GB allocs.
 
-`l.heredocDelim += string(r)` (line 1899) is O(n^2) string concat per delim char.
+`l.heredocDelim += string(r)` (line 1899) was O(n^2) string concat per delim char.
 
-**refactor options, increasing in scope:**
-- **(min)** build heredoc delim into `[]byte` then `string()` once.
-- **(medium)** make `Lexer.input` a `[]byte`. splice via small "edits" overlay; lexer reads via `read(pos)` helper consulting overlay. heredoc rest-of-line saved as `(start, end)` index pair, not string copy.
-- **(max)** redesign heredocs as deferred queue: `<<EOS` seen -> push pending heredoc record (delim + body-start-position-after-eol). main lexer keeps moving through current line. on `\n`, drain queued heredocs by scanning forward, emit tokens, resume. no string mutation.
+**(min) done.** delim O(n^2) replaced with a single slice of input bytes captured by start/end positions. LexRealFiles allocs/op 5901 -> 4368 (-26%). Heredoc micro-benches -45-50% allocs.
 
-expected gain: 15-25% throughput on real ruby (heredocs common in tests/specs).
+**still to do** -- the full-input string rewrites at 1931 / 2053 / 4 re-inject sites. they account for ~700MB+ allocs in RealFiles. realistic path:
+- position-tracking / frame-stack reader so the lexer can "jump" into the body region and back to the rest-of-line without mutating `l.input`. all 5 rewrite sites convert to (start,end,resumePos) book-keeping.
+- `stripSquigInterpBody` keeps the stripped body in a side string; `lexHeredocContent` switches to read from it during body lex, jumps `l.pos` past the original body range when done.
+- multi-day effort, high risk of subtle heredoc / nested-heredoc / heredoc-inside-interp bugs. deserves dedicated branch with full oracle iteration. expected gain: 15-25% throughput on real ruby.
 
 ### 3. parser scratch slices alloc on every call -- medium, easy
 
