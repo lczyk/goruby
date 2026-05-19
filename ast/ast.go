@@ -2692,13 +2692,20 @@ func encloseInParensIfNeeded(expr Expression) string {
 	// class / global vars, scoped names, method calls (including chained
 	// .new), index access, self/nil/booleans -- MRI parses these as the
 	// default value directly without a ParenthesesNode.
-	switch expr.(type) {
+	switch e := expr.(type) {
 	case *Identifier, *InstanceVariable, *ClassVariable, *Global,
 		*ScopedIdentifier, *ContextCallExpression, *IndexExpression,
 		*Self, *Nil, *Boolean, *Keyword__FILE__, *Keyword__DIR__,
 		*Keyword__ENCODING__, *Keyword__CALLEE__, *Keyword__METHOD__,
 		*SymbolLiteral:
 		isLiteral = true
+	case *InfixExpression:
+		// Most binary operators bind tighter than `,` and `)` so they parse
+		// fine as a default. `and`/`or` are below assignment and would be
+		// ambiguous; everything else is safe.
+		if e.Operator != "and" && e.Operator != "or" {
+			isLiteral = true
+		}
 	}
 	if !isLiteral && !hasParens {
 		val = "(" + val + ")"
