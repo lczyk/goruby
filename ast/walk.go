@@ -429,6 +429,9 @@ func Walk(v Visitor, node Node) {
 	case *Program:
 		walkStmtList(v, n.Statements)
 
+	case *ImplicitRest:
+		// leaf sentinel -- nothing to walk
+
 	case nil:
 		// nothing to do
 

@@ -111,6 +111,7 @@ lex 3.0 internal/integrationtest/testdata/mri-tests/test_mixed_unicode_escapes.r
 lex 2.0..2.6 internal/integrationtest/testdata/mri-tests/test_module.rb: version-aware rejection not implemented
 lex ..2.6 internal/integrationtest/testdata/mri-tests/test_nomethod_error.rb: version-aware rejection not implemented
 lex ..1.9 internal/integrationtest/testdata/mri-tests/test_not.rb: version-aware rejection not implemented
+lex 1.9 internal/integrationtest/testdata/mri-tests/test_numeric.rb: version-aware rejection not implemented
 lex ..2.7 internal/integrationtest/testdata/mri-tests/test_object.rb: version-aware rejection not implemented
 lex ..2.1 internal/integrationtest/testdata/mri-tests/test_object_id.rb: version-aware rejection not implemented
 lex ..2.1 internal/integrationtest/testdata/mri-tests/test_objectspace.rb: version-aware rejection not implemented
