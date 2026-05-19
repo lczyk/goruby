@@ -4482,6 +4482,35 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 		default:
 			elem = &ast.StringLiteral{Token: beg, Parts: curWord}
 		}
+		// %I element with interpolation: the SymbolLiteral wrapping above
+		// only ran for single-content words. Multi-part word collected
+		// SymbolLiteral + EMBEXPR as a flat list; wrap the whole sequence
+		// in one SymbolLiteral with an interpolated StringLiteral value
+		// so it prints as `:"hello_#{name}"`.
+		if isSymbol {
+			if sl, ok := elem.(*ast.StringLiteral); ok && len(sl.Parts) > 1 {
+				// Strip the leading SymbolLiteral wrap (added per-content
+				// piece above) and use its inner value as the string content.
+				flat := make([]ast.Expression, 0, len(sl.Parts))
+				for _, p := range sl.Parts {
+					if sym, ok := p.(*ast.SymbolLiteral); ok {
+						if scv, ok2 := sym.Value.(*ast.StringLiteral); ok2 {
+							flat = append(flat, &ast.StringContent{Token: sym.Token, Value: scv.Value})
+						} else if id, ok2 := sym.Value.(*ast.Identifier); ok2 {
+							flat = append(flat, &ast.StringContent{Token: sym.Token, Value: id.Value})
+						} else {
+							flat = append(flat, p)
+						}
+					} else {
+						flat = append(flat, p)
+					}
+				}
+				elem = &ast.SymbolLiteral{
+					Token: beg,
+					Value: &ast.StringLiteral{Token: beg, Parts: flat},
+				}
+			}
+		}
 		elements = append(elements, elem)
 		curWord = nil
 	}
