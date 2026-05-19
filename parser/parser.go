@@ -4319,7 +4319,11 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 			}
 			return list
 		}
-		if p.peekTokenOneOf(end...) {
+		// parseImplicitHash already consumed the end token. Don't accept
+		// it again -- doing so would steal a matching token belonging to
+		// an outer construct (e.g. \`[b[3=>4]]\` -- the outer \`]\` is the
+		// array literal's, not the inner index's).
+		if !p.currentTokenOneOf(end...) && p.peekTokenOneOf(end...) {
 			p.acceptOneOf(end...)
 		}
 		return list
@@ -4333,7 +4337,7 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 			}
 			return list
 		}
-		if p.peekTokenOneOf(end...) {
+		if !p.currentTokenOneOf(end...) && p.peekTokenOneOf(end...) {
 			p.acceptOneOf(end...)
 		}
 		return list
