@@ -1755,6 +1755,15 @@ func (p *parser) parseUsing() ast.Expression {
 
 func (p *parser) parseRefine() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
+	// `refine(...)` (no whitespace before `(`) is a normal method call on
+	// the surrounding Module -- handle as a paren-less ident so the call
+	// args / block parse the standard way (matches MRI, which doesn't
+	// treat `refine` as a keyword).
+	if p.peekTokenIs(token.LPAREN) && !p.peekToken.HadWhitespace {
+		ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		p.nextToken() // -> LPAREN
+		return p.parseCallExpressionWithParens(ident)
+	}
 	expr := &ast.RefineExpression{Token: p.curToken}
 	p.nextToken()
 	// Parse the refined class at precBlockBraces so that a trailing
