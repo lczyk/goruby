@@ -2939,10 +2939,11 @@ func (ra *RightwardAssignment) String() string {
 // for source roundtrip fidelity. (a; b; c) groups multiple statements,
 // stored in Stmts; the single-expression case uses Expr.
 type ParenExpression struct {
-	Token  token.Token // the '(' token
-	Rparen token.Token // the ')' token
-	Expr   Expression
-	Stmts  []Expression // multi-statement form: (a; b; c). nil for single-expr.
+	Token         token.Token // the '(' token
+	Rparen        token.Token // the ')' token
+	Expr          Expression
+	Stmts         []Expression // multi-statement form: (a; b; c). nil for single-expr.
+	MultipleStmts bool         // true when source had leading/trailing void `;` (e.g. `(;x)` / `(x;)`) -- MRI tags this ParenthesesNodeFlags=multiple_statements
 }
 
 func (pe *ParenExpression) expressionNode()      {}
@@ -2956,6 +2957,11 @@ func (pe *ParenExpression) String() string {
 			parts[i] = s.String()
 		}
 		return "(" + strings.Join(parts, "; ") + ")"
+	}
+	if pe.MultipleStmts && pe.Expr != nil {
+		// Source had a leading/trailing void `;` -- emit `(;expr)` so MRI
+		// re-parses with ParenthesesNodeFlags=multiple_statements.
+		return "(;" + pe.Expr.String() + ")"
 	}
 	if pe.Expr == nil {
 		return "()"

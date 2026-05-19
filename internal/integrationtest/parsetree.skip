@@ -41,6 +41,5 @@ src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/enc/test_shift_jis
 
 # === auto-added after parser/printer fix run ===
 tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/test_module.rb: tree diff vs MRI parsetree
-tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_defined.rb: tree diff vs MRI parsetree
 tree-mismatch 4.0 internal/integrationtest/testdata/mri-tests/test_module.rb: tree diff vs MRI parsetree
 

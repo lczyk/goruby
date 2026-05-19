@@ -2942,7 +2942,11 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	lparen := p.curToken
 	p.nextToken()
+	hadLeadingSemi := false
 	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+		if p.currentTokenIs(token.SEMICOLON) {
+			hadLeadingSemi = true
+		}
 		p.nextToken()
 	}
 	if p.currentTokenIs(token.RPAREN) {
@@ -2954,12 +2958,19 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 	if exp != nil {
 		stmts = append(stmts, exp)
 	}
+	hadTrailingSemi := false
 	for p.currentTokenOneOf(token.SEMICOLON, token.NEWLINE) ||
 		p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE) {
 		for p.currentTokenOneOf(token.SEMICOLON, token.NEWLINE) {
+			if p.currentTokenIs(token.SEMICOLON) {
+				hadTrailingSemi = true
+			}
 			p.nextToken()
 		}
 		for p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE) {
+			if p.peekTokenIs(token.SEMICOLON) {
+				hadTrailingSemi = true
+			}
 			p.acceptOneOf(token.SEMICOLON, token.NEWLINE)
 		}
 		if p.currentTokenIs(token.RPAREN) {
@@ -2971,6 +2982,9 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 		if p.currentTokenOneOf(token.SEMICOLON, token.NEWLINE) && p.peekTokenIs(token.RPAREN) {
 			break
 		}
+		// Inside the body now -- any `;`/`\n` consumed here was between
+		// statements, not trailing void. Reset tracking.
+		hadTrailingSemi = false
 		if !p.currentTokenOneOf(token.SEMICOLON, token.NEWLINE, token.RPAREN) {
 			exp = p.parseExpression(precLowest)
 		} else {
@@ -2990,6 +3004,12 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 	pe := &ast.ParenExpression{Token: lparen, Rparen: p.curToken, Expr: exp}
 	if len(stmts) > 1 {
 		pe.Stmts = stmts
+	}
+	// MRI tags ParenthesesNodeFlags=multiple_statements when source had a
+	// leading/trailing void `;` or a real multi-statement body. Newlines
+	// alone do not trigger the flag.
+	if len(stmts) > 1 || hadLeadingSemi || hadTrailingSemi {
+		pe.MultipleStmts = true
 	}
 	return pe
 }
