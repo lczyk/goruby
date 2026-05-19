@@ -1309,6 +1309,32 @@ func (p *parser) parseJumpExpression() ast.Expression {
 	return jmp
 }
 
+// isLabelPair reports whether e is an `a:` / `a: val` pair (encoded by
+// parseLabelExpression as an InfixExpression with operator ":" and a
+// SymbolLiteral on the left).
+func isLabelPair(e ast.Expression) bool {
+	ix, ok := e.(*ast.InfixExpression)
+	if !ok || ix.Operator != ":" {
+		return false
+	}
+	_, ok = ix.Left.(*ast.SymbolLiteral)
+	return ok
+}
+
+func appendLabelPair(m *ast.OrderedExprMap, e ast.Expression) {
+	ix := e.(*ast.InfixExpression)
+	m.Set(ix.Left, ix.Right)
+}
+
+func allLabelPairs(elements []ast.Expression) bool {
+	for _, e := range elements {
+		if !isLabelPair(e) {
+			return false
+		}
+	}
+	return true
+}
+
 func (p *parser) parsePattern() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	pat := p.parsePatternOr()
@@ -1344,7 +1370,19 @@ func (p *parser) parsePattern() ast.Expression {
 			p.nextToken()
 			elements = append(elements, p.parsePatternOr())
 		}
-		pat = &ast.ArrayLiteral{Token: p.curToken, Elements: elements}
+		// All-label-pair elements collapse to an implicit hash pattern: MRI
+		// parses `in a: 0, b: 1` as a hash pattern, not an array containing
+		// hash pairs. Wrapping in `[...]` would re-parse with implicit-hash-in-
+		// array which MRI rejects.
+		if allLabelPairs(elements) {
+			pairs := ast.NewOrderedExprMap()
+			for _, e := range elements {
+				appendLabelPair(pairs, e)
+			}
+			pat = &ast.HashLiteral{Token: p.curToken, Map: pairs}
+		} else {
+			pat = &ast.ArrayLiteral{Token: p.curToken, Elements: elements}
+		}
 	}
 	// Guard clause: pattern if condition
 	if p.peekTokenIs(token.IF) {

@@ -2367,6 +2367,13 @@ func (w *WhenClause) String() string {
 		}
 		out.WriteString(cond.String())
 	}
+	// Pattern-matching `in` clauses need an explicit terminator between
+	// pattern and body. Without it, MRI tries to continue parsing the
+	// pattern when it ends with `*` (greedy match) and trips on the body.
+	// `then` works for all patterns; plain `\n` only for unambiguous ones.
+	if keyword == "in" {
+		out.WriteString(" then")
+	}
 	out.WriteString("\n")
 	body := w.Body.String()
 	if body != "" {
