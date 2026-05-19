@@ -27,15 +27,15 @@ func Test_Equal(t *testing.T) {
 			true,
 		},
 		{
-			"literal value with same tokens equal",
-			&IntegerLiteral{Value: 17, Token: token.NewToken(token.INT, "17", 32)},
-			&IntegerLiteral{Value: 17, Token: token.NewToken(token.INT, "17", 32)},
+			"literal value with same positions equal",
+			&IntegerLiteral{Value: 17, PosOff: 32},
+			&IntegerLiteral{Value: 17, PosOff: 32},
 			true,
 		},
 		{
-			"literal value with different tokens equal",
-			&IntegerLiteral{Value: 17, Token: token.NewToken(token.INT, "17", 32)},
-			&IntegerLiteral{Value: 17, Token: token.NewToken(token.INT, "17", 68)},
+			"literal value with different positions equal",
+			&IntegerLiteral{Value: 17, PosOff: 32},
+			&IntegerLiteral{Value: 17, PosOff: 68},
 			true,
 		},
 		{

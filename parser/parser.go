@@ -2019,10 +2019,8 @@ func (p *parser) parseKeyword__FILE__() ast.Expression {
 
 func (p *parser) parseKeyword__LINE__() ast.Expression {
 	defer p.traceEnter()()
-	line := p.file.Position(p.pos).Line
-	_a := p.arena.NewIntegerLiteral()
-	_a.Token = p.curToken
-	_a.Value = int64(line)
+	_a := p.arena.NewKeyword__LINE__()
+	_a.PosOff = p.curToken.Pos
 	return _a
 }
 
@@ -2453,18 +2451,63 @@ func (p *parser) parseLambda() ast.Expression {
 
 var integerLiteralReplacer = strings.NewReplacer("_", "")
 
+// stripNumericSuffix removes a trailing `r` / `i` / `ri` (case-insensitive)
+// from s and reports which flags were set. Ruby uses `r` for Rational and
+// `i` for Imaginary; `ri` means an imaginary number with a rational
+// component (e.g. `1ri` = `(0+1ri)`).
+func stripNumericSuffix(s string) (out string, rational, imaginary bool) {
+	if n := len(s); n > 0 {
+		last := s[n-1]
+		if last == 'i' || last == 'I' {
+			imaginary = true
+			s = s[:n-1]
+		}
+	}
+	if n := len(s); n > 0 {
+		last := s[n-1]
+		if last == 'r' || last == 'R' {
+			rational = true
+			s = s[:n-1]
+		}
+	}
+	return s, rational, imaginary
+}
+
 func (p *parser) parseIntegerLiteral() ast.Expression {
 	defer p.traceEnter()()
 	lit := p.arena.NewIntegerLiteral()
-	lit.Token = p.curToken
-	s := integerLiteralReplacer.Replace(p.curToken.Literal)
-	s = strings.TrimRight(s, "riRI")
+	lit.PosOff = p.curToken.Pos
+	lit.HadWhitespace = p.curToken.HadWhitespace
+	raw := p.curToken.Literal
+	// Detect base prefix BEFORE underscore strip; prefix-case is normalised
+	// out (cosmetic, MRI ignores). `0d` is explicit-decimal -- drop the
+	// prefix entirely so re-emit produces plain digits. `0NNN` (leading
+	// zero + octal digit, with no x/b/o/d/D after) is legacy-octal in Ruby
+	// (`0755` == 493), distinct from `0` alone.
+	base := uint8(10)
+	if len(raw) >= 2 && raw[0] == '0' {
+		switch raw[1] {
+		case 'x', 'X':
+			base = 16
+		case 'b', 'B':
+			base = 2
+		case 'o', 'O':
+			base = 8
+		case '0', '1', '2', '3', '4', '5', '6', '7', '_':
+			base = 8
+		}
+	}
+	lit.Base = base
+	s, rat, im := stripNumericSuffix(raw)
+	lit.Rational = rat
+	lit.Imaginary = im
+	s = integerLiteralReplacer.Replace(s)
 	v, bigV, err := parseRubyInt(s)
 	if err != nil {
 		p.errors = append(p.errors, &parseError{
 			Pos:  p.file.Position(p.pos),
 			Kind: SyntaxError,
-			Msg:  fmt.Sprintf("could not parse %q as integer", p.curToken.Literal),
+			Msg:  fmt.Sprintf("could not parse %q as integer", raw),
 		})
 		return nil
 	}
@@ -2479,16 +2522,19 @@ func (p *parser) parseIntegerLiteral() ast.Expression {
 func (p *parser) parseFloatLiteral() ast.Expression {
 	defer p.traceEnter()()
 	lit := p.arena.NewFloatLiteral()
-	lit.Token = p.curToken
-	s := integerLiteralReplacer.Replace(p.curToken.Literal)
-	// Strip rational/complex suffixes -- the numeric value is the same.
-	s = strings.TrimRight(s, "riRI")
+	lit.PosOff = p.curToken.Pos
+	lit.HadWhitespace = p.curToken.HadWhitespace
+	raw := p.curToken.Literal
+	s, rat, im := stripNumericSuffix(raw)
+	lit.Rational = rat
+	lit.Imaginary = im
+	s = integerLiteralReplacer.Replace(s)
 	value, err := parseFloat(s)
 	if err != nil {
 		p.errors = append(p.errors, &parseError{
 			Pos:  p.file.Position(p.pos),
 			Kind: SyntaxError,
-			Msg:  fmt.Sprintf("could not parse %q as float", p.curToken.Literal),
+			Msg:  fmt.Sprintf("could not parse %q as float", raw),
 		})
 		return nil
 	}
@@ -2497,8 +2543,9 @@ func (p *parser) parseFloatLiteral() ast.Expression {
 }
 
 // parseRubyInt parses a Ruby integer literal, handling hex (0x), binary (0b),
-// octal (0o, 0O), explicit decimal (0d, 0D), leading-zero decimal (09), and
-// underscores. When the value overflows int64, the *big.Int result is non-nil.
+// octal (0o, 0O), explicit decimal (0d, 0D), legacy octal (0NNN -- leading
+// zero followed by an octal digit), and underscores. When the value
+// overflows int64, the *big.Int result is non-nil.
 func parseRubyInt(s string) (int64, *big.Int, error) {
 	base := 10
 	switch {
@@ -2516,9 +2563,14 @@ func parseRubyInt(s string) (int64, *big.Int, error) {
 		case 'd', 'D':
 			base = 10
 			s = s[2:]
+		case '0', '1', '2', '3', '4', '5', '6', '7', '_':
+			// Legacy octal: `0755` == 493. Keep the leading `0` so strconv
+			// reads it as an octal digit run (with base=8).
+			base = 8
 		default:
-			// Leading zero without base prefix is decimal in Ruby
-			// (e.g. 09 is decimal 9, not invalid octal).
+			// Leading zero followed by something else (e.g. trailing newline
+			// after a bare `0`) -- treat as decimal so single `0` still
+			// parses.
 			base = 10
 		}
 	}

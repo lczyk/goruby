@@ -117,6 +117,7 @@ type Arena struct {
 	beginBlockSlab               slab[BeginBlock]
 	endBlockSlab                 slab[EndBlock]
 	keywordFILESlab              slab[Keyword__FILE__]
+	keywordLINESlab              slab[Keyword__LINE__]
 	keywordDIRSlab               slab[Keyword__DIR__]
 	keywordCALLEESlab            slab[Keyword__CALLEE__]
 	keywordMETHODSlab            slab[Keyword__METHOD__]
@@ -192,6 +193,7 @@ func (a *Arena) Reset() {
 	a.beginBlockSlab.reset()
 	a.endBlockSlab.reset()
 	a.keywordFILESlab.reset()
+	a.keywordLINESlab.reset()
 	a.keywordDIRSlab.reset()
 	a.keywordCALLEESlab.reset()
 	a.keywordMETHODSlab.reset()
@@ -343,6 +345,12 @@ func (a *Arena) NewKeyword__FILE__() *Keyword__FILE__ {
 		return new(Keyword__FILE__)
 	}
 	return arenaAlloc(&a.keywordFILESlab)
+}
+func (a *Arena) NewKeyword__LINE__() *Keyword__LINE__ {
+	if a == nil {
+		return new(Keyword__LINE__)
+	}
+	return arenaAlloc(&a.keywordLINESlab)
 }
 func (a *Arena) NewKeyword__DIR__() *Keyword__DIR__ {
 	if a == nil {

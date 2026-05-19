@@ -2,9 +2,9 @@ package ast
 
 import (
 	"bytes"
-	"fmt"
 	"math/big"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/lczyk/goruby/token"
@@ -688,6 +688,19 @@ func (f *Keyword__FILE__) End() int { return f.Token.Pos + 8 }
 // TokenLiteral returns the literal of the token.FILE__ token
 func (f *Keyword__FILE__) TokenLiteral() string { return f.Token.Literal }
 
+// Keyword__LINE__ represents __LINE__ in the AST.
+// Pointer-free so arena chunks are noscan-eligible.
+type Keyword__LINE__ struct {
+	PosOff int
+}
+
+func (l *Keyword__LINE__) String() string       { return "__LINE__" }
+func (l *Keyword__LINE__) expressionNode()      {}
+func (l *Keyword__LINE__) literalNode()         {}
+func (l *Keyword__LINE__) Pos() int             { return l.PosOff }
+func (l *Keyword__LINE__) End() int             { return l.PosOff + 8 }
+func (l *Keyword__LINE__) TokenLiteral() string { return "__LINE__" }
+
 // Keyword__DIR__ represents __dir__ in the AST.
 // Pointer-free so arena chunks are noscan-eligible.
 type Keyword__DIR__ struct {
@@ -849,59 +862,117 @@ func (i *ScopedIdentifier) End() int { return i.Inner.End() }
 // TokenLiteral returns the literal of the token.SCOPE token
 func (i *ScopedIdentifier) TokenLiteral() string { return i.Token.Literal }
 
-// IntegerLiteral represents an integer in the AST
+// IntegerLiteral represents an integer in the AST. Base preserves the
+// source-form prefix (2 / 8 / 16) so MRI re-reads the same IntegerBaseFlags
+// on roundtrip; 0 / 10 both mean plain decimal. Digit-group underscores
+// and prefix-case (`0X`, `0d`, etc) are dropped -- cosmetic, MRI collapses
+// on parse and parsetreenorm matches across forms. HadWhitespace tracks
+// the source-side leading-space bit needed for unary `f -1` vs `f-1`
+// disambiguation on re-emit (semantic: spaced form is a call with a
+// negative arg, tight form is subtraction). Rational / Imaginary flags
+// preserve the `r` / `i` suffix so MRI re-classifies the literal as
+// RationalNode / ImaginaryNode on roundtrip (without these, `1r` would
+// re-parse as a plain `1` IntegerNode -- different tree).
 type IntegerLiteral struct {
-	Token  token.Token
-	Value  int64
-	BigInt *big.Int // set for values that overflow int64
+	PosOff        int
+	Value         int64
+	BigInt        *big.Int // set for values that overflow int64
+	Base          uint8    // 2, 8, 16; 0 or 10 = decimal (no prefix on re-emit)
+	HadWhitespace bool
+	Rational      bool
+	Imaginary     bool
 }
 
 func (il *IntegerLiteral) expressionNode() {}
 func (il *IntegerLiteral) literalNode()    {}
 
 // Pos returns the position of first character belonging to the node
-func (il *IntegerLiteral) Pos() int { return il.Token.Pos }
+func (il *IntegerLiteral) Pos() int { return il.PosOff }
 
 // End returns the position of first character immediately after the node
-func (il *IntegerLiteral) End() int {
-	if il.BigInt != nil {
-		return il.Token.Pos + len(il.BigInt.String())
-	}
-	return il.Token.Pos + len(fmt.Sprintf("%d", il.Value))
-}
+func (il *IntegerLiteral) End() int { return il.PosOff + len(il.String()) }
 
-// TokenLiteral returns the literal from the token.INT token
-func (il *IntegerLiteral) TokenLiteral() string { return il.Token.Literal }
+// TokenLiteral returns the literal form (same as String).
+func (il *IntegerLiteral) TokenLiteral() string { return il.String() }
 func (il *IntegerLiteral) String() string {
-	// Preserve the original literal form (0xFF, 0b101, 0o7, 0d10, with
-	// underscores, etc) so MRI re-reads the same IntegerBaseFlags.
-	if il.Token.Literal != "" {
-		return il.Token.Literal
+	base := int(il.Base)
+	if base == 0 {
+		base = 10
 	}
+	var digits string
 	if il.BigInt != nil {
-		return il.BigInt.String()
+		digits = il.BigInt.Text(base)
+	} else {
+		digits = strconv.FormatInt(il.Value, base)
 	}
-	return fmt.Sprintf("%d", il.Value)
+	var prefix string
+	switch base {
+	case 2:
+		prefix = "0b"
+	case 8:
+		prefix = "0o"
+	case 16:
+		prefix = "0x"
+	}
+	var suffix string
+	if il.Rational {
+		suffix = "r"
+	}
+	if il.Imaginary {
+		suffix += "i"
+	}
+	return prefix + digits + suffix
 }
 
-// FloatLiteral represents a floating-point number in the AST
+// FloatLiteral represents a floating-point number in the AST. Underscore
+// grouping and exponent case (`E` vs `e`) from the source are dropped --
+// both cosmetic, MRI collapses on parse. HadWhitespace tracks the
+// source-side leading-space bit needed for unary `f -1.0` vs `f-1.0`
+// disambiguation (same semantic split as IntegerLiteral). Rational /
+// Imaginary preserve the `r` / `i` suffix so MRI re-classifies as
+// RationalNode / ImaginaryNode on roundtrip.
 type FloatLiteral struct {
-	Token token.Token
-	Value float64
+	PosOff        int
+	Value         float64
+	HadWhitespace bool
+	Rational      bool
+	Imaginary     bool
 }
 
 func (fl *FloatLiteral) expressionNode() {}
 func (fl *FloatLiteral) literalNode()    {}
 
 // Pos returns the position of first character belonging to the node
-func (fl *FloatLiteral) Pos() int { return fl.Token.Pos }
+func (fl *FloatLiteral) Pos() int { return fl.PosOff }
 
 // End returns the position of first character immediately after the node
-func (fl *FloatLiteral) End() int { return fl.Token.Pos + len(fl.Token.Literal) }
+func (fl *FloatLiteral) End() int { return fl.PosOff + len(fl.String()) }
 
-// TokenLiteral returns the literal from the token.FLOAT token
-func (fl *FloatLiteral) TokenLiteral() string { return fl.Token.Literal }
-func (fl *FloatLiteral) String() string       { return fl.Token.Literal }
+// TokenLiteral returns the literal form (same as String).
+func (fl *FloatLiteral) TokenLiteral() string { return fl.String() }
+func (fl *FloatLiteral) String() string {
+	// Ruby's lexer rejects scientific notation followed by `r` / `i` (e.g.
+	// `2e-07r` is a SyntaxError). When a suffix is set, use fixed-point
+	// `'f'` form so re-parse succeeds. Plain floats keep `'g'` -- shorter
+	// for tiny / huge values, and re-parses fine.
+	verb := byte('g')
+	if fl.Rational || fl.Imaginary {
+		verb = 'f'
+	}
+	s := strconv.FormatFloat(fl.Value, verb, -1, 64)
+	// Ensure decimal point or exponent so re-parse stays a float
+	// (strconv would emit "5" for 5.0, which lexes as integer).
+	if !strings.ContainsAny(s, ".eE") {
+		s += ".0"
+	}
+	if fl.Rational {
+		s += "r"
+	}
+	if fl.Imaginary {
+		s += "i"
+	}
+	return s
+}
 
 // Nil represents the 'nil' keyword.
 // Pointer-free (just a Pos) so arena chunks of Nil are noscan-eligible.
@@ -2766,9 +2837,9 @@ func pinNeedsParens(right Expression) bool {
 func operandHasLeadingSpace(e Expression) bool {
 	switch n := e.(type) {
 	case *IntegerLiteral:
-		return n.Token.HadWhitespace
+		return n.HadWhitespace
 	case *FloatLiteral:
-		return n.Token.HadWhitespace
+		return n.HadWhitespace
 	}
 	return false
 }

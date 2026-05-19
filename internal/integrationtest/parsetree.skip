@@ -22,6 +22,9 @@
 # intentionally tests syntax goruby does not support. None of those are
 # goruby's responsibility, so they don't need explicit skip entries here.
 #
-# Empty currently -- all goruby-side mismatches have been fixed; only the
-# upstream / intentional auto-skips remain.
-
+# MRI 3.4-only quirk: rational-float literals with digit-group
+# underscores like `0.1_2r` parse as Rational(3, 250) instead of
+# Rational(3, 25). Fixed upstream in 4.0 (which agrees with goruby's
+# underscore-as-separator interpretation), so the divergence is a 3.4
+# parser bug we shouldn't mirror.
+tree-mismatch 3.4 internal/integrationtest/testdata/mri-tests/test_literal.rb: MRI 3.4 mis-parses `0.1_2r`; fixed in 4.0

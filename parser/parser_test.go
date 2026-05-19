@@ -311,7 +311,7 @@ func TestVariableExpression(t *testing.T) {
 			expectedValue      string
 		}{
 			{"x = 5;", "x", "5"},
-			{"x = 5_0;", "x", "5_0"},
+			{"x = 5_0;", "x", "50"},
 			{"y = true;", "y", "true"},
 			{"foobar = y;", "foobar", "y"},
 			{"foobar = (12 + 2 * bar) - x;", "foobar", "(12 + 2 * bar) - x"},
@@ -4639,9 +4639,12 @@ func TestKeyword__LINE__(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	}
-	_, ok = stmt.Expression.(*ast.IntegerLiteral)
+	line, ok := stmt.Expression.(*ast.Keyword__LINE__)
 	if !ok {
-		t.Fatalf("expected *ast.IntegerLiteral, got %T", stmt.Expression)
+		t.Fatalf("expected *ast.Keyword__LINE__, got %T", stmt.Expression)
+	}
+	if line.TokenLiteral() != "__LINE__" {
+		t.Errorf("expected TokenLiteral '__LINE__', got %q", line.TokenLiteral())
 	}
 }
 
