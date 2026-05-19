@@ -2464,6 +2464,20 @@ func pinNeedsParens(right Expression) bool {
 	return true
 }
 
+// operandHasLeadingSpace reports whether the operand's source-side
+// first token had whitespace before it -- used to decide if a unary
+// `-` / `+` should emit a space separator on re-print (to preserve
+// MRI's CallNode shape for the spaced form).
+func operandHasLeadingSpace(e Expression) bool {
+	switch n := e.(type) {
+	case *IntegerLiteral:
+		return n.Token.HadWhitespace
+	case *FloatLiteral:
+		return n.Token.HadWhitespace
+	}
+	return false
+}
+
 func (pe *PrefixExpression) String() string {
 	// Drop the outer parens when the operand is "atomic" enough that
 	// MRI wouldn't add a ParenthesesNode on re-parse. The exact rules
@@ -2564,6 +2578,14 @@ func (pe *PrefixExpression) String() string {
 			return out.String()
 		}
 		if pe.Operator == "defined?" {
+			out.WriteString(" ")
+		}
+		// For unary `-` / `+`: if the source had whitespace between the
+		// operator and the operand, MRI preserves the unary as a CallNode
+		// (e.g. `[- 1]` -> `[-@(1)]`); the no-space form `-1` folds to a
+		// negative literal. Emit a separating space to keep the call form
+		// on re-parse.
+		if (pe.Operator == "-" || pe.Operator == "+") && operandHasLeadingSpace(pe.Right) {
 			out.WriteString(" ")
 		}
 		needsParens := pe.Operator == "^" && pinNeedsParens(pe.Right)
