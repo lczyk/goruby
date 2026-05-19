@@ -2398,7 +2398,9 @@ func (pe *PrefixExpression) String() string {
 			*Boolean, *Nil, *Self, *IntegerLiteral, *FloatLiteral,
 			*ParenExpression, *PrefixExpression, *ContextCallExpression,
 			*IndexExpression, *ScopedIdentifier,
-			*DefinedExpression, *YieldExpression, *SuperExpression:
+			*DefinedExpression, *YieldExpression, *SuperExpression,
+			*RegexLiteral, *StringLiteral, *SymbolLiteral,
+			*ArrayLiteral, *HashLiteral:
 			atomic = true
 		}
 	}
