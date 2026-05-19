@@ -7,8 +7,8 @@
 #     src = source text differs (but AST roundtrip may still pass)
 # - version-range: same as golden.skip (2.7, ..2.6, 3.0.., 2.0..2.6, *)
 # - path relative to repo root, single-* glob per segment
-ast * internal/integrationtest/testdata/mri-tests/test_pattern_matching.rb
-ast * internal/integrationtest/testdata/mri-tests/test_syntax.rb
+ast 3.1.. internal/integrationtest/testdata/mri-tests/test_pattern_matching.rb: re-parse fails on find-pattern `[*, x, *]` (two splats) -- parser gap for Ruby 3.0+ find-patterns
+ast 3.1.. internal/integrationtest/testdata/mri-tests/test_syntax.rb: AST roundtrip not stable -- some construct in this syntax-exerciser file re-parses to a different AST
 src * internal/integrationtest/testdata/esolangs/a_semicolon.rb
 src * internal/integrationtest/testdata/esolangs/alarm_clock_radio.rb
 src * internal/integrationtest/testdata/esolangs/arsel.rb
