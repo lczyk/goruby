@@ -84,11 +84,58 @@ func (p *Program) String() string {
 	body := relocateHeredocBodies(out.String())
 	// Re-add a magic encoding comment when the body contains non-ASCII
 	// bytes: the source likely had one (we drop comments on re-emit) and
-	// without it MRI 1.9 / our 1.9-mode lexer rejects the file.
-	if containsNonAscii(body) {
+	// without it MRI 1.9 / our 1.9-mode lexer rejects the file. Don't
+	// prepend when an existing magic encoding/coding comment is already on
+	// the first or second line -- otherwise we'd overrule a source that
+	// explicitly declared (say) ASCII-8BIT with our utf-8 default.
+	if containsNonAscii(body) && !hasLeadingMagicEncoding(body) {
 		body = "# encoding: utf-8\n" + body
 	}
 	return body
+}
+
+// hasLeadingMagicEncoding reports whether the first or second line of body
+// is a Ruby magic encoding/coding comment (`# encoding: ...` / `# coding: ...`).
+// Mirrors lexer.detectMagicEncoding's recognition rules.
+func hasLeadingMagicEncoding(body string) bool {
+	for i, line := 0, 0; line < 2 && i < len(body); line++ {
+		end := i
+		for end < len(body) && body[end] != '\n' {
+			end++
+		}
+		s := body[i:end]
+		if isMagicEncodingLine(s) {
+			return true
+		}
+		if end >= len(body) {
+			break
+		}
+		i = end + 1
+	}
+	return false
+}
+
+func isMagicEncodingLine(s string) bool {
+	// Strip leading whitespace.
+	j := 0
+	for j < len(s) && (s[j] == ' ' || s[j] == '\t') {
+		j++
+	}
+	if j >= len(s) || s[j] != '#' {
+		return false
+	}
+	j++
+	for j < len(s) && (s[j] == ' ' || s[j] == '\t') {
+		j++
+	}
+	rest := s[j:]
+	// Match "encoding:" or "coding:" (case-insensitive on the keyword).
+	for _, kw := range []string{"encoding:", "coding:", "Encoding:", "Coding:"} {
+		if strings.HasPrefix(rest, kw) {
+			return true
+		}
+	}
+	return false
 }
 
 func containsNonAscii(s string) bool {
