@@ -2191,6 +2191,20 @@ func (ce *ContextCallExpression) String() string {
 	return out.String()
 }
 
+// bareSplatPattern reports whether p is a top-level bare splat
+// (`*` or `**` with no operand) used as an `in` pattern. MRI rejects
+// such patterns without an explicit `then` delimiter.
+func bareSplatPattern(p Expression) bool {
+	pe, ok := p.(*PrefixExpression)
+	if !ok {
+		return false
+	}
+	if pe.Operator != "*" && pe.Operator != "**" {
+		return false
+	}
+	return pe.Right == nil
+}
+
 func containsHeredocArg(args []Expression) bool {
 	for _, a := range args {
 		if sl, ok := a.(*StringLiteral); ok && sl.HeredocTag != "" {
@@ -2493,11 +2507,14 @@ func (w *WhenClause) String() string {
 		}
 		out.WriteString(cond.String())
 	}
-	// Pattern-matching `in` clauses need an explicit terminator between
-	// pattern and body. Without it, MRI tries to continue parsing the
-	// pattern when it ends with `*` (greedy match) and trips on the body.
-	// `then` works for all patterns; plain `\n` only for unambiguous ones.
-	if keyword == "in" {
+	// Pattern-matching `in` clauses need `then` only when the pattern is a
+	// bare splat at top level (`in *` / `in **`) -- MRI reports "expected
+	// a delimiter after the patterns of an `in` clause" otherwise. Other
+	// patterns (idents, arrays containing bare splats, hash shorthand, etc.)
+	// accept a plain newline as the separator, which keeps re-parse stable
+	// across forms our parser handles (e.g. `in a: then` would fail to
+	// re-parse as the omitted-value shorthand).
+	if keyword == "in" && len(w.Conditions) == 1 && bareSplatPattern(w.Conditions[0]) {
 		out.WriteString(" then")
 	}
 	out.WriteString("\n")
