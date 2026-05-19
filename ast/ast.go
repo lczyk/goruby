@@ -56,7 +56,19 @@ func IsLiteral(n Node) bool {
 type Program struct {
 	pos        int
 	Statements []Statement
+	// arena keeps the parser's bump-allocated chunks reachable for the
+	// lifetime of the Program. nil for hand-built ASTs (tests, fixtures).
+	arena *Arena
 }
+
+// Arena returns the bump allocator used to construct this Program's AST
+// nodes, or nil if the program was built by hand without one.
+func (p *Program) Arena() *Arena { return p.arena }
+
+// SetArena attaches an arena to the program so its chunks survive as long
+// as the program reference does. Used by the parser at construction time;
+// callers normally don't need to invoke it.
+func (p *Program) SetArena(a *Arena) { p.arena = a }
 
 // Pos returns the position of first character belonging to the node
 func (p *Program) Pos() int { return p.pos }

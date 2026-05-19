@@ -232,6 +232,7 @@ type parser struct {
 	l       *lexer.Lexer
 	errors  []error
 	version token.RubyVersion
+	arena   *ast.Arena // bump allocator for AST nodes; attached to Program at the end
 
 	// Tracing/debugging
 	mode Mode // parsing mode
@@ -255,6 +256,7 @@ func (p *parser) init(filename string, src []byte, mode Mode) {
 
 	p.l = lexer.New(string(src), lexer.WithVersion(p.version))
 	p.errors = []error{}
+	p.arena = ast.NewArena()
 
 	p.mode = mode
 	if p.ctx == nil {
@@ -463,7 +465,7 @@ func (p *parser) nextNonCommentToken() token.Token {
 			value = strTok.Literal
 		}
 		if p.mode&ParseComments != 0 {
-			p.comments = append(p.comments, &ast.Comment{Token: hashTok, Value: value})
+			p.comments = append(p.comments, ast.Init(p.arena.NewComment(), ast.Comment{Token: hashTok, Value: value}))
 		}
 		if p.l.HasNext() {
 			tok = p.l.NextToken()
@@ -566,6 +568,7 @@ func (p *parser) ParseProgram() (*ast.Program, error) {
 	if p.mode&ParseComments != 0 && len(p.comments) > 0 {
 		program.Statements = mergeComments(program.Statements, p.comments)
 	}
+	program.SetArena(p.arena)
 	if len(p.errors) != 0 {
 		return program, NewErrors("Parsing errors", p.errors...)
 	}
@@ -628,7 +631,7 @@ func (p *parser) parseStatement() ast.Statement {
 }
 
 func (p *parser) parseReturnExpression() ast.Expression {
-	jmp := &ast.JumpExpression{Token: p.curToken}
+	jmp := ast.Init(p.arena.NewJumpExpression(), ast.JumpExpression{Token: p.curToken})
 	if !p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE, token.RPAREN, token.RBRACKET, token.EMBEXPR_END, token.IF, token.UNLESS, token.WHILE, token.UNTIL) {
 		p.nextToken()
 		jmp.Value = p.parseExpression(precIfUnless)
@@ -638,7 +641,7 @@ func (p *parser) parseReturnExpression() ast.Expression {
 
 func (p *parser) parseReturnStatement() ast.Statement {
 	defer trace.TraceCtx(p.ctx)()
-	stmt := &ast.ReturnStatement{Token: p.curToken}
+	stmt := ast.Init(p.arena.NewReturnStatement(), ast.ReturnStatement{Token: p.curToken})
 	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE) {
 		return stmt
 	}
@@ -653,22 +656,22 @@ func (p *parser) parseReturnStatement() ast.Statement {
 	valToken := p.curToken
 	stmt.ReturnValue = p.parseExpression(precIfUnless)
 	if list, ok := stmt.ReturnValue.(ast.ExpressionList); ok {
-		stmt.ReturnValue = &ast.ArrayLiteral{Elements: list}
+		stmt.ReturnValue = ast.Init(p.arena.NewArrayLiteral(), ast.ArrayLiteral{Elements: list})
 	}
 
 	// Modifier if/unless/while/until after return value: wrap
 	// the ReturnStatement in a Conditional/LoopExpression.
 	if p.peekTokenOneOf(token.IF, token.UNLESS) {
 		p.nextToken()
-		jmp := &ast.JumpExpression{Token: stmt.Token}
+		jmp := ast.Init(p.arena.NewJumpExpression(), ast.JumpExpression{Token: stmt.Token})
 		jmp.Value = stmt.ReturnValue
-		return &ast.ExpressionStatement{Expression: p.parseModifierConditionalExpression(jmp)}
+		return ast.Init(p.arena.NewExpressionStatement(), ast.ExpressionStatement{Expression: p.parseModifierConditionalExpression(jmp)})
 	}
 	if p.peekTokenOneOf(token.WHILE, token.UNTIL) {
 		p.nextToken()
-		jmp := &ast.JumpExpression{Token: stmt.Token}
+		jmp := ast.Init(p.arena.NewJumpExpression(), ast.JumpExpression{Token: stmt.Token})
 		jmp.Value = stmt.ReturnValue
-		return &ast.ExpressionStatement{Expression: p.parseModifierLoopExpression(jmp)}
+		return ast.Init(p.arena.NewExpressionStatement(), ast.ExpressionStatement{Expression: p.parseModifierLoopExpression(jmp)})
 	}
 	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.ELSE, token.KW_ELSIF, token.END, token.RBRACE, token.EOF,
 		token.RESCUE) {
@@ -712,11 +715,11 @@ var bareCallArgTokens = []token.Type{
 
 func (p *parser) parseExpressionStatement() *ast.ExpressionStatement {
 	defer trace.TraceCtx(p.ctx)()
-	stmt := &ast.ExpressionStatement{Token: p.curToken}
+	stmt := ast.Init(p.arena.NewExpressionStatement(), ast.ExpressionStatement{Token: p.curToken})
 	stmt.Expression = p.parseExpression(precLowest)
 	// Bare function call with literal args: `foo true`, `bar 42`, `raise Error`, etc.
 	if ident, ok := stmt.Expression.(*ast.Identifier); ok && !ident.IsConstant() && p.peekTokenOneOf(bareCallArgTokens...) {
-		exp := &ast.ContextCallExpression{Token: ident.Token, Function: ident}
+		exp := ast.Init(p.arena.NewContextCallExpression(), ast.ContextCallExpression{Token: ident.Token, Function: ident})
 		p.nextToken()
 		exp.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE, token.LBRACE, token.DO)
 		if p.currentTokenOneOf(token.LBRACE, token.DO) {
@@ -786,7 +789,7 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 		// lowercase (constants can legitimately scope: `Foo::Bar`).
 		if p.peekTokenIs(token.SCOPE) && p.peekToken.HadWhitespace {
 			if id, ok := leftExp.(*ast.Identifier); ok && !id.IsConstant() {
-				call := &ast.ContextCallExpression{Token: id.Token, Function: id}
+				call := ast.Init(p.arena.NewContextCallExpression(), ast.ContextCallExpression{Token: id.Token, Function: id})
 				p.nextToken() // advance to ::
 				prevAO := p.suppressKwAndOr
 				prevSDB := p.suppressDoBlock
@@ -808,7 +811,7 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 		// an array literal as its first arg, not an index expression.
 		if p.peekTokenIs(token.LBRACKET) && p.peekToken.HadWhitespace {
 			if id, ok := leftExp.(*ast.Identifier); ok && !id.IsConstant() {
-				call := &ast.ContextCallExpression{Token: id.Token, Function: id}
+				call := ast.Init(p.arena.NewContextCallExpression(), ast.ContextCallExpression{Token: id.Token, Function: id})
 				p.nextToken() // advance to [
 				call.Arguments = p.parseCallArguments(
 					token.SEMICOLON, token.NEWLINE, token.LBRACE, token.DO,
@@ -825,7 +828,7 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 		// MRI keeps the explicit ParenthesesNode on the arg in this case.
 		if p.peekTokenIs(token.LPAREN) && p.peekToken.HadWhitespace {
 			if id, ok := leftExp.(*ast.Identifier); ok && !id.IsConstant() {
-				call := &ast.ContextCallExpression{Token: id.Token, Function: id}
+				call := ast.Init(p.arena.NewContextCallExpression(), ast.ContextCallExpression{Token: id.Token, Function: id})
 				p.nextToken() // advance to (
 				prevAO := p.suppressKwAndOr
 				p.suppressKwAndOr = true
@@ -854,7 +857,7 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 		if p.peekTokenOneOf(token.MINUS, token.PLUS) && p.peekToken.HadWhitespace &&
 			!p.peek2Token.HadWhitespace && isOperandStart(p.peek2Token.Type) {
 			if id, ok := leftExp.(*ast.Identifier); ok && !id.IsConstant() {
-				call := &ast.ContextCallExpression{Token: id.Token, Function: id}
+				call := ast.Init(p.arena.NewContextCallExpression(), ast.ContextCallExpression{Token: id.Token, Function: id})
 				p.nextToken() // advance to - / +
 				prevAO := p.suppressKwAndOr
 				p.suppressKwAndOr = true
@@ -906,7 +909,7 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 
 func (p *parser) parseExceptionHandlingBlock() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	block := &ast.ExceptionHandlingBlock{BeginToken: p.curToken}
+	block := ast.Init(p.arena.NewExceptionHandlingBlock(), ast.ExceptionHandlingBlock{BeginToken: p.curToken})
 	if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
 		return nil
 	}
@@ -944,7 +947,7 @@ func (p *parser) parseExceptionHandlingBlock() ast.Expression {
 
 func (p *parser) parseRescueBlock() *ast.RescueBlock {
 	defer trace.TraceCtx(p.ctx)()
-	block := &ast.RescueBlock{Token: p.curToken}
+	block := ast.Init(p.arena.NewRescueBlock(), ast.RescueBlock{Token: p.curToken})
 	classes := []*ast.Identifier{}
 	for !p.peekTokenOneOf(token.HASHROCKET, token.NEWLINE, token.SEMICOLON, token.EOF, token.END, token.THEN) {
 		isSplat := false
@@ -961,7 +964,7 @@ func (p *parser) parseRescueBlock() *ast.RescueBlock {
 		if isSplat {
 			name = "*" + name
 		}
-		class := &ast.Identifier{Token: p.curToken, Value: name}
+		class := ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: name})
 		classes = append(classes, class)
 		if p.peekTokenIs(token.COMMA) {
 			p.accept(token.COMMA)
@@ -976,7 +979,7 @@ func (p *parser) parseRescueBlock() *ast.RescueBlock {
 		if !p.accept(token.IDENT) {
 			return nil
 		}
-		block.Exception = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		block.Exception = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 	}
 	if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
 		return nil
@@ -1021,7 +1024,7 @@ func (p *parser) parseExpressions(left ast.Expression) ast.Expression {
 		// LHS (`a, b, = X`). Append the sentinel so the printer preserves
 		// the trailing comma, then hand off to parseAssignment.
 		if p.currentTokenIs(token.ASSIGN) {
-			elements = append(elements, &ast.ImplicitRest{Token: p.curToken})
+			elements = append(elements, ast.Init(p.arena.NewImplicitRest(), ast.ImplicitRest{Token: p.curToken}))
 			lhs := ast.ExpressionList(elements)
 			return p.parseAssignment(lhs)
 		}
@@ -1040,7 +1043,7 @@ func (p *parser) parseExpressions(left ast.Expression) ast.Expression {
 
 func (p *parser) parseBlockCapture() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	capture := &ast.BlockCapture{Token: p.curToken}
+	capture := ast.Init(p.arena.NewBlockCapture(), ast.BlockCapture{Token: p.curToken})
 	if p.peekTokenIs(token.LAMBDA) {
 		p.nextToken()
 		capture.Expr = p.parseLambda()
@@ -1167,7 +1170,7 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 				assign.Right = es.Expression
 				loop.Block = &ast.BlockStatement{
 					Statements: []ast.Statement{
-						&ast.ExpressionStatement{Expression: assign},
+						ast.Init(p.arena.NewExpressionStatement(), ast.ExpressionStatement{Expression: assign}),
 					},
 				}
 				return loop
@@ -1188,7 +1191,7 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 	assign.Right = expStmt.Expression
 	right.Consequence = &ast.BlockStatement{
 		Statements: []ast.Statement{
-			&ast.ExpressionStatement{Expression: assign},
+			ast.Init(p.arena.NewExpressionStatement(), ast.ExpressionStatement{Expression: assign}),
 		},
 	}
 	return right
@@ -1205,21 +1208,21 @@ func (p *parser) acceptIvarName() bool {
 
 func (p *parser) parseInstanceVariable() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	instanceVariable := &ast.InstanceVariable{Token: p.curToken}
+	instanceVariable := ast.Init(p.arena.NewInstanceVariable(), ast.InstanceVariable{Token: p.curToken})
 	if !p.acceptIvarName() {
 		return nil
 	}
-	instanceVariable.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	instanceVariable.Name = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 	return instanceVariable
 }
 
 func (p *parser) parseClassVariable() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	cv := &ast.ClassVariable{Token: p.curToken}
+	cv := ast.Init(p.arena.NewClassVariable(), ast.ClassVariable{Token: p.curToken})
 	if !p.acceptIvarName() {
 		return nil
 	}
-	cv.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	cv.Name = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 	return cv
 }
 
@@ -1229,7 +1232,7 @@ func (p *parser) parseLabelExpression() ast.Expression {
 	name := strings.TrimSuffix(p.curToken.Literal, ":")
 	key := &ast.SymbolLiteral{
 		Token: p.curToken,
-		Value: &ast.StringLiteral{Value: name},
+		Value: ast.Init(p.arena.NewStringLiteral(), ast.StringLiteral{Value: name}),
 	}
 	if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.RBRACE, token.RBRACKET, token.NEWLINE, token.SEMICOLON, token.PIPE) {
 		// Hash-value-omission (Ruby 3.1+): `foo:` is shorthand for `foo: foo`.
@@ -1282,12 +1285,12 @@ func (p *parser) parseTopLevelScope() ast.Expression {
 		return nil
 	}
 	inner := p.parseIdentifier().(*ast.Identifier)
-	return &ast.ScopedIdentifier{Token: tok, Inner: inner}
+	return ast.Init(p.arena.NewScopedIdentifier(), ast.ScopedIdentifier{Token: tok, Inner: inner})
 }
 
 func (p *parser) parseDefinedExpression() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	expr := &ast.DefinedExpression{Token: p.curToken}
+	expr := ast.Init(p.arena.NewDefinedExpression(), ast.DefinedExpression{Token: p.curToken})
 	// defined? can be: defined?(expr) (no space -- call-paren syntax) or
 	// defined? expr (with space, optionally followed by a grouped paren
 	// expr which MRI keeps as a ParenthesesNode).
@@ -1317,12 +1320,12 @@ func (p *parser) parseDefinedExpression() ast.Expression {
 func (p *parser) parseErrorSkip() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	p.expectError(token.IDENT) // generic expected error
-	return &ast.Nil{Token: p.curToken}
+	return ast.Init(p.arena.NewNil(), ast.Nil{Token: p.curToken})
 }
 
 func (p *parser) parseJumpExpression() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	jmp := &ast.JumpExpression{Token: p.curToken}
+	jmp := ast.Init(p.arena.NewJumpExpression(), ast.JumpExpression{Token: p.curToken})
 	// break/next can take an optional value: break expr, next expr
 	// redo/retry take no value
 	if p.currentTokenIs(token.BREAK) || p.currentTokenIs(token.NEXT) {
@@ -1362,6 +1365,9 @@ func appendLabelPair(m *ast.OrderedExprMap, e ast.Expression) {
 		return
 	}
 	name := strings.TrimSuffix(sym.Token.Literal, ":")
+	// appendLabelPair is a free function (no parser receiver), so synthesize
+	// the identifier via new() rather than threading the arena through. Rare
+	// path -- one alloc per omitted label in a pattern hash.
 	m.Set(sym, &ast.Identifier{Token: sym.Token, Value: name})
 	m.SetOmitted(sym)
 }
@@ -1390,7 +1396,7 @@ func (p *parser) parsePattern() ast.Expression {
 	if _, isStr := pat.(*ast.StringLiteral); isStr && p.peekTokenOneOf(token.COLON, token.SYMBEG) {
 		p.acceptOneOf(token.COLON, token.SYMBEG)
 		var pairs ast.OrderedExprMap
-		key := &ast.SymbolLiteral{Token: p.curToken, Value: pat.(*ast.StringLiteral)}
+		key := ast.Init(p.arena.NewSymbolLiteral(), ast.SymbolLiteral{Token: p.curToken, Value: pat.(*ast.StringLiteral)})
 		var val ast.Expression
 		if !p.peekTokenOneOf(token.COMMA, token.RBRACE, token.NEWLINE, token.SEMICOLON, token.THEN, token.EOF) {
 			p.nextToken()
@@ -1402,7 +1408,7 @@ func (p *parser) parsePattern() ast.Expression {
 			p.nextToken()
 			p.parsePatternHashPair(&pairs)
 		}
-		pat = &ast.HashLiteral{Token: p.curToken, Map: pairs}
+		pat = ast.Init(p.arena.NewHashLiteral(), ast.HashLiteral{Token: p.curToken, Map: pairs})
 	}
 	// Implicit array pattern: in a, b, c == in [a, b, c]
 	if p.peekTokenIs(token.COMMA) {
@@ -1421,7 +1427,7 @@ func (p *parser) parsePattern() ast.Expression {
 			// `in 0,` matches `[0, ...anything]` -- MRI tags this with
 			// ImplicitRestNode on the pattern. Preserve via the sentinel
 			// so the printer emits the trailing comma back.
-			elements = append(elements, &ast.ImplicitRest{Token: p.curToken})
+			elements = append(elements, ast.Init(p.arena.NewImplicitRest(), ast.ImplicitRest{Token: p.curToken}))
 		}
 		// All-label-pair elements collapse to an implicit hash pattern: MRI
 		// parses `in a: 0, b: 1` as a hash pattern, not an array containing
@@ -1439,9 +1445,9 @@ func (p *parser) parsePattern() ast.Expression {
 					splats = append(splats, e)
 				}
 			}
-			pat = &ast.HashLiteral{Token: p.curToken, Map: pairs, Splats: splats}
+			pat = ast.Init(p.arena.NewHashLiteral(), ast.HashLiteral{Token: p.curToken, Map: pairs, Splats: splats})
 		} else {
-			pat = &ast.ArrayLiteral{Token: p.curToken, Elements: elements}
+			pat = ast.Init(p.arena.NewArrayLiteral(), ast.ArrayLiteral{Token: p.curToken, Elements: elements})
 		}
 	}
 	// Guard clause: pattern if / unless condition
@@ -1509,30 +1515,30 @@ func (p *parser) parsePatternAtom() ast.Expression {
 			expr := p.parseExpression(precLowest)
 			p.inPattern = true
 			p.accept(token.RPAREN)
-			return &ast.PrefixExpression{Token: op, Operator: "^", Right: expr}
+			return ast.Init(p.arena.NewPrefixExpression(), ast.PrefixExpression{Token: op, Operator: "^", Right: expr})
 		}
 		right := p.parseExpression(precHighest)
-		return &ast.PrefixExpression{Token: op, Operator: "^", Right: right}
+		return ast.Init(p.arena.NewPrefixExpression(), ast.PrefixExpression{Token: op, Operator: "^", Right: right})
 	case token.ASTERISK:
 		// Splat in array pattern: *rest or bare *
 		op := p.curToken
 		if p.peekTokenOneOf(token.COMMA, token.RBRACKET, token.RBRACE,
 			token.NEWLINE, token.SEMICOLON, token.THEN, token.EOF) {
-			return &ast.PrefixExpression{Token: op, Operator: "*", Right: nil}
+			return ast.Init(p.arena.NewPrefixExpression(), ast.PrefixExpression{Token: op, Operator: "*", Right: nil})
 		}
 		p.nextToken()
 		right := p.parsePatternAtom()
-		return &ast.PrefixExpression{Token: op, Operator: "*", Right: right}
+		return ast.Init(p.arena.NewPrefixExpression(), ast.PrefixExpression{Token: op, Operator: "*", Right: right})
 	case token.POWER:
 		// Double splat in hash pattern: **rest or bare **
 		op := p.curToken
 		if p.peekTokenOneOf(token.COMMA, token.RBRACKET, token.RBRACE,
 			token.NEWLINE, token.SEMICOLON, token.THEN, token.EOF) {
-			return &ast.PrefixExpression{Token: op, Operator: "**", Right: nil}
+			return ast.Init(p.arena.NewPrefixExpression(), ast.PrefixExpression{Token: op, Operator: "**", Right: nil})
 		}
 		p.nextToken()
 		right := p.parsePatternAtom()
-		return &ast.PrefixExpression{Token: op, Operator: "**", Right: right}
+		return ast.Init(p.arena.NewPrefixExpression(), ast.PrefixExpression{Token: op, Operator: "**", Right: right})
 	case token.LBRACKET:
 		// Array pattern
 		return p.parsePatternArray()
@@ -1560,7 +1566,7 @@ func (p *parser) parsePatternArray() ast.Expression {
 	elements := []ast.Expression{}
 	if p.peekTokenIs(token.RBRACKET) {
 		p.accept(token.RBRACKET)
-		return &ast.ArrayLiteral{Token: tok, Elements: elements}
+		return ast.Init(p.arena.NewArrayLiteral(), ast.ArrayLiteral{Token: tok, Elements: elements})
 	}
 	p.nextToken()
 	elements = append(elements, p.parsePatternBinding())
@@ -1570,7 +1576,7 @@ func (p *parser) parsePatternArray() ast.Expression {
 			// Trailing comma marks an implicit-rest match in array patterns:
 			// `in [0,]` matches `[0, ...anything]`. MRI tags this with an
 			// ImplicitRestNode on the pattern -- preserve via the sentinel.
-			elements = append(elements, &ast.ImplicitRest{Token: p.curToken})
+			elements = append(elements, ast.Init(p.arena.NewImplicitRest(), ast.ImplicitRest{Token: p.curToken}))
 			break
 		}
 		p.nextToken()
@@ -1579,7 +1585,7 @@ func (p *parser) parsePatternArray() ast.Expression {
 	if !p.accept(token.RBRACKET) {
 		return nil
 	}
-	return &ast.ArrayLiteral{Token: tok, Elements: elements}
+	return ast.Init(p.arena.NewArrayLiteral(), ast.ArrayLiteral{Token: tok, Elements: elements})
 }
 
 func (p *parser) parsePatternHash() ast.Expression {
@@ -1588,7 +1594,7 @@ func (p *parser) parsePatternHash() ast.Expression {
 	var pairs ast.OrderedExprMap
 	if p.peekTokenIs(token.RBRACE) {
 		p.accept(token.RBRACE)
-		return &ast.HashLiteral{Token: tok, Map: pairs}
+		return ast.Init(p.arena.NewHashLiteral(), ast.HashLiteral{Token: tok, Map: pairs})
 	}
 	p.nextToken()
 	p.parsePatternHashPair(&pairs)
@@ -1611,7 +1617,7 @@ func (p *parser) parsePatternHash() ast.Expression {
 	if !p.accept(token.RBRACE) {
 		return nil
 	}
-	return &ast.HashLiteral{Token: tok, Map: pairs}
+	return ast.Init(p.arena.NewHashLiteral(), ast.HashLiteral{Token: tok, Map: pairs})
 }
 
 func (p *parser) parsePatternHashPair(pairs *ast.OrderedExprMap) {
@@ -1620,12 +1626,12 @@ func (p *parser) parsePatternHashPair(pairs *ast.OrderedExprMap) {
 		// **rest or bare **
 		op := p.curToken
 		if p.peekTokenOneOf(token.COMMA, token.RBRACE) {
-			pairs.Set(&ast.PrefixExpression{Token: op, Operator: "**"}, nil)
+			pairs.Set(ast.Init(p.arena.NewPrefixExpression(), ast.PrefixExpression{Token: op, Operator: "**"}), nil)
 			return
 		}
 		p.nextToken()
 		rest := p.parsePatternAtom()
-		pairs.Set(&ast.PrefixExpression{Token: op, Operator: "**", Right: rest}, nil)
+		pairs.Set(ast.Init(p.arena.NewPrefixExpression(), ast.PrefixExpression{Token: op, Operator: "**", Right: rest}), nil)
 		return
 	}
 	// label: pattern  (symbol key with pattern value)
@@ -1633,15 +1639,15 @@ func (p *parser) parsePatternHashPair(pairs *ast.OrderedExprMap) {
 		name := strings.TrimSuffix(p.curToken.Literal, ":")
 		key := &ast.SymbolLiteral{
 			Token: p.curToken,
-			Value: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
+			Value: ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}),
 		}
 		if p.peekTokenOneOf(token.COMMA, token.RBRACE, token.THEN) {
-			pairs.Set(key, &ast.Identifier{Token: p.curToken, Value: name})
+			pairs.Set(key, ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: name}))
 			pairs.SetOmitted(key)
 			return
 		}
 		if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON) && (p.peek2TokenIs(token.RBRACE) || p.peek2TokenIs(token.COMMA) || p.peek2TokenIs(token.KW_IN) || p.peek2TokenIs(token.WHEN) || p.peek2TokenIs(token.END)) {
-			pairs.Set(key, &ast.Identifier{Token: p.curToken, Value: name})
+			pairs.Set(key, ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: name}))
 			pairs.SetOmitted(key)
 			return
 		}
@@ -1668,10 +1674,10 @@ func (p *parser) parsePatternHashPair(pairs *ast.OrderedExprMap) {
 		}
 		if strKey != nil && p.peekTokenOneOf(token.COLON, token.SYMBEG) {
 			p.acceptOneOf(token.COLON, token.SYMBEG)
-			symKey := &ast.SymbolLiteral{Token: p.curToken, Value: strKey}
+			symKey := ast.Init(p.arena.NewSymbolLiteral(), ast.SymbolLiteral{Token: p.curToken, Value: strKey})
 			// Value-omission: `"a":` is shorthand for `"a": a` (ruby 3.1+).
 			if p.peekTokenOneOf(token.COMMA, token.RBRACE, token.THEN, token.NEWLINE, token.SEMICOLON) {
-				pairs.Set(symKey, &ast.Identifier{Token: strKey.Token, Value: strKey.Value})
+				pairs.Set(symKey, ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: strKey.Token, Value: strKey.Value}))
 				pairs.SetOmitted(symKey)
 				return
 			}
@@ -1706,7 +1712,7 @@ func (p *parser) parsePatternHashPair(pairs *ast.OrderedExprMap) {
 
 func (p *parser) parseCaseExpression() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	expr := &ast.CaseExpression{Token: p.curToken}
+	expr := ast.Init(p.arena.NewCaseExpression(), ast.CaseExpression{Token: p.curToken})
 	p.nextToken()
 	// Optional case expression: case x
 	if !p.currentTokenIs(token.WHEN) && !p.currentTokenIs(token.NEWLINE) && !p.currentTokenIs(token.SEMICOLON) {
@@ -1730,7 +1736,7 @@ func (p *parser) parseCaseExpression() ast.Expression {
 		if !p.currentTokenIs(token.WHEN) {
 			break
 		}
-		wc := &ast.WhenClause{Token: p.curToken}
+		wc := ast.Init(p.arena.NewWhenClause(), ast.WhenClause{Token: p.curToken})
 		p.nextToken()
 		// Parse one or more when conditions (comma-separated).
 		wc.Conditions = []ast.Expression{p.parseExpression(precLowest)}
@@ -1759,7 +1765,7 @@ func (p *parser) parseCaseExpression() ast.Expression {
 		if !p.version.AtLeast(ruby27) {
 			p.versionError(ruby27, "pattern matching")
 		}
-		ic := &ast.WhenClause{Token: p.curToken}
+		ic := ast.Init(p.arena.NewWhenClause(), ast.WhenClause{Token: p.curToken})
 		p.nextToken()
 		p.inPattern = true
 		ic.Conditions = []ast.Expression{p.parsePattern()}
@@ -1802,7 +1808,7 @@ func (p *parser) parseCaseExpression() ast.Expression {
 
 func (p *parser) parseNilLiteral() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	return &ast.Nil{Token: p.curToken}
+	return ast.Init(p.arena.NewNil(), ast.Nil{Token: p.curToken})
 }
 
 func (p *parser) parseIllegal() ast.Expression {
@@ -1816,12 +1822,12 @@ func (p *parser) parseIllegal() ast.Expression {
 
 func (p *parser) parseIdentifier() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	return ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 }
 
 func (p *parser) parseGlobal() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	return &ast.Global{Token: p.curToken, Value: p.curToken.Literal}
+	return ast.Init(p.arena.NewGlobal(), ast.Global{Token: p.curToken, Value: p.curToken.Literal})
 }
 
 func (p *parser) parseScopedIdentifierExpression(outer ast.Expression) ast.Expression {
@@ -1832,7 +1838,7 @@ func (p *parser) parseScopedIdentifierExpression(outer ast.Expression) ast.Expre
 	}
 
 	scopeToken := p.curToken
-	scopedIdent := &ast.ScopedIdentifier{Token: scopeToken, Outer: ident}
+	scopedIdent := ast.Init(p.arena.NewScopedIdentifier(), ast.ScopedIdentifier{Token: scopeToken, Outer: ident})
 	if !p.peekTokenOneOf(token.CONST, token.IDENT) {
 		p.peekError(token.CONST)
 		return nil
@@ -1862,7 +1868,7 @@ func (p *parser) parseScopedIdentifierExpression(outer ast.Expression) ast.Expre
 
 func (p *parser) parseSelf() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	self := &ast.Self{Token: p.curToken}
+	self := ast.Init(p.arena.NewSelf(), ast.Self{Token: p.curToken})
 	if p.peekTokenOneOf(token.IF, token.UNLESS) {
 		return self
 	}
@@ -1886,12 +1892,12 @@ func (p *parser) parseKeyword__FILE__() ast.Expression {
 func (p *parser) parseKeyword__LINE__() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	line := p.file.Position(p.pos).Line
-	return &ast.IntegerLiteral{Token: p.curToken, Value: int64(line)}
+	return ast.Init(p.arena.NewIntegerLiteral(), ast.IntegerLiteral{Token: p.curToken, Value: int64(line)})
 }
 
 func (p *parser) parseBeginBlock() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	block := &ast.BeginBlock{Token: p.curToken}
+	block := ast.Init(p.arena.NewBeginBlock(), ast.BeginBlock{Token: p.curToken})
 	if !p.accept(token.LBRACE) {
 		return nil
 	}
@@ -1902,7 +1908,7 @@ func (p *parser) parseBeginBlock() ast.Expression {
 
 func (p *parser) parseEndBlock() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	block := &ast.EndBlock{Token: p.curToken}
+	block := ast.Init(p.arena.NewEndBlock(), ast.EndBlock{Token: p.curToken})
 	if !p.accept(token.LBRACE) {
 		return nil
 	}
@@ -1917,11 +1923,11 @@ func (p *parser) parseUsing() ast.Expression {
 	// MRI doesn't treat `using` as a keyword. Route to the call path so
 	// args / block parse the standard way.
 	if p.peekTokenIs(token.LPAREN) && !p.peekToken.HadWhitespace {
-		ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		ident := ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 		p.nextToken() // -> LPAREN
 		return p.parseCallExpressionWithParens(ident)
 	}
-	expr := &ast.UsingExpression{Token: p.curToken}
+	expr := ast.Init(p.arena.NewUsingExpression(), ast.UsingExpression{Token: p.curToken})
 	p.nextToken()
 	expr.Expr = p.parseExpression(precLowest)
 	return expr
@@ -1934,11 +1940,11 @@ func (p *parser) parseRefine() ast.Expression {
 	// args / block parse the standard way (matches MRI, which doesn't
 	// treat `refine` as a keyword).
 	if p.peekTokenIs(token.LPAREN) && !p.peekToken.HadWhitespace {
-		ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		ident := ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 		p.nextToken() // -> LPAREN
 		return p.parseCallExpressionWithParens(ident)
 	}
-	expr := &ast.RefineExpression{Token: p.curToken}
+	expr := ast.Init(p.arena.NewRefineExpression(), ast.RefineExpression{Token: p.curToken})
 	p.nextToken()
 	// Parse the refined class at precBlockBraces so that a trailing
 	// do/brace is NOT consumed as a method-call block (parseCallBlock).
@@ -1978,27 +1984,27 @@ func (p *parser) parseRefine() ast.Expression {
 
 func (p *parser) parseKeyword__CALLEE__() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	return &ast.Keyword__CALLEE__{Token: p.curToken}
+	return ast.Init(p.arena.NewKeyword__CALLEE__(), ast.Keyword__CALLEE__{Token: p.curToken})
 }
 
 func (p *parser) parseKeyword__METHOD__() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	return &ast.Keyword__METHOD__{Token: p.curToken}
+	return ast.Init(p.arena.NewKeyword__METHOD__(), ast.Keyword__METHOD__{Token: p.curToken})
 }
 
 func (p *parser) parseKeyword__DIR__() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	return &ast.Keyword__DIR__{Token: p.curToken}
+	return ast.Init(p.arena.NewKeyword__DIR__(), ast.Keyword__DIR__{Token: p.curToken})
 }
 
 func (p *parser) parseEncodingKeyword() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	return &ast.Keyword__ENCODING__{Token: p.curToken}
+	return ast.Init(p.arena.NewKeyword__ENCODING__(), ast.Keyword__ENCODING__{Token: p.curToken})
 }
 
 func (p *parser) parseSplatExpression() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	expr := &ast.SplatExpression{Token: p.curToken, Operator: p.curToken.Literal}
+	expr := ast.Init(p.arena.NewSplatExpression(), ast.SplatExpression{Token: p.curToken, Operator: p.curToken.Literal})
 	// Double-splat for keyword-arg spread arrived in Ruby 2.0.
 	if expr.Operator == "**" && !p.version.AtLeast(ruby20) {
 		p.versionError(ruby20, "double-splat (**) in arguments")
@@ -2023,7 +2029,7 @@ func (p *parser) parseSplatExpression() ast.Expression {
 
 func (p *parser) parseYield() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	yield := &ast.YieldExpression{Token: p.curToken}
+	yield := ast.Init(p.arena.NewYieldExpression(), ast.YieldExpression{Token: p.curToken})
 	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE, token.RPAREN, token.RBRACKET, token.EMBEXPR_END,
 		token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.RESCUE, token.DOT) {
 		return yield
@@ -2044,7 +2050,7 @@ func (p *parser) parseYield() ast.Expression {
 
 func (p *parser) parseSuper() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	sup := &ast.SuperExpression{Token: p.curToken}
+	sup := ast.Init(p.arena.NewSuperExpression(), ast.SuperExpression{Token: p.curToken})
 	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE, token.RPAREN, token.RBRACKET, token.EMBEXPR_END, token.DOT, token.LONELY,
 		token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.RESCUE) {
 		return sup
@@ -2090,10 +2096,10 @@ func (p *parser) parseAliasName() *ast.Identifier {
 			name += "="
 			p.nextToken()
 		}
-		return &ast.Identifier{Token: p.curToken, Value: name}
+		return ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: name})
 	}
 	if p.currentTokenIs(token.GLOBAL) {
-		return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		return ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 	}
 	if p.currentTokenIs(token.LBRACKET) && p.peekTokenIs(token.RBRACKET) {
 		p.nextToken()
@@ -2102,12 +2108,12 @@ func (p *parser) parseAliasName() *ast.Identifier {
 			name = "[]="
 			p.nextToken()
 		}
-		return &ast.Identifier{Token: p.curToken, Value: name}
+		return ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: name})
 	}
 	if p.currentTokenIs(token.SYMBEG) {
 		sym := p.parseSymbolLiteral()
 		if sym != nil {
-			return &ast.Identifier{Token: p.curToken, Value: sym.String()}
+			return ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: sym.String()})
 		}
 	}
 	return nil
@@ -2115,7 +2121,7 @@ func (p *parser) parseAliasName() *ast.Identifier {
 
 func (p *parser) parseAlias() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	expr := &ast.AliasExpression{Token: p.curToken}
+	expr := ast.Init(p.arena.NewAliasExpression(), ast.AliasExpression{Token: p.curToken})
 	p.nextToken()
 	expr.NewName = p.parseAliasName()
 	if expr.NewName == nil {
@@ -2141,7 +2147,7 @@ func (p *parser) parseAlias() ast.Expression {
 
 func (p *parser) parseUndef() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	expr := &ast.UndefExpression{Token: p.curToken}
+	expr := ast.Init(p.arena.NewUndefExpression(), ast.UndefExpression{Token: p.curToken})
 	p.nextToken()
 	expr.Names = []*ast.Identifier{parseUndefName(p)}
 	for p.peekTokenIs(token.COMMA) {
@@ -2156,9 +2162,9 @@ func parseUndefName(p *parser) *ast.Identifier {
 	if p.currentTokenIs(token.SYMBEG) {
 		sym := p.parseSymbolLiteral()
 		if sym == nil {
-			return &ast.Identifier{Token: p.curToken, Value: ""}
+			return ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: ""})
 		}
-		return &ast.Identifier{Token: p.curToken, Value: sym.(*ast.SymbolLiteral).Value.String()}
+		return ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: sym.(*ast.SymbolLiteral).Value.String()})
 	}
 	if p.currentTokenIs(token.LBRACKET) && p.peekTokenIs(token.RBRACKET) {
 		p.nextToken()
@@ -2167,9 +2173,9 @@ func parseUndefName(p *parser) *ast.Identifier {
 			name = "[]="
 			p.nextToken()
 		}
-		return &ast.Identifier{Token: p.curToken, Value: name}
+		return ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: name})
 	}
-	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	return ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 }
 
 func (p *parser) parseRangeOrForwarding() ast.Expression {
@@ -2180,7 +2186,7 @@ func (p *parser) parseRangeOrForwarding() ast.Expression {
 		if !p.version.AtLeast(ruby27) {
 			p.versionError(ruby27, "argument forwarding (...)")
 		}
-		return &ast.ArgumentForwarding{Token: tok}
+		return ast.Init(p.arena.NewArgumentForwarding(), ast.ArgumentForwarding{Token: tok})
 	}
 	p.nextToken()
 	return &ast.InfixExpression{
@@ -2225,7 +2231,7 @@ func (p *parser) parseRightwardAssignment(left ast.Expression) ast.Expression {
 
 func (p *parser) parseLambda() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	lit := &ast.FunctionLiteral{Token: p.curToken, IsLambda: true}
+	lit := ast.Init(p.arena.NewFunctionLiteral(), ast.FunctionLiteral{Token: p.curToken, IsLambda: true})
 	// Optional parameters: ->(x, y) or bare ->
 	if p.peekTokenIs(token.LPAREN) {
 		// MRI 1.9 rejects whitespace between `->` and `(`. 2.0+ accepts both.
@@ -2268,7 +2274,7 @@ var integerLiteralReplacer = strings.NewReplacer("_", "")
 
 func (p *parser) parseIntegerLiteral() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	lit := &ast.IntegerLiteral{Token: p.curToken}
+	lit := ast.Init(p.arena.NewIntegerLiteral(), ast.IntegerLiteral{Token: p.curToken})
 	s := integerLiteralReplacer.Replace(p.curToken.Literal)
 	s = strings.TrimRight(s, "riRI")
 	v, bigV, err := parseRubyInt(s)
@@ -2290,7 +2296,7 @@ func (p *parser) parseIntegerLiteral() ast.Expression {
 
 func (p *parser) parseFloatLiteral() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	lit := &ast.FloatLiteral{Token: p.curToken}
+	lit := ast.Init(p.arena.NewFloatLiteral(), ast.FloatLiteral{Token: p.curToken})
 	s := integerLiteralReplacer.Replace(p.curToken.Literal)
 	// Strip rational/complex suffixes -- the numeric value is the same.
 	s = strings.TrimRight(s, "riRI")
@@ -2365,7 +2371,7 @@ func parseFloat(s string) (float64, error) {
 
 func (p *parser) parseStringLiteral() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	return &ast.StringLiteral{Token: p.curToken, Value: p.curToken.Literal}
+	return ast.Init(p.arena.NewStringLiteral(), ast.StringLiteral{Token: p.curToken, Value: p.curToken.Literal})
 }
 
 func (p *parser) parseInterpolatedString() ast.Expression {
@@ -2377,7 +2383,7 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 	for !p.currentTokenIs(token.STRING_END) && !p.currentTokenIs(token.XSTR_END) && !p.currentTokenIs(token.EOF) {
 		switch p.curToken.Type {
 		case token.STRING_CONTENT, token.XSTR_CONTENT:
-			parts = append(parts, &ast.StringContent{Token: p.curToken, Value: p.curToken.Literal})
+			parts = append(parts, ast.Init(p.arena.NewStringContent(), ast.StringContent{Token: p.curToken, Value: p.curToken.Literal}))
 		case token.EMBEXPR_BEG:
 			embTok := p.curToken
 			p.nextToken() // advance past EMBEXPR_BEG to first expression token
@@ -2388,7 +2394,7 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 				// Empty `#{ }` -- preserve as DSTR-shaping placeholder so
 				// MRI re-parses to EVSTR(BEGIN(nil)) instead of collapsing
 				// to a static STR. See same handling in parseInterpolatedRegex.
-				parts = append(parts, &ast.ParenExpression{Token: embTok, EndPos: p.curToken.Pos})
+				parts = append(parts, ast.Init(p.arena.NewParenExpression(), ast.ParenExpression{Token: embTok, EndPos: p.curToken.Pos}))
 				break
 			}
 			p.embExprDepth++
@@ -2412,7 +2418,7 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 			} else if len(stmts) > 1 {
 				// Multi-statement interp `"#{a; b; c}"` -- MRI keeps all
 				// statements under EVSTR. Wrap in ParenExpression.Stmts.
-				parts = append(parts, &ast.ParenExpression{Token: embTok, EndPos: p.curToken.Pos, Stmts: stmts})
+				parts = append(parts, ast.Init(p.arena.NewParenExpression(), ast.ParenExpression{Token: embTok, EndPos: p.curToken.Pos, Stmts: stmts}))
 			}
 			if !p.peekTokenIs(token.EMBEXPR_END) {
 				p.peekError(token.EMBEXPR_END)
@@ -2421,18 +2427,18 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 			p.nextToken() // consume EMBEXPR_END
 		case token.GLOBAL:
 			parts = append(parts, &ast.EmbeddedVariable{
-				Variable: &ast.Global{Token: p.curToken, Value: p.curToken.Literal},
+				Variable: ast.Init(p.arena.NewGlobal(), ast.Global{Token: p.curToken, Value: p.curToken.Literal}),
 			})
 		case token.AT:
-			ivar := &ast.InstanceVariable{Token: p.curToken}
+			ivar := ast.Init(p.arena.NewInstanceVariable(), ast.InstanceVariable{Token: p.curToken})
 			p.nextToken()
-			ivar.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-			parts = append(parts, &ast.EmbeddedVariable{Variable: ivar})
+			ivar.Name = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+			parts = append(parts, ast.Init(p.arena.NewEmbeddedVariable(), ast.EmbeddedVariable{Variable: ivar}))
 		case token.CLASS_VAR:
-			cv := &ast.ClassVariable{Token: p.curToken}
+			cv := ast.Init(p.arena.NewClassVariable(), ast.ClassVariable{Token: p.curToken})
 			p.nextToken()
-			cv.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-			parts = append(parts, &ast.EmbeddedVariable{Variable: cv})
+			cv.Name = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+			parts = append(parts, ast.Init(p.arena.NewEmbeddedVariable(), ast.EmbeddedVariable{Variable: cv}))
 		default:
 			p.expectError(token.STRING_CONTENT, token.EMBEXPR_BEG, token.STRING_END)
 			return nil
@@ -2451,7 +2457,7 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 	default: // "", "Q", "q", "x" -- string/regex/xstr
 	}
 
-	sl := &ast.StringLiteral{Token: begToken}
+	sl := ast.Init(p.arena.NewStringLiteral(), ast.StringLiteral{Token: begToken})
 	if strings.HasPrefix(begToken.Literal, "<<") {
 		if p.curToken.HeredocStripped || p.embExprDepth > 0 {
 			sl.HeredocStripped = true
@@ -2474,14 +2480,14 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 
 func (p *parser) parseInterpolatedRegex() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	rl := &ast.RegexLiteral{Token: p.curToken} // REGEX_BEG
+	rl := ast.Init(p.arena.NewRegexLiteral(), ast.RegexLiteral{Token: p.curToken}) // REGEX_BEG
 	p.nextToken()                              // advance to first content token
 
 	var parts []ast.Expression
 	for !p.currentTokenIs(token.REGEX_END) && !p.currentTokenIs(token.EOF) {
 		switch p.curToken.Type {
 		case token.STRING_CONTENT:
-			parts = append(parts, &ast.StringContent{Token: p.curToken, Value: p.curToken.Literal})
+			parts = append(parts, ast.Init(p.arena.NewStringContent(), ast.StringContent{Token: p.curToken, Value: p.curToken.Literal}))
 		case token.EMBEXPR_BEG:
 			embTok := p.curToken
 			p.nextToken()
@@ -2494,7 +2500,7 @@ func (p *parser) parseInterpolatedRegex() ast.Expression {
 				// shape (not a static REGX/STR). Use ParenExpression{Expr:
 				// nil} as a placeholder; it prints as `#{()}` which MRI
 				// parses back to the same EVSTR(BEGIN(nil)) shape.
-				parts = append(parts, &ast.ParenExpression{Token: embTok, EndPos: p.curToken.Pos})
+				parts = append(parts, ast.Init(p.arena.NewParenExpression(), ast.ParenExpression{Token: embTok, EndPos: p.curToken.Pos}))
 				break
 			}
 			var stmts []ast.Expression
@@ -2518,7 +2524,7 @@ func (p *parser) parseInterpolatedRegex() ast.Expression {
 				// statement sequence under the EVSTR/DREGX. Wrap in
 				// ParenExpression.Stmts so the printer re-emits as `(a; b; c)`
 				// inside `#{...}`.
-				parts = append(parts, &ast.ParenExpression{Token: embTok, EndPos: p.curToken.Pos, Stmts: stmts})
+				parts = append(parts, ast.Init(p.arena.NewParenExpression(), ast.ParenExpression{Token: embTok, EndPos: p.curToken.Pos, Stmts: stmts}))
 			}
 			if !p.peekTokenIs(token.EMBEXPR_END) {
 				p.peekError(token.EMBEXPR_END)
@@ -2528,15 +2534,15 @@ func (p *parser) parseInterpolatedRegex() ast.Expression {
 		case token.AT:
 			exp := p.parseInstanceVariable()
 			if exp != nil {
-				parts = append(parts, &ast.EmbeddedVariable{Variable: exp})
+				parts = append(parts, ast.Init(p.arena.NewEmbeddedVariable(), ast.EmbeddedVariable{Variable: exp}))
 			}
 		case token.CLASS_VAR:
 			exp := p.parseClassVariable()
 			if exp != nil {
-				parts = append(parts, &ast.EmbeddedVariable{Variable: exp})
+				parts = append(parts, ast.Init(p.arena.NewEmbeddedVariable(), ast.EmbeddedVariable{Variable: exp}))
 			}
 		case token.GLOBAL:
-			parts = append(parts, &ast.EmbeddedVariable{Variable: p.parseGlobal()})
+			parts = append(parts, ast.Init(p.arena.NewEmbeddedVariable(), ast.EmbeddedVariable{Variable: p.parseGlobal()}))
 		default:
 			p.expectError(token.STRING_CONTENT, token.EMBEXPR_BEG, token.REGEX_END)
 			return nil
@@ -2585,7 +2591,7 @@ var symbolKeywordTokens = []token.Type{
 
 func (p *parser) parseSymbolLiteral() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	symbol := &ast.SymbolLiteral{Token: p.curToken}
+	symbol := ast.Init(p.arena.NewSymbolLiteral(), ast.SymbolLiteral{Token: p.curToken})
 
 	accepted := []token.Type{
 		token.IDENT, token.CONST, token.AT, token.STRING, token.STRING_BEG,
@@ -2602,18 +2608,18 @@ func (p *parser) parseSymbolLiteral() ast.Expression {
 			name += "@"
 			p.nextToken()
 		}
-		symbol.Value = &ast.Identifier{Token: p.curToken, Value: name}
+		symbol.Value = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: name})
 		return symbol
 	}
 	if p.currentTokenOneOf(symbolKeywordTokens...) {
-		symbol.Value = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		symbol.Value = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 		return symbol
 	}
 	// Setter symbol: :foo= -- IDENT followed by = with no space
 	if p.currentTokenOneOf(token.IDENT, token.CONST) && p.peekTokenIs(token.ASSIGN) {
 		name := p.curToken.Literal + "="
 		p.nextToken() // consume =
-		symbol.Value = &ast.Identifier{Token: p.curToken, Value: name}
+		symbol.Value = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: name})
 		return symbol
 	}
 	if p.currentTokenIs(token.LBRACKET) {
@@ -2625,7 +2631,7 @@ func (p *parser) parseSymbolLiteral() ast.Expression {
 				lit = "[]="
 			}
 		}
-		symbol.Value = &ast.Identifier{Token: p.curToken, Value: lit}
+		symbol.Value = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: lit})
 		return symbol
 	}
 	val := p.parseExpression(precHighest)
@@ -2635,7 +2641,7 @@ func (p *parser) parseSymbolLiteral() ast.Expression {
 
 func (p *parser) parseArrayLiteral() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	array := &ast.ArrayLiteral{Token: p.curToken}
+	array := ast.Init(p.arena.NewArrayLiteral(), ast.ArrayLiteral{Token: p.curToken})
 
 	p.nextToken()
 	array.Elements = p.parseExpressionList(token.RBRACKET)
@@ -2645,11 +2651,11 @@ func (p *parser) parseArrayLiteral() ast.Expression {
 
 func (p *parser) parseBoolean() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	return &ast.Boolean{Token: p.curToken, Value: p.currentTokenIs(token.TRUE)}
+	return ast.Init(p.arena.NewBoolean(), ast.Boolean{Token: p.curToken, Value: p.currentTokenIs(token.TRUE)})
 }
 
 func (p *parser) parseHash() ast.Expression {
-	hash := &ast.HashLiteral{Token: p.curToken}
+	hash := ast.Init(p.arena.NewHashLiteral(), ast.HashLiteral{Token: p.curToken})
 	defer trace.TraceCtx(p.ctx)()
 	p.nextToken()
 	// Skip leading newlines/semicolons inside the hash.
@@ -2732,14 +2738,14 @@ func (p *parser) parseKeyValue() (ast.Expression, ast.Expression, bool, bool) {
 		name := strings.TrimSuffix(p.curToken.Literal, ":")
 		key := &ast.SymbolLiteral{
 			Token: p.curToken,
-			Value: &ast.StringLiteral{Value: name},
+			Value: ast.Init(p.arena.NewStringLiteral(), ast.StringLiteral{Value: name}),
 		}
 		// Hash value omission (ruby 3.1+): {x:, y:} == {x: x, y: y}
 		if p.peekTokenOneOf(token.COMMA, token.RBRACE, token.RPAREN, token.NEWLINE) {
 			if !p.version.AtLeast(ruby31) {
 				p.versionError(ruby31, "hash value omission")
 			}
-			val := &ast.Identifier{Token: p.curToken, Value: name}
+			val := ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: name})
 			return key, val, true, true // isLabel, omitted
 		}
 		p.nextToken()
@@ -2754,11 +2760,11 @@ func (p *parser) parseKeyValue() (ast.Expression, ast.Expression, bool, bool) {
 			p.nextToken()
 			if p.peekTokenOneOf(token.COMMA, token.RBRACE, token.RPAREN, token.NEWLINE) {
 				val := key
-				return &ast.SymbolLiteral{Token: p.curToken, Value: key.(*ast.StringLiteral)}, val, true, false
+				return ast.Init(p.arena.NewSymbolLiteral(), ast.SymbolLiteral{Token: p.curToken, Value: key.(*ast.StringLiteral)}), val, true, false
 			}
 			p.nextToken()
 			val := p.parseExpression(precAssignment)
-			return &ast.SymbolLiteral{Token: p.curToken, Value: key.(*ast.StringLiteral)}, val, true, false
+			return ast.Init(p.arena.NewSymbolLiteral(), ast.SymbolLiteral{Token: p.curToken, Value: key.(*ast.StringLiteral)}), val, true, false
 		}
 	}
 	if !p.consume(token.HASHROCKET) {
@@ -2783,7 +2789,7 @@ func (p *parser) parseBlock() ast.Expression {
 	prevAO := p.suppressKwAndOr
 	p.suppressKwAndOr = false
 	defer func() { p.suppressKwAndOr = prevAO }()
-	block := &ast.BlockExpression{Token: p.curToken}
+	block := ast.Init(p.arena.NewBlockExpression(), ast.BlockExpression{Token: p.curToken})
 	if p.peekTokenIs(token.NEWLINE) && p.peek2TokenIs(token.PIPE) {
 		p.nextToken()
 	}
@@ -2809,7 +2815,7 @@ func (p *parser) parseBlock() ast.Expression {
 					return nil
 				}
 				block.BlockLocals = append(block.BlockLocals,
-					&ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+					ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}))
 				if p.peekTokenIs(token.COMMA) {
 					p.accept(token.COMMA)
 				}
@@ -2991,7 +2997,7 @@ func isAssignableTarget(e ast.Expression) bool {
 
 func (p *parser) parseIndexExpression(left ast.Expression) ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	exp := &ast.IndexExpression{Token: p.curToken, Left: left}
+	exp := ast.Init(p.arena.NewIndexExpression(), ast.IndexExpression{Token: p.curToken, Left: left})
 
 	p.nextToken()
 	elements := p.parseExpressionList(token.RBRACKET)
@@ -3023,7 +3029,7 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 		if !p.version.AtLeast(ruby20) {
 			p.versionError(ruby20, "empty grouped expression `()`")
 		}
-		return &ast.ParenExpression{Token: lparen, EndPos: p.curToken.Pos}
+		return ast.Init(p.arena.NewParenExpression(), ast.ParenExpression{Token: lparen, EndPos: p.curToken.Pos})
 	}
 	exp := p.parseExpression(precLowest)
 	var stmts []ast.Expression
@@ -3073,7 +3079,7 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 	if exp == nil {
 		return nil
 	}
-	pe := &ast.ParenExpression{Token: lparen, EndPos: p.curToken.Pos, Expr: exp}
+	pe := ast.Init(p.arena.NewParenExpression(), ast.ParenExpression{Token: lparen, EndPos: p.curToken.Pos, Expr: exp})
 	if len(stmts) > 1 {
 		pe.Stmts = stmts
 	}
@@ -3088,7 +3094,7 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 
 func (p *parser) parseIfExpression() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	expression := &ast.ConditionalExpression{Token: p.curToken}
+	expression := ast.Init(p.arena.NewConditionalExpression(), ast.ConditionalExpression{Token: p.curToken})
 	p.nextToken()
 	expression.Condition = p.parseExpression(precLowest)
 	hasThen := p.peekTokenIs(token.THEN)
@@ -3124,7 +3130,7 @@ func (p *parser) parseIfExpression() ast.Expression {
 		if p.peekTokenIs(token.KW_ELSIF) {
 			p.accept(token.KW_ELSIF)
 			// elsif cond -> wrap nested conditional in a BlockStatement
-			nested := &ast.ConditionalExpression{Token: p.curToken}
+			nested := ast.Init(p.arena.NewConditionalExpression(), ast.ConditionalExpression{Token: p.curToken})
 			p.nextToken()
 			nested.Condition = p.parseExpression(precLowest)
 			if p.peekTokenIs(token.THEN) {
@@ -3135,7 +3141,7 @@ func (p *parser) parseIfExpression() ast.Expression {
 			}
 			expr.Alternative = &ast.BlockStatement{
 				Statements: []ast.Statement{
-					&ast.ExpressionStatement{Expression: nested},
+					ast.Init(p.arena.NewExpressionStatement(), ast.ExpressionStatement{Expression: nested}),
 				},
 			}
 			expr = nested
@@ -3159,7 +3165,7 @@ func (p *parser) parseIfExpression() ast.Expression {
 
 func (p *parser) parseTenaryIfExpression(condition ast.Expression) ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	expression := &ast.ConditionalExpression{Token: p.curToken}
+	expression := ast.Init(p.arena.NewConditionalExpression(), ast.ConditionalExpression{Token: p.curToken})
 	p.nextToken()
 	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 		p.nextToken()
@@ -3188,7 +3194,7 @@ func (p *parser) parseTenaryIfExpression(condition ast.Expression) ast.Expressio
 
 func (p *parser) parseModifierConditionalExpression(left ast.Expression) ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	expression := &ast.ConditionalExpression{Token: p.curToken}
+	expression := ast.Init(p.arena.NewConditionalExpression(), ast.ConditionalExpression{Token: p.curToken})
 	p.nextToken()
 	for p.currentTokenIs(token.NEWLINE) {
 		p.nextToken()
@@ -3200,7 +3206,7 @@ func (p *parser) parseModifierConditionalExpression(left ast.Expression) ast.Exp
 
 	expression.Consequence = &ast.BlockStatement{
 		Statements: []ast.Statement{
-			&ast.ExpressionStatement{Expression: left},
+			ast.Init(p.arena.NewExpressionStatement(), ast.ExpressionStatement{Expression: left}),
 		},
 	}
 	return expression
@@ -3208,7 +3214,7 @@ func (p *parser) parseModifierConditionalExpression(left ast.Expression) ast.Exp
 
 func (p *parser) parseModifierLoopExpression(left ast.Expression) ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	loop := &ast.LoopExpression{Token: p.curToken}
+	loop := ast.Init(p.arena.NewLoopExpression(), ast.LoopExpression{Token: p.curToken})
 	p.nextToken()
 	for p.currentTokenIs(token.NEWLINE) {
 		p.nextToken()
@@ -3219,7 +3225,7 @@ func (p *parser) parseModifierLoopExpression(left ast.Expression) ast.Expression
 	loop.Condition = p.parseExpression(precIfUnless)
 	loop.Block = &ast.BlockStatement{
 		Statements: []ast.Statement{
-			&ast.ExpressionStatement{Expression: left},
+			ast.Init(p.arena.NewExpressionStatement(), ast.ExpressionStatement{Expression: left}),
 		},
 	}
 	// `begin ... end while cond` is a do-while (post-test) loop in MRI,
@@ -3233,7 +3239,7 @@ func (p *parser) parseModifierLoopExpression(left ast.Expression) ast.Expression
 
 func (p *parser) parseLoopExpression() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	loop := &ast.LoopExpression{Token: p.curToken}
+	loop := ast.Init(p.arena.NewLoopExpression(), ast.LoopExpression{Token: p.curToken})
 	p.nextToken()
 	prev := p.suppressDoBlock
 	p.suppressDoBlock = true
@@ -3260,12 +3266,12 @@ func (p *parser) parseScopedConstName() *ast.Identifier {
 		}
 		name += "::" + p.curToken.Literal
 	}
-	return &ast.Identifier{Token: nameTok, Value: name}
+	return ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: nameTok, Value: name})
 }
 
 func (p *parser) parseModule() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	expr := &ast.ModuleExpression{Token: p.curToken}
+	expr := ast.Init(p.arena.NewModuleExpression(), ast.ModuleExpression{Token: p.curToken})
 	expr.Name = p.parseScopedConstName()
 	if expr.Name == nil {
 		return nil
@@ -3295,7 +3301,7 @@ func (p *parser) parseClass() ast.Expression {
 	if p.peekTokenIs(token.LSHIFT) {
 		return p.parseSingletonClass()
 	}
-	expr := &ast.ClassExpression{Token: p.curToken}
+	expr := ast.Init(p.arena.NewClassExpression(), ast.ClassExpression{Token: p.curToken})
 	expr.Name = p.parseScopedConstName()
 	if expr.Name == nil {
 		return nil
@@ -3327,7 +3333,7 @@ func (p *parser) parseClass() ast.Expression {
 
 func (p *parser) parseSingletonClass() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	expr := &ast.SingletonClassExpression{Token: p.curToken}
+	expr := ast.Init(p.arena.NewSingletonClassExpression(), ast.SingletonClassExpression{Token: p.curToken})
 
 	if !p.consume(token.LSHIFT) {
 		return nil
@@ -3356,7 +3362,7 @@ func (p *parser) parseSingletonClass() ast.Expression {
 
 func (p *parser) parseFunctionLiteral() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	lit := &ast.FunctionLiteral{Token: p.curToken}
+	lit := ast.Init(p.arena.NewFunctionLiteral(), ast.FunctionLiteral{Token: p.curToken})
 
 	if !p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL, token.LBRACKET, token.AT, token.CLASS_VAR, token.LPAREN, token.XSTR_BEG) && !p.peekToken.Type.IsOperator() && !p.peekToken.Type.IsKeyword() {
 		p.peekError(token.IDENT, token.CONST)
@@ -3374,15 +3380,15 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 		if receiver == nil {
 			return nil
 		}
-		lit.Receiver = &ast.Identifier{Token: p.curToken, Value: receiver.String()}
+		lit.Receiver = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: receiver.String()})
 		if !p.accept(token.DOT) {
 			return nil
 		}
 		p.nextToken()
 		if p.curToken.Type.IsKeyword() || p.currentTokenOneOf(token.IDENT, token.CONST) {
-			lit.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+			lit.Name = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 		} else if p.currentTokenIs(token.LBRACKET) {
-			lit.Name = &ast.Identifier{Token: p.curToken, Value: p.parseBracketMethodName()}
+			lit.Name = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.parseBracketMethodName()})
 		} else if p.curToken.Type.IsOperator() {
 			lit.Name = p.parseOperatorMethodName()
 		}
@@ -3396,22 +3402,22 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 		if ivar == nil {
 			return nil
 		}
-		lit.Receiver = &ast.Identifier{Token: p.curToken, Value: ivar.String()}
+		lit.Receiver = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: ivar.String()})
 		if !p.accept(token.DOT) {
 			return nil
 		}
 		p.nextToken()
 		if p.curToken.Type.IsKeyword() || p.currentTokenOneOf(token.IDENT, token.CONST) {
-			lit.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+			lit.Name = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 		} else if p.currentTokenIs(token.LBRACKET) {
-			lit.Name = &ast.Identifier{Token: p.curToken, Value: p.parseBracketMethodName()}
+			lit.Name = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.parseBracketMethodName()})
 		} else if p.curToken.Type.IsOperator() {
 			lit.Name = p.parseOperatorMethodName()
 		}
 	} else if p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL, token.NIL, token.TRUE, token.FALSE) {
 		p.acceptOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL, token.NIL, token.TRUE, token.FALSE)
 		if p.peekTokenIs(token.DOT) {
-			lit.Receiver = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+			lit.Receiver = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 			p.accept(token.DOT)
 			if !p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL, token.LBRACKET) && !p.peekToken.Type.IsOperator() && !p.peekToken.Type.IsKeyword() {
 				p.peekError(token.IDENT, token.CONST)
@@ -3419,29 +3425,29 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 			}
 			p.nextToken()
 			if p.currentTokenIs(token.LBRACKET) {
-				lit.Name = &ast.Identifier{Token: p.curToken, Value: p.parseBracketMethodName()}
+				lit.Name = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.parseBracketMethodName()})
 			} else if p.curToken.Type.IsOperator() {
 				lit.Name = p.parseOperatorMethodName()
 			} else {
-				lit.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+				lit.Name = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 			}
 		} else {
 			if p.currentTokenIs(token.LBRACKET) {
-				lit.Name = &ast.Identifier{Token: p.curToken, Value: p.parseBracketMethodName()}
+				lit.Name = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.parseBracketMethodName()})
 			} else if p.curToken.Type.IsOperator() {
 				lit.Name = p.parseOperatorMethodName()
 			} else {
-				lit.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+				lit.Name = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 			}
 		}
 	} else {
 		p.nextToken()
 		if p.currentTokenIs(token.LBRACKET) {
-			lit.Name = &ast.Identifier{Token: p.curToken, Value: p.parseBracketMethodName()}
+			lit.Name = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.parseBracketMethodName()})
 		} else if p.curToken.Type.IsOperator() {
 			lit.Name = p.parseOperatorMethodName()
 		} else {
-			lit.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+			lit.Name = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 		}
 	}
 
@@ -3461,7 +3467,7 @@ parseParams:
 	lit.Parameters = p.parseParameters(token.LPAREN, token.RPAREN)
 
 	if p.currentTokenOneOf(token.CAPTURE, token.AND) {
-		bc := &ast.BlockCapture{Token: p.curToken}
+		bc := ast.Init(p.arena.NewBlockCapture(), ast.BlockCapture{Token: p.curToken})
 		if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.EOF, token.RPAREN) {
 			if !p.version.AtLeast(ruby31) {
 				p.versionError(ruby31, "anonymous block forwarding")
@@ -3474,7 +3480,7 @@ parseParams:
 			if !p.acceptOneOf(token.IDENT, token.NIL) {
 				return nil
 			}
-			bc.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+			bc.Name = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 			lit.CapturedBlock = bc
 			if p.peekTokenIs(token.RPAREN) {
 				p.acceptOneOf(token.RPAREN)
@@ -3495,7 +3501,7 @@ parseParams:
 		lit.Body = &ast.BlockStatement{
 			Token: p.curToken,
 			Statements: []ast.Statement{
-				&ast.ExpressionStatement{Token: p.curToken, Expression: expr},
+				ast.Init(p.arena.NewExpressionStatement(), ast.ExpressionStatement{Token: p.curToken, Expression: expr}),
 			},
 		}
 		if p.peekTokenIs(token.SEMICOLON) {
@@ -3563,7 +3569,7 @@ func (p *parser) parseOperatorMethodName() *ast.Identifier {
 		p.nextToken()
 		name += p.curToken.Literal
 	}
-	return &ast.Identifier{Token: p.curToken, Value: name}
+	return ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: name})
 }
 
 func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDelimiters bool, endToken token.Type) []*ast.FunctionParameter {
@@ -3586,16 +3592,16 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 				}
 				p.accept(token.NIL)
 				identifiers = append(identifiers, &ast.FunctionParameter{
-					Name: &ast.Identifier{Token: p.curToken, Value: "nil"}, IsKeywordRest: true, IsNoKeywords: true,
+					Name: ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: "nil"}), IsKeywordRest: true, IsNoKeywords: true,
 				})
 			} else if p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.CONST) {
 				p.accept(token.IDENT)
 				identifiers = append(identifiers, &ast.FunctionParameter{
-					Name: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}, IsKeywordRest: true,
+					Name: ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}), IsKeywordRest: true,
 				})
 			} else {
 				identifiers = append(identifiers, &ast.FunctionParameter{
-					Name: &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}, IsKeywordRest: true,
+					Name: ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}), IsKeywordRest: true,
 				})
 			}
 			continue
@@ -3615,7 +3621,7 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 			p.accept(token.LABEL)
 			name := strings.TrimSuffix(p.curToken.Literal, ":")
 			param := &ast.FunctionParameter{
-				Name:      &ast.Identifier{Token: p.curToken, Value: name},
+				Name:      ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: name}),
 				IsKeyword: true,
 			}
 			if !p.peekTokenOneOf(token.COMMA, endToken, token.NEWLINE, token.SEMICOLON, token.PIPE, token.EOF) {
@@ -3632,7 +3638,7 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 			p.acceptOneOf(token.IDENT, token.CONST)
 			name := p.curToken.Literal
 			param := &ast.FunctionParameter{
-				Name: &ast.Identifier{Token: p.curToken, Value: name},
+				Name: ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: name}),
 			}
 			if p.peekTokenIs(token.ASSIGN) {
 				p.consume(token.ASSIGN)
@@ -3668,7 +3674,7 @@ func (p *parser) parseOneParameter(endToken token.Type) []*ast.FunctionParameter
 					name += p.curToken.Literal
 				}
 				inner = append(inner, &ast.FunctionParameter{
-					Name:    &ast.Identifier{Token: p.curToken, Value: name},
+					Name:    ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: name}),
 					IsSplat: true,
 				})
 				continue
@@ -3688,7 +3694,7 @@ func (p *parser) parseOneParameter(endToken token.Type) []*ast.FunctionParameter
 		}
 		destructName := "(" + strings.Join(names, ", ") + ")"
 		return []*ast.FunctionParameter{{
-			Name: &ast.Identifier{Token: p.curToken, Value: destructName},
+			Name: ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: destructName}),
 		}}
 	}
 	if p.peekTokenIs(token.LABEL) {
@@ -3704,7 +3710,7 @@ func (p *parser) parseOneParameter(endToken token.Type) []*ast.FunctionParameter
 		}
 		name = strings.TrimSuffix(name, ":")
 	}
-	ident := &ast.FunctionParameter{Name: &ast.Identifier{Token: p.curToken, Value: name}, IsKeyword: isKeyword}
+	ident := &ast.FunctionParameter{Name: ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: name}), IsKeyword: isKeyword}
 	if isKeyword {
 		if !p.peekTokenOneOf(token.COMMA, token.NEWLINE, token.SEMICOLON, token.PIPE, token.RPAREN, token.EOF) {
 			kwDefPrec := precAssignment
@@ -3769,7 +3775,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 			p.versionError(ruby27, "argument forwarding (...)")
 		}
 		p.accept(token.RANGEEX)
-		identifiers = append(identifiers, &ast.FunctionParameter{IsForwarding: true})
+		identifiers = append(identifiers, ast.Init(p.arena.NewFunctionParameter(), ast.FunctionParameter{IsForwarding: true}))
 		if hasDelimiters {
 			p.accept(endToken)
 		}
@@ -3787,7 +3793,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 			}
 			p.accept(token.NIL)
 			identifiers = append(identifiers, &ast.FunctionParameter{
-				Name:          &ast.Identifier{Token: p.curToken, Value: "nil"},
+				Name:          ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: "nil"}),
 				IsKeywordRest: true,
 				IsNoKeywords:  true,
 			})
@@ -3796,7 +3802,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 				p.acceptOneOf(token.IDENT, token.CONST)
 			}
 			identifiers = append(identifiers, &ast.FunctionParameter{
-				Name:          &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
+				Name:          ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}),
 				IsKeywordRest: true,
 			})
 		}
@@ -3807,7 +3813,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 		p.accept(token.ASTERISK)
 		// Anonymous rest: bare * as first param
 		if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.PIPE, token.NEWLINE, token.SEMICOLON, token.EOF) {
-			identifiers = append(identifiers, &ast.FunctionParameter{IsSplat: true})
+			identifiers = append(identifiers, ast.Init(p.arena.NewFunctionParameter(), ast.FunctionParameter{IsSplat: true}))
 			return p.parseParametersTail(identifiers, hasDelimiters, endToken)
 		}
 		// Named rest: *x
@@ -3815,7 +3821,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 			p.acceptOneOf(token.IDENT, token.CONST)
 		}
 		identifiers = append(identifiers, &ast.FunctionParameter{
-			Name:    &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
+			Name:    ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}),
 			IsSplat: true,
 		})
 		return p.parseParametersTail(identifiers, hasDelimiters, endToken)
@@ -3831,7 +3837,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 		p.skipNewlines()
 		// Trailing comma: |a,| or (a,) -- MRI's ImplicitRestNode marker.
 		if hasDelimiters && p.peekTokenIs(endToken) {
-			identifiers = append(identifiers, &ast.FunctionParameter{IsImplicitRest: true})
+			identifiers = append(identifiers, ast.Init(p.arena.NewFunctionParameter(), ast.FunctionParameter{IsImplicitRest: true}))
 			p.accept(endToken)
 			return identifiers
 		}
@@ -3841,7 +3847,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 				p.versionError(ruby27, "argument forwarding (...)")
 			}
 			p.accept(token.RANGEEX)
-			identifiers = append(identifiers, &ast.FunctionParameter{IsForwarding: true})
+			identifiers = append(identifiers, ast.Init(p.arena.NewFunctionParameter(), ast.FunctionParameter{IsForwarding: true}))
 			if hasDelimiters {
 				p.accept(endToken)
 			}
@@ -3858,7 +3864,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 				}
 				p.accept(token.NIL)
 				identifiers = append(identifiers, &ast.FunctionParameter{
-					Name:          &ast.Identifier{Token: p.curToken, Value: "nil"},
+					Name:          ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: "nil"}),
 					IsKeywordRest: true,
 					IsNoKeywords:  true,
 				})
@@ -3867,7 +3873,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 					p.accept(token.IDENT)
 				}
 				identifiers = append(identifiers, &ast.FunctionParameter{
-					Name:          &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
+					Name:          ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}),
 					IsKeywordRest: true,
 				})
 			}
@@ -3882,7 +3888,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 		if p.peekTokenIs(token.ASTERISK) {
 			p.accept(token.ASTERISK)
 			if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.PIPE, token.NEWLINE, token.SEMICOLON, token.EOF) {
-				identifiers = append(identifiers, &ast.FunctionParameter{IsSplat: true})
+				identifiers = append(identifiers, ast.Init(p.arena.NewFunctionParameter(), ast.FunctionParameter{IsSplat: true}))
 				continue
 			}
 			// Named rest: *x
@@ -3890,7 +3896,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 				p.acceptOneOf(token.IDENT, token.CONST)
 			}
 			identifiers = append(identifiers, &ast.FunctionParameter{
-				Name:    &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal},
+				Name:    ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}),
 				IsSplat: true,
 			})
 			continue
@@ -3921,7 +3927,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 		if isKw {
 			pName = strings.TrimSuffix(pName, ":")
 		}
-		pIdent := &ast.FunctionParameter{Name: &ast.Identifier{Token: p.curToken, Value: pName}, IsKeyword: isKw}
+		pIdent := &ast.FunctionParameter{Name: ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: pName}), IsKeyword: isKw}
 		defPrecLoop := precAssignment
 		if endToken == token.PIPE {
 			defPrecLoop = precOr
@@ -3962,7 +3968,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 
 func (p *parser) parseBlockStatement(t ...token.Type) *ast.BlockStatement {
 	defer trace.TraceCtx(p.ctx)()
-	block := &ast.BlockStatement{Token: p.curToken}
+	block := ast.Init(p.arena.NewBlockStatement(), ast.BlockStatement{Token: p.curToken})
 
 	for p.peekToken.Type != token.END && !p.peekTokenOneOf(t...) {
 		if p.peekTokenIs(token.EOF) {
@@ -4013,7 +4019,7 @@ func (p *parser) parseBlockStatement(t ...token.Type) *ast.BlockStatement {
 
 func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	contextCallExpression := &ast.ContextCallExpression{Token: p.curToken, Context: context}
+	contextCallExpression := ast.Init(p.arena.NewContextCallExpression(), ast.ContextCallExpression{Token: p.curToken, Context: context})
 
 	p.nextToken()
 	for p.currentTokenIs(token.NEWLINE) {
@@ -4029,7 +4035,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 			p.accept(token.ASSIGN)
 			methodName = "[]="
 		}
-		contextCallExpression.Function = &ast.Identifier{Token: p.curToken, Value: methodName}
+		contextCallExpression.Function = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: methodName})
 		contextCallExpression.Arguments = args
 		if p.peekTokenIs(token.LPAREN) {
 			p.accept(token.LPAREN)
@@ -4045,7 +4051,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 
 	// .() call syntax (implicit .call)
 	if p.currentTokenIs(token.LPAREN) {
-		contextCallExpression.Function = &ast.Identifier{Token: p.curToken, Value: "call"}
+		contextCallExpression.Function = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: "call"})
 		p.nextToken()
 		contextCallExpression.Arguments = p.parseExpressionList(token.RPAREN)
 		return contextCallExpression
@@ -4056,7 +4062,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 		return nil
 	}
 
-	function := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	function := ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 	contextCallExpression.Function = function
 
 	if p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE, token.EOF, token.DOT, token.SCOPE, token.LONELY, token.END, token.HASHROCKET) {
@@ -4157,7 +4163,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 
 func (p *parser) parseContextCallExpression(context ast.Expression) ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	contextCallExpression := &ast.ContextCallExpression{Token: p.curToken, Context: context}
+	contextCallExpression := ast.Init(p.arena.NewContextCallExpression(), ast.ContextCallExpression{Token: p.curToken, Context: context})
 	if _, ok := context.(*ast.Self); ok && !p.currentTokenOneOf(token.DOT, token.SCOPE) {
 		p.expectError(token.DOT, token.SCOPE)
 		return nil
@@ -4256,7 +4262,7 @@ func (p *parser) parseCallArgument(function ast.Expression) ast.Expression {
 		return p.parseContextCallExpression(function)
 	}
 	ident := function.(*ast.Identifier)
-	exp := &ast.ContextCallExpression{Token: ident.Token, Function: ident}
+	exp := ast.Init(p.arena.NewContextCallExpression(), ast.ContextCallExpression{Token: ident.Token, Function: ident})
 	if p.currentTokenOneOf(token.LBRACE, token.DO) {
 		exp.Block = p.parseBlockExpr()
 		return exp
@@ -4317,7 +4323,7 @@ func (p *parser) parseStringConcat(left ast.Expression) ast.Expression {
 func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 
-	exp := &ast.ContextCallExpression{Token: p.curToken}
+	exp := ast.Init(p.arena.NewContextCallExpression(), ast.ContextCallExpression{Token: p.curToken})
 	exp.Block = p.parseBlockExpr()
 	switch fn := function.(type) {
 	case *ast.Identifier:
@@ -4334,7 +4340,7 @@ func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {
 		return fn
 	case *ast.Assignment:
 		if rhs, ok := fn.Right.(*ast.Identifier); ok {
-			call := &ast.ContextCallExpression{Token: rhs.Token, Function: rhs}
+			call := ast.Init(p.arena.NewContextCallExpression(), ast.ContextCallExpression{Token: rhs.Token, Function: rhs})
 			call.Block = exp.Block
 			fn.Right = call
 			return fn
@@ -4347,7 +4353,7 @@ func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {
 		if len(fn) > 0 {
 			last := fn[len(fn)-1]
 			if ident, ok := last.(*ast.Identifier); ok {
-				call := &ast.ContextCallExpression{Token: ident.Token, Function: ident}
+				call := ast.Init(p.arena.NewContextCallExpression(), ast.ContextCallExpression{Token: ident.Token, Function: ident})
 				call.Block = exp.Block
 				fn[len(fn)-1] = call
 				return fn
@@ -4374,7 +4380,7 @@ func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {
 		return fn
 	case *ast.SplatExpression:
 		if inner, ok := fn.Right.(*ast.Identifier); ok {
-			call := &ast.ContextCallExpression{Token: inner.Token, Function: inner}
+			call := ast.Init(p.arena.NewContextCallExpression(), ast.ContextCallExpression{Token: inner.Token, Function: inner})
 			call.Block = exp.Block
 			fn.Right = call
 			return fn
@@ -4394,7 +4400,7 @@ func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {
 
 func (p *parser) parseCallExpressionWithParens(function ast.Expression) ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
-	exp := &ast.ContextCallExpression{Token: p.curToken, ExplicitParens: true}
+	exp := ast.Init(p.arena.NewContextCallExpression(), ast.ContextCallExpression{Token: p.curToken, ExplicitParens: true})
 	switch fn := function.(type) {
 	case *ast.Identifier:
 		exp.Function = fn
@@ -4406,12 +4412,12 @@ func (p *parser) parseCallExpressionWithParens(function ast.Expression) ast.Expr
 			exp.Function = innerIdent
 		} else {
 			exp.Context = function
-			exp.Function = &ast.Identifier{Token: p.curToken, Value: "call"}
+			exp.Function = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: "call"})
 		}
 	default:
 		// Non-identifier callable: @ivar(args), method_returning_proc(args)
 		exp.Context = function
-		exp.Function = &ast.Identifier{Token: p.curToken, Value: "call"}
+		exp.Function = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: "call"})
 	}
 	p.nextToken()
 	exp.Arguments = p.parseExpressionList(token.RPAREN)
@@ -4468,7 +4474,7 @@ func (p *parser) parseCallArguments(end ...token.Type) []ast.Expression {
 }
 
 func (p *parser) parseImplicitHash(firstKey ast.Expression, end ...token.Type) ast.Expression {
-	hash := &ast.HashLiteral{Token: p.curToken, Implicit: true}
+	hash := ast.Init(p.arena.NewHashLiteral(), ast.HashLiteral{Token: p.curToken, Implicit: true})
 	p.accept(token.HASHROCKET)
 	p.nextToken()
 	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
@@ -4668,9 +4674,9 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 }
 
 func (p *parser) parseStringLabelHash(firstKey ast.Expression, end ...token.Type) ast.Expression {
-	hash := &ast.HashLiteral{Token: p.curToken, Implicit: true}
+	hash := ast.Init(p.arena.NewHashLiteral(), ast.HashLiteral{Token: p.curToken, Implicit: true})
 	p.acceptOneOf(token.COLON, token.SYMBEG)
-	key := &ast.SymbolLiteral{Token: p.curToken, Value: firstKey.(*ast.StringLiteral)}
+	key := ast.Init(p.arena.NewSymbolLiteral(), ast.SymbolLiteral{Token: p.curToken, Value: firstKey.(*ast.StringLiteral)})
 	if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.RBRACE, token.NEWLINE) {
 		hash.Map.Set(key, firstKey)
 	} else {
@@ -4728,12 +4734,12 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 			case *ast.SymbolLiteral:
 				elem = w
 			case *ast.StringContent:
-				elem = &ast.StringLiteral{Token: beg, Value: w.Value}
+				elem = ast.Init(p.arena.NewStringLiteral(), ast.StringLiteral{Token: beg, Value: w.Value})
 			default:
-				elem = &ast.StringLiteral{Token: beg, Parts: curWord}
+				elem = ast.Init(p.arena.NewStringLiteral(), ast.StringLiteral{Token: beg, Parts: curWord})
 			}
 		default:
-			elem = &ast.StringLiteral{Token: beg, Parts: curWord}
+			elem = ast.Init(p.arena.NewStringLiteral(), ast.StringLiteral{Token: beg, Parts: curWord})
 		}
 		// %I element with interpolation: the SymbolLiteral wrapping above
 		// only ran for single-content words. Multi-part word collected
@@ -4745,22 +4751,22 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 				// Strip the leading SymbolLiteral wrap (added per-content
 				// piece above) and use its inner value as the string content.
 				flat := make([]ast.Expression, 0, len(sl.Parts))
-				for _, p := range sl.Parts {
-					if sym, ok := p.(*ast.SymbolLiteral); ok {
+				for _, part := range sl.Parts {
+					if sym, ok := part.(*ast.SymbolLiteral); ok {
 						if scv, ok2 := sym.Value.(*ast.StringLiteral); ok2 {
-							flat = append(flat, &ast.StringContent{Token: sym.Token, Value: scv.Value})
+							flat = append(flat, ast.Init(p.arena.NewStringContent(), ast.StringContent{Token: sym.Token, Value: scv.Value}))
 						} else if id, ok2 := sym.Value.(*ast.Identifier); ok2 {
-							flat = append(flat, &ast.StringContent{Token: sym.Token, Value: id.Value})
+							flat = append(flat, ast.Init(p.arena.NewStringContent(), ast.StringContent{Token: sym.Token, Value: id.Value}))
 						} else {
-							flat = append(flat, p)
+							flat = append(flat, part)
 						}
 					} else {
-						flat = append(flat, p)
+						flat = append(flat, part)
 					}
 				}
 				elem = &ast.SymbolLiteral{
 					Token: beg,
-					Value: &ast.StringLiteral{Token: beg, Parts: flat},
+					Value: ast.Init(p.arena.NewStringLiteral(), ast.StringLiteral{Token: beg, Parts: flat}),
 				}
 			}
 		}
@@ -4787,9 +4793,9 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 					flushWord()
 				}
 				if isSymbol {
-					var symValue ast.Expression = &ast.StringLiteral{Token: beg, Value: w}
+					var symValue ast.Expression = ast.Init(p.arena.NewStringLiteral(), ast.StringLiteral{Token: beg, Value: w})
 					if isSimpleIdent(w) {
-						symValue = &ast.Identifier{Value: w}
+						symValue = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Value: w})
 					}
 					curWord = append(curWord, &ast.SymbolLiteral{
 						Token: pt.Token,
@@ -4799,7 +4805,7 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 					// Use StringContent (not StringLiteral) so when this
 					// word is wrapped in an outer StringLiteral with Parts
 					// the literal text emits inline, not as `#{"..."}`.
-					curWord = append(curWord, &ast.StringContent{Token: pt.Token, Value: w})
+					curWord = append(curWord, ast.Init(p.arena.NewStringContent(), ast.StringContent{Token: pt.Token, Value: w}))
 				}
 				if j == len(words)-1 && hasTrailingWS {
 					flushWord()
@@ -4921,13 +4927,13 @@ func isSpace(r rune) bool {
 // buildSymbolFromPercent produces a SymbolLiteral from a %s(...) percent literal.
 func (p *parser) buildSymbolFromPercent(beg token.Token, parts []ast.Expression) ast.Expression {
 	if len(parts) == 0 {
-		return &ast.SymbolLiteral{Token: beg, Value: &ast.StringLiteral{Value: ""}}
+		return &ast.SymbolLiteral{Token: beg, Value: ast.Init(p.arena.NewStringLiteral(), ast.StringLiteral{Value: ""})}
 	}
 	if len(parts) == 1 {
 		if sc, ok := parts[0].(*ast.StringContent); ok {
-			var symValue ast.Expression = &ast.StringLiteral{Token: beg, Value: sc.Value}
+			var symValue ast.Expression = ast.Init(p.arena.NewStringLiteral(), ast.StringLiteral{Token: beg, Value: sc.Value})
 			if isSimpleIdent(sc.Value) {
-				symValue = &ast.Identifier{Value: sc.Value}
+				symValue = ast.Init(p.arena.NewIdentifier(), ast.Identifier{Value: sc.Value})
 			}
 			return &ast.SymbolLiteral{
 				Token: beg,
