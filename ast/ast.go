@@ -1453,6 +1453,21 @@ func (ce *LoopExpression) String() string {
 	return out.String()
 }
 
+// ImplicitRest is a sentinel for the trailing comma on multi-assign LHS
+// (`a, b, = X`). MRI represents this as ImplicitRestNode in the parsetree;
+// we mark it in the ExpressionList tail so the printer keeps the trailing
+// comma on re-emit.
+type ImplicitRest struct {
+	Token token.Token
+}
+
+func (i *ImplicitRest) expressionNode()      {}
+func (i *ImplicitRest) literalNode()         {}
+func (i *ImplicitRest) Pos() int             { return i.Token.Pos }
+func (i *ImplicitRest) End() int             { return i.Token.Pos }
+func (i *ImplicitRest) TokenLiteral() string { return "" }
+func (i *ImplicitRest) String() string       { return "" }
+
 // ExpressionList represents a list of expressions within the AST divided by commas
 type ExpressionList []Expression
 
@@ -1485,11 +1500,16 @@ func (el ExpressionList) TokenLiteral() string {
 func (el ExpressionList) String() string {
 	var out bytes.Buffer
 	elements := []string{}
+	trailingRest := false
 	for _, e := range el {
+		if _, ok := e.(*ImplicitRest); ok {
+			trailingRest = true
+			continue
+		}
 		elements = append(elements, e.String())
 	}
 	out.WriteString(strings.Join(elements, ", "))
-	if len(el) == 1 {
+	if trailingRest || len(elements) == 1 {
 		out.WriteString(",")
 	}
 	return out.String()

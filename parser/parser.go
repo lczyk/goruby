@@ -990,8 +990,16 @@ func (p *parser) parseExpressions(left ast.Expression) ast.Expression {
 			p.nextToken()
 		}
 		// Trailing comma: after consume, curToken is past the comma.
-		if p.currentTokenOneOf(token.RPAREN, token.RBRACKET, token.RBRACE, token.ASSIGN) {
+		if p.currentTokenOneOf(token.RPAREN, token.RBRACKET, token.RBRACE) {
 			break
+		}
+		// Trailing comma followed by `=` is multi-assign with implicit-rest
+		// LHS (`a, b, = X`). Append the sentinel so the printer preserves
+		// the trailing comma, then hand off to parseAssignment.
+		if p.currentTokenIs(token.ASSIGN) {
+			elements = append(elements, &ast.ImplicitRest{Token: p.curToken})
+			lhs := ast.ExpressionList(elements)
+			return p.parseAssignment(lhs)
 		}
 		if next := p.parseExpression(precAssignment); next != nil {
 			elements = append(elements, next)
