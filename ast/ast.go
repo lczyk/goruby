@@ -918,6 +918,28 @@ func heredocStyle(tag string) string {
 	return "plain"
 }
 
+// heredocHasContentLine reports whether s contains any non-whitespace
+// line. Used to decide whether the squiggly-heredoc indent workaround
+// applies -- a purely whitespace body would parse to a different
+// unescaped content after MRI's strip pass.
+func heredocHasContentLine(s string) bool {
+	i := 0
+	for i < len(s) {
+		j := i
+		for j < len(s) && s[j] != '\n' {
+			j++
+		}
+		// Line is s[i:j]. Non-whitespace if any non-space char.
+		for k := i; k < j; k++ {
+			if s[k] != ' ' && s[k] != '\t' {
+				return true
+			}
+		}
+		i = j + 1
+	}
+	return false
+}
+
 // minLeadingWS returns the smallest count of leading space chars across
 // all non-empty lines of s. Returns 0 if s is empty or any non-empty line
 // has no leading space.
@@ -1040,6 +1062,19 @@ func (sl *StringLiteral) stringOnce() string {
 			target := bodyMin
 			if target < 1 {
 				target = 1
+			}
+			// Skip the indent workaround when the body has no non-whitespace
+			// content lines. minLeadingWS returns 0 in that case (no real
+			// lines), but adding " \n" would make MRI's squiggly strip
+			// nothing (all-whitespace lines are skipped) -- the body content
+			// would re-parse as " \n" rather than "\n", diverging from the
+			// source's parsetree.
+			if !heredocHasContentLine(bodyStr) {
+				out.WriteString(bodyStr)
+				out.WriteString(delim)
+				out.WriteByte('\n')
+				out.WriteByte(heredocBodyClose)
+				return out.String()
 			}
 			if target > bodyMin {
 				bodyStr = indentLines(bodyStr, strings.Repeat(" ", target-bodyMin))
