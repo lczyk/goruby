@@ -996,8 +996,11 @@ func lexFloatFraction(l *Lexer) StateFn {
 			return l.errorf("trailing '%c' in number", r)
 		}
 	}
-	// Optional rational/complex suffix (Ruby 2.1+).
+	// Optional rational/complex suffix (Ruby 2.1+). `ri` = rational+imaginary.
 	if (r == 'r' || r == 'i') && l.version.AtLeast(ruby21) {
+		if r == 'r' && l.peek() == 'i' {
+			l.next() // consume the trailing `i`
+		}
 		l.next()
 	}
 	l.backup()
@@ -1011,7 +1014,11 @@ func lexFloatExponent(l *Lexer) StateFn {
 		r = l.next()
 	}
 	// Optional rational/complex suffix after exponent (Ruby 2.1+).
+	// `ri` = rational+imaginary.
 	if (r == 'r' || r == 'i') && l.version.AtLeast(ruby21) {
+		if r == 'r' && l.peek() == 'i' {
+			l.next()
+		}
 		l.next()
 	}
 	l.backup()
