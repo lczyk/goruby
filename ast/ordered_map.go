@@ -15,13 +15,11 @@ func NewOrderedExprMap() *OrderedExprMap {
 	return &OrderedExprMap{}
 }
 
+// Set appends a new entry. The parser builds AST nodes fresh per pair, so
+// keys are never structurally re-set; the lookup-and-replace path the
+// previous implementation did was dead weight (O(n^2) over hash-literal size).
+// If a future caller genuinely needs dedup-by-pointer, do it at the call site.
 func (m *OrderedExprMap) Set(key, value Expression) {
-	for i := range m.entries {
-		if m.entries[i].Key == key {
-			m.entries[i].Value = value
-			return
-		}
-	}
 	m.entries = append(m.entries, keyValue{Key: key, Value: value})
 }
 
@@ -34,14 +32,13 @@ func (m *OrderedExprMap) Get(key Expression) (Expression, bool) {
 	return nil, false
 }
 
-// SetOmitted marks the entry with the given key as having been a hash value
-// omission (ruby 3.1+ {x:} syntax).
+// SetOmitted marks the most recently inserted entry as a hash value omission
+// (ruby 3.1+ {x:} syntax). All current parser callsites invoke this
+// immediately after Set on the same key, so the last entry is always the
+// right target.
 func (m *OrderedExprMap) SetOmitted(key Expression) {
-	for i := range m.entries {
-		if m.entries[i].Key == key {
-			m.entries[i].Omitted = true
-			return
-		}
+	if n := len(m.entries); n > 0 && m.entries[n-1].Key == key {
+		m.entries[n-1].Omitted = true
 	}
 }
 
