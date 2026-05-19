@@ -1054,7 +1054,7 @@ func (p *parser) parseExpressions(left ast.Expression) ast.Expression {
 		// LHS (`a, b, = X`). Append the sentinel so the printer preserves
 		// the trailing comma, then hand off to parseAssignment.
 		if p.currentTokenIs(token.ASSIGN) {
-			elements = append(elements, ast.Init(p.arena.NewImplicitRest(), ast.ImplicitRest{Token: p.curToken}))
+			elements = append(elements, ast.Init(p.arena.NewImplicitRest(), ast.ImplicitRest{PosOff: p.curToken.Pos}))
 			lhs := ast.ExpressionList(elements)
 			return p.parseAssignment(lhs)
 		}
@@ -1364,7 +1364,7 @@ func (p *parser) parseErrorSkip() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	p.expectError(token.IDENT) // generic expected error
 	_a := p.arena.NewNil()
-	_a.Token = p.curToken
+	_a.PosOff = p.curToken.Pos
 	return _a
 }
 
@@ -1478,7 +1478,7 @@ func (p *parser) parsePattern() ast.Expression {
 			// `in 0,` matches `[0, ...anything]` -- MRI tags this with
 			// ImplicitRestNode on the pattern. Preserve via the sentinel
 			// so the printer emits the trailing comma back.
-			elements = append(elements, ast.Init(p.arena.NewImplicitRest(), ast.ImplicitRest{Token: p.curToken}))
+			elements = append(elements, ast.Init(p.arena.NewImplicitRest(), ast.ImplicitRest{PosOff: p.curToken.Pos}))
 		}
 		// All-label-pair elements collapse to an implicit hash pattern: MRI
 		// parses `in a: 0, b: 1` as a hash pattern, not an array containing
@@ -1661,7 +1661,7 @@ func (p *parser) parsePatternArray() ast.Expression {
 			// Trailing comma marks an implicit-rest match in array patterns:
 			// `in [0,]` matches `[0, ...anything]`. MRI tags this with an
 			// ImplicitRestNode on the pattern -- preserve via the sentinel.
-			elements = append(elements, ast.Init(p.arena.NewImplicitRest(), ast.ImplicitRest{Token: p.curToken}))
+			elements = append(elements, ast.Init(p.arena.NewImplicitRest(), ast.ImplicitRest{PosOff: p.curToken.Pos}))
 			break
 		}
 		p.nextToken()
@@ -1908,7 +1908,7 @@ func (p *parser) parseCaseExpression() ast.Expression {
 func (p *parser) parseNilLiteral() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	_a := p.arena.NewNil()
-	_a.Token = p.curToken
+	_a.PosOff = p.curToken.Pos
 	return _a
 }
 
@@ -1978,7 +1978,7 @@ func (p *parser) parseScopedIdentifierExpression(outer ast.Expression) ast.Expre
 func (p *parser) parseSelf() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	self := p.arena.NewSelf()
-	self.Token = p.curToken
+	self.PosOff = p.curToken.Pos
 	if p.peekTokenOneOf(token.IF, token.UNLESS) {
 		return self
 	}
@@ -2106,28 +2106,28 @@ func (p *parser) parseRefine() ast.Expression {
 func (p *parser) parseKeyword__CALLEE__() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	_a := p.arena.NewKeyword__CALLEE__()
-	_a.Token = p.curToken
+	_a.PosOff = p.curToken.Pos
 	return _a
 }
 
 func (p *parser) parseKeyword__METHOD__() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	_a := p.arena.NewKeyword__METHOD__()
-	_a.Token = p.curToken
+	_a.PosOff = p.curToken.Pos
 	return _a
 }
 
 func (p *parser) parseKeyword__DIR__() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	_a := p.arena.NewKeyword__DIR__()
-	_a.Token = p.curToken
+	_a.PosOff = p.curToken.Pos
 	return _a
 }
 
 func (p *parser) parseEncodingKeyword() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	_a := p.arena.NewKeyword__ENCODING__()
-	_a.Token = p.curToken
+	_a.PosOff = p.curToken.Pos
 	return _a
 }
 
@@ -2346,7 +2346,7 @@ func (p *parser) parseRangeOrForwarding() ast.Expression {
 			p.versionError(ruby27, "argument forwarding (...)")
 		}
 		_a := p.arena.NewArgumentForwarding()
-		_a.Token = tok
+		_a.PosOff = tok.Pos
 		return _a
 	}
 	p.nextToken()
@@ -2843,7 +2843,7 @@ func (p *parser) parseArrayLiteral() ast.Expression {
 func (p *parser) parseBoolean() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	_a := p.arena.NewBoolean()
-	_a.Token = p.curToken
+	_a.PosOff = p.curToken.Pos
 	_a.Value = p.currentTokenIs(token.TRUE)
 	return _a
 }

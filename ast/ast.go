@@ -547,23 +547,24 @@ func (m *MultiAssignment) expressionNode() {}
 // TokenLiteral returns the literal of the first variable token
 func (m *MultiAssignment) TokenLiteral() string { return m.Variables[0].Token.Literal }
 
-// Self represents self in the current context in the program
+// Self represents self in the current context in the program.
+// Pointer-free (just a Pos) so arena chunks of Self are noscan-eligible.
 type Self struct {
-	Token token.Token // the token.SELF token
+	PosOff int
 }
 
-func (s *Self) String() string  { return s.Token.Literal }
+func (s *Self) String() string  { return "self" }
 func (s *Self) expressionNode() {}
 func (s *Self) literalNode()    {}
 
 // Pos returns the position of first character belonging to the node
-func (s *Self) Pos() int { return s.Token.Pos }
+func (s *Self) Pos() int { return s.PosOff }
 
 // End returns the position of first character immediately after the node
-func (s *Self) End() int { return s.Token.Pos + 4 }
+func (s *Self) End() int { return s.PosOff + 4 }
 
 // TokenLiteral returns the literal of the token.SELF token
-func (s *Self) TokenLiteral() string { return s.Token.Literal }
+func (s *Self) TokenLiteral() string { return "self" }
 
 // YieldExpression represents self in the current context in the program
 type YieldExpression struct {
@@ -687,53 +688,57 @@ func (f *Keyword__FILE__) End() int { return f.Token.Pos + 8 }
 // TokenLiteral returns the literal of the token.FILE__ token
 func (f *Keyword__FILE__) TokenLiteral() string { return f.Token.Literal }
 
-// Keyword__DIR__ represents __dir__ in the AST
+// Keyword__DIR__ represents __dir__ in the AST.
+// Pointer-free so arena chunks are noscan-eligible.
 type Keyword__DIR__ struct {
-	Token token.Token // the KEYWORD__DIR__ token
+	PosOff int
 }
 
-func (d *Keyword__DIR__) String() string       { return d.Token.Literal }
+func (d *Keyword__DIR__) String() string       { return "__dir__" }
 func (d *Keyword__DIR__) expressionNode()      {}
 func (d *Keyword__DIR__) literalNode()         {}
-func (d *Keyword__DIR__) Pos() int             { return d.Token.Pos }
-func (d *Keyword__DIR__) End() int             { return d.Token.Pos + 6 }
-func (d *Keyword__DIR__) TokenLiteral() string { return d.Token.Literal }
+func (d *Keyword__DIR__) Pos() int             { return d.PosOff }
+func (d *Keyword__DIR__) End() int             { return d.PosOff + 7 }
+func (d *Keyword__DIR__) TokenLiteral() string { return "__dir__" }
 
-// Keyword__CALLEE__ represents __callee__ in the AST
+// Keyword__CALLEE__ represents __callee__ in the AST.
+// Pointer-free so arena chunks are noscan-eligible.
 type Keyword__CALLEE__ struct {
-	Token token.Token
+	PosOff int
 }
 
-func (c *Keyword__CALLEE__) String() string       { return c.Token.Literal }
+func (c *Keyword__CALLEE__) String() string       { return "__callee__" }
 func (c *Keyword__CALLEE__) expressionNode()      {}
 func (c *Keyword__CALLEE__) literalNode()         {}
-func (c *Keyword__CALLEE__) Pos() int             { return c.Token.Pos }
-func (c *Keyword__CALLEE__) End() int             { return c.Token.Pos + 10 }
-func (c *Keyword__CALLEE__) TokenLiteral() string { return c.Token.Literal }
+func (c *Keyword__CALLEE__) Pos() int             { return c.PosOff }
+func (c *Keyword__CALLEE__) End() int             { return c.PosOff + 10 }
+func (c *Keyword__CALLEE__) TokenLiteral() string { return "__callee__" }
 
-// Keyword__METHOD__ represents __method__ in the AST
+// Keyword__METHOD__ represents __method__ in the AST.
+// Pointer-free so arena chunks are noscan-eligible.
 type Keyword__METHOD__ struct {
-	Token token.Token
+	PosOff int
 }
 
-func (m *Keyword__METHOD__) String() string       { return m.Token.Literal }
+func (m *Keyword__METHOD__) String() string       { return "__method__" }
 func (m *Keyword__METHOD__) expressionNode()      {}
 func (m *Keyword__METHOD__) literalNode()         {}
-func (m *Keyword__METHOD__) Pos() int             { return m.Token.Pos }
-func (m *Keyword__METHOD__) End() int             { return m.Token.Pos + 10 }
-func (m *Keyword__METHOD__) TokenLiteral() string { return m.Token.Literal }
+func (m *Keyword__METHOD__) Pos() int             { return m.PosOff }
+func (m *Keyword__METHOD__) End() int             { return m.PosOff + 10 }
+func (m *Keyword__METHOD__) TokenLiteral() string { return "__method__" }
 
-// Keyword__ENCODING__ represents __ENCODING__ in the AST
+// Keyword__ENCODING__ represents __ENCODING__ in the AST.
+// Pointer-free so arena chunks are noscan-eligible.
 type Keyword__ENCODING__ struct {
-	Token token.Token
+	PosOff int
 }
 
-func (e *Keyword__ENCODING__) String() string       { return e.Token.Literal }
+func (e *Keyword__ENCODING__) String() string       { return "__ENCODING__" }
 func (e *Keyword__ENCODING__) expressionNode()      {}
 func (e *Keyword__ENCODING__) literalNode()         {}
-func (e *Keyword__ENCODING__) Pos() int             { return e.Token.Pos }
-func (e *Keyword__ENCODING__) End() int             { return e.Token.Pos + 12 }
-func (e *Keyword__ENCODING__) TokenLiteral() string { return e.Token.Literal }
+func (e *Keyword__ENCODING__) Pos() int             { return e.PosOff }
+func (e *Keyword__ENCODING__) End() int             { return e.PosOff + 12 }
+func (e *Keyword__ENCODING__) TokenLiteral() string { return "__ENCODING__" }
 
 // UsingExpression represents a `using Module` statement
 type UsingExpression struct {
@@ -898,42 +903,59 @@ func (fl *FloatLiteral) End() int { return fl.Token.Pos + len(fl.Token.Literal) 
 func (fl *FloatLiteral) TokenLiteral() string { return fl.Token.Literal }
 func (fl *FloatLiteral) String() string       { return fl.Token.Literal }
 
-// Nil represents the 'nil' keyword
+// Nil represents the 'nil' keyword.
+// Pointer-free (just a Pos) so arena chunks of Nil are noscan-eligible.
 type Nil struct {
-	Token token.Token
+	PosOff int
 }
 
 func (n *Nil) expressionNode() {}
 func (n *Nil) literalNode()    {}
 
 // Pos returns the position of first character belonging to the node
-func (n *Nil) Pos() int { return n.Token.Pos }
+func (n *Nil) Pos() int { return n.PosOff }
 
 // End returns the position of first character immediately after the node
-func (n *Nil) End() int { return n.Token.Pos + 3 }
+func (n *Nil) End() int { return n.PosOff + 3 }
 
 // TokenLiteral returns the literal from the token token.NIL
-func (n *Nil) TokenLiteral() string { return n.Token.Literal }
+func (n *Nil) TokenLiteral() string { return "nil" }
 func (n *Nil) String() string       { return "nil" }
 
-// Boolean represents a boolean in the AST
+// Boolean represents a boolean in the AST.
+// Pointer-free (Pos + bool) so arena chunks of Boolean are noscan-eligible.
 type Boolean struct {
-	Token token.Token
-	Value bool
+	PosOff int
+	Value  bool
 }
 
 func (b *Boolean) expressionNode() {}
 func (b *Boolean) literalNode()    {}
 
 // Pos returns the position of first character belonging to the node
-func (b *Boolean) Pos() int { return b.Token.Pos }
+func (b *Boolean) Pos() int { return b.PosOff }
 
 // End returns the position of first character immediately after the node
-func (b *Boolean) End() int { return b.Token.Pos + len(fmt.Sprintf("%t", b.Value)) }
+func (b *Boolean) End() int {
+	if b.Value {
+		return b.PosOff + 4 // "true"
+	}
+	return b.PosOff + 5 // "false"
+}
 
-// TokenLiteral returns the literal from the token token.BOOLEAN
-func (b *Boolean) TokenLiteral() string { return b.Token.Literal }
-func (b *Boolean) String() string       { return fmt.Sprintf("%t", b.Value) }
+// TokenLiteral returns the literal "true" or "false" depending on Value.
+func (b *Boolean) TokenLiteral() string {
+	if b.Value {
+		return "true"
+	}
+	return "false"
+}
+func (b *Boolean) String() string {
+	if b.Value {
+		return "true"
+	}
+	return "false"
+}
 
 // StringLiteral represents a string in the AST. For non-interpolated strings,
 // Value holds the content and Parts is nil. For interpolated strings, Parts
@@ -1606,15 +1628,15 @@ func (ce *LoopExpression) String() string {
 // ImplicitRest is a sentinel for the trailing comma on multi-assign LHS
 // (`a, b, = X`). MRI represents this as ImplicitRestNode in the parsetree;
 // we mark it in the ExpressionList tail so the printer keeps the trailing
-// comma on re-emit.
+// comma on re-emit. Pointer-free so arena chunks are noscan-eligible.
 type ImplicitRest struct {
-	Token token.Token
+	PosOff int
 }
 
 func (i *ImplicitRest) expressionNode()      {}
 func (i *ImplicitRest) literalNode()         {}
-func (i *ImplicitRest) Pos() int             { return i.Token.Pos }
-func (i *ImplicitRest) End() int             { return i.Token.Pos }
+func (i *ImplicitRest) Pos() int             { return i.PosOff }
+func (i *ImplicitRest) End() int             { return i.PosOff }
 func (i *ImplicitRest) TokenLiteral() string { return "" }
 func (i *ImplicitRest) String() string       { return "" }
 
@@ -2521,13 +2543,13 @@ func (s *SplatExpression) TokenLiteral() string { return s.Token.Literal }
 
 // ArgumentForwarding represents `...` in a call argument context: foo(...)
 type ArgumentForwarding struct {
-	Token token.Token // the ... token
+	PosOff int // pos of the '...' token; pointer-free so arena chunks are noscan-eligible
 }
 
 func (af *ArgumentForwarding) expressionNode()      {}
-func (af *ArgumentForwarding) Pos() int             { return af.Token.Pos }
-func (af *ArgumentForwarding) End() int             { return af.Token.Pos + 3 }
-func (af *ArgumentForwarding) TokenLiteral() string { return af.Token.Literal }
+func (af *ArgumentForwarding) Pos() int             { return af.PosOff }
+func (af *ArgumentForwarding) End() int             { return af.PosOff + 3 }
+func (af *ArgumentForwarding) TokenLiteral() string { return "..." }
 func (af *ArgumentForwarding) String() string       { return "..." }
 
 // A CaseExpression represents a case/when or case/in expression

@@ -383,28 +383,19 @@ func LookupIdent(ident string) Type {
 // and the narrower field lets Token pack to 32B instead of 40B.
 type Type int32
 
-// NewToken returns a new Token associated with the given Type typ, the
-// Literal literal and the Position pos. The End field is filled from
-// pos + len(literal) so callers gain a complete source span without
-// having to thread the end offset through every emit site.
+// NewToken returns a new Token associated with the given Type typ, the Literal
+// literal and the Position pos
 func NewToken(typ Type, literal string, pos int) Token {
-	return Token{Type: typ, Literal: literal, Pos: pos, End: int32(len(literal))}
+	return Token{Type: typ, Literal: literal, Pos: pos}
 }
 
 // A Token represents a known token with its literal representation.
 // Field order is tuned for compact layout: the 16B string header sits first
-// (8B align), then 8B Pos, 4B End, 4B Type, and four trailing bools fit
-// in the final 4B. Total: 36B -> 40B padded.
-//
-// The End field stores the token's source length (so the exclusive end
-// offset is Pos + int(End)). It is redundant with len(Literal) for the
-// moment, but is exposed so consumers can migrate off Literal without
-// re-deriving the span. Once readers are off Literal, Literal will be
-// removed and Token will pack into 24B.
+// (8B align), then the 8B Pos, then int32 Type and four trailing bools pack
+// into the final 8B without padding. Total: 32B.
 type Token struct {
 	Literal         string
 	Pos             int
-	End             int32
 	Type            Type
 	HadWhitespace   bool // true if whitespace was skipped before this token
 	SingleQuoted    bool // true for STRING tokens emitted from a single-quoted source literal
@@ -412,27 +403,10 @@ type Token struct {
 	HeredocStripped bool // true on STRING_BEG for `<<~` heredocs whose source had a positive common indent
 }
 
-// EndPos returns the exclusive end byte offset of the token in source.
-func (tok Token) EndPos() int { return tok.Pos + int(tok.End) }
-
-// LitOf returns the token's source text given the original lexer input.
-// Returns "" for synthetic / position-less tokens (Pos < 0 or zero-length).
-// Mirrors tok.Literal today, but is the migration target so Literal can
-// eventually be removed without re-threading source through every reader.
-func (tok Token) LitOf(source string) string {
-	if tok.End == 0 {
-		return ""
-	}
-	end := tok.Pos + int(tok.End)
-	if tok.Pos < 0 || end > len(source) {
-		return ""
-	}
-	return source[tok.Pos:end]
-}
-
 // Literal returns the compile-time-constant literal text for fixed-literal
 // types (keywords, operators, punctuation). Returns "" for variable-content
-// types (IDENT, INT, STRING, ...) -- callers must use LitOf(source) instead.
+// types (IDENT, INT, STRING, ...) -- callers without source access can use
+// this for the fixed subset; variable types need source-resolution.
 func (t Type) Literal() string {
 	if 0 <= t && t < Type(len(typeFixedLits)) {
 		return typeFixedLits[t]

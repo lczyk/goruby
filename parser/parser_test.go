@@ -4660,8 +4660,8 @@ func TestEncodingKeyword(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected *ast.Keyword__ENCODING__, got %T", stmt.Expression)
 	}
-	if enc.Token.Literal != "__ENCODING__" {
-		t.Errorf("expected Token.Literal '__ENCODING__', got %q", enc.Token.Literal)
+	if enc.TokenLiteral() != "__ENCODING__" {
+		t.Errorf("expected TokenLiteral '__ENCODING__', got %q", enc.TokenLiteral())
 	}
 }
 
