@@ -740,6 +740,30 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 		if p.suppressKwAndOr && p.peekTokenOneOf(token.KW_AND, token.KW_OR) {
 			return leftExp
 		}
+		// `ident ::Foo` (with leading space on `::`) is a paren-less call
+		// where `::Foo` starts a top-level scoped-constant arg, not
+		// `ident::Foo` (scope inside ident). Only applies when ident is
+		// lowercase (constants can legitimately scope: `Foo::Bar`).
+		if p.peekTokenIs(token.SCOPE) && p.peekToken.HadWhitespace {
+			if id, ok := leftExp.(*ast.Identifier); ok && !id.IsConstant() {
+				call := &ast.ContextCallExpression{Token: id.Token, Function: id}
+				p.nextToken() // advance to ::
+				prevAO := p.suppressKwAndOr
+				prevSDB := p.suppressDoBlock
+				p.suppressKwAndOr = true
+				p.suppressDoBlock = true
+				call.Arguments = p.parseCallArguments(
+					token.SEMICOLON, token.NEWLINE, token.LBRACE, token.DO,
+				)
+				p.suppressKwAndOr = prevAO
+				p.suppressDoBlock = prevSDB
+				if p.currentTokenOneOf(token.LBRACE, token.DO) {
+					call.Block = p.parseBlockExpr()
+				}
+				leftExp = call
+				continue
+			}
+		}
 		// `ident [array]` (with leading space on `[`) is a command call with
 		// an array literal as its first arg, not an index expression.
 		if p.peekTokenIs(token.LBRACKET) && p.peekToken.HadWhitespace {
@@ -3838,12 +3862,17 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 	// inner paren-less calls inside its arg list. Suppress `do`-block on
 	// nested calls so the outer parseBlockExpr below captures the block.
 	// `{...}` still binds tight (high precedence) and stays with the inner.
+	// `and`/`or` are below paren-less call args -- `foo.m x and y` is
+	// `foo.m(x) and y`, not `foo.m(x and y)`. Suppress them too.
 	prevSDB := p.suppressDoBlock
+	prevAO := p.suppressKwAndOr
 	p.suppressDoBlock = true
+	p.suppressKwAndOr = true
 	contextCallExpression.Arguments = p.parseCallArguments(
 		blockStops...,
 	)
 	p.suppressDoBlock = prevSDB
+	p.suppressKwAndOr = prevAO
 	if p.currentTokenOneOf(blockStops...) {
 		contextCallExpression.Block = p.parseBlockExpr()
 	}
