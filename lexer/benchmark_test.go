@@ -299,3 +299,124 @@ func BenchmarkLexComment(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkLexIntegerLiterals(b *testing.B) {
+	// Decimal, hex, octal, binary -- exercises lexDigit + base-specific paths.
+	const src = "0 1 42 1_000_000 0xDEADBEEF 0xff_ff 0o777 0b1010_1010 0755 99999999999"
+	b.ReportAllocs()
+	b.SetBytes(int64(len(src)))
+	for i := 0; i < b.N; i++ {
+		l := New(src)
+		for l.HasNext() {
+			tok := l.NextToken()
+			if tok.Type == token.EOF {
+				break
+			}
+		}
+	}
+}
+
+func BenchmarkLexSymbols(b *testing.B) {
+	// Bare symbols -- exercises symbol prefix path off `:`.
+	const src = ":foo :bar :baz :qux :quux :alpha :beta :gamma :delta :epsilon " +
+		":one :two :three :four :five :six :seven :eight :nine :ten"
+	b.ReportAllocs()
+	b.SetBytes(int64(len(src)))
+	for i := 0; i < b.N; i++ {
+		l := New(src)
+		for l.HasNext() {
+			tok := l.NextToken()
+			if tok.Type == token.EOF {
+				break
+			}
+		}
+	}
+}
+
+func BenchmarkLexGlobalsAndIvars(b *testing.B) {
+	// Globals, instance vars, class vars -- exercises lexGlobal + ivar/cvar paths.
+	const src = "$x $stdout $! $0 @x @y @name @value @@count @@total @@instances " +
+		"$LOAD_PATH @config @@registry $stderr @@all"
+	b.ReportAllocs()
+	b.SetBytes(int64(len(src)))
+	for i := 0; i < b.N; i++ {
+		l := New(src)
+		for l.HasNext() {
+			tok := l.NextToken()
+			if tok.Type == token.EOF {
+				break
+			}
+		}
+	}
+}
+
+func BenchmarkLexDoubleQuotedPlain(b *testing.B) {
+	// Plain dquote string without interpolation -- exercises the fast path
+	// through lexStringContent that bails on `"` w/out hitting #{ or escapes.
+	const src = `"hello world this is a plain double-quoted string with no interpolation"`
+	b.ReportAllocs()
+	b.SetBytes(int64(len(src)))
+	for i := 0; i < b.N; i++ {
+		l := New(src)
+		for l.HasNext() {
+			tok := l.NextToken()
+			if tok.Type == token.EOF {
+				break
+			}
+		}
+	}
+}
+
+func BenchmarkLexOperators(b *testing.B) {
+	// Dense operator soup -- exercises punctuation dispatch in startLexer.
+	const src = "a + b - c * d / e % f ** g == h != i < j > k <= l >= m <=> n " +
+		"&& o || p & q | r ^ s << t >> u .. v ... w =~ x ?: y"
+	b.ReportAllocs()
+	b.SetBytes(int64(len(src)))
+	for i := 0; i < b.N; i++ {
+		l := New(src)
+		for l.HasNext() {
+			tok := l.NextToken()
+			if tok.Type == token.EOF {
+				break
+			}
+		}
+	}
+}
+
+func BenchmarkLexCharLiteral(b *testing.B) {
+	// Character literals -- exercises lexCharacterLiteral path.
+	const src = "?a ?z ?A ?Z ?0 ?9 ?\\n ?\\t ?\\\\ ?\\x41 ?\\u{3042}"
+	b.ReportAllocs()
+	b.SetBytes(int64(len(src)))
+	for i := 0; i < b.N; i++ {
+		l := New(src)
+		for l.HasNext() {
+			tok := l.NextToken()
+			if tok.Type == token.EOF {
+				break
+			}
+		}
+	}
+}
+
+func BenchmarkLexHeredocNonInterp(b *testing.B) {
+	// Single-quoted heredoc -- exercises non-interpolating body path, distinct
+	// from BenchmarkLexHeredocBody which goes through the interp/escape branch.
+	const src = "<<'EOS'\n" +
+		"hello world\n" +
+		"no interpolation #{ignored} here\n" +
+		"and no escapes \\u{41} either\n" +
+		"EOS\n"
+	b.ReportAllocs()
+	b.SetBytes(int64(len(src)))
+	for i := 0; i < b.N; i++ {
+		l := New(src)
+		for l.HasNext() {
+			tok := l.NextToken()
+			if tok.Type == token.EOF {
+				break
+			}
+		}
+	}
+}
