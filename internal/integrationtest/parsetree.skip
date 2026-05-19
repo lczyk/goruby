@@ -18,70 +18,34 @@
 # loudly on any entry where the test now passes).
 
 src2-rejected 1.9 internal/integrationtest/testdata/gems/kaiser-ruby/lib/kaiser_ruby/cli.rb: goruby String() output rejected by MRI
-src2-rejected 1.9 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
 src2-rejected 2.0 internal/integrationtest/testdata/gems/kaiser-ruby/lib/kaiser_ruby/cli.rb: goruby String() output rejected by MRI
-src2-rejected 2.0 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
 src2-rejected 2.1 internal/integrationtest/testdata/gems/kaiser-ruby/lib/kaiser_ruby/cli.rb: goruby String() output rejected by MRI
-src2-rejected 2.1 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
 src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_ast.rb: goruby String() output rejected by MRI
-src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_bignum.rb: goruby String() output rejected by MRI
-src2-rejected 2.3 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_ast.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_bignum.rb: goruby String() output rejected by MRI
-src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_regexp.rb: goruby String() output rejected by MRI
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/test_settracefunc.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/test_ast.rb: goruby String() output rejected by MRI
-src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/test_bignum.rb: goruby String() output rejected by MRI
-src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/test_regexp.rb: goruby String() output rejected by MRI
 src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/test_settracefunc.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_ast.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_bignum.rb: goruby String() output rejected by MRI
-src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_regexp.rb: goruby String() output rejected by MRI
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/test_settracefunc.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_ast.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_bignum.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
-src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_hash.rb: goruby String() output rejected by MRI
 src2-rejected 3.0 internal/integrationtest/testdata/mri-tests/test_settracefunc.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_ast.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_bignum.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
-src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_hash.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_pattern_matching.rb: goruby String() output rejected by MRI
 src2-rejected 3.1 internal/integrationtest/testdata/mri-tests/test_settracefunc.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_ast.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_bignum.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
-src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_hash.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_pattern_matching.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_settracefunc.rb: goruby String() output rejected by MRI
 src2-rejected 3.2 internal/integrationtest/testdata/mri-tests/test_syntax.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_ast.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_bignum.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_call.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_defined.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_hash.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_keyword.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_module.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_pattern_matching.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_settracefunc.rb: goruby String() output rejected by MRI
-src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_string.rb: goruby String() output rejected by MRI
 src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_syntax.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_ast.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_bignum.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_call.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_defined.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_flip.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_hash.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_keyword.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_module.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_pattern_matching.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_settracefunc.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_string.rb: goruby String() output rejected by MRI
 src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_syntax.rb: goruby String() output rejected by MRI
 tree-mismatch 2.6 internal/integrationtest/testdata/mri-tests/test_time_tz.rb: tree diff vs MRI parsetree
 tree-mismatch 2.7 internal/integrationtest/testdata/mri-tests/test_time_tz.rb: tree diff vs MRI parsetree
@@ -116,8 +80,6 @@ src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/enc/test_euc_jp.rb
 src2-rejected 2.6 internal/integrationtest/testdata/mri-tests/enc/test_shift_jis.rb: MRI rejects encoding magic comment in older versions
 src2-rejected 2.7 internal/integrationtest/testdata/mri-tests/enc/test_shift_jis.rb: MRI rejects encoding magic comment in older versions
 src2-rejected 2.5 internal/integrationtest/testdata/mri-tests/enc/test_shift_jis.rb: MRI rejects encoding magic comment in older versions
-src2-rejected 3.4 internal/integrationtest/testdata/mri-tests/test_stringchar.rb: goruby String() output rejected by MRI
-src2-rejected 4.0 internal/integrationtest/testdata/mri-tests/test_stringchar.rb: goruby String() output rejected by MRI
 
 # === auto-added after parser/printer fix run ===
 src2-rejected 1.9 internal/integrationtest/testdata/gems/ropy/ruby/ropy.rb: goruby String() output rejected by MRI
