@@ -106,7 +106,7 @@ func New(input string, opts ...Option) *Lexer {
 	l := &Lexer{
 		input:  input,
 		state:  startLexer,
-		tokens: make(chan token.Token, 16),
+		tokens: make([]token.Token, 0, 16),
 	}
 	for _, o := range opts {
 		o(l)
@@ -185,7 +185,8 @@ type Lexer struct {
 	pos                int              // current position in the input.
 	start              int              // start position of this item.
 	width              int              // width of last rune read from input.
-	tokens             chan token.Token // channel of scanned tokens.
+	tokens             []token.Token // queue of scanned tokens, drained by NextToken.
+	tokenHead          int           // index of next unread token in tokens.
 	lastToken          token.Token      // lastToken stores the last token emitted by the lexer
 	hadWhitespace      bool             // true if whitespace was skipped before current token
 	ternaryDepth       int              // pending ternary ? without matching :
@@ -214,32 +215,28 @@ type Lexer struct {
 // to call without checking HasNext first -- it will keep returning EOF.
 func (l *Lexer) NextToken() token.Token {
 	for {
-		select {
-		case item, ok := <-l.tokens:
-			if ok {
-				return item
+		if l.tokenHead < len(l.tokens) {
+			tok := l.tokens[l.tokenHead]
+			l.tokenHead++
+			// Drained -- reset both indices so the backing array gets reused
+			// instead of growing unboundedly across long inputs.
+			if l.tokenHead == len(l.tokens) {
+				l.tokens = l.tokens[:0]
+				l.tokenHead = 0
 			}
-			return token.NewToken(token.EOF, "", l.pos)
-		default:
-			if l.state == nil {
-				return token.NewToken(token.EOF, "", l.pos)
-			}
-			l.state = l.state(l)
-			// When the state chain ends, close the channel only once buffered
-			// tokens have been drained by the caller. This avoids trapping
-			// tokens (e.g. ILLEGAL) that were emitted before errorf set state
-			// to nil within a single NextToken call.
-			if l.state == nil && len(l.tokens) == 0 {
-				close(l.tokens)
-			}
+			return tok
 		}
+		if l.state == nil {
+			return token.NewToken(token.EOF, "", l.pos)
+		}
+		l.state = l.state(l)
 	}
 }
 
 // HasNext returns true if there are tokens left (including buffered tokens
 // emitted before the state machine stopped), false if the input is exhausted.
 func (l *Lexer) HasNext() bool {
-	return l.state != nil || len(l.tokens) > 0
+	return l.state != nil || l.tokenHead < len(l.tokens)
 }
 
 // emit passes a token back to the client.
@@ -252,7 +249,7 @@ func (l *Lexer) emit(t token.Type) {
 	}
 	l.tokenHadWhitespace = false
 	l.lastToken = tok
-	l.tokens <- tok
+	l.tokens = append(l.tokens, tok)
 	l.start = l.pos
 }
 
@@ -267,7 +264,7 @@ func (l *Lexer) emitLiteral(t token.Type, literal string) {
 	}
 	l.tokenHadWhitespace = false
 	l.lastToken = tok
-	l.tokens <- tok
+	l.tokens = append(l.tokens, tok)
 	l.start = l.pos
 }
 
@@ -279,7 +276,7 @@ func (l *Lexer) emitLiteralSQ(t token.Type, literal string) {
 	tok.SingleQuoted = true
 	l.tokenHadWhitespace = false
 	l.lastToken = tok
-	l.tokens <- tok
+	l.tokens = append(l.tokens, tok)
 	l.start = l.pos
 }
 
@@ -429,7 +426,7 @@ func (l *Lexer) peekSecond() rune {
 // error returns an error token and terminates the scan by passing
 // back a nil pointer that will be the next state, terminating l.run.
 func (l *Lexer) errorf(format string, args ...interface{}) StateFn {
-	l.tokens <- token.NewToken(token.ILLEGAL, fmt.Sprintf(format, args...), l.start)
+	l.tokens = append(l.tokens, token.NewToken(token.ILLEGAL, fmt.Sprintf(format, args...), l.start))
 	return nil
 }
 
@@ -1185,7 +1182,7 @@ func lexSingleQuoteString(l *Lexer) StateFn {
 	tok.SingleQuoted = true
 	l.tokenHadWhitespace = false
 	l.lastToken = tok
-	l.tokens <- tok
+	l.tokens = append(l.tokens, tok)
 	l.start = l.pos
 	l.next()
 	l.ignore()
@@ -1292,7 +1289,7 @@ func lexCharacterLiteral(l *Lexer) StateFn {
 	tok.IsCharLit = true
 	l.tokenHadWhitespace = false
 	l.lastToken = tok
-	l.tokens <- tok
+	l.tokens = append(l.tokens, tok)
 	l.start = l.pos
 	return startLexer
 }
@@ -1551,7 +1548,7 @@ func lexPercentLiteralBodySQ(l *Lexer, opener, closer rune, paired bool, tok tok
 					sq.SingleQuoted = true
 					l.tokenHadWhitespace = false
 					l.lastToken = sq
-					l.tokens <- sq
+					l.tokens = append(l.tokens, sq)
 					l.start = l.pos
 					l.next()
 					l.ignore()
@@ -1567,7 +1564,7 @@ func lexPercentLiteralBodySQ(l *Lexer, opener, closer rune, paired bool, tok tok
 				sq.SingleQuoted = true
 				l.tokenHadWhitespace = false
 				l.lastToken = sq
-				l.tokens <- sq
+				l.tokens = append(l.tokens, sq)
 				l.start = l.pos
 				l.next()
 				l.ignore()
@@ -2458,7 +2455,7 @@ func lexRegexContent(l *Lexer) StateFn {
 			}
 			tok := token.NewToken(token.REGEX_END, opts, l.start)
 			l.lastToken = tok
-			l.tokens <- tok
+			l.tokens = append(l.tokens, tok)
 			l.start = l.pos
 			return checkInterpStack
 		case '#':
