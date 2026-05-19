@@ -638,7 +638,12 @@ func startLexer(l *Lexer) StateFn {
 			l.emit(token.LOGICALAND)
 			return startLexer
 		}
-		if l.peek() == '.' && l.version.AtLeast(ruby23) {
+		if l.peek() == '.' {
+			if !l.version.AtLeast(ruby23) {
+				// Lonely operator `&.` arrived in 2.3; older MRI rejects.
+				l.next()
+				return l.errorf("safe-navigation operator `&.` requires Ruby 2.3+")
+			}
 			l.next()
 			l.emit(token.LONELY)
 			return startLexer

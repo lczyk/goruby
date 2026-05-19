@@ -1604,9 +1604,10 @@ func TestVersionGating(t *testing.T) {
 		l := New("x&.foo", WithVersion(token.MustParseVersion("2.0")))
 		l.NextToken() // IDENT "x"
 		tok := l.NextToken()
-		// Should be AND, not LONELY.
-		if tok.Type != token.AND {
-			t.Errorf("expected AND for &. on Ruby 2.0, got %s %q", tok.Type, tok.Literal)
+		// Should be ILLEGAL -- `&.` is a single operator added in 2.3, not
+		// a binary `&` followed by `.` (which MRI's parser would reject too).
+		if tok.Type != token.ILLEGAL {
+			t.Errorf("expected ILLEGAL for &. on Ruby 2.0, got %s %q", tok.Type, tok.Literal)
 		}
 	})
 
