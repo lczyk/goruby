@@ -31,6 +31,7 @@ const (
 	precBlockDo     // do
 	precBlockBraces // { |x| }
 	precIfUnless    // modifier-if, modifier-unless
+	precKwAndOr     // and, or (keywords) -- below =, ?:, .. -- binds looser than `||` / `&&`
 	precComma       // , in expression lists
 	precAssignment  // x = 5
 	precTenary      // ?, :
@@ -135,8 +136,8 @@ var precedences = map[token.Type]int{
 	token.RANGE:             precRange,
 	token.RANGEEX:           precRange,
 	token.LONELY:            precCall,
-	token.KW_AND:            precLogicalAnd,
-	token.KW_OR:             precLogicalOr,
+	token.KW_AND:            precKwAndOr,
+	token.KW_OR:             precKwAndOr,
 	token.POWERASSIGN:       precAssignment,
 	token.ORASSIGN:          precAssignment,
 	token.ANDASSIGN:         precAssignment,
