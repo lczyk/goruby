@@ -1245,8 +1245,10 @@ func (p *parser) parseTopLevelScope() ast.Expression {
 func (p *parser) parseDefinedExpression() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	expr := &ast.DefinedExpression{Token: p.curToken}
-	// defined? can be: defined?(expr) or defined? expr
-	if p.peekTokenIs(token.LPAREN) {
+	// defined? can be: defined?(expr) (no space -- call-paren syntax) or
+	// defined? expr (with space, optionally followed by a grouped paren
+	// expr which MRI keeps as a ParenthesesNode).
+	if p.peekTokenIs(token.LPAREN) && !p.peekToken.HadWhitespace {
 		p.accept(token.LPAREN)
 		p.nextToken()
 		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
