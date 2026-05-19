@@ -1881,8 +1881,10 @@ func lexHeredocStart(l *Lexer, indent, squig bool) StateFn {
 		l.next()
 	}
 
-	// Read delimiter word.
-	l.heredocDelim = ""
+	// Read delimiter word. Capture as a single slice of the input after the
+	// loop instead of growing l.heredocDelim by O(n^2) per-rune concatenation.
+	delimStart := l.pos
+	delimEnd := delimStart
 	for {
 		r := l.peek()
 		if r == eof || r == '\n' {
@@ -1896,8 +1898,9 @@ func lexHeredocStart(l *Lexer, indent, squig bool) StateFn {
 			break
 		}
 		l.next()
-		l.heredocDelim += string(r)
+		delimEnd = l.pos
 	}
+	l.heredocDelim = l.input[delimStart:delimEnd]
 
 	// Capture rest-of-line (including the trailing \n) and splice it out, so
 	// the body lexer sees the heredoc body immediately after a single \n.
