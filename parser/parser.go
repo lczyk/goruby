@@ -1249,7 +1249,10 @@ func (p *parser) parseDefinedExpression() ast.Expression {
 		}
 	} else {
 		p.nextToken()
-		expr.Expr = p.parseExpression(precLowest)
+		// Parse at precComma so a trailing `,` (in a paren-less call
+		// arg list like `assert(defined? x, "msg")`) terminates the
+		// operand instead of being absorbed.
+		expr.Expr = p.parseExpression(precComma)
 	}
 	return expr
 }
