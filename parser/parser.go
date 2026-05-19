@@ -2770,9 +2770,12 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 		if p.currentTokenIs(token.RPAREN) {
 			break
 		}
-		// peek=RPAREN with current sitting on the next statement's first
-		// token is fine -- parse it as the trailing statement. Only bail
-		// when current itself is RPAREN (nothing left to parse).
+		// peek=RPAREN with current still on a separator means nothing
+		// remains to parse. peek=RPAREN with current on a real token
+		// means a trailing statement -- parse it before bailing out.
+		if p.currentTokenOneOf(token.SEMICOLON, token.NEWLINE) && p.peekTokenIs(token.RPAREN) {
+			break
+		}
 		if !p.currentTokenOneOf(token.SEMICOLON, token.NEWLINE, token.RPAREN) {
 			exp = p.parseExpression(precLowest)
 		} else {
