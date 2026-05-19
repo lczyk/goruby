@@ -4101,6 +4101,12 @@ func (p *parser) parseCallExpressionWithParens(function ast.Expression) ast.Expr
 	p.nextToken()
 	exp.Arguments = p.parseExpressionList(token.RPAREN)
 	if p.peekTokenOneOf(token.LBRACE, token.DO) {
+		// `do` binds to the outermost call -- if we're inside an outer
+		// paren-less call's arg list, leave the `do` for the outer to grab.
+		// `{...}` still binds tight here.
+		if p.suppressDoBlock && p.peekTokenIs(token.DO) {
+			return exp
+		}
 		p.acceptOneOf(token.LBRACE, token.DO)
 		exp.Block = p.parseBlockExpr()
 	}
