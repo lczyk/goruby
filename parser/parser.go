@@ -2640,6 +2640,9 @@ func (p *parser) parseHash() ast.Expression {
 
 	// Handle **expr keyword splat as first hash entry
 	if p.currentTokenIs(token.POWER) {
+		if !p.version.AtLeast(ruby20) {
+			p.versionError(ruby20, "double-splat (**) in hash literal")
+		}
 		p.nextToken()
 		hash.Splats = append(hash.Splats, p.parseExpression(precAssignment))
 	} else {
@@ -2989,6 +2992,10 @@ func (p *parser) parseGroupedExpression() ast.Expression {
 	}
 	if p.currentTokenIs(token.RPAREN) {
 		// Empty `()` -- MRI parses as ParenthesesNode with body: nil.
+		// Ruby 1.9 rejects empty grouped expressions; 2.0+ accept.
+		if !p.version.AtLeast(ruby20) {
+			p.versionError(ruby20, "empty grouped expression `()`")
+		}
 		return &ast.ParenExpression{Token: lparen, Rparen: p.curToken}
 	}
 	exp := p.parseExpression(precLowest)
