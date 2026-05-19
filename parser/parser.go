@@ -2739,15 +2739,20 @@ func (p *parser) parseInfixExpression(left ast.Expression) ast.Expression {
 	case "and", "or":
 		// We parsed RHS at precAssignment-1 above so it would absorb `=` /
 		// ternary / etc., but that makes chained `and`/`or` right-associative
-		// (a and b and c -> a and (b and c)). MRI is left-associative for
-		// these. Flatten the whole same-op tree and rebuild left-leaning.
-		// Stops descending at the first non-same-op subtree -- leaving e.g.
-		// assignment / ternary absorbed.
+		// (a and b and c -> a and (b and c), and the mixed case
+		// a and b or c -> a and (b or c)). MRI is left-associative for both
+		// `and` and `or` (same precedence). Flatten across same-precedence
+		// `and`/`or` nodes and rebuild left-leaning. Stops descending at
+		// the first non-and/or subtree -- assignment / ternary absorbed
+		// into the rightmost leaf stays put.
 		var leaves []ast.Expression
+		var ops []string
 		var collect func(e ast.Expression)
 		collect = func(e ast.Expression) {
-			if inf, ok := e.(*ast.InfixExpression); ok && inf.Operator == expression.Operator {
+			if inf, ok := e.(*ast.InfixExpression); ok &&
+				(inf.Operator == "and" || inf.Operator == "or") {
 				collect(inf.Left)
+				ops = append(ops, inf.Operator)
 				collect(inf.Right)
 				return
 			}
@@ -2759,7 +2764,7 @@ func (p *parser) parseInfixExpression(left ast.Expression) ast.Expression {
 			for i := 1; i < len(leaves); i++ {
 				rebuilt = &ast.InfixExpression{
 					Token:    expression.Token,
-					Operator: expression.Operator,
+					Operator: ops[i-1],
 					Left:     rebuilt,
 					Right:    leaves[i],
 				}
