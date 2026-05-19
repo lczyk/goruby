@@ -1134,6 +1134,22 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 		inf.Left = assign
 		return inf
 	}
+	// Modifier-loop on assignment: `a = b while c` -> `(a = b) while c`.
+	// Restructure so the assignment is the loop body, not the loop the
+	// assignment value.
+	if loop, ok := expr.(*ast.LoopExpression); ok && loop.EndToken.Type != token.END {
+		if len(loop.Block.Statements) == 1 {
+			if es, ok := loop.Block.Statements[0].(*ast.ExpressionStatement); ok {
+				assign.Right = es.Expression
+				loop.Block = &ast.BlockStatement{
+					Statements: []ast.Statement{
+						&ast.ExpressionStatement{Expression: assign},
+					},
+				}
+				return loop
+			}
+		}
+	}
 	right, ok := expr.(*ast.ConditionalExpression)
 	if !ok || right.Token.Type == token.QMARK || right.EndToken.Type == token.END {
 		assign.Right = expr
@@ -2985,7 +3001,10 @@ func (p *parser) parseModifierConditionalExpression(left ast.Expression) ast.Exp
 	for p.currentTokenIs(token.NEWLINE) {
 		p.nextToken()
 	}
-	expression.Condition = p.parseExpression(precLowest)
+	// Parse condition at precIfUnless so a following modifier (`stmt if X
+	// while Y`) chains onto the outer expression -- letting the next
+	// modifier wrap THIS conditional, not get absorbed into the condition.
+	expression.Condition = p.parseExpression(precIfUnless)
 
 	expression.Consequence = &ast.BlockStatement{
 		Statements: []ast.Statement{
@@ -3002,7 +3021,10 @@ func (p *parser) parseModifierLoopExpression(left ast.Expression) ast.Expression
 	for p.currentTokenIs(token.NEWLINE) {
 		p.nextToken()
 	}
-	loop.Condition = p.parseExpression(precLowest)
+	// Same as parseModifierConditionalExpression: bound the condition at
+	// precIfUnless so a chained outer modifier wraps this loop instead of
+	// being absorbed.
+	loop.Condition = p.parseExpression(precIfUnless)
 	loop.Block = &ast.BlockStatement{
 		Statements: []ast.Statement{
 			&ast.ExpressionStatement{Expression: left},
