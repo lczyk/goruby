@@ -1978,6 +1978,10 @@ func (p *parser) parseEncodingKeyword() ast.Expression {
 func (p *parser) parseSplatExpression() ast.Expression {
 	defer trace.TraceCtx(p.ctx)()
 	expr := &ast.SplatExpression{Token: p.curToken, Operator: p.curToken.Literal}
+	// Double-splat for keyword-arg spread arrived in Ruby 2.0.
+	if expr.Operator == "**" && !p.version.AtLeast(ruby20) {
+		p.versionError(ruby20, "double-splat (**) in arguments")
+	}
 	// Anonymous forwarding: bare * or ** as argument (ruby 3.2+)
 	if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.RBRACKET, token.RBRACE,
 		token.NEWLINE, token.SEMICOLON, token.EOF, token.ASSIGN) {

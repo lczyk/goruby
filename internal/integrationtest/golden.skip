@@ -27,7 +27,6 @@ parse 1.9 internal/integrationtest/testdata/gems/esolang-book-sources/1-3/09.rb:
 parse 1.9 internal/integrationtest/testdata/gems/esolang-book-sources/1-4/05.rb: version-aware rejection not implemented
 parse 1.9 internal/integrationtest/testdata/gems/esolang-book-sources/2-2/03.rb: version-aware rejection not implemented
 parse 1.9 internal/integrationtest/testdata/gems/pyramid-scheme/pyra.rb: version-aware rejection not implemented
-parse 1.9 internal/integrationtest/testdata/gems/rake/lib/rake/task.rb: version-aware rejection not implemented
 parse 1.9 internal/integrationtest/testdata/mri-tests/enc/test_case_mapping.rb: version-aware rejection not implemented
 parse 2.0..2.1 internal/integrationtest/testdata/mri-tests/enc/test_euc_jp.rb: version-aware rejection not implemented
 parse 3.0 internal/integrationtest/testdata/mri-tests/enc/test_euc_jp.rb: version-aware rejection not implemented
