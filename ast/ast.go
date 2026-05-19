@@ -2580,6 +2580,11 @@ func rubyInfixPrec(op string) int {
 		// `case ... in ...`. Treat as low-precedence non-wrapping so the
 		// printer doesn't add ParenthesesNode around `i in 0..10`.
 		return 1
+	case "if", "unless":
+		// Pattern-guard form: `in <pattern> if <cond>` -- stored as
+		// InfixExpression by the pattern parser. The grammar already
+		// delimits the guard, so no defensive wrap is needed.
+		return 1
 	}
 	return 0
 }
