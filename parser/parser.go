@@ -118,6 +118,7 @@ var precedences = map[token.Type]int{
 	token.LABEL:             precCallArg,
 	token.CLASS_VAR:         precCallArg,
 	token.AT:                precCallArg,
+	token.KW_DEFINED:        precCallArg,
 	token.CAPTURE:           precCapture,
 	token.POWER:             precPower,
 	token.RANGE:             precLessGreater,
@@ -389,6 +390,7 @@ func init() {
 	infixParseFns[token.SELF] = (*parser).parseCallArgument
 	infixParseFns[token.LAMBDA] = (*parser).parseCallArgument
 	infixParseFns[token.AT] = (*parser).parseCallArgument
+	infixParseFns[token.KW_DEFINED] = (*parser).parseCallArgument
 	infixParseFns[token.LBRACE] = (*parser).parseCallBlock
 	infixParseFns[token.DO] = (*parser).parseCallBlock
 	infixParseFns[token.DOT] = (*parser).parseMethodCall
