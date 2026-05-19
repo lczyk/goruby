@@ -1183,8 +1183,16 @@ func lexCharacterLiteral(l *Lexer) StateFn {
 		}
 		// Simple escapes (\n, \t, etc.) are already consumed (single char after \).
 	}
-	// After the char/escape, emit the character as a string.
-	l.emit(token.STRING)
+	// After the char/escape, emit the character as a string. Mark with
+	// IsCharLit so the printer can re-emit as `?X` (preserves MRI's
+	// StringFlags shape -- char literals always inherit source encoding).
+	tok := token.NewToken(token.STRING, l.input[l.start:l.pos], l.start)
+	tok.HadWhitespace = l.tokenHadWhitespace
+	tok.IsCharLit = true
+	l.tokenHadWhitespace = false
+	l.lastToken = tok
+	l.tokens <- tok
+	l.start = l.pos
 	return startLexer
 }
 

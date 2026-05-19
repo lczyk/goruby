@@ -365,6 +365,7 @@ type Token struct {
 	Pos           int
 	HadWhitespace bool // true if whitespace was skipped before this token
 	SingleQuoted  bool // true for STRING tokens emitted from a single-quoted source literal
+	IsCharLit     bool // true for STRING tokens emitted from a `?X` character literal
 }
 
 // IsLiteral returns true for tokens corresponding to identifiers
