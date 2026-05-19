@@ -20,7 +20,6 @@
 
 # --- parse phase -------------------------------------------------------------
 
-parse 1.9 internal/integrationtest/testdata/gems/pyramid-scheme/pyra.rb: version-aware rejection not implemented
 parse 2.0..2.1 internal/integrationtest/testdata/mri-tests/enc/test_euc_jp.rb: version-aware rejection not implemented
 parse 3.0 internal/integrationtest/testdata/mri-tests/enc/test_euc_jp.rb: version-aware rejection not implemented
 parse 2.0..2.1 internal/integrationtest/testdata/mri-tests/enc/test_shift_jis.rb: version-aware rejection not implemented

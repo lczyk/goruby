@@ -2203,6 +2203,10 @@ func (p *parser) parseLambda() ast.Expression {
 	lit := &ast.FunctionLiteral{Token: p.curToken, IsLambda: true}
 	// Optional parameters: ->(x, y) or bare ->
 	if p.peekTokenIs(token.LPAREN) {
+		// MRI 1.9 rejects whitespace between `->` and `(`. 2.0+ accepts both.
+		if p.peekToken.HadWhitespace && !p.version.AtLeast(ruby20) {
+			p.versionError(ruby20, "whitespace between `->` and parameter list")
+		}
 		lit.Parameters = p.parseParameters(token.LPAREN, token.RPAREN)
 		lit.ExplicitParens = true
 	}
