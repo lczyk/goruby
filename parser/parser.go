@@ -751,7 +751,7 @@ func (p *parser) parseExpressionStatement() *ast.ExpressionStatement {
 	// Bare function call with literal args: `foo true`, `bar 42`, `raise Error`, etc.
 	if ident, ok := stmt.Expression.(*ast.Identifier); ok && !ident.IsConstant() && p.peekTokenOneOf(bareCallArgTokens...) {
 		exp := p.arena.NewContextCallExpression()
-		exp.Token = ident.Token
+		exp.OpType = ident.Token.Type
 		exp.Function = ident
 		p.nextToken()
 		exp.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE, token.LBRACE, token.DO)
@@ -823,7 +823,7 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 		if p.peekTokenIs(token.SCOPE) && p.peekToken.HadWhitespace {
 			if id, ok := leftExp.(*ast.Identifier); ok && !id.IsConstant() {
 				call := p.arena.NewContextCallExpression()
-				call.Token = id.Token
+				call.OpType = id.Token.Type
 				call.Function = id
 				p.nextToken() // advance to ::
 				prevAO := p.suppressKwAndOr
@@ -847,7 +847,7 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 		if p.peekTokenIs(token.LBRACKET) && p.peekToken.HadWhitespace {
 			if id, ok := leftExp.(*ast.Identifier); ok && !id.IsConstant() {
 				call := p.arena.NewContextCallExpression()
-				call.Token = id.Token
+				call.OpType = id.Token.Type
 				call.Function = id
 				p.nextToken() // advance to [
 				call.Arguments = p.parseCallArguments(
@@ -866,7 +866,7 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 		if p.peekTokenIs(token.LPAREN) && p.peekToken.HadWhitespace {
 			if id, ok := leftExp.(*ast.Identifier); ok && !id.IsConstant() {
 				call := p.arena.NewContextCallExpression()
-				call.Token = id.Token
+				call.OpType = id.Token.Type
 				call.Function = id
 				p.nextToken() // advance to (
 				prevAO := p.suppressKwAndOr
@@ -897,7 +897,7 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 			!p.peek2Token.HadWhitespace && isOperandStart(p.peek2Token.Type) {
 			if id, ok := leftExp.(*ast.Identifier); ok && !id.IsConstant() {
 				call := p.arena.NewContextCallExpression()
-				call.Token = id.Token
+				call.OpType = id.Token.Type
 				call.Function = id
 				p.nextToken() // advance to - / +
 				prevAO := p.suppressKwAndOr
@@ -4369,7 +4369,7 @@ func (p *parser) parseBlockStatement(t ...token.Type) *ast.BlockStatement {
 func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 	defer p.traceEnter()()
 	contextCallExpression := p.arena.NewContextCallExpression()
-	contextCallExpression.Token = p.curToken
+	contextCallExpression.OpType = p.curToken.Type
 	contextCallExpression.Context = context
 
 	p.nextToken()
@@ -4523,7 +4523,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 func (p *parser) parseContextCallExpression(context ast.Expression) ast.Expression {
 	defer p.traceEnter()()
 	contextCallExpression := p.arena.NewContextCallExpression()
-	contextCallExpression.Token = p.curToken
+	contextCallExpression.OpType = p.curToken.Type
 	contextCallExpression.Context = context
 	if _, ok := context.(*ast.Self); ok && !p.currentTokenOneOf(token.DOT, token.SCOPE) {
 		p.expectError(token.DOT, token.SCOPE)
@@ -4603,7 +4603,7 @@ func (p *parser) parseCallArgument(function ast.Expression) ast.Expression {
 			return p.parseContextCallExpression(function)
 		}
 		exp := ast.Init(p.arena.NewContextCallExpression(), ast.ContextCallExpression{
-			Token:    innerIdent.Token,
+			OpType:   innerIdent.Token.Type,
 			Context:  fn.Outer,
 			Function: innerIdent,
 		})
@@ -4624,7 +4624,7 @@ func (p *parser) parseCallArgument(function ast.Expression) ast.Expression {
 	}
 	ident := function.(*ast.Identifier)
 	exp := p.arena.NewContextCallExpression()
-	exp.Token = ident.Token
+	exp.OpType = ident.Token.Type
 	exp.Function = ident
 	if p.currentTokenOneOf(token.LBRACE, token.DO) {
 		exp.Block = p.parseBlockExpr()
@@ -4687,7 +4687,7 @@ func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {
 	defer p.traceEnter()()
 
 	exp := p.arena.NewContextCallExpression()
-	exp.Token = p.curToken
+	exp.OpType = p.curToken.Type
 	exp.Block = p.parseBlockExpr()
 	switch fn := function.(type) {
 	case *ast.Identifier:
@@ -4705,7 +4705,7 @@ func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {
 	case *ast.Assignment:
 		if rhs, ok := fn.Right.(*ast.Identifier); ok {
 			call := p.arena.NewContextCallExpression()
-			call.Token = rhs.Token
+			call.OpType = rhs.Token.Type
 			call.Function = rhs
 			call.Block = exp.Block
 			fn.Right = call
@@ -4720,7 +4720,7 @@ func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {
 			last := fn[len(fn)-1]
 			if ident, ok := last.(*ast.Identifier); ok {
 				call := p.arena.NewContextCallExpression()
-				call.Token = ident.Token
+				call.OpType = ident.Token.Type
 				call.Function = ident
 				call.Block = exp.Block
 				fn[len(fn)-1] = call
@@ -4749,7 +4749,7 @@ func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {
 	case *ast.SplatExpression:
 		if inner, ok := fn.Right.(*ast.Identifier); ok {
 			call := p.arena.NewContextCallExpression()
-			call.Token = inner.Token
+			call.OpType = inner.Token.Type
 			call.Function = inner
 			call.Block = exp.Block
 			fn.Right = call
@@ -4771,7 +4771,7 @@ func (p *parser) parseCallBlock(function ast.Expression) ast.Expression {
 func (p *parser) parseCallExpressionWithParens(function ast.Expression) ast.Expression {
 	defer p.traceEnter()()
 	exp := p.arena.NewContextCallExpression()
-	exp.Token = p.curToken
+	exp.OpType = p.curToken.Type
 	exp.ExplicitParens = true
 	switch fn := function.(type) {
 	case *ast.Identifier:

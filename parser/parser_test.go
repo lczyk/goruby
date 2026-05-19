@@ -5523,8 +5523,8 @@ func TestSafeNavigation(t *testing.T) {
 			if !ok {
 				t.Errorf("expected ContextCallExpression, got %T", stmt.Expression)
 			}
-			if call != nil && call.Token.Type != token.LONELY {
-				t.Errorf("expected LONELY token, got %s", call.Token.Type)
+			if call != nil && call.OpType != token.LONELY {
+				t.Errorf("expected LONELY OpType, got %s", call.OpType)
 			}
 		})
 	}

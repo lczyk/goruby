@@ -2274,14 +2274,19 @@ func (ie *IndexExpression) String() string {
 	return out.String()
 }
 
-// A ContextCallExpression represents a method call on a given Context
+// A ContextCallExpression represents a method call on a given Context.
+//
+// PERF: full token.Token here was 32B and only Type was ever actually read
+// (the .  / :: / &. dispatch in String). Replaced with OpType + packed bool
+// to shrink the node from 96B to 64B; saves ~32B x ~6M nodes on the
+// real-files bench. See PERF_IDEAS.md.
 type ContextCallExpression struct {
-	Token          token.Token      // The '.' token
+	OpType         token.Type       // Type of the call operator (DOT, SCOPE, LONELY) or the function IDENT for paren-less / paramless calls
+	ExplicitParens bool             // true when source had explicit ( ) -- preserves obj.foo() vs obj.foo and foo() vs foo (vcall)
 	Context        Expression       // The lefthandside expression
 	Function       *Identifier      // The function to call
-	Arguments      []Expression     // The function arguments
 	Block          *BlockExpression // The function block
-	ExplicitParens bool             // true when source had explicit ( ) -- preserves obj.foo() vs obj.foo and foo() vs foo (vcall)
+	Arguments      []Expression     // The function arguments
 }
 
 func (ce *ContextCallExpression) expressionNode() {}
@@ -2307,13 +2312,28 @@ func (ce *ContextCallExpression) End() int {
 	return ce.Arguments[len(ce.Arguments)-1].End()
 }
 
-// TokenLiteral returns the literal from token.DOT
-func (ce *ContextCallExpression) TokenLiteral() string { return ce.Token.Literal }
+// TokenLiteral returns the operator literal (".", "::", "&.") derived from
+// OpType. Falls back to the function identifier's literal for paren-less /
+// paramless calls whose OpType is an IDENT.
+func (ce *ContextCallExpression) TokenLiteral() string {
+	switch ce.OpType {
+	case token.DOT:
+		return "."
+	case token.SCOPE:
+		return "::"
+	case token.LONELY:
+		return "&."
+	}
+	if ce.Function != nil {
+		return ce.Function.TokenLiteral()
+	}
+	return ""
+}
 func (ce *ContextCallExpression) String() string {
 	var out bytes.Buffer
 	if ce.Context != nil {
 		out.WriteString(ce.Context.String())
-		switch ce.Token.Type {
+		switch ce.OpType {
 		case token.LONELY:
 			out.WriteString("&.")
 		case token.SCOPE:
