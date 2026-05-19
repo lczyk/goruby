@@ -1629,6 +1629,15 @@ func (hl *HashLiteral) hashElements() []string {
 					} else {
 						s = sym.Token.Literal + " " + kv.Value.String()
 					}
+				} else if sym, ok := kv.Key.(*SymbolLiteral); ok {
+					if _, isStr := sym.Value.(*StringLiteral); isStr {
+						// String-label key: source was `"a": val`. Preserve label
+						// form -- emitting `:"a" => val` would re-parse with a
+						// different shape (and is rejected in pattern contexts).
+						s = sym.Value.String() + ": " + kv.Value.String()
+					} else {
+						s = kv.Key.String() + " => " + kv.Value.String()
+					}
 				} else {
 					s = kv.Key.String() + " => " + kv.Value.String()
 				}

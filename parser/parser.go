@@ -1323,14 +1323,33 @@ func isLabelPair(e ast.Expression) bool {
 
 func appendLabelPair(m *ast.OrderedExprMap, e ast.Expression) {
 	ix := e.(*ast.InfixExpression)
-	m.Set(ix.Left, ix.Right)
+	if ix.Right != nil {
+		m.Set(ix.Left, ix.Right)
+		return
+	}
+	// Value omission (`a:`): mirror parseKeyValue's encoding -- store the
+	// identifier as the value and mark omitted, so the hash printer emits
+	// `a:` (label form) instead of falling back to the value-nil path.
+	sym, ok := ix.Left.(*ast.SymbolLiteral)
+	if !ok {
+		m.Set(ix.Left, nil)
+		return
+	}
+	name := strings.TrimSuffix(sym.Token.Literal, ":")
+	m.Set(sym, &ast.Identifier{Token: sym.Token, Value: name})
+	m.SetOmitted(sym)
 }
 
 func allLabelPairs(elements []ast.Expression) bool {
 	for _, e := range elements {
-		if !isLabelPair(e) {
-			return false
+		if isLabelPair(e) {
+			continue
 		}
+		// `**rest` / `**nil` is a valid hash-pattern element alongside label pairs.
+		if pe, ok := e.(*ast.PrefixExpression); ok && pe.Operator == "**" {
+			continue
+		}
+		return false
 	}
 	return true
 }
@@ -1376,10 +1395,17 @@ func (p *parser) parsePattern() ast.Expression {
 		// array which MRI rejects.
 		if allLabelPairs(elements) {
 			pairs := ast.NewOrderedExprMap()
+			var splats []ast.Expression
 			for _, e := range elements {
-				appendLabelPair(pairs, e)
+				if isLabelPair(e) {
+					appendLabelPair(pairs, e)
+				} else {
+					// `**X` rest pattern -- record as a splat entry on the
+					// HashLiteral so the printer emits it with the other pairs.
+					splats = append(splats, e)
+				}
 			}
-			pat = &ast.HashLiteral{Token: p.curToken, Map: pairs}
+			pat = &ast.HashLiteral{Token: p.curToken, Map: pairs, Splats: splats}
 		} else {
 			pat = &ast.ArrayLiteral{Token: p.curToken, Elements: elements}
 		}
