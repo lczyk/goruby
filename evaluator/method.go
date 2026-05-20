@@ -98,8 +98,13 @@ func receiverResponds(env *object.Environment, recv object.RubyObject, name stri
 		if _, found := cls.LookupClassMethod(name); found {
 			return true
 		}
-		if name == "new" || name == "name" || name == "superclass" {
-			return true
+		// Class object: also consult the Class's own class
+		// (ClassClass / ModuleClass) for inherited instance methods --
+		// catches `new`, `superclass`, `name`, etc. now living there.
+		if mc := cls.Class(); mc != nil {
+			if _, found := mc.LookupMethod(name); found {
+				return true
+			}
 		}
 	}
 	// Probe by dispatching; ignore the result. Reports false on any
