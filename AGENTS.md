@@ -29,10 +29,17 @@ directly, re-emit via `(*ast.Program).String()`, or evaluate via
   are noscan-eligible, mirroring the ast leaf discipline. Symbol /
   FrozenString use int32 IDs into per-env pools; Integer has a small-int
   cache for -128..1152
-- `evaluator` -- `Eval(node, env)` tree walker. WIP -- currently covers
-  literals, arithmetic, comparison, short-circuit, and local /
-  global / multi-assignment. version threading mirrors the parser's
-  pattern
+- `evaluator` -- `Eval(node, env)` tree walker. covers literals,
+  arithmetic + comparison + short-circuit, locals / globals / constants
+  / instance vars / multi-assignment, control flow (if/unless/while/until/
+  case-when/ternary/modifier forms), string interpolation + common
+  String/Array/Hash/Integer methods, method definition (positional /
+  defaults / splat / keyword args), `self` / `super`, classes + modules
+  (attr_accessor, include, inheritance, class methods, constants,
+  `is_a?`), blocks (each / map / select / reduce / yield + `&blk`
+  capture), Proc + lambda + `.call` / `.()`, exceptions (raise /
+  rescue / else / ensure + built-in hierarchy + ZeroDivisionError from
+  `/0`), safe-nav `&.`. version threading mirrors the parser's pattern
 - `internal/parsetreenorm` -- normaliser for MRI `--dump=parsetree` output;
   see [normalizer section](#parsetree-normalizer-for-tests) below
 - `internal/dumpfmt` -- shared YAML / JSON emitter used by the debug-dump
@@ -41,6 +48,8 @@ directly, re-emit via `(*ast.Program).String()`, or evaluate via
 - `cmd/lex-dump` -- token stream dump (yaml/jsonl) for a ruby file
 - `cmd/parse-roundtrip` -- parse then re-emit via `ast.Format`; `--check`
   for diff-mode
+- `cmd/eval` -- run a ruby file through the goruby evaluator; stdout is
+  the program's output. accepts `--version=X.Y`
 - `cmd/normalize-parsetree` -- cli wrapping `parsetreenorm` for ad-hoc diffs
 - `cmd/gen-arena` -- codegen for `ast/arena_gen.go` (see below)
 - `internal/integrationtest` -- gem / mri-golden / mri-parsetree-diff /
@@ -302,10 +311,12 @@ assertions to guard the subsequent field access. don't reach for
   corpus harness (see below).
 - **evaluator corpus**: `TestEvaluatorCorpus` in
   `internal/integrationtest/evaluator_test.go` walks supported subdirs
-  under `testdata/evaluator/` (currently `literals/`, `arithmetic/`,
-  `variables/`) at the corpus's canonical 2.6 target. each `.rb`
-  fixture compares evaluator stdout against the sibling `.expected`.
-  honours `# minversion: X.Y` (skip on lower-target) and
+  under `testdata/evaluator/` (currently `literals`, `arithmetic`,
+  `variables`, `control_flow`, `strings`, `hashes`, `arrays`,
+  `methods`, `blocks`, `classes`, `modules`, `self_kw`, `exceptions`,
+  `version-gates`). each fixture runs at `max(2.6, # minversion: X.Y)`
+  so version-gated features get their declared ruby version. compares
+  evaluator stdout against the sibling `.expected`. honours
   `# skip-evaluator: <reason>` (temporary opt-out without breaking the
   bash mri oracle). add subdirs to `supportedEvaluatorSubdirs` once
   every fixture in the dir is runnable.
