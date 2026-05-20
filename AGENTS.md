@@ -6,9 +6,12 @@ with the code, the code wins; please fix the discrepancy or flag it.
 
 ## what this is
 
-ruby front-end as a go library. lexer + parser + ast, no interpreter /
-evaluator / repl. forked down from goruby/goruby. consumers walk the AST or
-re-emit via `(*ast.Program).String()`.
+ruby front-end as a go library, with an in-progress evaluator. lexer +
+parser + ast are the stable surface (forked down from goruby/goruby);
+`object` + `evaluator` are a fresh, ground-up rewrite of the runtime
+side aimed at MRI-compatible behaviour. consumers either walk the AST
+directly, re-emit via `(*ast.Program).String()`, or evaluate via
+`evaluator.Eval(node, env)`.
 
 ## layout
 
@@ -18,13 +21,30 @@ re-emit via `(*ast.Program).String()`.
   immutable `l.input` (no per-heredoc splice allocs)
 - `parser` -- token stream -> `*ast.Program`. `ParseFile`, `ParseExpr`,
   `ParseExprFrom`, `WithArena(*ast.Arena)` for cross-parse reuse,
-  `WithContext` for caller-provided tracer
+  `WithContext` for caller-provided tracer, `WithVersion(token.RubyVersion)`
+  for syntax-gating
 - `ast` -- node types + `Walk`, `Inspect`, `Equal`, `Arena` (bump alloc)
+- `object` -- ruby runtime value types (Integer, String, Symbol, Array,
+  Hash, ...). leaf value types are pointer-free so their heap allocations
+  are noscan-eligible, mirroring the ast leaf discipline. Symbol /
+  FrozenString use int32 IDs into per-env pools; Integer has a small-int
+  cache for -128..1152
+- `evaluator` -- `Eval(node, env)` tree walker. WIP -- currently covers
+  literals, arithmetic, comparison, short-circuit, and local /
+  global / multi-assignment. version threading mirrors the parser's
+  pattern
 - `internal/parsetreenorm` -- normaliser for MRI `--dump=parsetree` output;
   see [normalizer section](#parsetree-normalizer-for-tests) below
+- `internal/dumpfmt` -- shared YAML / JSON emitter used by the debug-dump
+  cmds. no third-party YAML dep (minimal hand-rolled block-style emitter)
+- `cmd/parse-dump` -- ast tree dump (yaml/json) for a ruby file
+- `cmd/lex-dump` -- token stream dump (yaml/jsonl) for a ruby file
+- `cmd/parse-roundtrip` -- parse then re-emit via `ast.Format`; `--check`
+  for diff-mode
 - `cmd/normalize-parsetree` -- cli wrapping `parsetreenorm` for ad-hoc diffs
 - `cmd/gen-arena` -- codegen for `ast/arena_gen.go` (see below)
-- `internal/integrationtest` -- gem / mri-golden / mri-parsetree-diff suites
+- `internal/integrationtest` -- gem / mri-golden / mri-parsetree-diff /
+  evaluator-corpus suites
 - `.rubies` -- pinned MRI binaries (built locally via `make rubies`)
 
 ## make targets
@@ -47,7 +67,11 @@ re-emit via `(*ast.Program).String()`.
 | `make integration` | smoke suite against fetched gems |
 | `make oracle` | full MRI parsetree diff across all built versions (~2 min) |
 | `make little-oracle` | oracle restricted to MRI 2.6 (~10s, iterative form) |
-| `make fuzz-corpus` | seed / inspect fuzz corpus |
+| `make fuzz-list` | list every available fuzz target |
+| `make rubies-verify` | run every test fixture against the built MRI binaries |
+| `make rubies-golden` | regenerate `mri-golden.tsv` for the parser version-gate suite |
+| `make eval-corpus-expected` | regenerate `.expected` files for the evaluator integration corpus from `#=> value` markers |
+| `make eval-corpus-oracle` | run the evaluator corpus under pinned MRI and diff stdout against `.expected` (ORACLE_VER=2.6.0; V=1 for verbose; see `scripts/eval-corpus-oracle`) |
 
 oracle + integration depend on `make rubies` + `make gems` having been
 run first.
@@ -217,6 +241,42 @@ passed) fail the test loudly so the list stays honest. fold a new
 exception in by appending a row + grouping it with a `#`-prefixed comment
 explaining why.
 
+## debug-dump clis
+
+three small helpers in `cmd/` for inspecting what the lexer / parser
+produce on a given source. all read either a file path or stdin; all
+honour `--version=X.Y` for parser/lexer gating.
+
+- `cmd/parse-dump` -- ast tree on stdout. `--format=yaml` (default) or
+  `--format=json`. each struct node carries a `_type` field naming its
+  concrete type so polymorphic children are unambiguous. uses
+  `internal/dumpfmt`.
+  ```
+  echo 'puts 1 + 2' | go run ./cmd/parse-dump
+  go run ./cmd/parse-dump --version=2.7 --format=json fixture.rb
+  ```
+- `cmd/lex-dump` -- one entry per token. `--format=yaml` (default) emits
+  a single block sequence; `--format=json` emits JSONL.
+  ```
+  echo 'a + b' | go run ./cmd/lex-dump --format=json
+  ```
+- `cmd/parse-roundtrip` -- parses source then re-emits it via
+  `ast.Format`. by default prints the re-emitted source to stdout (no
+  `--format` flag -- output is ruby, not yaml/json). `--check` exits
+  non-zero on input/output mismatch with a minimal unified diff to
+  stderr; useful for confirming the parser+printer round-trip on a
+  fixture without standing up the oracle.
+  ```
+  diff -u fixture.rb <(go run ./cmd/parse-roundtrip fixture.rb)
+  go run ./cmd/parse-roundtrip --check fixture.rb
+  ```
+
+shared format machinery lives in `internal/dumpfmt`: minimal hand-rolled
+yaml emitter + stdlib json. `dumpfmt.Encode` writes a single document,
+`dumpfmt.EncodeStream` writes a sequence (yaml: block sequence, json:
+jsonl). `dumpfmt.TypedTree` wraps a struct tree in `map[string]any` with
+`_type` tags via reflection, used by `parse-dump` for the ast.
+
 ## test helpers
 
 unit + integration tests use `github.com/lczyk/assert` and its
@@ -238,7 +298,20 @@ assertions to guard the subsequent field access. don't reach for
 
 - **unit**: `go test ./...` with race. fast.
 - **integration**: `make integration`. needs `make gems` first. exercises
-  lex / parse / walk against fetched ruby gems.
+  lex / parse / walk against fetched ruby gems, plus the evaluator
+  corpus harness (see below).
+- **evaluator corpus**: `TestEvaluatorCorpus` in
+  `internal/integrationtest/evaluator_test.go` walks supported subdirs
+  under `testdata/evaluator/` (currently `literals/`, `arithmetic/`,
+  `variables/`) at the corpus's canonical 2.6 target. each `.rb`
+  fixture compares evaluator stdout against the sibling `.expected`.
+  honours `# minversion: X.Y` (skip on lower-target) and
+  `# skip-evaluator: <reason>` (temporary opt-out without breaking the
+  bash mri oracle). add subdirs to `supportedEvaluatorSubdirs` once
+  every fixture in the dir is runnable.
+- **evaluator mri oracle**: `make eval-corpus-oracle` runs the same
+  fixtures under pinned MRI and diffs stdout against `.expected`,
+  catching corpus drift independently of the goruby evaluator.
 - **mri golden lex / parse**: per-MRI-version syntax-check golden tables
   in `internal/integrationtest/testdata/mri-golden.tsv`. needs
   `make rubies`.
@@ -248,13 +321,10 @@ assertions to guard the subsequent field access. don't reach for
   -> diffs ASTs (after parsetree normalisation via MRI cross-check).
 - **fuzz**: `make fuzz` (default targets `FuzzParse` in `./parser/`).
   Override pkg + target via `PKG=./internal/parsetreenorm
-  FUZZ=FuzzNormalize` etc. Live fuzz targets: `FuzzParse` (parser),
-  `FuzzNormalize` + `FuzzNormalizeWellFormed` (parsetreenorm). No
-  lexer-level fuzz target -- the parser fuzzer exercises the lexer
-  transitively.
-
-state: ~20641 total tests passing, 35 skipped, 0 failing as of last
-oracle sweep.
+  FUZZ=FuzzNormalize` etc. `make fuzz-list` enumerates available
+  targets. Live fuzz targets: `FuzzParse` (parser), `FuzzNormalize`
+  + `FuzzNormalizeWellFormed` (parsetreenorm), plus the lexer's
+  no-progress detector (`FuzzLex` family).
 
 ## debugging an oracle mismatch
 
@@ -266,9 +336,11 @@ fastest path to the actual divergence is:
    go run ./cmd/normalize-parsetree \
      .rubies/versions/<ver>/bin/ruby <fixture>.rb > /tmp/src1.tree
    ```
-2. emit `src2` via a small driver that calls
-   `parser.ParseFile(fixture, src, parser.AllErrors|parser.ParseComments)`
-   and prints `prog.String()`. Save to `/tmp/src2.rb`.
+2. emit `src2` with `cmd/parse-roundtrip` (parses + re-emits the source
+   via `ast.Format`); save to `/tmp/src2.rb`:
+   ```
+   go run ./cmd/parse-roundtrip <fixture>.rb > /tmp/src2.rb
+   ```
 3. normalise src2 the same way:
    ```
    go run ./cmd/normalize-parsetree \

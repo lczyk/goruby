@@ -17,6 +17,9 @@
   ],
   "words": [
     "benchmem",
+    "dumpfmt",
+    "minversion",
+    "subdirs",
     "coverpkg",
     "elif",
     "elist",
