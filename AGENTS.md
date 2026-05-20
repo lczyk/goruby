@@ -331,8 +331,12 @@ assertions to guard the subsequent field access. don't reach for
   `testdata/esolangs/<lang>.rb` interpreter under the goruby evaluator
   and diffs stdout against the sibling `.expected`. parity check
   against MRI on real third-party ruby code (esolang interpreters from
-  the esolangs.org wiki). regenerate `.expected` via
-  `scripts/esolang-tests-oracle` (needs `ruby` on PATH).
+  the esolangs.org wiki). `scripts/build-esolang-fixtures.rb`
+  regenerates the `.in` programs (canonical brainfuck translated per
+  dialect, plus bespoke hello world for tick / pluso / arsel /
+  simplified_emmental / rot13_ruby); `scripts/esolang-tests-oracle`
+  then regenerates the matching `.expected` via MRI (needs `ruby` on
+  PATH).
 - **mri golden lex / parse**: per-MRI-version syntax-check golden tables
   in `internal/integrationtest/testdata/mri-golden.tsv`. needs
   `make rubies`.
