@@ -253,6 +253,24 @@ type parser struct {
 	comments           []*ast.Comment
 }
 
+// lit resolves a token's literal text. For source-slice tokens
+// (LitOff < 0) it reads from p.src -- the parser's cached, immutable
+// view of the lexer's input. Using p.src instead of the lexer's
+// (mutable, heredoc-swap-aware) l.input is what lets us read source-
+// slice tokens correctly even if the lexer is mid-heredoc-body and has
+// temporarily swapped its input buffer. For pool-backed tokens it
+// returns pool[LitOff] (zero-alloc).
+func (p *parser) lit(tok token.Token) string {
+	if tok.LitOff >= 0 {
+		pool := p.l.Pool()
+		if int(tok.LitOff) < len(pool) {
+			return pool[tok.LitOff]
+		}
+		return ""
+	}
+	return tok.LitOf(p.src)
+}
+
 func (p *parser) init(filename string, src []byte, mode Mode) {
 	p.file = token.NewFile(filename, len(src))
 
@@ -468,7 +486,7 @@ func (p *parser) nextNonCommentToken() token.Token {
 		var value string
 		if p.l.HasNext() {
 			strTok := p.l.NextToken()
-			value = strTok.Literal
+			value = p.lit(strTok)
 		}
 		if p.mode&ParseComments != 0 {
 			p.comments = append(p.comments, ast.Init(p.arena.NewComment(), ast.Comment{Token: hashTok, Value: value}))
@@ -507,7 +525,7 @@ func (p *parser) nextToken() {
 		s := p.curToken.Type.String()
 		switch {
 		case p.curToken.IsLiteral():
-			trace.MessageStrCtx(p.ctx, s+" "+p.curToken.Literal)
+			trace.MessageStrCtx(p.ctx, s+" "+p.lit(p.curToken))
 		case p.curToken.IsOperator(), p.curToken.IsKeyword():
 			trace.MessageStrCtx(p.ctx, "\""+s+"\"")
 		default:
@@ -534,7 +552,7 @@ func (p *parser) peekError(t ...token.Type) {
 		Pos:            epos,
 		expectedTokens: t,
 		actualToken:    p.peekToken.Type,
-		actualLiteral:  p.peekToken.Literal,
+		actualLiteral:  p.lit(p.peekToken),
 	}
 	p.errors = append(p.errors, errors.WithStack(err))
 }
@@ -545,7 +563,7 @@ func (p *parser) expectError(t ...token.Type) {
 		Pos:            epos,
 		expectedTokens: t,
 		actualToken:    p.curToken.Type,
-		actualLiteral:  p.curToken.Literal,
+		actualLiteral:  p.lit(p.curToken),
 	}
 	p.errors = append(p.errors, errors.WithStack(err))
 }
@@ -568,7 +586,7 @@ func (p *parser) versionError(minVer token.RubyVersion, feature string) {
 }
 
 func (p *parser) spacedOperator(op, next token.Token) bool {
-	return op.Pos+len(op.Literal) < next.Pos
+	return op.EndPos() < next.Pos
 }
 
 // ParseProgram returns the parsed program AST and all errors which occured
@@ -595,6 +613,7 @@ func (p *parser) ParseProgram() (*ast.Program, error) {
 		program.Statements = mergeComments(program.Statements, p.comments)
 	}
 	program.SetArena(p.arena)
+	program.LitPool = p.l.Pool()
 	if len(p.errors) != 0 {
 		return program, NewErrors("Parsing errors", p.errors...)
 	}
@@ -631,7 +650,7 @@ func (p *parser) parseStatement() ast.Statement {
 		p.errors = append(p.errors, &parseError{
 			Pos:  p.file.Position(p.pos),
 			Kind: LexError,
-			Msg:  p.curToken.Literal,
+			Msg:  p.lit(p.curToken),
 		})
 		return nil
 	case token.EOF:
@@ -1034,7 +1053,7 @@ func (p *parser) parseRescueBlock() *ast.RescueBlock {
 		}
 		_a := p.arena.NewIdentifier()
 		_a.Token = p.curToken
-		_a.Value = p.curToken.Literal
+		_a.Value = p.lit(p.curToken)
 		block.Exception = _a
 	}
 	if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
@@ -1132,13 +1151,13 @@ func (p *parser) parseBlockCapture() ast.Expression {
 
 func (p *parser) parseAssignmentOperator(left ast.Expression) ast.Expression {
 	defer p.traceEnter()()
-	assignIndex := strings.LastIndexByte(p.curToken.Literal, '=')
+	assignIndex := strings.LastIndexByte(p.lit(p.curToken), '=')
 	if assignIndex < 0 {
 		return nil
 	}
 	newInf := ast.Init(p.arena.NewInfixExpression(), ast.InfixExpression{
 		Left:     left,
-		Operator: p.curToken.Literal[:assignIndex],
+		Operator: p.lit(p.curToken)[:assignIndex],
 	})
 	assign := ast.Init(p.arena.NewAssignment(), ast.Assignment{
 		Token: p.curToken,
@@ -1183,7 +1202,6 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 	case *ast.ContextCallExpression:
 		// obj.method = value => obj.method=(value)
 		leftNode.Function.Value += "="
-		leftNode.Function.Token.Literal += "="
 		p.nextToken()
 		right := p.parseExpression(precLowest)
 		if right == nil {
@@ -1272,7 +1290,7 @@ func (p *parser) parseInstanceVariable() ast.Expression {
 	}
 	_a := p.arena.NewIdentifier()
 	_a.Token = p.curToken
-	_a.Value = p.curToken.Literal
+	_a.Value = p.lit(p.curToken)
 	instanceVariable.Name = _a
 	return instanceVariable
 }
@@ -1286,7 +1304,7 @@ func (p *parser) parseClassVariable() ast.Expression {
 	}
 	_a := p.arena.NewIdentifier()
 	_a.Token = p.curToken
-	_a.Value = p.curToken.Literal
+	_a.Value = p.lit(p.curToken)
 	cv.Name = _a
 	return cv
 }
@@ -1294,11 +1312,11 @@ func (p *parser) parseClassVariable() ast.Expression {
 func (p *parser) parseLabelExpression() ast.Expression {
 	defer p.traceEnter()()
 	// The LABEL token's literal is e.g. "foo:"
-	name := strings.TrimSuffix(p.curToken.Literal, ":")
+	name := strings.TrimSuffix(p.lit(p.curToken), ":")
 	key := ast.Init(p.arena.NewSymbolLiteral(), ast.SymbolLiteral{
 		Token:     p.curToken,
 		Value:     ast.Init(p.arena.NewStringLiteral(), ast.StringLiteral{Value: name}),
-		LabelText: p.curToken.Literal,
+		LabelText: p.lit(p.curToken),
 	})
 	if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.RBRACE, token.RBRACKET, token.NEWLINE, token.SEMICOLON, token.PIPE) {
 		// Hash-value-omission (Ruby 3.1+): `foo:` is shorthand for `foo: foo`.
@@ -1437,7 +1455,7 @@ func appendLabelPair(m *ast.OrderedExprMap, e ast.Expression) {
 		m.Set(ix.Left, nil)
 		return
 	}
-	name := strings.TrimSuffix(sym.Token.Literal, ":")
+	name := strings.TrimSuffix(sym.LabelText, ":")
 	// appendLabelPair is a free function (no parser receiver), so synthesize
 	// the identifier via new() rather than threading the arena through. Rare
 	// path -- one alloc per omitted label in a pattern hash.
@@ -1546,7 +1564,7 @@ func (p *parser) parsePattern() ast.Expression {
 		pat = ast.Init(p.arena.NewInfixExpression(), ast.InfixExpression{
 			Token:    guardTok,
 			Left:     pat,
-			Operator: guardTok.Literal,
+			Operator: p.lit(guardTok),
 			Right:    guard,
 		})
 	}
@@ -1757,11 +1775,11 @@ func (p *parser) parsePatternHashPair(pairs *ast.OrderedExprMap) {
 	}
 	// label: pattern  (symbol key with pattern value)
 	if p.currentTokenIs(token.LABEL) {
-		name := strings.TrimSuffix(p.curToken.Literal, ":")
+		name := strings.TrimSuffix(p.lit(p.curToken), ":")
 		key := ast.Init(p.arena.NewSymbolLiteral(), ast.SymbolLiteral{
 			Token:     p.curToken,
-			Value:     ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}),
-			LabelText: p.curToken.Literal,
+			Value:     ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.lit(p.curToken)}),
+			LabelText: p.lit(p.curToken),
 		})
 		if p.peekTokenOneOf(token.COMMA, token.RBRACE, token.THEN) {
 			pairs.Set(key, ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: name}))
@@ -1944,7 +1962,7 @@ func (p *parser) parseIllegal() ast.Expression {
 	p.errors = append(p.errors, &parseError{
 		Pos:  p.file.Position(p.pos),
 		Kind: LexError,
-		Msg:  p.curToken.Literal,
+		Msg:  p.lit(p.curToken),
 	})
 	return nil
 }
@@ -1953,7 +1971,7 @@ func (p *parser) parseIdentifier() ast.Expression {
 	defer p.traceEnter()()
 	_a := p.arena.NewIdentifier()
 	_a.Token = p.curToken
-	_a.Value = p.curToken.Literal
+	_a.Value = p.lit(p.curToken)
 	return _a
 }
 
@@ -1961,7 +1979,7 @@ func (p *parser) parseGlobal() ast.Expression {
 	defer p.traceEnter()()
 	_a := p.arena.NewGlobal()
 	_a.Token = p.curToken
-	_a.Value = p.curToken.Literal
+	_a.Value = p.lit(p.curToken)
 	return _a
 }
 
@@ -2066,7 +2084,7 @@ func (p *parser) parseUsing() ast.Expression {
 	if p.peekTokenIs(token.LPAREN) && !p.peekToken.HadWhitespace {
 		ident := p.arena.NewIdentifier()
 		ident.Token = p.curToken
-		ident.Value = p.curToken.Literal
+		ident.Value = p.lit(p.curToken)
 		p.nextToken() // -> LPAREN
 		return p.parseCallExpressionWithParens(ident)
 	}
@@ -2086,7 +2104,7 @@ func (p *parser) parseRefine() ast.Expression {
 	if p.peekTokenIs(token.LPAREN) && !p.peekToken.HadWhitespace {
 		ident := p.arena.NewIdentifier()
 		ident.Token = p.curToken
-		ident.Value = p.curToken.Literal
+		ident.Value = p.lit(p.curToken)
 		p.nextToken() // -> LPAREN
 		return p.parseCallExpressionWithParens(ident)
 	}
@@ -2161,7 +2179,7 @@ func (p *parser) parseSplatExpression() ast.Expression {
 	defer p.traceEnter()()
 	expr := p.arena.NewSplatExpression()
 	expr.Token = p.curToken
-	expr.Operator = p.curToken.Literal
+	expr.Operator = p.lit(p.curToken)
 	// Double-splat for keyword-arg spread arrived in Ruby 2.0.
 	if expr.Operator == "**" && !p.version.AtLeast(ruby20) {
 		p.versionError(ruby20, "double-splat (**) in arguments")
@@ -2250,7 +2268,7 @@ func (p *parser) parseSuper() ast.Expression {
 
 func (p *parser) parseAliasName() *ast.Identifier {
 	if p.currentTokenOneOf(token.IDENT, token.CONST) || p.curToken.Type.IsKeyword() || p.curToken.Type.IsOperator() {
-		name := p.curToken.Literal
+		name := p.lit(p.curToken)
 		if p.peekTokenIs(token.ASSIGN) {
 			name += "="
 			p.nextToken()
@@ -2263,7 +2281,7 @@ func (p *parser) parseAliasName() *ast.Identifier {
 	if p.currentTokenIs(token.GLOBAL) {
 		_a := p.arena.NewIdentifier()
 		_a.Token = p.curToken
-		_a.Value = p.curToken.Literal
+		_a.Value = p.lit(p.curToken)
 		return _a
 	}
 	if p.currentTokenIs(token.LBRACKET) && p.peekTokenIs(token.RBRACKET) {
@@ -2359,7 +2377,7 @@ func parseUndefName(p *parser) *ast.Identifier {
 	}
 	_a := p.arena.NewIdentifier()
 	_a.Token = p.curToken
-	_a.Value = p.curToken.Literal
+	_a.Value = p.lit(p.curToken)
 	return _a
 }
 
@@ -2379,7 +2397,7 @@ func (p *parser) parseRangeOrForwarding() ast.Expression {
 	return ast.Init(p.arena.NewInfixExpression(), ast.InfixExpression{
 		Token:    tok,
 		Left:     nil,
-		Operator: tok.Literal,
+		Operator: p.lit(tok),
 		Right:    p.parseExpression(precLessGreater),
 	})
 }
@@ -2394,7 +2412,7 @@ func (p *parser) parseBeginlessRange() ast.Expression {
 	return ast.Init(p.arena.NewInfixExpression(), ast.InfixExpression{
 		Token:    tok,
 		Left:     nil,
-		Operator: tok.Literal,
+		Operator: p.lit(tok),
 		Right:    p.parseExpression(precLessGreater),
 	})
 }
@@ -2488,7 +2506,7 @@ func (p *parser) parseIntegerLiteral() ast.Expression {
 	lit := p.arena.NewIntegerLiteral()
 	lit.PosOff = p.curToken.Pos
 	lit.HadWhitespace = p.curToken.HadWhitespace
-	raw := p.curToken.Literal
+	raw := p.lit(p.curToken)
 	// Detect base prefix BEFORE underscore strip; prefix-case is normalised
 	// out (cosmetic, MRI ignores). `0d` is explicit-decimal -- drop the
 	// prefix entirely so re-emit produces plain digits. `0NNN` (leading
@@ -2534,7 +2552,7 @@ func (p *parser) parseFloatLiteral() ast.Expression {
 	lit := p.arena.NewFloatLiteral()
 	lit.PosOff = p.curToken.Pos
 	lit.HadWhitespace = p.curToken.HadWhitespace
-	raw := p.curToken.Literal
+	raw := p.lit(p.curToken)
 	s, rat, im := stripNumericSuffix(raw)
 	lit.Rational = rat
 	lit.Imaginary = im
@@ -2618,7 +2636,7 @@ func (p *parser) parseStringLiteral() ast.Expression {
 	defer p.traceEnter()()
 	_a := p.arena.NewStringLiteral()
 	_a.Token = p.curToken
-	_a.Value = p.curToken.Literal
+	_a.Value = p.lit(p.curToken)
 	return _a
 }
 
@@ -2631,7 +2649,7 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 	for !p.currentTokenIs(token.STRING_END) && !p.currentTokenIs(token.XSTR_END) && !p.currentTokenIs(token.EOF) {
 		switch p.curToken.Type {
 		case token.STRING_CONTENT, token.XSTR_CONTENT:
-			parts = append(parts, ast.Init(p.arena.NewStringContent(), ast.StringContent{Token: p.curToken, Value: p.curToken.Literal}))
+			parts = append(parts, ast.Init(p.arena.NewStringContent(), ast.StringContent{Token: p.curToken, Value: p.lit(p.curToken)}))
 		case token.EMBEXPR_BEG:
 			embTok := p.curToken
 			p.nextToken() // advance past EMBEXPR_BEG to first expression token
@@ -2675,7 +2693,7 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 			p.nextToken() // consume EMBEXPR_END
 		case token.GLOBAL:
 			parts = append(parts, ast.Init(p.arena.NewEmbeddedVariable(), ast.EmbeddedVariable{
-				Variable: ast.Init(p.arena.NewGlobal(), ast.Global{Token: p.curToken, Value: p.curToken.Literal}),
+				Variable: ast.Init(p.arena.NewGlobal(), ast.Global{Token: p.curToken, Value: p.lit(p.curToken)}),
 			}))
 		case token.AT:
 			ivar := p.arena.NewInstanceVariable()
@@ -2683,7 +2701,7 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 			p.nextToken()
 			_a := p.arena.NewIdentifier()
 			_a.Token = p.curToken
-			_a.Value = p.curToken.Literal
+			_a.Value = p.lit(p.curToken)
 			ivar.Name = _a
 			parts = append(parts, ast.Init(p.arena.NewEmbeddedVariable(), ast.EmbeddedVariable{Variable: ivar}))
 		case token.CLASS_VAR:
@@ -2692,7 +2710,7 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 			p.nextToken()
 			_a := p.arena.NewIdentifier()
 			_a.Token = p.curToken
-			_a.Value = p.curToken.Literal
+			_a.Value = p.lit(p.curToken)
 			cv.Name = _a
 			parts = append(parts, ast.Init(p.arena.NewEmbeddedVariable(), ast.EmbeddedVariable{Variable: cv}))
 		default:
@@ -2703,7 +2721,7 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 	}
 
 	// Branch based on percent literal type.
-	switch begToken.Literal {
+	switch p.lit(begToken) {
 	case "w", "W":
 		return p.buildWordArray(begToken, parts, false)
 	case "i", "I":
@@ -2715,8 +2733,8 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 
 	sl := p.arena.NewStringLiteral()
 	sl.Token = begToken
-	if strings.HasPrefix(begToken.Literal, "<<") {
-		sl.HeredocTagSource = begToken.Literal
+	if strings.HasPrefix(p.lit(begToken), "<<") {
+		sl.HeredocTagSource = p.lit(begToken)
 		if p.curToken.HeredocStripped || p.embExprDepth > 0 {
 			sl.HeredocStripped = true
 		}
@@ -2745,7 +2763,7 @@ func (p *parser) parseInterpolatedRegex() ast.Expression {
 	for !p.currentTokenIs(token.REGEX_END) && !p.currentTokenIs(token.EOF) {
 		switch p.curToken.Type {
 		case token.STRING_CONTENT:
-			parts = append(parts, ast.Init(p.arena.NewStringContent(), ast.StringContent{Token: p.curToken, Value: p.curToken.Literal}))
+			parts = append(parts, ast.Init(p.arena.NewStringContent(), ast.StringContent{Token: p.curToken, Value: p.lit(p.curToken)}))
 		case token.EMBEXPR_BEG:
 			embTok := p.curToken
 			p.nextToken()
@@ -2809,7 +2827,7 @@ func (p *parser) parseInterpolatedRegex() ast.Expression {
 	}
 
 	// REGEX_END literal carries the options flags.
-	rl.Options = p.curToken.Literal
+	rl.Options = p.lit(p.curToken)
 
 	if len(parts) == 1 {
 		if sc, ok := parts[0].(*ast.StringContent); ok {
@@ -2871,7 +2889,7 @@ func (p *parser) parseSymbolLiteral() ast.Expression {
 		return nil
 	}
 	if p.currentTokenOneOf(symbolOperatorTokens...) {
-		name := p.curToken.Literal
+		name := p.lit(p.curToken)
 		if (name == "+" || name == "-") && p.peekTokenIs(token.AT) {
 			name += "@"
 			p.nextToken()
@@ -2885,13 +2903,13 @@ func (p *parser) parseSymbolLiteral() ast.Expression {
 	if p.currentTokenOneOf(symbolKeywordTokens...) {
 		_a := p.arena.NewIdentifier()
 		_a.Token = p.curToken
-		_a.Value = p.curToken.Literal
+		_a.Value = p.lit(p.curToken)
 		symbol.Value = _a
 		return symbol
 	}
 	// Setter symbol: :foo= -- IDENT followed by = with no space
 	if p.currentTokenOneOf(token.IDENT, token.CONST) && p.peekTokenIs(token.ASSIGN) {
-		name := p.curToken.Literal + "="
+		name := p.lit(p.curToken) + "="
 		p.nextToken() // consume =
 		_a := p.arena.NewIdentifier()
 		_a.Token = p.curToken
@@ -3020,11 +3038,11 @@ func (p *parser) parseKeyValue() (ast.Expression, ast.Expression, bool, bool) {
 	defer p.traceEnter()()
 	// Label syntax: key: value (Ruby 1.9+)
 	if p.currentTokenIs(token.LABEL) {
-		name := strings.TrimSuffix(p.curToken.Literal, ":")
+		name := strings.TrimSuffix(p.lit(p.curToken), ":")
 		key := ast.Init(p.arena.NewSymbolLiteral(), ast.SymbolLiteral{
 			Token:     p.curToken,
 			Value:     ast.Init(p.arena.NewStringLiteral(), ast.StringLiteral{Value: name}),
-			LabelText: p.curToken.Literal,
+			LabelText: p.lit(p.curToken),
 		})
 		// Hash value omission (ruby 3.1+): {x:, y:} == {x: x, y: y}
 		if p.peekTokenOneOf(token.COMMA, token.RBRACE, token.RPAREN, token.NEWLINE) {
@@ -3104,7 +3122,7 @@ func (p *parser) parseBlock() ast.Expression {
 					return nil
 				}
 				block.BlockLocals = append(block.BlockLocals,
-					ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}))
+					ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.lit(p.curToken)}))
 				if p.peekTokenIs(token.COMMA) {
 					p.accept(token.COMMA)
 				}
@@ -3169,7 +3187,7 @@ func (p *parser) parsePrefixExpression() ast.Expression {
 	defer p.traceEnter()()
 	expression := ast.Init(p.arena.NewPrefixExpression(), ast.PrefixExpression{
 		Token:    p.curToken,
-		Operator: p.curToken.Literal,
+		Operator: p.lit(p.curToken),
 	})
 	// `not(X)` (no space) is call-style syntax for `not X` in MRI -- the
 	// parens belong to the not-call, not to a grouping ParenExpression
@@ -3192,7 +3210,7 @@ func (p *parser) parseInfixExpression(left ast.Expression) ast.Expression {
 	defer p.traceEnter()()
 	expression := ast.Init(p.arena.NewInfixExpression(), ast.InfixExpression{
 		Token:    p.curToken,
-		Operator: p.curToken.Literal,
+		Operator: p.lit(p.curToken),
 		Left:     left,
 	})
 	precedence := p.curPrecedence()
@@ -3404,7 +3422,7 @@ func (p *parser) parseIfExpression() ast.Expression {
 		msg := fmt.Sprintf(
 			"could not parse if expression: unexpected token %s: '%s'",
 			p.peekToken.Type,
-			p.peekToken.Literal,
+			p.lit(p.peekToken),
 		)
 		err := errors.Wrap(
 			&unexpectedTokenError{
@@ -3561,13 +3579,13 @@ func (p *parser) parseScopedConstName() *ast.Identifier {
 		return nil
 	}
 	nameTok := p.curToken
-	name := p.curToken.Literal
+	name := p.lit(p.curToken)
 	for p.peekTokenIs(token.SCOPE) {
 		p.nextToken() // consume ::
 		if !p.accept(token.CONST) {
 			return nil
 		}
-		name += "::" + p.curToken.Literal
+		name += "::" + p.lit(p.curToken)
 	}
 	_a := p.arena.NewIdentifier()
 	_a.Token = nameTok
@@ -3701,7 +3719,7 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 		if p.curToken.Type.IsKeyword() || p.currentTokenOneOf(token.IDENT, token.CONST) {
 			_a := p.arena.NewIdentifier()
 			_a.Token = p.curToken
-			_a.Value = p.curToken.Literal
+			_a.Value = p.lit(p.curToken)
 			lit.Name = _a
 		} else if p.currentTokenIs(token.LBRACKET) {
 			_a := p.arena.NewIdentifier()
@@ -3732,7 +3750,7 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 		if p.curToken.Type.IsKeyword() || p.currentTokenOneOf(token.IDENT, token.CONST) {
 			_a := p.arena.NewIdentifier()
 			_a.Token = p.curToken
-			_a.Value = p.curToken.Literal
+			_a.Value = p.lit(p.curToken)
 			lit.Name = _a
 		} else if p.currentTokenIs(token.LBRACKET) {
 			_a := p.arena.NewIdentifier()
@@ -3747,7 +3765,7 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 		if p.peekTokenIs(token.DOT) {
 			_a := p.arena.NewIdentifier()
 			_a.Token = p.curToken
-			_a.Value = p.curToken.Literal
+			_a.Value = p.lit(p.curToken)
 			lit.Receiver = _a
 			p.accept(token.DOT)
 			if !p.peekTokenOneOf(token.IDENT, token.SELF, token.CONST, token.GLOBAL, token.LBRACKET) && !p.peekToken.Type.IsOperator() && !p.peekToken.Type.IsKeyword() {
@@ -3765,7 +3783,7 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 			} else {
 				_a := p.arena.NewIdentifier()
 				_a.Token = p.curToken
-				_a.Value = p.curToken.Literal
+				_a.Value = p.lit(p.curToken)
 				lit.Name = _a
 			}
 		} else {
@@ -3779,7 +3797,7 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 			} else {
 				_a := p.arena.NewIdentifier()
 				_a.Token = p.curToken
-				_a.Value = p.curToken.Literal
+				_a.Value = p.lit(p.curToken)
 				lit.Name = _a
 			}
 		}
@@ -3795,7 +3813,7 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 		} else {
 			_a := p.arena.NewIdentifier()
 			_a.Token = p.curToken
-			_a.Value = p.curToken.Literal
+			_a.Value = p.lit(p.curToken)
 			lit.Name = _a
 		}
 	}
@@ -3803,7 +3821,7 @@ func (p *parser) parseFunctionLiteral() ast.Expression {
 parseParams:
 	if lit.Name != nil && p.peekTokenIs(token.ASSIGN) &&
 		p.curToken.Type == token.IDENT &&
-		p.peekToken.Pos == p.curToken.Pos+len(p.curToken.Literal) {
+		p.peekToken.Pos == p.curToken.Pos+len(p.lit(p.curToken)) {
 		p.accept(token.ASSIGN)
 		lit.Name.Value += "="
 	}
@@ -3832,7 +3850,7 @@ parseParams:
 			}
 			_a := p.arena.NewIdentifier()
 			_a.Token = p.curToken
-			_a.Value = p.curToken.Literal
+			_a.Value = p.lit(p.curToken)
 			bc.Name = _a
 			lit.CapturedBlock = bc
 			if p.peekTokenIs(token.RPAREN) {
@@ -3901,15 +3919,15 @@ parseParams:
 // parseBracketMethodName consumes the token stream for [] or []= method names.
 func (p *parser) parseBracketMethodName() string {
 	defer p.traceEnter()()
-	name := p.curToken.Literal
+	name := p.lit(p.curToken)
 	if !p.accept(token.RBRACKET) {
 		p.peekError(token.RBRACKET)
 		return ""
 	}
-	name += p.curToken.Literal
+	name += p.lit(p.curToken)
 	if p.peekTokenIs(token.ASSIGN) {
 		p.nextToken()
-		name += p.curToken.Literal
+		name += p.lit(p.curToken)
 	}
 	return name
 }
@@ -3917,10 +3935,10 @@ func (p *parser) parseBracketMethodName() string {
 // parseOperatorMethodName handles unary +@ / -@ method names.
 func (p *parser) parseOperatorMethodName() *ast.Identifier {
 	defer p.traceEnter()()
-	name := p.curToken.Literal
+	name := p.lit(p.curToken)
 	if p.peekTokenIs(token.AT) {
 		p.nextToken()
-		name += p.curToken.Literal
+		name += p.lit(p.curToken)
 	}
 	_a := p.arena.NewIdentifier()
 	_a.Token = p.curToken
@@ -3953,11 +3971,11 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 			} else if p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.CONST) {
 				p.accept(token.IDENT)
 				identifiers = append(identifiers, ast.Init(p.arena.NewFunctionParameter(), ast.FunctionParameter{
-					Name: ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}), IsKeywordRest: true,
+					Name: ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.lit(p.curToken)}), IsKeywordRest: true,
 				}))
 			} else {
 				identifiers = append(identifiers, ast.Init(p.arena.NewFunctionParameter(), ast.FunctionParameter{
-					Name: ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}), IsKeywordRest: true,
+					Name: ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.lit(p.curToken)}), IsKeywordRest: true,
 				}))
 			}
 			continue
@@ -3975,7 +3993,7 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 				p.versionError(ruby20, "keyword argument")
 			}
 			p.accept(token.LABEL)
-			name := strings.TrimSuffix(p.curToken.Literal, ":")
+			name := strings.TrimSuffix(p.lit(p.curToken), ":")
 			param := ast.Init(p.arena.NewFunctionParameter(), ast.FunctionParameter{
 				Name:      ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: name}),
 				IsKeyword: true,
@@ -3992,7 +4010,7 @@ func (p *parser) parseParametersTail(identifiers []*ast.FunctionParameter, hasDe
 		// Regular parameter
 		if p.peekTokenOneOf(token.IDENT, token.CONST) {
 			p.acceptOneOf(token.IDENT, token.CONST)
-			name := p.curToken.Literal
+			name := p.lit(p.curToken)
 			param := ast.Init(p.arena.NewFunctionParameter(), ast.FunctionParameter{
 				Name: ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: name}),
 			})
@@ -4027,7 +4045,7 @@ func (p *parser) parseOneParameter(endToken token.Type) []*ast.FunctionParameter
 				name := "*"
 				if p.peekTokenOneOf(token.IDENT, token.CONST) {
 					p.acceptOneOf(token.IDENT, token.CONST)
-					name += p.curToken.Literal
+					name += p.lit(p.curToken)
 				}
 				inner = append(inner, ast.Init(p.arena.NewFunctionParameter(), ast.FunctionParameter{
 					Name:    ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: name}),
@@ -4058,7 +4076,7 @@ func (p *parser) parseOneParameter(endToken token.Type) []*ast.FunctionParameter
 	} else if !p.acceptOneOf(token.IDENT, token.CONST) {
 		return nil
 	}
-	name := p.curToken.Literal
+	name := p.lit(p.curToken)
 	isKeyword := strings.HasSuffix(name, ":")
 	if isKeyword {
 		if !p.version.AtLeast(ruby20) {
@@ -4160,7 +4178,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 				p.acceptOneOf(token.IDENT, token.CONST)
 			}
 			identifiers = append(identifiers, ast.Init(p.arena.NewFunctionParameter(), ast.FunctionParameter{
-				Name:          ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}),
+				Name:          ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.lit(p.curToken)}),
 				IsKeywordRest: true,
 			}))
 		}
@@ -4179,7 +4197,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 			p.acceptOneOf(token.IDENT, token.CONST)
 		}
 		identifiers = append(identifiers, ast.Init(p.arena.NewFunctionParameter(), ast.FunctionParameter{
-			Name:    ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}),
+			Name:    ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.lit(p.curToken)}),
 			IsSplat: true,
 		}))
 		return p.parseParametersTail(identifiers, hasDelimiters, endToken)
@@ -4231,7 +4249,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 					p.accept(token.IDENT)
 				}
 				identifiers = append(identifiers, ast.Init(p.arena.NewFunctionParameter(), ast.FunctionParameter{
-					Name:          ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}),
+					Name:          ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.lit(p.curToken)}),
 					IsKeywordRest: true,
 				}))
 			}
@@ -4254,7 +4272,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 				p.acceptOneOf(token.IDENT, token.CONST)
 			}
 			identifiers = append(identifiers, ast.Init(p.arena.NewFunctionParameter(), ast.FunctionParameter{
-				Name:    ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}),
+				Name:    ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.lit(p.curToken)}),
 				IsSplat: true,
 			}))
 			continue
@@ -4281,7 +4299,7 @@ func (p *parser) parseParameters(startToken, endToken token.Type) []*ast.Functio
 		} else {
 			p.accept(token.IDENT)
 		}
-		pName := p.curToken.Literal
+		pName := p.lit(p.curToken)
 		if isKw {
 			pName = strings.TrimSuffix(pName, ":")
 		}
@@ -4433,7 +4451,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 
 	function := p.arena.NewIdentifier()
 	function.Token = p.curToken
-	function.Value = p.curToken.Literal
+	function.Value = p.lit(p.curToken)
 	contextCallExpression.Function = function
 
 	if p.peekTokenOneOf(token.SEMICOLON, token.NEWLINE, token.EOF, token.DOT, token.SCOPE, token.LONELY, token.END, token.HASHROCKET) {
@@ -5235,8 +5253,8 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 		}
 	}
 	var percentChar byte
-	if len(beg.Literal) > 0 {
-		percentChar = beg.Literal[0]
+	if lit := p.l.Lit(beg); len(lit) > 0 {
+		percentChar = lit[0]
 	}
 	return ast.Init(p.arena.NewArrayLiteral(), ast.ArrayLiteral{
 		Token:       beg,

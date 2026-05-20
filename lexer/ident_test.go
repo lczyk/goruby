@@ -248,7 +248,7 @@ func TestLexerIdentifiers(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -356,7 +356,7 @@ func TestLexerUnicodeIdentifiers(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -459,7 +459,7 @@ func TestLexerIdentifierInContexts(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -614,7 +614,7 @@ func TestLexerUnicodeExtended(t *testing.T) {
 					return
 				}
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}

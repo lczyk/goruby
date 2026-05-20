@@ -16,7 +16,7 @@ func TestLexerBraceOctalInString(t *testing.T) {
 	assert.Equal(t, tok.Type, token.STRING_BEG)
 	tok = l.NextToken()
 	assert.Equal(t, tok.Type, token.STRING_CONTENT)
-	assert.Equal(t, tok.Literal, "\\o{101}")
+	assert.Equal(t, l.Lit(tok), "\\o{101}")
 }
 
 // --- character literal remaining escape branches ---
@@ -39,7 +39,7 @@ func TestLexerCharLiteralRemainingEscapes(t *testing.T) {
 			l := New(tt.input)
 			tok := l.NextToken()
 			assert.Equal(t, tok.Type, token.STRING)
-			assert.Equal(t, tok.Literal, tt.expected)
+			assert.Equal(t, l.Lit(tok), tt.expected)
 		})
 	}
 }
@@ -91,7 +91,7 @@ func TestLexerPercentContentOctBrace(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -115,7 +115,7 @@ func TestLexerBacktickContentOctBrace(t *testing.T) {
 		assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 		tok := l.NextToken()
 		assert.Equal(t, tok.Type, exp.typ)
-		assert.Equal(t, tok.Literal, exp.literal)
+		assert.Equal(t, l.Lit(tok), exp.literal)
 	}
 }
 
@@ -166,7 +166,7 @@ func TestLexerRegexOctBraceAndOptions(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -295,7 +295,7 @@ func TestLexerHeredocEdgeCases(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -344,7 +344,7 @@ func TestLexerGlobalEdgeCases(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -375,7 +375,7 @@ func TestLexerDigitEdgeCases(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -430,7 +430,7 @@ func TestLexerStringContentEdgeCases(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -475,7 +475,7 @@ func TestLexerPercentLiteralMoreEdgeCases(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -635,7 +635,7 @@ func TestLexerStartLexerEdgeCases(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -648,7 +648,7 @@ func TestLexerSingleQuoteBackslashEdge(t *testing.T) {
 	l := New(input)
 	tok := l.NextToken()
 	assert.Equal(t, tok.Type, token.STRING)
-	assert.Equal(t, tok.Literal, "\\\\")
+	assert.Equal(t, l.Lit(tok), "\\\\")
 }
 
 // --- NextToken: cover channel-closed path (error then drain) ---
@@ -726,7 +726,7 @@ func TestLexerDigitExponentEdgeCases(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -796,7 +796,7 @@ func TestLexerHeredocIndentedMatch(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -833,7 +833,7 @@ func TestLexerSquiggyBacktickHeredoc(t *testing.T) {
 	assert.Equal(t, tok.Type, token.XSTR_BEG)
 	tok = l.NextToken()
 	assert.Equal(t, tok.Type, token.XSTR_CONTENT)
-	assert.Equal(t, tok.Literal, "cmd\n")
+	assert.Equal(t, l.Lit(tok), "cmd\n")
 	tok = l.NextToken()
 	assert.Equal(t, tok.Type, token.XSTR_END)
 }
@@ -845,8 +845,8 @@ func TestLexerEndMarkerAfterNewline(t *testing.T) {
 	l := New("x\n__END__\nrest of file")
 	// First: IDENT "x"
 	tok := l.NextToken()
-	if tok.Type != token.IDENT || tok.Literal != "x" {
-		t.Fatalf("expected IDENT x, got %s %q", tok.Type, tok.Literal)
+	if tok.Type != token.IDENT || l.Lit(tok) != "x" {
+		t.Fatalf("expected IDENT x, got %s %q", tok.Type, l.Lit(tok))
 	}
 	// Then NEWLINE
 	tok = l.NextToken()
@@ -881,7 +881,7 @@ func TestLexerLTAngle(t *testing.T) {
 	// LT "<"
 	tok := l.NextToken()
 	assert.Equal(t, tok.Type, token.LT)
-	assert.Equal(t, tok.Literal, "<")
+	assert.Equal(t, l.Lit(tok), "<")
 }
 
 // --- startLexer: <<= (LShift assign) ---
@@ -891,7 +891,7 @@ func TestLexerLShiftAssign(t *testing.T) {
 	l.NextToken() // IDENT
 	tok := l.NextToken()
 	assert.Equal(t, tok.Type, token.LSHIFTASSIGN)
-	assert.Equal(t, tok.Literal, "<<=")
+	assert.Equal(t, l.Lit(tok), "<<=")
 }
 
 // --- startLexer: >> and >>= ---
@@ -902,7 +902,7 @@ func TestLexerRShiftOps(t *testing.T) {
 	assert.Equal(t, tok.Type, token.RSHIFT)
 	l2 := New(">>= 2")
 	tok2 := l2.NextToken()
-	assert.That(t, !(tok2.Type != token.RSHIFTASSIGN), "expected RSHIFTASSIGN, got %s (%q)", tok2.Type, tok2.Literal)
+	assert.That(t, !(tok2.Type != token.RSHIFTASSIGN), "expected RSHIFTASSIGN, got %s (%q)", tok2.Type, l2.Lit(tok2))
 }
 
 // --- startLexer: >= ---
@@ -991,8 +991,8 @@ func TestLexerStringHashAt(t *testing.T) {
 	tok = l.NextToken()  // AT
 	assert.Equal(t, tok.Type, token.AT)
 	tok = l.NextToken() // IDENT "foo"
-	if tok.Type != token.IDENT || tok.Literal != "foo" {
-		t.Fatalf("expected IDENT foo, got %s %q", tok.Type, tok.Literal)
+	if tok.Type != token.IDENT || l.Lit(tok) != "foo" {
+		t.Fatalf("expected IDENT foo, got %s %q", tok.Type, l.Lit(tok))
 	}
 }
 
@@ -1004,8 +1004,8 @@ func TestLexerStringHashClassVar(t *testing.T) {
 	tok = l.NextToken()  // CLASS_VAR
 	assert.Equal(t, tok.Type, token.CLASS_VAR)
 	tok = l.NextToken() // IDENT
-	if tok.Type != token.IDENT || tok.Literal != "cvar" {
-		t.Fatalf("expected IDENT cvar, got %s %q", tok.Type, tok.Literal)
+	if tok.Type != token.IDENT || l.Lit(tok) != "cvar" {
+		t.Fatalf("expected IDENT cvar, got %s %q", tok.Type, l.Lit(tok))
 	}
 }
 
@@ -1028,8 +1028,8 @@ func TestLexerPercentRegexHashAt(t *testing.T) {
 	tok = l.NextToken()  // AT
 	assert.Equal(t, tok.Type, token.AT)
 	tok = l.NextToken() // IDENT
-	if tok.Type != token.IDENT || tok.Literal != "bar" {
-		t.Fatalf("expected IDENT bar, got %s %q", tok.Type, tok.Literal)
+	if tok.Type != token.IDENT || l.Lit(tok) != "bar" {
+		t.Fatalf("expected IDENT bar, got %s %q", tok.Type, l.Lit(tok))
 	}
 }
 
@@ -1042,8 +1042,8 @@ func TestLexerPercentRegexHashClassVar(t *testing.T) {
 	tok = l.NextToken()  // CLASS_VAR
 	assert.Equal(t, tok.Type, token.CLASS_VAR)
 	tok = l.NextToken() // IDENT
-	if tok.Type != token.IDENT || tok.Literal != "bar" {
-		t.Fatalf("expected IDENT bar, got %s %q", tok.Type, tok.Literal)
+	if tok.Type != token.IDENT || l.Lit(tok) != "bar" {
+		t.Fatalf("expected IDENT bar, got %s %q", tok.Type, l.Lit(tok))
 	}
 }
 
@@ -1055,7 +1055,7 @@ func TestLexerRegexHashDollar(t *testing.T) {
 	tok = l.NextToken()  // STRING_CONTENT "foo "
 	tok = l.NextToken()  // GLOBAL
 	assert.Equal(t, tok.Type, token.GLOBAL)
-	assert.Equal(t, tok.Literal, "$bar")
+	assert.Equal(t, l.Lit(tok), "$bar")
 }
 
 // --- lexRegexContent: #@var and #@@var ---
@@ -1067,8 +1067,8 @@ func TestLexerRegexHashAt(t *testing.T) {
 	tok = l.NextToken()  // AT
 	assert.Equal(t, tok.Type, token.AT)
 	tok = l.NextToken() // IDENT
-	if tok.Type != token.IDENT || tok.Literal != "bar" {
-		t.Fatalf("expected IDENT bar, got %s %q", tok.Type, tok.Literal)
+	if tok.Type != token.IDENT || l.Lit(tok) != "bar" {
+		t.Fatalf("expected IDENT bar, got %s %q", tok.Type, l.Lit(tok))
 	}
 }
 
@@ -1109,10 +1109,10 @@ func TestLexerHeredocBodySquigLiteral(t *testing.T) {
 	l := New("<<~'EOS'\n  hello\n  EOS\n")
 	tok := l.NextToken()
 	assert.Equal(t, tok.Type, token.STRING_BEG)
-	assert.Equal(t, tok.Literal, "<<~'EOS'")
+	assert.Equal(t, l.Lit(tok), "<<~'EOS'")
 	tok = l.NextToken()
 	assert.Equal(t, tok.Type, token.STRING_CONTENT)
-	assert.Equal(t, tok.Literal, "hello\n")
+	assert.Equal(t, l.Lit(tok), "hello\n")
 	tok = l.NextToken()
 	assert.Equal(t, tok.Type, token.STRING_END)
 }
@@ -1129,7 +1129,7 @@ func TestLexerHeredocBodyPartialDelimMatch(t *testing.T) {
 	assert.Equal(t, tok.Type, token.STRING_BEG)
 	tok = l.NextToken()
 	assert.Equal(t, tok.Type, token.STRING_CONTENT)
-	assert.Equal(t, tok.Literal, "data\nENDING\n")
+	assert.Equal(t, l.Lit(tok), "data\nENDING\n")
 }
 
 // --- lexHeredocBody: unterminated ---
@@ -1149,11 +1149,11 @@ func TestLexerHeredocContentPartialDelimMatch(t *testing.T) {
 	l := New("<<EOS\nline\nEOST\nEOS\n")
 	tok := l.NextToken() // STRING_BEG
 	tok = l.NextToken()  // STRING_CONTENT "line\n"
-	assert.Equal(t, tok.Literal, "line\n")
+	assert.Equal(t, l.Lit(tok), "line\n")
 	// "EOST" matches as delim, "T\n" consumed as trailer. Then EOS\n matches properly.
 	tok = l.NextToken() // STRING_CONTENT or STRING_END
 	// The lexer emits STRING_CONTENT "" then STRING_END
-	if tok.Type == token.STRING_CONTENT && tok.Literal == "" {
+	if tok.Type == token.STRING_CONTENT && l.Lit(tok) == "" {
 		tok = l.NextToken() // skip empty content
 	}
 	assert.Equal(t, tok.Type, token.STRING_END)
@@ -1165,7 +1165,7 @@ func TestLexerHeredocContentEscape(t *testing.T) {
 	l := New("<<EOS\nline with \\x41 hex\nEOS\n")
 	tok := l.NextToken() // STRING_BEG
 	tok = l.NextToken()  // STRING_CONTENT
-	assert.Equal(t, tok.Literal, "line with \\x41 hex\n")
+	assert.Equal(t, l.Lit(tok), "line with \\x41 hex\n")
 }
 
 // --- lexHeredocStart: <<~ with indent but no squig (indent mode without squig) ---
@@ -1176,7 +1176,7 @@ func TestLexerHeredocStartIndentOnly(t *testing.T) {
 	tok := l.NextToken() // STRING_BEG
 	assert.Equal(t, tok.Type, token.STRING_BEG)
 	tok = l.NextToken() // STRING_CONTENT
-	assert.Equal(t, tok.Literal, "  body\n")
+	assert.Equal(t, l.Lit(tok), "  body\n")
 }
 
 // --- matchHeredocDelimLine: edge cases ---
@@ -1189,13 +1189,13 @@ func TestLexerMatchHeredocDelimLine(t *testing.T) {
 	l := New("<<EOS\nline\nEOS\n")
 	l.NextToken() // STRING_BEG
 	tok := l.NextToken()
-	assert.Equal(t, tok.Literal, "line\n")
+	assert.Equal(t, l.Lit(tok), "line\n")
 
 	// Indented heredoc with tabs
 	l2 := New("<<-EOS\n\tcontent\n\tEOS\n")
 	l2.NextToken() // STRING_BEG
 	tok = l2.NextToken()
-	assert.Equal(t, tok.Literal, "\tcontent\n")
+	assert.Equal(t, l2.Lit(tok), "\tcontent\n")
 }
 
 // --- lexHeredocContent: unterminated ---
@@ -1217,8 +1217,8 @@ func TestLexerHeredocContentHashClassVar(t *testing.T) {
 	l := New("<<EOS\nhello #@@var\nEOS\n")
 	l.NextToken()        // STRING_BEG
 	tok := l.NextToken() // STRING_CONTENT "hello "
-	if tok.Type != token.STRING_CONTENT || tok.Literal != "hello " {
-		t.Fatalf("expected STRING_CONTENT 'hello ', got %s %q", tok.Type, tok.Literal)
+	if tok.Type != token.STRING_CONTENT || l.Lit(tok) != "hello " {
+		t.Fatalf("expected STRING_CONTENT 'hello ', got %s %q", tok.Type, l.Lit(tok))
 	}
 	tok = l.NextToken() // CLASS_VAR
 	assert.Equal(t, tok.Type, token.CLASS_VAR)
@@ -1230,8 +1230,8 @@ func TestLexerHeredocContentHashAt(t *testing.T) {
 	l := New("<<EOS\nhello #@name\nEOS\n")
 	l.NextToken()        // STRING_BEG
 	tok := l.NextToken() // STRING_CONTENT "hello "
-	if tok.Type != token.STRING_CONTENT || tok.Literal != "hello " {
-		t.Fatalf("expected STRING_CONTENT 'hello ', got %s %q", tok.Type, tok.Literal)
+	if tok.Type != token.STRING_CONTENT || l.Lit(tok) != "hello " {
+		t.Fatalf("expected STRING_CONTENT 'hello ', got %s %q", tok.Type, l.Lit(tok))
 	}
 	tok = l.NextToken() // AT
 	assert.Equal(t, tok.Type, token.AT)
@@ -1256,7 +1256,7 @@ func TestLexerEscapeControlBackslash(t *testing.T) {
 	l := New("\"\\C-\\\\\"")
 	tok := l.NextToken() // STRING_BEG
 	tok = l.NextToken()  // STRING_CONTENT
-	assert.Equal(t, tok.Literal, "\\C-\\\\")
+	assert.Equal(t, l.Lit(tok), "\\C-\\\\")
 }
 
 // --- consumeEscape: \M-\\ in string ---
@@ -1265,7 +1265,7 @@ func TestLexerEscapeMetaBackslash(t *testing.T) {
 	l := New("\"\\M-\\\\\"")
 	tok := l.NextToken() // STRING_BEG
 	tok = l.NextToken()  // STRING_CONTENT
-	assert.Equal(t, tok.Literal, "\\M-\\\\")
+	assert.Equal(t, l.Lit(tok), "\\M-\\\\")
 }
 
 // --- lexDigit: trailing underscore and zero-underscore forms ---
@@ -1275,7 +1275,7 @@ func TestLexerDigitTrailingUnderscore(t *testing.T) {
 	l := New("1_")
 	tok := l.NextToken()
 	assert.Equal(t, tok.Type, token.INT)
-	assert.Equal(t, tok.Literal, "1_")
+	assert.Equal(t, l.Lit(tok), "1_")
 }
 
 func TestLexerDigitZeroUnderscore(t *testing.T) {
@@ -1283,7 +1283,7 @@ func TestLexerDigitZeroUnderscore(t *testing.T) {
 	l := New("0_1")
 	tok := l.NextToken()
 	assert.Equal(t, tok.Type, token.INT)
-	assert.Equal(t, tok.Literal, "0_1")
+	assert.Equal(t, l.Lit(tok), "0_1")
 }
 
 func TestLexerDigitFloatTrailingUnderscore(t *testing.T) {
@@ -1291,7 +1291,7 @@ func TestLexerDigitFloatTrailingUnderscore(t *testing.T) {
 	l := New("1.5_")
 	tok := l.NextToken()
 	assert.Equal(t, tok.Type, token.FLOAT)
-	assert.Equal(t, tok.Literal, "1.5_")
+	assert.Equal(t, l.Lit(tok), "1.5_")
 }
 
 func TestLexerDigitFloatExpNegativeNoDigit(t *testing.T) {
@@ -1299,7 +1299,7 @@ func TestLexerDigitFloatExpNegativeNoDigit(t *testing.T) {
 	l := New("1.5e-")
 	tok := l.NextToken()
 	assert.Equal(t, tok.Type, token.ILLEGAL)
-	assert.Equal(t, tok.Literal, "trailing 'e' in number")
+	assert.Equal(t, l.Lit(tok), "trailing 'e' in number")
 }
 
 func TestLexerDigitFloatExpThenNonDigit(t *testing.T) {
@@ -1307,10 +1307,10 @@ func TestLexerDigitFloatExpThenNonDigit(t *testing.T) {
 	l := New("1e10x")
 	tok := l.NextToken()
 	assert.Equal(t, tok.Type, token.FLOAT)
-	assert.Equal(t, tok.Literal, "1e10")
+	assert.Equal(t, l.Lit(tok), "1e10")
 	tok = l.NextToken()
-	if tok.Type != token.IDENT || tok.Literal != "x" {
-		t.Errorf("expected IDENT x, got %s %q", tok.Type, tok.Literal)
+	if tok.Type != token.IDENT || l.Lit(tok) != "x" {
+		t.Errorf("expected IDENT x, got %s %q", tok.Type, l.Lit(tok))
 	}
 }
 
@@ -1323,7 +1323,7 @@ func TestLexerHeredocBodySquigIndentedDelim(t *testing.T) {
 	assert.Equal(t, tok.Type, token.STRING_BEG)
 	tok = l.NextToken()
 	assert.Equal(t, tok.Type, token.STRING_CONTENT)
-	assert.Equal(t, tok.Literal, "line\n")
+	assert.Equal(t, l.Lit(tok), "line\n")
 	tok = l.NextToken()
 	assert.Equal(t, tok.Type, token.STRING_END)
 }
@@ -1336,7 +1336,7 @@ func TestLexerHeredocBodyNoTrailingNewline(t *testing.T) {
 	assert.Equal(t, tok.Type, token.STRING_BEG)
 	tok = l.NextToken()
 	assert.Equal(t, tok.Type, token.STRING_CONTENT)
-	assert.Equal(t, tok.Literal, "body\n")
+	assert.Equal(t, l.Lit(tok), "body\n")
 	tok = l.NextToken()
 	assert.Equal(t, tok.Type, token.STRING_END)
 }
@@ -1347,7 +1347,7 @@ func TestLexerHeredocMatchIndentedTabs(t *testing.T) {
 	l := New("<<-EOS\nline\n\t\tEOS\n")
 	l.NextToken()        // STRING_BEG
 	tok := l.NextToken() // STRING_CONTENT
-	assert.Equal(t, tok.Literal, "line\n")
+	assert.Equal(t, l.Lit(tok), "line\n")
 	tok = l.NextToken() // STRING_END
 	assert.Equal(t, tok.Type, token.STRING_END)
 }
@@ -1372,7 +1372,7 @@ func TestLexerStripSquigAllBlank(t *testing.T) {
 	l := New("<<~EOS\n\n\n  line\n  EOS\n")
 	l.NextToken()        // STRING_BEG
 	tok := l.NextToken() // STRING_CONTENT
-	assert.Equal(t, tok.Literal, "\n\nline\n")
+	assert.Equal(t, l.Lit(tok), "\n\nline\n")
 }
 
 // --- lexCharacterLiteral: control char with backslash target ---
@@ -1381,7 +1381,7 @@ func TestLexerCharLiteralControlBackslashTarget(t *testing.T) {
 	l := New("?\\C-\\\\")
 	tok := l.NextToken()
 	assert.Equal(t, tok.Type, token.STRING)
-	assert.Equal(t, tok.Literal, "\\C-\\\\")
+	assert.Equal(t, l.Lit(tok), "\\C-\\\\")
 }
 
 // --- lexCharacterLiteral: meta char with backslash target ---
@@ -1390,7 +1390,7 @@ func TestLexerCharLiteralMetaBackslashTarget(t *testing.T) {
 	l := New("?\\M-\\\\")
 	tok := l.NextToken()
 	assert.Equal(t, tok.Type, token.STRING)
-	assert.Equal(t, tok.Literal, "\\M-\\\\")
+	assert.Equal(t, l.Lit(tok), "\\M-\\\\")
 }
 
 // --- startLexer: ** operator (POWER) ---
@@ -1400,7 +1400,7 @@ func TestLexerPowerOperator(t *testing.T) {
 	l.NextToken() // IDENT a
 	tok := l.NextToken()
 	assert.Equal(t, tok.Type, token.POWER)
-	assert.Equal(t, tok.Literal, "**")
+	assert.Equal(t, l.Lit(tok), "**")
 }
 
 // --- startLexer: &&= (ANDASSIGN) ---
@@ -1427,7 +1427,7 @@ func TestLexerZeroDotDigit(t *testing.T) {
 	l := New("0.5")
 	tok := l.NextToken()
 	assert.Equal(t, tok.Type, token.FLOAT)
-	assert.Equal(t, tok.Literal, "0.5")
+	assert.Equal(t, l.Lit(tok), "0.5")
 }
 
 // --- lexDigit: integer exponent with sign ---
@@ -1436,14 +1436,14 @@ func TestLexerIntExpWithSign(t *testing.T) {
 	l := New("1e+10")
 	tok := l.NextToken()
 	assert.Equal(t, tok.Type, token.FLOAT)
-	assert.Equal(t, tok.Literal, "1e+10")
+	assert.Equal(t, l.Lit(tok), "1e+10")
 }
 
 func TestLexerIntExpNegWithSign(t *testing.T) {
 	l := New("1e-10")
 	tok := l.NextToken()
 	assert.Equal(t, tok.Type, token.FLOAT)
-	assert.Equal(t, tok.Literal, "1e-10")
+	assert.Equal(t, l.Lit(tok), "1e-10")
 }
 
 // --- lexCharacterLiteral: space as character (error) ---
@@ -1556,7 +1556,7 @@ func TestLexerHeredocBodyEmptySquiggy(t *testing.T) {
 	assert.Equal(t, tok.Type, token.STRING_BEG)
 	tok = l.NextToken()
 	assert.Equal(t, tok.Type, token.STRING_CONTENT)
-	assert.Equal(t, tok.Literal, "")
+	assert.Equal(t, l.Lit(tok), "")
 	tok = l.NextToken()
 	assert.Equal(t, tok.Type, token.STRING_END)
 }
@@ -1622,7 +1622,7 @@ func TestLexerHeredocContentMatchAtLineStart(t *testing.T) {
 	l.NextToken()        // STRING_BEG
 	tok := l.NextToken() // STRING_CONTENT (empty) or STRING_END
 	if tok.Type != token.STRING_CONTENT && tok.Type != token.STRING_END {
-		t.Fatalf("expected STRING_CONTENT or STRING_END, got %s (%q)", tok.Type, tok.Literal)
+		t.Fatalf("expected STRING_CONTENT or STRING_END, got %s (%q)", tok.Type, l.Lit(tok))
 	}
 }
 
@@ -1634,7 +1634,7 @@ func TestLexerMatchHeredocDelimLineExtraChars(t *testing.T) {
 	assert.Equal(t, tok.Type, token.STRING_BEG)
 	tok = l.NextToken() // STRING_CONTENT
 	assert.Equal(t, tok.Type, token.STRING_CONTENT)
-	assert.Equal(t, tok.Literal, "EOSextra\n")
+	assert.Equal(t, l.Lit(tok), "EOSextra\n")
 }
 
 // --- stripHeredocIndent: minIndent == 0 returns original ---
@@ -1719,7 +1719,7 @@ func TestLexerSquigBodyAllBlankBeforeDelim(t *testing.T) {
 	assert.Equal(t, tok.Type, token.STRING_BEG)
 	tok = l.NextToken() // STRING_CONTENT
 	assert.Equal(t, tok.Type, token.STRING_CONTENT)
-	assert.Equal(t, tok.Literal, "\n\n")
+	assert.Equal(t, l.Lit(tok), "\n\n")
 }
 
 func TestLexerRegressions(t *testing.T) {
@@ -1804,8 +1804,8 @@ func TestLexerRegressions(t *testing.T) {
 			l := New(tt.input)
 			for _, check := range tt.checks {
 				tok := l.NextToken()
-				assert.That(t, !(tok.Type != check.typ), "expected %s, got %s (%q)", check.typ, tok.Type, tok.Literal)
-				assert.That(t, !(tok.Literal != check.lit), "expected literal %q, got %q", check.lit, tok.Literal)
+				assert.That(t, !(tok.Type != check.typ), "expected %s, got %s (%q)", check.typ, tok.Type, l.Lit(tok))
+				assert.That(t, !(l.Lit(tok) != check.lit), "expected literal %q, got %q", check.lit, l.Lit(tok))
 			}
 		})
 	}

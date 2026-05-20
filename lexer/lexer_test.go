@@ -423,8 +423,8 @@ $a
 			t.Fail()
 		}
 
-		if token.Literal != testCase.expectedLiteral {
-			t.Logf("Expected token with literal %q at position %d, got literal %q\n", testCase.expectedLiteral, pos, token.Literal)
+		if lit := lexer.Lit(token); lit != testCase.expectedLiteral {
+			t.Logf("Expected token with literal %q at position %d, got literal %q\n", testCase.expectedLiteral, pos, lit)
 			t.Fail()
 		}
 	}
@@ -580,7 +580,7 @@ func TestLexerHeredoc(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF", i)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -667,7 +667,7 @@ func TestLexerStringInterpolation(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -828,7 +828,7 @@ func TestLexerHeredocInterpolation(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -914,7 +914,7 @@ func TestLexerRegex(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -971,7 +971,7 @@ func TestLexerMultilineLiterals(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF", i)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -1063,7 +1063,7 @@ func TestLexerRegexInterpolation(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -1166,7 +1166,7 @@ func TestLexerGlobalVariables(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -1227,7 +1227,7 @@ func TestLexerLineContinuation(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -1274,7 +1274,7 @@ func TestLexerEndMarker(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -1414,7 +1414,7 @@ func TestLexerPercentLiteral(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -1511,7 +1511,7 @@ func TestBlockComments(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -1562,7 +1562,7 @@ func TestVersionGating(t *testing.T) {
 		l := New("42r", WithVersion(token.MustParseVersion("2.1")))
 		tok := l.NextToken()
 		assert.Equal(t, tok.Type, token.INT)
-		assert.Equal(t, tok.Literal, "42r")
+		assert.Equal(t, l.Lit(tok), "42r")
 	})
 
 	t.Run("complex suffix on float rejected before 2.1", func(t *testing.T) {
@@ -1574,7 +1574,7 @@ func TestVersionGating(t *testing.T) {
 		l := New("1.5i", WithVersion(token.MustParseVersion("2.1")))
 		tok := l.NextToken()
 		assert.Equal(t, tok.Type, token.FLOAT)
-		assert.Equal(t, tok.Literal, "1.5i")
+		assert.Equal(t, l.Lit(tok), "1.5i")
 	})
 
 	t.Run("default version allows all features", func(t *testing.T) {
@@ -1600,7 +1600,7 @@ func TestGlobalDashVariables(t *testing.T) {
 			l := New(tt.input)
 			tok := l.NextToken()
 			assert.Equal(t, tok.Type, token.GLOBAL)
-			assert.Equal(t, tok.Literal, tt.literal)
+			assert.Equal(t, l.Lit(tok), tt.literal)
 		})
 	}
 }
@@ -1725,7 +1725,7 @@ func TestRegexContext(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}

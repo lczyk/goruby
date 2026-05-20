@@ -59,6 +59,12 @@ type Program struct {
 	// arena keeps the parser's bump-allocated chunks reachable for the
 	// lifetime of the Program. nil for hand-built ASTs (tests, fixtures).
 	arena *Arena
+	// LitPool carries the per-parse literal pool finalised at parse end.
+	// Tokens reference text via LitOff indices into this slice, so the
+	// AST keeps its literal text reachable after the parser drops the
+	// source bytes. Nil for hand-built ASTs (tests, fixtures) whose
+	// tokens carry their text via dedicated AST fields (.Value etc).
+	LitPool []string
 }
 
 // Arena returns the bump allocator used to construct this Program's AST

@@ -230,7 +230,7 @@ func TestLexerEscapes(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -354,7 +354,7 @@ func TestLexerCharacterLiteral(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -441,7 +441,7 @@ func TestLexerBacktick(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -510,7 +510,7 @@ func TestLexerEscapesEdgeCases(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -799,7 +799,7 @@ func TestLexerNumbers(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}

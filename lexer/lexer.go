@@ -221,6 +221,7 @@ type Lexer struct {
 	width              int              // width of last rune read from input.
 	tokens             []token.Token // queue of scanned tokens, drained by NextToken.
 	tokenHead          int           // index of next unread token in tokens.
+	litPool            []string         // per-token literal pool indexed by Token.LitOff (LitLen unused with []string indexing)
 	lastToken          token.Token      // lastToken stores the last token emitted by the lexer
 	hadWhitespace      bool             // true if whitespace was skipped before current token
 	ternaryDepth       int              // pending ternary ? without matching :
@@ -284,27 +285,69 @@ func (l *Lexer) HasNext() bool {
 }
 
 // Input returns the source text being scanned. Immutable post-New. Used by
-// the parser to resolve token spans via Token.LitOf(src) once Token.Literal
-// is removed.
+// the parser to resolve token spans via Token.LitOf(src) during parse.
 func (l *Lexer) Input() string { return l.input }
 
-// newToken builds a token whose End reflects the source span l.start..l.pos
-// regardless of whether literal mirrors the raw source slice (plain emit)
-// or carries processed text (escape-decoded, percent-prefix, etc). Keeping
-// End source-anchored is what lets Token.LitOf(src) work uniformly across
-// emit / emitLiteral paths.
-func (l *Lexer) newToken(t token.Type, literal string) token.Token {
+// Pool returns the lexer's literal pool: per-token-text storage for the
+// emitLiteral path (escape-decoded STRING_CONTENT, percent-prefix
+// STRING_BEG, heredoc tags, regex flags, error messages, etc). Source-
+// slice tokens carry LitOff = -1 and don't appear here -- consumers
+// resolve their text via tok.LitOf(src). ast.Program holds the pool
+// reference post-parse so AST queries that need decoded literals
+// continue to work after src is dropped.
+func (l *Lexer) Pool() []string { return l.litPool }
+
+// Lit returns the literal text for tok. For pool-backed tokens it returns
+// pool[LitOff] (zero-alloc). For source-slice tokens it falls back to
+// tok.LitOf(l.input) -- callers that may read mid-heredoc-swap (where
+// l.input is a transient buffer) should pass their own cached source
+// string to tok.LitOf directly instead.
+func (l *Lexer) Lit(tok token.Token) string {
+	if tok.LitOff >= 0 && int(tok.LitOff) < len(l.litPool) {
+		return l.litPool[tok.LitOff]
+	}
+	return tok.LitOf(l.input)
+}
+
+// newToken builds a source-slice token. Pos/End refer to the source span
+// l.start..l.pos. LitOff = -1 marks the token as not having an entry in
+// l.litPool -- consumers reconstruct the text via tok.LitOf(src).
+//
+// During heredoc body lex (l.heredocSwapped) the lexer's input has been
+// swapped to a transient buffer; tokens emitted with Pos pointing into
+// that buffer are unreadable once the swap is restored. To keep their
+// text reachable, the bytes are captured into the pool right away (the
+// token becomes a pool-backed one via newTokenLit).
+func (l *Lexer) newToken(t token.Type) token.Token {
+	if l.heredocSwapped {
+		return l.newTokenLit(t, l.input[l.start:l.pos])
+	}
 	return token.Token{
-		Type:    t,
-		Literal: literal,
-		Pos:     l.start,
-		End:     int32(l.pos - l.start),
+		Type:   t,
+		Pos:    l.start,
+		End:    int32(l.pos - l.start),
+		LitOff: -1,
+	}
+}
+
+// newTokenLit builds a token whose literal text doesn't match its source
+// span (escape-decoded STRING_CONTENT, percent-prefix STRING_BEG, heredoc
+// tag, regex flags, error message). The literal is appended to l.litPool
+// and Token.LitOff indexes into it. End remains the source span length.
+func (l *Lexer) newTokenLit(t token.Type, literal string) token.Token {
+	off := int32(len(l.litPool))
+	l.litPool = append(l.litPool, literal)
+	return token.Token{
+		Type:   t,
+		Pos:    l.start,
+		End:    int32(l.pos - l.start),
+		LitOff: off,
 	}
 }
 
 // emit passes a token back to the client.
 func (l *Lexer) emit(t token.Type) {
-	tok := l.newToken(t, l.input[l.start:l.pos])
+	tok := l.newToken(t)
 	tok.HadWhitespace = l.tokenHadWhitespace
 	if t == token.STRING_END || t == token.XSTR_END {
 		tok.HeredocStripped = l.heredocStripped
@@ -319,7 +362,7 @@ func (l *Lexer) emit(t token.Type) {
 // emitLiteral emits a token of the given type with an explicit literal,
 // ignoring the input between l.start and l.pos. start is advanced to pos.
 func (l *Lexer) emitLiteral(t token.Type, literal string) {
-	tok := l.newToken(t, literal)
+	tok := l.newTokenLit(t, literal)
 	tok.HadWhitespace = l.tokenHadWhitespace
 	if t == token.STRING_END || t == token.XSTR_END {
 		tok.HeredocStripped = l.heredocStripped
@@ -334,7 +377,7 @@ func (l *Lexer) emitLiteral(t token.Type, literal string) {
 // emitLiteralSQ is emitLiteral but marks the token as SingleQuoted so the
 // printer renders it with single quotes.
 func (l *Lexer) emitLiteralSQ(t token.Type, literal string) {
-	tok := l.newToken(t, literal)
+	tok := l.newTokenLit(t, literal)
 	tok.HadWhitespace = l.tokenHadWhitespace
 	tok.SingleQuoted = true
 	l.tokenHadWhitespace = false
@@ -573,7 +616,7 @@ func (l *Lexer) peekSecond() rune {
 // error returns an error token and terminates the scan by passing
 // back a nil pointer that will be the next state, terminating l.run.
 func (l *Lexer) errorf(format string, args ...interface{}) StateFn {
-	l.tokens = append(l.tokens, token.NewToken(token.ILLEGAL, fmt.Sprintf(format, args...), l.start))
+	l.tokens = append(l.tokens, l.newTokenLit(token.ILLEGAL, fmt.Sprintf(format, args...)))
 	return nil
 }
 
@@ -600,7 +643,7 @@ func startLexer(l *Lexer) StateFn {
 		return l.errorf("Illegal character: '%c'", r)
 	}
 	// =begin block comment at column 0 (start of file or after newline).
-	if r == '=' && l.start == 0 && l.lastToken.Type == token.ILLEGAL && l.lastToken.Literal == "" {
+	if r == '=' && l.start == 0 && l.lastToken.Type == token.ILLEGAL && l.Lit(l.lastToken) == "" {
 		if strings.HasPrefix(l.input[l.pos:], "begin") &&
 			(l.pos+5 >= len(l.input) || l.input[l.pos+5] == '\n' || l.input[l.pos+5] == ' ' || l.input[l.pos+5] == '\t' || l.input[l.pos+5] == '\r') {
 			l.backup()
@@ -1330,7 +1373,7 @@ func lexSingleQuoteString(l *Lexer) StateFn {
 		r = l.next()
 	}
 	l.backup()
-	tok := l.newToken(token.STRING, l.input[l.start:l.pos])
+	tok := l.newToken(token.STRING)
 	tok.HadWhitespace = l.tokenHadWhitespace
 	tok.SingleQuoted = true
 	l.tokenHadWhitespace = false
@@ -1437,7 +1480,7 @@ func lexCharacterLiteral(l *Lexer) StateFn {
 	// After the char/escape, emit the character as a string. Mark with
 	// IsCharLit so the printer can re-emit as `?X` (preserves MRI's
 	// StringFlags shape -- char literals always inherit source encoding).
-	tok := l.newToken(token.STRING, l.input[l.start:l.pos])
+	tok := l.newToken(token.STRING)
 	tok.HadWhitespace = l.tokenHadWhitespace
 	tok.IsCharLit = true
 	l.tokenHadWhitespace = false
@@ -1696,7 +1739,7 @@ func lexPercentLiteralBodySQ(l *Lexer, opener, closer rune, paired bool, tok tok
 				depth--
 				if depth == 0 {
 					l.backup()
-					sq := l.newToken(tok, l.input[l.start:l.pos])
+					sq := l.newToken(tok)
 					sq.HadWhitespace = l.tokenHadWhitespace
 					sq.SingleQuoted = true
 					l.tokenHadWhitespace = false
@@ -1712,7 +1755,7 @@ func lexPercentLiteralBodySQ(l *Lexer, opener, closer rune, paired bool, tok tok
 		} else {
 			if r == closer {
 				l.backup()
-				sq := l.newToken(tok, l.input[l.start:l.pos])
+				sq := l.newToken(tok)
 				sq.HadWhitespace = l.tokenHadWhitespace
 				sq.SingleQuoted = true
 				l.tokenHadWhitespace = false
@@ -2656,7 +2699,7 @@ func lexRegexContent(l *Lexer) StateFn {
 					break
 				}
 			}
-			tok := l.newToken(token.REGEX_END, opts)
+			tok := l.newTokenLit(token.REGEX_END, opts)
 			l.lastToken = tok
 			l.tokens = append(l.tokens, tok)
 			l.start = l.pos

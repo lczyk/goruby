@@ -652,7 +652,7 @@ func TestLexerPercentLiteralAllDelimiters(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -754,7 +754,7 @@ func TestLexerPercentAsMethodArg(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}
@@ -824,7 +824,7 @@ func TestLexerEscapedCharInPercentLiteral(t *testing.T) {
 				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
-				assert.Equal(t, tok.Literal, exp.literal)
+				assert.Equal(t, l.Lit(tok), exp.literal)
 			}
 		})
 	}

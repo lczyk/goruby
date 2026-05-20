@@ -13,11 +13,11 @@ func TestString(t *testing.T) {
 			&ExpressionStatement{
 				Expression: &Assignment{
 					Left: &Identifier{
-						Token: token.Token{Type: token.IDENT, Literal: "myVar"},
+						Token: token.Token{Type: token.IDENT},
 						Value: "myVar",
 					},
 					Right: &Identifier{
-						Token: token.Token{Type: token.IDENT, Literal: "anotherVar"},
+						Token: token.Token{Type: token.IDENT},
 						Value: "anotherVar",
 					},
 				},

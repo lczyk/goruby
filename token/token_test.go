@@ -51,8 +51,8 @@ func TestLookupIdent(t *testing.T) {
 func TestNewToken(t *testing.T) {
 	tok := NewToken(IDENT, "foo", 42)
 	assert.Equal(t, tok.Type, IDENT)
-	assert.Equal(t, tok.Literal, "foo")
 	assert.Equal(t, tok.Pos, 42)
+	assert.Equal(t, int(tok.End), 3) // End derived from len("foo")
 }
 
 func TestTokenIsLiteral(t *testing.T) {

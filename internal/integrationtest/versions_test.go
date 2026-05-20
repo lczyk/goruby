@@ -137,7 +137,7 @@ func runLexWithVersion(src string, ver token.RubyVersion) error {
 	for l.HasNext() {
 		tok := l.NextToken()
 		if tok.Type == token.ILLEGAL {
-			return fmt.Errorf("ILLEGAL token at pos %d: %q", tok.Pos, tok.Literal)
+			return fmt.Errorf("ILLEGAL token at pos %d: %q", tok.Pos, l.Lit(tok))
 		}
 		if tok.Type == token.EOF {
 			break

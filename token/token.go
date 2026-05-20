@@ -379,27 +379,37 @@ func LookupIdent(ident string) Type {
 // and the narrower field lets Token pack to 32B instead of 40B.
 type Type int32
 
-// NewToken returns a new Token associated with the given Type typ, the
-// Literal literal and the Position pos. The End field is filled from
-// len(literal) so callers gain a complete source span without having to
-// thread the end offset through every emit site.
+// NewToken returns a new Token of the given Type typ at Position pos.
+// The End field is filled from len(literal). The literal arg is retained
+// for API compatibility but no longer stored on the Token -- producers
+// that need to resolve a token's literal text must thread a pool ([]byte
+// or string) and use Token.LitOf / LitOfBytes / LitOfPool. Lexer-emitted
+// tokens populate the pool via Lexer.newToken; hand-built tokens (tests,
+// fixtures) carry their text via the corresponding AST field (.Value /
+// .HeredocTagSource / .LabelText / .PercentChar) or accept an empty
+// literal lookup.
 func NewToken(typ Type, literal string, pos int) Token {
-	return Token{Type: typ, Literal: literal, Pos: pos, End: int32(len(literal))}
+	return Token{Type: typ, Pos: pos, End: int32(len(literal))}
 }
 
-// A Token represents a known token with its literal representation.
-// Field order is tuned for compact layout: the 16B string header sits first
-// (8B align), then 8B Pos, 4B End, 4B Type, and four trailing bools fit in
-// the final 4B. Total: 36B -> 40B padded.
+// A Token represents a known token. Pointer-free (noscan): Pos + End +
+// LitOff + Type + four bools all pack into 24B with no string header
+// and no other pointer-bearing field. Slabs of Tokens are noscan-
+// eligible, so the GC skips them entirely.
 //
-// The End field stores the token's source length (so the exclusive end
-// offset is Pos + int(End)). Redundant with len(Literal) for now, exposed
-// so consumers can migrate off Literal without re-deriving spans. Once
-// readers are off Literal, Literal is removed and Token packs into 24B.
+// The End field stores the token's source span length (Pos + int(End) is
+// the exclusive end byte offset in the original source). LitOff indexes
+// into a per-parse literal pool ([]string owned by the lexer during
+// parse, transferred to ast.Program post-parse). pool[LitOff] is the
+// token's literal text: a zero-alloc substring view of source for
+// emit-path tokens, an explicitly-allocated decoded string for
+// emitLiteral-path tokens (escape-decoded STRING_CONTENT, percent-prefix
+// STRING_BEG, heredoc tags). The pool survives the source string so
+// AST.String() works after src is dropped.
 type Token struct {
-	Literal         string
 	Pos             int
 	End             int32
+	LitOff          int32
 	Type            Type
 	HadWhitespace   bool // true if whitespace was skipped before this token
 	SingleQuoted    bool // true for STRING tokens emitted from a single-quoted source literal
@@ -414,7 +424,8 @@ func (tok Token) EndPos() int { return tok.Pos + int(tok.End) }
 // Returns "" for synthetic / position-less tokens (Pos < 0 or zero-length).
 // Migration target for callers currently reading tok.Literal directly --
 // usable while the parser still holds source. After-parse readers must use
-// AST-stored values instead.
+// LitOfPool(pool) instead, which resolves against the parse-scoped literal
+// pool surviving src drop.
 func (tok Token) LitOf(source string) string {
 	if tok.End == 0 {
 		return ""
@@ -424,6 +435,16 @@ func (tok Token) LitOf(source string) string {
 		return ""
 	}
 	return source[tok.Pos:end]
+}
+
+// LitOfPool returns the token's literal text from the parse-scoped pool.
+// Returns "" for synthetic / position-less tokens. Used by AST.String()
+// methods after src has been dropped -- pool is owned by ast.Program.
+func (tok Token) LitOfPool(pool []string) string {
+	if tok.LitOff < 0 || int(tok.LitOff) >= len(pool) {
+		return ""
+	}
+	return pool[tok.LitOff]
 }
 
 // Literal returns the compile-time-constant literal text for fixed-literal
