@@ -1,8 +1,9 @@
 // goruby runs a ruby program through the goruby tree-walking
 // evaluator. Mirrors the upstream goruby binary: takes either a
-// program file, one or more -e oneliners, or stdin.
+// program file, one or more -e oneliners, or stdin. Positional
+// arguments after the program file populate the ARGV constant.
 //
-//	goruby [-e script]... [--ruby-version=X.Y] [programfile]
+//	goruby [-e script]... [--ruby-version=X.Y] [programfile [argv...]]
 //
 // Examples:
 //
@@ -10,6 +11,7 @@
 //	goruby -e 'puts 1 + 2'
 //	goruby -e 'x = 1' -e 'puts x + 2'
 //	goruby --ruby-version=2.6 hello.rb
+//	goruby interp.rb program.input
 //	echo 'puts 1 + 2' | goruby
 package main
 
@@ -38,7 +40,7 @@ type Options struct {
 func main() {
 	var opts Options
 	parser0 := flags.NewParser(&opts, flags.Default)
-	parser0.Usage = "[--ruby-version=X.Y] [-e script]... [programfile]"
+	parser0.Usage = "[--ruby-version=X.Y] [-e script]... [programfile [argv...]]"
 	args, err := parser0.Parse()
 	if err != nil {
 		var flagsErr *flags.Error
@@ -64,39 +66,37 @@ func main() {
 		envOpts = append(envOpts, object.WithVersion(v))
 	}
 
-	filename, src := readInput(opts.Scripts, args)
+	filename, src, argv := readInput(opts.Scripts, args)
 
 	prog, err := parser.ParseFile(filename, src, 0, parseOpts...)
 	if err != nil {
 		die("parse:", err)
 	}
 
+	envOpts = append(envOpts, object.WithARGV(argv))
 	env := object.NewMainEnvironment(envOpts...)
 	if _, err := evaluator.Eval(prog, env); err != nil {
 		die("eval:", err)
 	}
 }
 
-func readInput(scripts, args []string) (string, []byte) {
+func readInput(scripts, args []string) (string, []byte, []string) {
 	if len(scripts) > 0 {
-		return "-e", []byte(strings.Join(scripts, "\n"))
+		return "-e", []byte(strings.Join(scripts, "\n")), args
 	}
 	if len(args) == 0 {
 		data, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			die("read stdin:", err)
 		}
-		return "<stdin>", data
-	}
-	if len(args) > 1 {
-		die("usage:", fmt.Errorf("too many positional arguments"))
+		return "<stdin>", data, nil
 	}
 	filename := args[0]
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		die("read input:", err)
 	}
-	return filename, data
+	return filename, data, args[1:]
 }
 
 func die(prefix string, err error) {
