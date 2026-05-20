@@ -61,6 +61,46 @@ func init() {
 	add("ceil", func(env *object.Environment, r *object.Float, args []object.RubyObject) (object.RubyObject, error) {
 		return object.NewInteger(int64(ceilFloat(r.Value))), nil
 	})
+	add("clamp", func(env *object.Environment, r *object.Float, args []object.RubyObject) (object.RubyObject, error) {
+		if len(args) == 1 {
+			rng, ok := args[0].(*object.Range)
+			if !ok {
+				return nil, errorf("evaluator: Float#clamp needs Range or 2 args")
+			}
+			lo, _ := toFloatValue(rng.Begin)
+			hi, _ := toFloatValue(rng.End)
+			if rng.Exclusive {
+				hi -= 1e-12
+			}
+			v := r.Value
+			if v < lo {
+				v = lo
+			}
+			if v > hi {
+				v = hi
+			}
+			return object.NewFloat(v), nil
+		}
+		if len(args) != 2 {
+			return nil, errorf("evaluator: Float#clamp expects 1..2 args")
+		}
+		lo, err := toFloatValue(args[0])
+		if err != nil {
+			return nil, err
+		}
+		hi, err := toFloatValue(args[1])
+		if err != nil {
+			return nil, err
+		}
+		v := r.Value
+		if v < lo {
+			v = lo
+		}
+		if v > hi {
+			v = hi
+		}
+		return object.NewFloat(v), nil
+	})
 	add("round", func(env *object.Environment, r *object.Float, args []object.RubyObject) (object.RubyObject, error) {
 		if len(args) == 1 {
 			digits, ok := args[0].(*object.Integer)
