@@ -21,7 +21,7 @@ func init() {
 		c.AddMethod(n, &object.BuiltinMethod{
 			Name: n,
 			Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
-				return callMethodLegacy(env, recv, n, args)
+				return callArrayMethod(env, recv.(*object.Array), n, args)
 			},
 		})
 	}
