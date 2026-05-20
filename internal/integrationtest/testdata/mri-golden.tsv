@@ -314,7 +314,7 @@ internal/integrationtest/testdata/mri-tests/enc/test_cesu8.rb	pass	pass	pass	pas
 internal/integrationtest/testdata/mri-tests/enc/test_cp949.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/enc/test_emoji_breaks.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/enc/test_emoji.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
-internal/integrationtest/testdata/mri-tests/enc/test_euc_jp.rb	pass	fail	fail	pass	pass	pass	pass	fail	pass	pass	pass	pass
+internal/integrationtest/testdata/mri-tests/enc/test_euc_jp.rb	pass	fail	fail	pass	fail	fail	fail	fail	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/enc/test_euc_kr.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/enc/test_euc_tw.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/enc/test_gb18030.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
@@ -323,11 +323,11 @@ internal/integrationtest/testdata/mri-tests/enc/test_grapheme_breaks.rb	fail	pas
 internal/integrationtest/testdata/mri-tests/enc/test_iso_8859.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/enc/test_koi8.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/enc/test_regex_casefold.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
-internal/integrationtest/testdata/mri-tests/enc/test_shift_jis.rb	pass	fail	fail	pass	pass	pass	pass	fail	pass	pass	pass	pass
+internal/integrationtest/testdata/mri-tests/enc/test_shift_jis.rb	pass	fail	fail	pass	fail	fail	fail	fail	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/enc/test_utf16.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/enc/test_utf32.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
-internal/integrationtest/testdata/mri-tests/enc/test_windows_1251.rb	pass	fail	fail	pass	pass	pass	pass	fail	pass	pass	pass	pass
-internal/integrationtest/testdata/mri-tests/enc/test_windows_1252.rb	pass	fail	fail	pass	pass	pass	pass	fail	pass	pass	pass	pass
+internal/integrationtest/testdata/mri-tests/enc/test_windows_1251.rb	pass	fail	fail	pass	fail	fail	fail	fail	pass	pass	pass	pass
+internal/integrationtest/testdata/mri-tests/enc/test_windows_1252.rb	pass	fail	fail	pass	fail	fail	fail	fail	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/lbtest.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/marshaltestlib.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/sentence.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
@@ -399,13 +399,13 @@ internal/integrationtest/testdata/mri-tests/test_lambda.rb	fail	fail	fail	pass	p
 internal/integrationtest/testdata/mri-tests/test_lazy_enumerator.rb	fail	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/test_literal.rb	fail	fail	fail	fail	fail	fail	fail	fail	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/test_m17n_comb.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
-internal/integrationtest/testdata/mri-tests/test_m17n.rb	fail	fail	fail	pass	pass	pass	pass	fail	pass	pass	pass	pass
+internal/integrationtest/testdata/mri-tests/test_m17n.rb	fail	fail	fail	pass	fail	fail	fail	fail	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/test_marshal.rb	fail	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/test_math.rb	fail	fail	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/test_memory_view.rb	fail	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/test_metaclass.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/test_method_cache.rb	fail	fail	fail	fail	fail	fail	fail	pass	pass	pass	pass	pass
-internal/integrationtest/testdata/mri-tests/test_mixed_unicode_escapes.rb	pass	fail	fail	pass	pass	pass	pass	fail	pass	pass	pass	pass
+internal/integrationtest/testdata/mri-tests/test_mixed_unicode_escapes.rb	pass	fail	fail	pass	fail	fail	fail	fail	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/test_module.rb	fail	fail	fail	fail	fail	fail	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/test_name_error.rb	fail	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/test_nomethod_error.rb	fail	fail	fail	fail	fail	fail	pass	pass	pass	pass	pass	pass
@@ -431,7 +431,7 @@ internal/integrationtest/testdata/mri-tests/test_rational.rb	fail	fail	pass	pass
 internal/integrationtest/testdata/mri-tests/test_rational2.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/test_readpartial.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/test_refinement.rb	fail	fail	fail	fail	fail	fail	fail	pass	pass	pass	pass	pass
-internal/integrationtest/testdata/mri-tests/test_regexp.rb	fail	fail	fail	fail	pass	pass	pass	fail	pass	pass	pass	pass
+internal/integrationtest/testdata/mri-tests/test_regexp.rb	fail	fail	fail	fail	fail	fail	fail	fail	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/test_require_lib.rb	fail	fail	fail	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/test_require.rb	fail	fail	fail	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/mri-tests/test_rubyoptions.rb	fail	fail	fail	fail	pass	pass	pass	pass	pass	pass	pass	pass
@@ -511,6 +511,7 @@ internal/integrationtest/testdata/ruby-extra/parser/adversarial/pattern_double_s
 internal/integrationtest/testdata/ruby-extra/parser/adversarial/pattern_double_splat_rest.rb	fail	fail	fail	fail	fail	fail	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/ruby-extra/parser/assignment.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/ruby-extra/parser/blocks.rb	fail	fail	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
+internal/integrationtest/testdata/ruby-extra/parser/bom.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/ruby-extra/parser/call.rb	fail	fail	fail	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/ruby-extra/parser/case.rb	fail	fail	fail	fail	fail	fail	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/ruby-extra/parser/elsif.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
