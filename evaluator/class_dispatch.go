@@ -1,0 +1,72 @@
+package evaluator
+
+import (
+	"github.com/lczyk/goruby/object"
+)
+
+// Class-receiver dispatch migrated onto object.ModuleClass. A Class
+// object's recv.Class() returns ClassClass for a regular class and
+// ModuleClass for a module; ClassClass.Super = ModuleClass, so
+// registering on ModuleClass makes these visible on both, matching
+// the IsModule-agnostic behaviour of the previous callOnClass.
+
+func init() {
+	c := object.ModuleClass
+
+	add := func(name string, fn func(env *object.Environment, cls *object.Class, args []object.RubyObject) (object.RubyObject, error)) {
+		c.AddMethod(name, &object.BuiltinMethod{
+			Name: name,
+			Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+				cls, ok := recv.(*object.Class)
+				if !ok {
+					return nil, errorf("evaluator: Class#%s called on non-Class receiver %T", name, recv)
+				}
+				return fn(env, cls, args)
+			},
+		})
+	}
+
+	add("new", func(env *object.Environment, cls *object.Class, args []object.RubyObject) (object.RubyObject, error) {
+		switch cls.Name {
+		case "Data":
+			return dataDefine(env, args)
+		case "Struct":
+			return structDefine(env, args)
+		case "Array":
+			return arrayClassNew(args)
+		case "Hash":
+			h := object.NewHash()
+			if len(args) == 1 {
+				h.Default = args[0]
+			}
+			return h, nil
+		case "String":
+			if len(args) == 0 {
+				return object.NewString(""), nil
+			}
+			if s, ok := stringText(env, args[0]); ok {
+				return object.NewString(s), nil
+			}
+			return nil, errorf("evaluator: String.new arg must be a String")
+		}
+		return classNew(env, cls, args)
+	})
+
+	add("define", func(env *object.Environment, cls *object.Class, args []object.RubyObject) (object.RubyObject, error) {
+		if cls.Name != "Data" {
+			return nil, errorf("evaluator: NoMethodError: undefined method `define' for %s", cls.Name)
+		}
+		return dataDefine(env, args)
+	})
+
+	add("superclass", func(env *object.Environment, cls *object.Class, args []object.RubyObject) (object.RubyObject, error) {
+		if cls.Super != nil {
+			return cls.Super, nil
+		}
+		return object.NIL, nil
+	})
+
+	add("name", func(env *object.Environment, cls *object.Class, args []object.RubyObject) (object.RubyObject, error) {
+		return object.NewString(cls.Name), nil
+	})
+}

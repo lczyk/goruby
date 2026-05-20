@@ -251,8 +251,8 @@ func evalContextCall(env *object.Environment, n *ast.ContextCallExpression) (obj
 					if blockProc != nil {
 						return callMethodWithProc(env, cls, n.Function.Value, args, blockProc)
 					}
-					if v, handled, err := callOnClass(env, cls, n.Function.Value, args); handled {
-						return v, err
+					if v, err := callMethod(env, cls, n.Function.Value, args); err == nil {
+						return v, nil
 					}
 				}
 				if inst, ok := self.(*object.Instance); ok {
@@ -268,16 +268,14 @@ func evalContextCall(env *object.Environment, n *ast.ContextCallExpression) (obj
 						}
 					}
 					// Fall through to receiver-style dispatch so
-					// Comparable / Enumerable derivations are visible
-					// from inside the class's own methods.
+					// Comparable / Enumerable derivations (now living
+					// on ObjectClass) are visible from inside the
+					// class's own methods.
 					if n.Block != nil {
 						return callMethodWithBlock(env, inst, n.Function.Value, args, n.Block)
 					}
 					if blockProc != nil {
 						return callMethodWithProc(env, inst, n.Function.Value, args, blockProc)
-					}
-					if v, handled, err := callEnumerable(env, inst, n.Function.Value, args); handled {
-						return v, err
 					}
 					// Last-ditch implicit-self: route through
 					// callMethod so universal methods (send,
@@ -476,45 +474,25 @@ func evalExpressions(env *object.Environment, exprs []ast.Expression) ([]object.
 	return out, nil
 }
 
-// callMethod dispatches `name` on `recv`. Send is consulted first; if
-// no class-owned method matches, fall back to the legacy hand-rolled
-// switch in callMethodLegacy. The legacy path shrinks as each builtin
-// type's methods migrate onto its class.
+// callMethod dispatches `name` on `recv`. For a Class receiver, the
+// class's own ClassMethods table (populated by `def self.foo`) is
+// consulted first so user-defined class methods win over the
+// ClassClass / ModuleClass-level fallbacks. Then Send walks
+// recv.Class()'s ancestry. NoMethodError on miss.
 func callMethod(env *object.Environment, recv object.RubyObject, name string, args []object.RubyObject) (object.RubyObject, error) {
+	if cls, ok := recv.(*object.Class); ok {
+		if m, found := cls.LookupClassMethod(name); found {
+			if um, ok := m.(*object.UserMethod); ok {
+				return invokeMethodOn(env, cls, um, args, nil)
+			}
+		}
+	}
 	if v, ok, err := object.Send(env, recv, name, args, nil); ok {
 		return v, err
 	}
-	return callMethodLegacy(env, recv, name, args)
-}
-
-// callMethodLegacy is the residual dispatch fallback after every
-// builtin's method set has migrated onto its class. What remains here
-// is the Class-receiver bridge (callOnClass) and the Instance
-// Comparable / Enumerable derivations -- both branches Send can't
-// express until those derivations themselves move onto Instance's
-// class chain. Returns NoMethodError on miss.
-func callMethodLegacy(env *object.Environment, recv object.RubyObject, name string, args []object.RubyObject) (object.RubyObject, error) {
-
-	// Class-receiver dispatch: `Foo.new`, `Foo.kind`, etc.
-	if cls, ok := recv.(*object.Class); ok {
-		if v, handled, err := callOnClass(env, cls, name, args); handled {
-			return v, err
-		}
-	}
-
-	// Instance-receiver dispatch: direct user methods and method_missing
-	// already fired via Send at the top of callMethod. What's left here
-	// is the Comparable / Enumerable derivations, then the final
-	// NoMethodError.
 	if inst, ok := recv.(*object.Instance); ok {
-		if v, handled, err := comparableFromSpaceship(env, inst, name, args); handled {
-			return v, err
-		}
-		if v, handled, err := callEnumerable(env, inst, name, args); handled {
-			return v, err
-		}
 		return nil, errorf("evaluator: NoMethodError: undefined method `%s' for instance of %s", name, inst.C.Name)
 	}
-
 	return nil, errorf("evaluator: NoMethodError: undefined method `%s' for %T", name, recv)
 }
+
