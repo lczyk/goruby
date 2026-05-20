@@ -230,6 +230,7 @@ var defaultExpressionTerminators = []token.Type{
 type parser struct {
 	file    *token.File
 	l       *lexer.Lexer
+	src     string // cached lexer input; used by tok.LitOf(p.src) for raw-source token text
 	errors  []error
 	version token.RubyVersion
 	arena   *ast.Arena // bump allocator for AST nodes; attached to Program at the end
@@ -256,6 +257,7 @@ func (p *parser) init(filename string, src []byte, mode Mode) {
 	p.file = token.NewFile(filename, len(src))
 
 	p.l = lexer.NewBytes(src, lexer.WithVersion(p.version))
+	p.src = p.l.Input()
 	p.errors = []error{}
 	if p.arena == nil {
 		p.arena = ast.NewArena()

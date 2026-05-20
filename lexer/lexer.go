@@ -283,6 +283,11 @@ func (l *Lexer) HasNext() bool {
 	return l.state != nil || l.tokenHead < len(l.tokens)
 }
 
+// Input returns the source text being scanned. Immutable post-New. Used by
+// the parser to resolve token spans via Token.LitOf(src) once Token.Literal
+// is removed.
+func (l *Lexer) Input() string { return l.input }
+
 // emit passes a token back to the client.
 func (l *Lexer) emit(t token.Type) {
 	tok := token.NewToken(t, l.input[l.start:l.pos], l.start)
