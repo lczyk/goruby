@@ -370,6 +370,10 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.Left)
 		Walk(v, n.Right)
 
+	case *FlipFlop:
+		Walk(v, n.Left)
+		Walk(v, n.Right)
+
 	case *MultiAssignment:
 		walkIdentifierList(v, n.Variables)
 		walkExprList(v, n.Values)

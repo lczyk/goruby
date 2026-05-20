@@ -160,7 +160,8 @@ func TestFlipFlopExclusiveDistinct(t *testing.T) {
 // --- helpers ---------------------------------------------------------------
 
 // condOfFirstIf returns the predicate expression of the first if/unless/ternary
-// statement in the program. Returns nil if the program shape doesn't match.
+// statement in the program, with outer ParenExpression wraps peeled away.
+// Returns nil if the program shape doesn't match.
 func condOfFirstIf(t *testing.T, prog *ast.Program) ast.Expression {
 	t.Helper()
 	for _, s := range prog.Statements {
@@ -169,10 +170,20 @@ func condOfFirstIf(t *testing.T, prog *ast.Program) ast.Expression {
 			continue
 		}
 		if ce, ok := es.Expression.(*ast.ConditionalExpression); ok {
-			return ce.Condition
+			return unwrapParens(ce.Condition)
 		}
 	}
 	return nil
+}
+
+func unwrapParens(e ast.Expression) ast.Expression {
+	for {
+		pe, ok := e.(*ast.ParenExpression)
+		if !ok {
+			return e
+		}
+		e = pe.Expr
+	}
 }
 
 // condOfFirstLoop returns the predicate of the first while/until loop.

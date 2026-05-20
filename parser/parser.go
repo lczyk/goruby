@@ -3406,7 +3406,7 @@ func (p *parser) parseIfExpression() ast.Expression {
 	expression := p.arena.NewConditionalExpression()
 	expression.Token = p.curToken
 	p.nextToken()
-	expression.Condition = p.parseExpression(precLowest)
+	expression.Condition = p.flipFlopify(p.parseExpression(precLowest))
 	hasThen := p.peekTokenIs(token.THEN)
 	if hasThen {
 		p.accept(token.THEN)
@@ -3443,7 +3443,7 @@ func (p *parser) parseIfExpression() ast.Expression {
 			nested := p.arena.NewConditionalExpression()
 			nested.Token = p.curToken
 			p.nextToken()
-			nested.Condition = p.parseExpression(precLowest)
+			nested.Condition = p.flipFlopify(p.parseExpression(precLowest))
 			if p.peekTokenIs(token.THEN) {
 				p.accept(token.THEN)
 			}
@@ -3482,7 +3482,7 @@ func (p *parser) parseTenaryIfExpression(condition ast.Expression) ast.Expressio
 	for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
 		p.nextToken()
 	}
-	expression.Condition = condition
+	expression.Condition = p.flipFlopify(condition)
 	expression.Consequence = ast.Init(p.arena.NewBlockStatement(), ast.BlockStatement{
 		Statements: []ast.Statement{
 			ast.Init(p.arena.NewExpressionStatement(), ast.ExpressionStatement{
@@ -3515,7 +3515,7 @@ func (p *parser) parseModifierConditionalExpression(left ast.Expression) ast.Exp
 	// Parse condition at precIfUnless so a following modifier (`stmt if X
 	// while Y`) chains onto the outer expression -- letting the next
 	// modifier wrap THIS conditional, not get absorbed into the condition.
-	expression.Condition = p.parseExpression(precIfUnless)
+	expression.Condition = p.flipFlopify(p.parseExpression(precIfUnless))
 
 	expression.Consequence = ast.Init(p.arena.NewBlockStatement(), ast.BlockStatement{
 		Statements: []ast.Statement{
@@ -3536,7 +3536,7 @@ func (p *parser) parseModifierLoopExpression(left ast.Expression) ast.Expression
 	// Same as parseModifierConditionalExpression: bound the condition at
 	// precIfUnless so a chained outer modifier wraps this loop instead of
 	// being absorbed.
-	loop.Condition = p.parseExpression(precIfUnless)
+	loop.Condition = p.flipFlopify(p.parseExpression(precIfUnless))
 	loop.Block = ast.Init(p.arena.NewBlockStatement(), ast.BlockStatement{
 		Statements: []ast.Statement{
 			ast.Init(p.arena.NewExpressionStatement(), ast.ExpressionStatement{Expression: left}),
@@ -3558,7 +3558,7 @@ func (p *parser) parseLoopExpression() ast.Expression {
 	p.nextToken()
 	prev := p.suppressDoBlock
 	p.suppressDoBlock = true
-	loop.Condition = p.parseExpression(precIfUnless)
+	loop.Condition = p.flipFlopify(p.parseExpression(precIfUnless))
 	p.suppressDoBlock = prev
 	if p.peekTokenIs(token.DO) {
 		p.accept(token.DO)
@@ -3566,6 +3566,45 @@ func (p *parser) parseLoopExpression() ast.Expression {
 	loop.Block = p.parseBlockStatement(token.END)
 	p.nextToken()
 	return loop
+}
+
+// flipFlopify rewrites any top-level `..` / `...` InfixExpression inside a
+// conditional-position expression as a *ast.FlipFlop. Ruby treats Range-
+// shape syntax in conditional position as a stateful flip-flop predicate,
+// not a Range literal, and MRI's parsetree exposes the distinction.
+//
+// Recurses through nodes that propagate boolean-consumption context to
+// their children: ParenExpression, `!` PrefixExpression, and the short-
+// circuit `&&` / `||` InfixExpressions. Stops at function calls, method
+// calls, hash/array literals etc. -- a `..` inside those is a Range
+// literal, not a flip-flop.
+func (p *parser) flipFlopify(expr ast.Expression) ast.Expression {
+	if expr == nil {
+		return nil
+	}
+	switch e := expr.(type) {
+	case *ast.InfixExpression:
+		if e.Operator == ".." || e.Operator == "..." {
+			ff := p.arena.NewFlipFlop()
+			ff.Token = e.Token
+			ff.Left = e.Left
+			ff.Right = e.Right
+			ff.Exclusive = e.Operator == "..."
+			return ff
+		}
+		// Short-circuit operators pass boolean context to both operands.
+		if e.Operator == "&&" || e.Operator == "||" || e.Operator == "and" || e.Operator == "or" {
+			e.Left = p.flipFlopify(e.Left)
+			e.Right = p.flipFlopify(e.Right)
+		}
+	case *ast.PrefixExpression:
+		if e.Operator == "!" || e.Operator == "not" {
+			e.Right = p.flipFlopify(e.Right)
+		}
+	case *ast.ParenExpression:
+		e.Expr = p.flipFlopify(e.Expr)
+	}
+	return expr
 }
 
 func (p *parser) parseScopedConstName() *ast.Identifier {

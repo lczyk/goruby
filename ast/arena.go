@@ -172,6 +172,7 @@ type Arena struct {
 	infixExpressionSlab          slab[InfixExpression]
 	rightwardAssignmentSlab      slab[RightwardAssignment]
 	parenExpressionSlab          slab[ParenExpression]
+	flipFlopSlab                 slab[FlipFlop]
 }
 
 // NewArena returns a fresh, empty Arena.
@@ -248,6 +249,7 @@ func (a *Arena) Reset() {
 	a.infixExpressionSlab.reset()
 	a.rightwardAssignmentSlab.reset()
 	a.parenExpressionSlab.reset()
+	a.flipFlopSlab.reset()
 	a.LitPool = a.LitPool[:0]
 }
 

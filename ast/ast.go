@@ -3283,6 +3283,56 @@ func (pe *ParenExpression) String() string {
 	return "(" + pe.Expr.String() + ")"
 }
 
+// FlipFlop is the stateful `..` / `...` predicate that Ruby produces when
+// a Range-shape expression appears in conditional position
+// (if / unless / while / until / ternary / modifier). Semantically it is
+// a state machine -- true from the first time Left evaluates truthy
+// until Right evaluates truthy (inclusive `..`) or flips off on the same
+// tick (exclusive `...`). The parser converts Range-syntax in cond
+// context into this node so the AST distinguishes flip-flop from a
+// plain Range literal.
+type FlipFlop struct {
+	Token     token.Token // RANGE (`..`) or RANGEEX (`...`)
+	Left      Expression
+	Right     Expression
+	Exclusive bool // true for `...`, false for `..`
+}
+
+func (ff *FlipFlop) expressionNode() {}
+
+// Pos returns the position of the first character of the left endpoint.
+func (ff *FlipFlop) Pos() int {
+	if ff.Left != nil {
+		return ff.Left.Pos()
+	}
+	return ff.Token.Pos
+}
+
+// End returns the position past the last character of the right endpoint.
+func (ff *FlipFlop) End() int {
+	if ff.Right != nil {
+		return ff.Right.End()
+	}
+	return ff.Token.EndPos()
+}
+
+func (ff *FlipFlop) TokenLiteral() string { return ff.Token.Type.Literal() }
+
+func (ff *FlipFlop) String() string {
+	op := ".."
+	if ff.Exclusive {
+		op = "..."
+	}
+	left, right := "", ""
+	if ff.Left != nil {
+		left = ff.Left.String()
+	}
+	if ff.Right != nil {
+		right = ff.Right.String()
+	}
+	return left + " " + op + " " + right
+}
+
 func escapeRegexSlash(s string) string {
 	if !strings.Contains(s, "/") || strings.Contains(s, "\\/") {
 		return s

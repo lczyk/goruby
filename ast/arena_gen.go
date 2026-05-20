@@ -702,3 +702,15 @@ func (a *Arena) NewParenExpression() *ParenExpression {
 	p.MultipleStmts = false
 	return p
 }
+
+func (a *Arena) NewFlipFlop() *FlipFlop {
+	if a == nil {
+		return new(FlipFlop)
+	}
+	p := arenaAlloc(&a.flipFlopSlab)
+	p.Token = token.Token{}
+	p.Left = nil
+	p.Right = nil
+	p.Exclusive = false
+	return p
+}

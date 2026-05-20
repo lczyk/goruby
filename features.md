@@ -42,7 +42,7 @@ parser-library scope. flip checkboxes as features land in `parser/`.
 	- [x] break
 	- [x] next
 	- [x] redo
-	- [ ] flip flop
+	- [x] flip flop
 
 ## literals
 
