@@ -10,6 +10,18 @@ import (
 	"github.com/lczyk/goruby/token"
 )
 
+// isComparableExpr reports whether an Expression's dynamic type is
+// comparable with ==. Slice-backed AST types (currently only
+// ExpressionList) are not, and would panic on direct interface
+// comparison.
+func isComparableExpr(e Expression) bool {
+	if e == nil {
+		return false
+	}
+	_, isList := e.(ExpressionList)
+	return !isList
+}
+
 // Node represents a node within the AST
 //
 // All node types implement the Node interface.
@@ -532,8 +544,11 @@ func (a *Assignment) WriteTo(b *strings.Builder) {
 		// (same pointer, set in parseAssignmentOperator). Detect that
 		// alias to suppress the redundant lhs in the RHS. Pointer
 		// compare -- not String() -- because String() comparison on
-		// nested compound assignments is exponential.
-		if inf, ok := rhs.(*InfixExpression); ok && inf.Left == a.Left {
+		// nested compound assignments is exponential. Skip the check
+		// when Left is a non-comparable type (e.g. ExpressionList, a
+		// slice) -- those cannot be the LHS of an op-assignment desugar
+		// anyway.
+		if inf, ok := rhs.(*InfixExpression); ok && isComparableExpr(a.Left) && isComparableExpr(inf.Left) && inf.Left == a.Left {
 			rhs = inf.Right
 		}
 	}
