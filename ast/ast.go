@@ -1083,7 +1083,7 @@ func (sl *StringLiteral) End() int {
 }
 
 // TokenLiteral returns the literal from the string token
-func (sl *StringLiteral) TokenLiteral() string { return sl.Token.Literal }
+func (sl *StringLiteral) TokenLiteral() string { return sl.Value }
 // heredocStyle classifies a heredoc tag by its prefix:
 // "<<~" -> "squiggly", "<<-" -> "dash", "<<" -> "plain".
 func heredocStyle(tag string) string {
@@ -1386,7 +1386,7 @@ func (sc *StringContent) Pos() int { return sc.Token.Pos }
 func (sc *StringContent) End() int { return sc.Token.Pos + len(sc.Value) }
 
 // TokenLiteral returns the literal of the STRING_CONTENT token
-func (sc *StringContent) TokenLiteral() string { return sc.Token.Literal }
+func (sc *StringContent) TokenLiteral() string { return sc.Value }
 func (sc *StringContent) String() string       { return sc.Value }
 
 // EmbeddedVariable represents a `#@ivar`, `#@@cvar`, or `#$gvar` shorthand
@@ -1422,7 +1422,7 @@ func (rl *RegexLiteral) End() int {
 	}
 	return rl.Token.Pos + len(rl.Value)
 }
-func (rl *RegexLiteral) TokenLiteral() string { return rl.Token.Literal }
+func (rl *RegexLiteral) TokenLiteral() string { return rl.Value }
 func (rl *RegexLiteral) String() string {
 	// If the regex content includes `/`, switch to %r-style delimiters so we
 	// don't have to insert `\/` escapes (which MRI's parsetree records as
@@ -1539,7 +1539,7 @@ func (c *Comment) Pos() int { return c.Token.Pos }
 func (c *Comment) End() int { return c.Token.Pos + len(c.Value) }
 
 // TokenLiteral returns the literal from token token.STRING
-func (c *Comment) TokenLiteral() string { return c.Token.Literal }
+func (c *Comment) TokenLiteral() string { return c.Value }
 func (c *Comment) String() string       { return "#" + c.Value }
 
 // SymbolLiteral represents a symbol within the AST
