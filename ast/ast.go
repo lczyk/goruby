@@ -3558,8 +3558,21 @@ type RightwardAssignment struct {
 
 func (ra *RightwardAssignment) expressionNode() {}
 
-func (ra *RightwardAssignment) Pos() int             { return ra.Left.Pos() }
-func (ra *RightwardAssignment) End() int             { return ra.Right.End() }
+func (ra *RightwardAssignment) Pos() int {
+	if ra.Left == nil {
+		return ra.Token.Pos
+	}
+	return ra.Left.Pos()
+}
+func (ra *RightwardAssignment) End() int {
+	if ra.Right == nil {
+		if ra.Left != nil {
+			return ra.Left.End()
+		}
+		return ra.Token.Pos + len(ra.Token.Type.Literal())
+	}
+	return ra.Right.End()
+}
 func (ra *RightwardAssignment) TokenLiteral() string { return ra.Token.Type.Literal() }
 func (ra *RightwardAssignment) String() string {
 	var b strings.Builder
@@ -3568,9 +3581,13 @@ func (ra *RightwardAssignment) String() string {
 }
 
 func (ra *RightwardAssignment) WriteTo(b *strings.Builder) {
-	writeTo(ra.Left, b)
+	if ra.Left != nil {
+		writeTo(ra.Left, b)
+	}
 	b.WriteString(" => ")
-	writeTo(ra.Right, b)
+	if ra.Right != nil {
+		writeTo(ra.Right, b)
+	}
 }
 
 // ParenExpression wraps a parenthesised expression, preserving the parens

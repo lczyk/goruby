@@ -2435,6 +2435,9 @@ func (p *parser) parseRightwardAssignment(left ast.Expression) ast.Expression {
 	p.inPattern = true
 	right := p.parsePattern()
 	p.inPattern = false
+	if right == nil {
+		return nil
+	}
 	return ast.Init(p.arena.NewRightwardAssignment(), ast.RightwardAssignment{
 		Token: tok,
 		Left:  left,
