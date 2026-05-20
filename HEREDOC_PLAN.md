@@ -173,10 +173,10 @@ rough per-phase alloc delta (from current 4368 allocs/op on LexRealFiles):
 - (4-partial) delim O(n^2) fix landed -- commit `52e895e`. LexRealFiles allocs -26%.
 - **phase 1 done** -- commit `77fe3d2`. cursor primitives added; behavior unchanged.
 - **phase 2 done** -- commit `330ee17`. Non-interp main path + 4 body-end sites use cursor. byteAt lookahead added.
-- **phase 3 deferred (second attempt failed)** -- with phase 5 done, the original strip-splice entanglement is gone, but a separate failure mode appeared: when inInterp pushes interpState then lexHeredocStart cursor for the inner heredoc, finishHeredoc's cursor switch clobbers the outer heredoc's state (and l.pending entries from outer don't survive). Full fix would require interpState to also save/restore `heredocRest` and `pending`, plus careful ordering of finishHeredoc vs interpStack pop. Attempt broke 731 integration tests (e.g. `mri-tests/test_alias.rb` heredoc-in-interp constructs); reverted. Cleanly possible but deserves its own focused session.
+- **phase 3 done** -- commits `075c07b` (3a: inInterp+\n cursor) and `7a642ce` (3b: inInterp+} cursor). Root cause of earlier 731-test breakage identified: `stripSquigInterpBody` consults `l.input` by absolute position, ignoring the cursor segments. The fix is the same nested-heredoc handling already used for the non-interp path: when the body source would land at the boundary of the current cursor segment, pop the next pending segment and use its start as the body source.
 - **phase 4 done** -- commit `330ee17` (folded in). Nested heredocs (`<<A, <<B`) handled via `pending[0]` pop when `\n` at segment boundary.
 - **phase 5 done** -- commit `f68cb41`. stripSquigInterpBody no longer mutates l.input; allocates small stripped+delim buffer and temporarily swaps l.input for body lex. LexRealFiles bytes/op 4.4MB -> 2.4MB (-45%).
-- **phase 6 deferred** -- removing heredocPostBody and the splice fallback paths requires phase 3 to be done first.
+- **phase 6 done** -- commit `d7d664f`. Removed `heredocPostBody`, splice fallbacks, `syncSegEnd`, `cursorMode` bool tracking. -38 LOC net.
 
 ### measured outcome (vs pre-(4-partial) baseline)
 
