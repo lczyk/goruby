@@ -82,18 +82,28 @@ var supportedEvaluatorSubdirs = []string{
 	"literals",
 	"arithmetic",
 	"variables",
+	"control_flow",
+	"strings",
+	"hashes",
+	"arrays",
+	"methods",
+	"blocks",
+	"classes",
+	"modules",
+	"self_kw",
+	"exceptions",
+	"version-gates",
 }
 
 // TestEvaluatorCorpus runs every .rb file under the supported corpus
-// subdirs at the corpus's canonical target version (2.6) and compares
-// its stdout against the sibling .expected file. Files declaring
-// `# minversion:` higher than the active target are skipped.
-//
-// The 2.6 pin matches scripts/eval-corpus-oracle: the .expected files
-// were authored against MRI 2.6's inspect format (e.g. `{:a=>1}`, not
-// the 3.4 shorthand `{a: 1}`).
+// subdirs and compares its stdout against the sibling .expected file.
+// Each fixture runs at max(corpus default 2.6, fixture's `# minversion:
+// X.Y`) so version-gated fixtures get their declared feature set
+// available -- safe for inspect-format because hash inspect only
+// changed at 3.4, and we skip fixtures requiring later features via
+// `# skip-evaluator`.
 func TestEvaluatorCorpus(t *testing.T) {
-	target := token.MustParseVersion("2.6")
+	defaultTarget := token.MustParseVersion("2.6")
 
 	for _, sub := range supportedEvaluatorSubdirs {
 		sub := sub
@@ -109,11 +119,13 @@ func TestEvaluatorCorpus(t *testing.T) {
 				name := strings.TrimSuffix(filepath.Base(rb), ".rb")
 				t.Run(name, func(t *testing.T) {
 					minVer, skipReason := fixtureHeader(t, rb)
-					if minVer.IsSet() && !target.AtLeast(minVer) {
-						t.Skipf("requires ruby %s, target is %s", minVer, target)
-					}
 					if skipReason != "" {
 						t.Skipf("skip-evaluator: %s", skipReason)
+					}
+
+					runVer := defaultTarget
+					if minVer.IsSet() && minVer.AtLeast(defaultTarget) {
+						runVer = minVer
 					}
 
 					src, err := os.ReadFile(rb)
@@ -125,7 +137,7 @@ func TestEvaluatorCorpus(t *testing.T) {
 
 					var stdout bytes.Buffer
 					env := object.NewMainEnvironment(
-						object.WithVersion(target),
+						object.WithVersion(runVer),
 						object.WithStdout(&stdout),
 					)
 					got := runEvaluatorFixture(t, env, rb, string(src))
