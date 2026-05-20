@@ -4,6 +4,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/lczyk/assert"
 )
 
 // Oracle regexes preserved here for differential fuzz only. The production
@@ -41,9 +43,7 @@ func FuzzStripLeadingHashOracle(f *testing.F) {
 	f.Fuzz(func(t *testing.T, s string) {
 		got := stripLeadingHash(s)
 		want := oracleLeadingHash.ReplaceAllString(s, "")
-		if got != want {
-			t.Fatalf("stripLeadingHash diverges for %q\nscan:  %q\nregex: %q", s, got, want)
-		}
+		assert.Equal(t, got, want)
 	})
 }
 
@@ -59,9 +59,7 @@ func FuzzStripIDLineLocationOracle(f *testing.F) {
 	f.Fuzz(func(t *testing.T, s string) {
 		got := stripIDLineLocation(s)
 		want := oracleIDLineLocation.ReplaceAllString(s, "")
-		if got != want {
-			t.Fatalf("stripIDLineLocation diverges for %q\nscan:  %q\nregex: %q", s, got, want)
-		}
+		assert.Equal(t, got, want)
 	})
 }
 
@@ -78,9 +76,7 @@ func FuzzStripSiblingIndexOracle(f *testing.F) {
 	f.Fuzz(func(t *testing.T, s string) {
 		got := stripSiblingIndex(s)
 		want := oracleSiblingIndex.ReplaceAllString(s, "$1:")
-		if got != want {
-			t.Fatalf("stripSiblingIndex diverges for %q\nscan:  %q\nregex: %q", s, got, want)
-		}
+		assert.Equal(t, got, want)
 	})
 }
 
@@ -98,9 +94,7 @@ func FuzzStripTrailingStarsOracle(f *testing.F) {
 	f.Fuzz(func(t *testing.T, s string) {
 		got := stripTrailingStars(s)
 		want := oracleStripTrailingStars(s)
-		if got != want {
-			t.Fatalf("stripTrailingStars diverges for %q\nscan:  %q\nregex: %q", s, got, want)
-		}
+		assert.Equal(t, got, want)
 	})
 }
 
@@ -114,9 +108,7 @@ func FuzzStripPrismLocationOracle(f *testing.F) {
 	f.Fuzz(func(t *testing.T, s string) {
 		got := stripPrismLocation(s)
 		want := oraclePrismLocation.ReplaceAllString(s, "")
-		if got != want {
-			t.Fatalf("stripPrismLocation diverges for %q\nscan:  %q\nregex: %q", s, got, want)
-		}
+		assert.Equal(t, got, want)
 	})
 }
 
@@ -132,9 +124,7 @@ func FuzzStripLineLocationOracle(f *testing.F) {
 	f.Fuzz(func(t *testing.T, s string) {
 		got := stripLineLocation(s)
 		want := oracleLineLocation.ReplaceAllString(s, "")
-		if got != want {
-			t.Fatalf("stripLineLocation diverges for %q\nscan:  %q\nregex: %q", s, got, want)
-		}
+		assert.Equal(t, got, want)
 	})
 }
 
@@ -151,9 +141,7 @@ func FuzzStripPrismTokenLocOracle(f *testing.F) {
 	f.Fuzz(func(t *testing.T, s string) {
 		got := stripPrismTokenLoc(s)
 		want := oraclePrismTokenLoc.ReplaceAllString(s, "")
-		if got != want {
-			t.Fatalf("stripPrismTokenLoc diverges for %q\nscan:  %q\nregex: %q", s, got, want)
-		}
+		assert.Equal(t, got, want)
 	})
 }
 
@@ -170,9 +158,7 @@ func FuzzStripNdAlenOracle(f *testing.F) {
 	f.Fuzz(func(t *testing.T, s string) {
 		got := stripNdAlen(s)
 		want := oracleNdAlen.ReplaceAllString(s, "")
-		if got != want {
-			t.Fatalf("stripNdAlen diverges for %q\nscan:  %q\nregex: %q", s, got, want)
-		}
+		assert.Equal(t, got, want)
 	})
 }
 

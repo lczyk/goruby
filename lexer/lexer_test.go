@@ -3,6 +3,7 @@ package lexer
 import (
 	"testing"
 
+	"github.com/lczyk/assert"
 	"github.com/lczyk/goruby/token"
 )
 
@@ -576,16 +577,10 @@ func TestLexerHeredoc(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				if !l.HasNext() {
-					t.Fatalf("pos %d: unexpected EOF", i)
-				}
+				assert.That(t, l.HasNext(), "pos %d: unexpected EOF", i)
 				tok := l.NextToken()
-				if tok.Type != exp.typ {
-					t.Errorf("pos %d: expected type %s, got %s", i, exp.typ, tok.Type)
-				}
-				if tok.Literal != exp.literal {
-					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
-				}
+				assert.Equal(t, tok.Type, exp.typ)
+				assert.Equal(t, tok.Literal, exp.literal)
 			}
 		})
 	}
@@ -669,16 +664,10 @@ func TestLexerStringInterpolation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				if !l.HasNext() {
-					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
-				}
+				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
-				if tok.Type != exp.typ {
-					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
-				}
-				if tok.Literal != exp.literal {
-					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
-				}
+				assert.Equal(t, tok.Type, exp.typ)
+				assert.Equal(t, tok.Literal, exp.literal)
 			}
 		})
 	}
@@ -836,16 +825,10 @@ func TestLexerHeredocInterpolation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				if !l.HasNext() {
-					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
-				}
+				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
-				if tok.Type != exp.typ {
-					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
-				}
-				if tok.Literal != exp.literal {
-					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
-				}
+				assert.Equal(t, tok.Type, exp.typ)
+				assert.Equal(t, tok.Literal, exp.literal)
 			}
 		})
 	}
@@ -928,16 +911,10 @@ func TestLexerRegex(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				if !l.HasNext() {
-					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
-				}
+				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
-				if tok.Type != exp.typ {
-					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
-				}
-				if tok.Literal != exp.literal {
-					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
-				}
+				assert.Equal(t, tok.Type, exp.typ)
+				assert.Equal(t, tok.Literal, exp.literal)
 			}
 		})
 	}
@@ -991,16 +968,10 @@ func TestLexerMultilineLiterals(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				if !l.HasNext() {
-					t.Fatalf("pos %d: unexpected EOF", i)
-				}
+				assert.That(t, l.HasNext(), "pos %d: unexpected EOF", i)
 				tok := l.NextToken()
-				if tok.Type != exp.typ {
-					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
-				}
-				if tok.Literal != exp.literal {
-					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
-				}
+				assert.Equal(t, tok.Type, exp.typ)
+				assert.Equal(t, tok.Literal, exp.literal)
 			}
 		})
 	}
@@ -1089,16 +1060,10 @@ func TestLexerRegexInterpolation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				if !l.HasNext() {
-					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
-				}
+				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
-				if tok.Type != exp.typ {
-					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
-				}
-				if tok.Literal != exp.literal {
-					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
-				}
+				assert.Equal(t, tok.Type, exp.typ)
+				assert.Equal(t, tok.Literal, exp.literal)
 			}
 		})
 	}
@@ -1198,16 +1163,10 @@ func TestLexerGlobalVariables(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				if !l.HasNext() {
-					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
-				}
+				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
-				if tok.Type != exp.typ {
-					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
-				}
-				if tok.Literal != exp.literal {
-					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
-				}
+				assert.Equal(t, tok.Type, exp.typ)
+				assert.Equal(t, tok.Literal, exp.literal)
 			}
 		})
 	}
@@ -1265,16 +1224,10 @@ func TestLexerLineContinuation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				if !l.HasNext() {
-					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
-				}
+				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
-				if tok.Type != exp.typ {
-					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
-				}
-				if tok.Literal != exp.literal {
-					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
-				}
+				assert.Equal(t, tok.Type, exp.typ)
+				assert.Equal(t, tok.Literal, exp.literal)
 			}
 		})
 	}
@@ -1318,16 +1271,10 @@ func TestLexerEndMarker(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				if !l.HasNext() {
-					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
-				}
+				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
-				if tok.Type != exp.typ {
-					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
-				}
-				if tok.Literal != exp.literal {
-					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
-				}
+				assert.Equal(t, tok.Type, exp.typ)
+				assert.Equal(t, tok.Literal, exp.literal)
 			}
 		})
 	}
@@ -1464,16 +1411,10 @@ func TestLexerPercentLiteral(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				if !l.HasNext() {
-					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
-				}
+				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
-				if tok.Type != exp.typ {
-					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
-				}
-				if tok.Literal != exp.literal {
-					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
-				}
+				assert.Equal(t, tok.Type, exp.typ)
+				assert.Equal(t, tok.Literal, exp.literal)
 			}
 		})
 	}
@@ -1567,16 +1508,10 @@ func TestBlockComments(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				if !l.HasNext() {
-					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
-				}
+				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
-				if tok.Type != exp.typ {
-					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
-				}
-				if tok.Literal != exp.literal {
-					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
-				}
+				assert.Equal(t, tok.Type, exp.typ)
+				assert.Equal(t, tok.Literal, exp.literal)
 			}
 		})
 	}
@@ -1585,99 +1520,67 @@ func TestBlockComments(t *testing.T) {
 func TestVersionGating(t *testing.T) {
 	t.Run("squiggly heredoc rejected before 2.3", func(t *testing.T) {
 		l := New("<<~EOF\n  hello\nEOF", WithVersion(token.MustParseVersion("1.9")))
-		tok := l.NextToken()
 		// Should see LSHIFT, not STRING_BEG (heredoc).
-		if tok.Type != token.LSHIFT {
-			t.Errorf("expected LSHIFT for <<~ on Ruby 1.9, got %s %q", tok.Type, tok.Literal)
-		}
+		assert.Equal(t, l.NextToken().Type, token.LSHIFT)
 	})
 
 	t.Run("squiggly heredoc allowed on 2.3", func(t *testing.T) {
 		l := New("<<~EOF\n  hello\nEOF", WithVersion(token.MustParseVersion("2.3")))
-		tok := l.NextToken()
-		if tok.Type != token.STRING_BEG {
-			t.Errorf("expected STRING_BEG for <<~ on Ruby 2.3, got %s %q", tok.Type, tok.Literal)
-		}
+		assert.Equal(t, l.NextToken().Type, token.STRING_BEG)
 	})
 
 	t.Run("safe navigation rejected before 2.3", func(t *testing.T) {
 		l := New("x&.foo", WithVersion(token.MustParseVersion("2.0")))
 		l.NextToken() // IDENT "x"
-		tok := l.NextToken()
-		// Should be ILLEGAL -- `&.` is a single operator added in 2.3, not
-		// a binary `&` followed by `.` (which MRI's parser would reject too).
-		if tok.Type != token.ILLEGAL {
-			t.Errorf("expected ILLEGAL for &. on Ruby 2.0, got %s %q", tok.Type, tok.Literal)
-		}
+		// `&.` is a single operator added in 2.3, ILLEGAL before.
+		assert.Equal(t, l.NextToken().Type, token.ILLEGAL)
 	})
 
 	t.Run("safe navigation allowed on 2.3", func(t *testing.T) {
 		l := New("x&.foo", WithVersion(token.MustParseVersion("2.3")))
 		l.NextToken() // IDENT "x"
-		tok := l.NextToken()
-		if tok.Type != token.LONELY {
-			t.Errorf("expected LONELY for &. on Ruby 2.3, got %s %q", tok.Type, tok.Literal)
-		}
+		assert.Equal(t, l.NextToken().Type, token.LONELY)
 	})
 
 	t.Run("percent-i rejected before 2.0", func(t *testing.T) {
 		l := New("%i[a b]", WithVersion(token.MustParseVersion("1.9")))
-		tok := l.NextToken()
-		if tok.Type != token.ILLEGAL {
-			t.Errorf("expected ILLEGAL for %%i on Ruby 1.9, got %s %q", tok.Type, tok.Literal)
-		}
+		assert.Equal(t, l.NextToken().Type, token.ILLEGAL)
 	})
 
 	t.Run("percent-i allowed on 2.0", func(t *testing.T) {
 		l := New("%i[a b]", WithVersion(token.MustParseVersion("2.0")))
-		tok := l.NextToken()
-		if tok.Type != token.STRING_BEG {
-			t.Errorf("expected STRING_BEG for %%i on Ruby 2.0, got %s %q", tok.Type, tok.Literal)
-		}
+		assert.Equal(t, l.NextToken().Type, token.STRING_BEG)
 	})
 
 	t.Run("rational suffix rejected before 2.1", func(t *testing.T) {
 		l := New("42r", WithVersion(token.MustParseVersion("2.0")))
-		// 42 emits, then ILLEGAL on the suffix -- MRI 2.0 rejects `42r` as a
-		// syntax error (an INT immediately followed by IDENT on the same
-		// line isn't valid), so emit ILLEGAL rather than silently splitting.
-		tok := l.NextToken()
-		if tok.Type != token.ILLEGAL {
-			t.Errorf("expected ILLEGAL for `42r` on Ruby 2.0, got %s %q", tok.Type, tok.Literal)
-		}
+		// MRI 2.0 rejects `42r` as a syntax error.
+		assert.Equal(t, l.NextToken().Type, token.ILLEGAL)
 	})
 
 	t.Run("rational suffix allowed on 2.1", func(t *testing.T) {
 		l := New("42r", WithVersion(token.MustParseVersion("2.1")))
 		tok := l.NextToken()
-		if tok.Type != token.INT || tok.Literal != "42r" {
-			t.Errorf("expected INT %q on Ruby 2.1, got %s %q", "42r", tok.Type, tok.Literal)
-		}
+		assert.Equal(t, tok.Type, token.INT)
+		assert.Equal(t, tok.Literal, "42r")
 	})
 
 	t.Run("complex suffix on float rejected before 2.1", func(t *testing.T) {
 		l := New("1.5i", WithVersion(token.MustParseVersion("2.0")))
-		tok := l.NextToken()
-		if tok.Type != token.ILLEGAL {
-			t.Errorf("expected ILLEGAL for `1.5i` on Ruby 2.0, got %s %q", tok.Type, tok.Literal)
-		}
+		assert.Equal(t, l.NextToken().Type, token.ILLEGAL)
 	})
 
 	t.Run("complex suffix on float allowed on 2.1", func(t *testing.T) {
 		l := New("1.5i", WithVersion(token.MustParseVersion("2.1")))
 		tok := l.NextToken()
-		if tok.Type != token.FLOAT || tok.Literal != "1.5i" {
-			t.Errorf("expected FLOAT %q on Ruby 2.1, got %s %q", "1.5i", tok.Type, tok.Literal)
-		}
+		assert.Equal(t, tok.Type, token.FLOAT)
+		assert.Equal(t, tok.Literal, "1.5i")
 	})
 
 	t.Run("default version allows all features", func(t *testing.T) {
 		l := New("x&.foo")
 		l.NextToken() // IDENT
-		tok := l.NextToken()
-		if tok.Type != token.LONELY {
-			t.Errorf("expected LONELY with default version, got %s", tok.Type)
-		}
+		assert.Equal(t, l.NextToken().Type, token.LONELY)
 	})
 }
 
@@ -1696,12 +1599,8 @@ func TestGlobalDashVariables(t *testing.T) {
 		t.Run(tt.input, func(t *testing.T) {
 			l := New(tt.input)
 			tok := l.NextToken()
-			if tok.Type != token.GLOBAL {
-				t.Errorf("expected GLOBAL, got %s", tok.Type)
-			}
-			if tok.Literal != tt.literal {
-				t.Errorf("expected literal %q, got %q", tt.literal, tok.Literal)
-			}
+			assert.Equal(t, tok.Type, token.GLOBAL)
+			assert.Equal(t, tok.Literal, tt.literal)
 		})
 	}
 }
@@ -1823,16 +1722,10 @@ func TestRegexContext(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				if !l.HasNext() {
-					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
-				}
+				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
-				if tok.Type != exp.typ {
-					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
-				}
-				if tok.Literal != exp.literal {
-					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
-				}
+				assert.Equal(t, tok.Type, exp.typ)
+				assert.Equal(t, tok.Literal, exp.literal)
 			}
 		})
 	}

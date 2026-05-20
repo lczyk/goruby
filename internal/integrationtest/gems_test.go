@@ -393,9 +393,7 @@ func runPhase(t *testing.T, phase, relpath string, c *counters, phaseFn func() e
 		t.Skip(reason)
 		return
 	}
-	if err != nil {
-		t.Errorf("%s failed: %s\n%v", phase, relpath, err)
-	}
+	assert.NoError(t, err)
 }
 
 func mustReadFile(t *testing.T, relpath string) string {

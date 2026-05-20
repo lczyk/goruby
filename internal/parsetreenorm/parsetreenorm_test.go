@@ -20,9 +20,7 @@ func TestNormalizeIdempotent(t *testing.T) {
 	for i, in := range cases {
 		once := Normalize(in)
 		twice := Normalize(once)
-		if once != twice {
-			t.Errorf("case %d: not idempotent\n--- once ---\n%s\n--- twice ---\n%s", i, once, twice)
-		}
+		assert.That(t, !(once != twice), "case %d: not idempotent\n--- once ---\n%s\n--- twice ---\n%s", i, once, twice)
 	}
 }
 
@@ -33,9 +31,7 @@ func TestStripsHeader(t *testing.T) {
 		"###########################################################\n\n" +
 		"# @ NODE_LIT\n# +- nd_lit: 42\n"
 	out := Normalize(in)
-	if strings.Contains(out, "Do NOT use") {
-		t.Errorf("header banner not stripped:\n%s", out)
-	}
+	assert.That(t, !(strings.Contains(out, "Do NOT use")), "header banner not stripped:\n%s", out)
 	if strings.Contains(out, "# @") {
 		t.Errorf("leading hash not stripped:\n%s", out)
 	}
@@ -69,12 +65,8 @@ func TestStripsNullBegin(t *testing.T) {
 	out := Normalize(in)
 	// After stripping NODE_BEGIN(null) the wrapping NODE_BLOCK has one
 	// remaining child and gets unwrapped too.
-	if strings.Contains(out, "NODE_BEGIN") {
-		t.Errorf("NODE_BEGIN(null) not stripped:\n%s", out)
-	}
-	if strings.Contains(out, "NODE_BLOCK") {
-		t.Errorf("single-child NODE_BLOCK not unwrapped:\n%s", out)
-	}
+	assert.That(t, !(strings.Contains(out, "NODE_BEGIN")), "NODE_BEGIN(null) not stripped:\n%s", out)
+	assert.That(t, !(strings.Contains(out, "NODE_BLOCK")), "single-child NODE_BLOCK not unwrapped:\n%s", out)
 	if !strings.Contains(out, "NODE_LIT") || !strings.Contains(out, "nd_lit = 42") {
 		t.Errorf("body content lost:\n%s", out)
 	}
@@ -85,9 +77,7 @@ func TestMaskLineMagic(t *testing.T) {
 	// NODE_LIT at line 2 (where __LINE__ lives), value 2 -> mask.
 	dump := "# @ NODE_LIT (line: 2)\n# +- nd_lit: 2\n"
 	out := NormalizeWithSource(dump, src)
-	if !strings.Contains(out, "<__LINE__>") {
-		t.Errorf("__LINE__ at matching line not masked:\n%s", out)
-	}
+	assert.That(t, strings.Contains(out, "<__LINE__>"), "__LINE__ at matching line not masked:\n%s", out)
 	if strings.Contains(out, "nd_lit: 2") {
 		t.Errorf("original value still present:\n%s", out)
 	}
@@ -98,9 +88,7 @@ func TestMaskLineMagicNoFalsePositive(t *testing.T) {
 	// NODE_LIT at line 2, value 2. Line 2 has no __LINE__ -> do NOT mask.
 	dump := "# @ NODE_LIT (line: 2)\n# +- nd_lit: 2\n"
 	out := NormalizeWithSource(dump, src)
-	if strings.Contains(out, "<__LINE__>") {
-		t.Errorf("non-__LINE__ value wrongly masked:\n%s", out)
-	}
+	assert.That(t, !(strings.Contains(out, "<__LINE__>")), "non-__LINE__ value wrongly masked:\n%s", out)
 }
 
 func TestMaskLineMagicValueMismatch(t *testing.T) {
@@ -109,9 +97,7 @@ func TestMaskLineMagicValueMismatch(t *testing.T) {
 	src := "x = 1\n__LINE__; puts 99\n"
 	dump := "# @ NODE_LIT (line: 2)\n# +- nd_lit: 99\n"
 	out := NormalizeWithSource(dump, src)
-	if strings.Contains(out, "<__LINE__>") {
-		t.Errorf("value-mismatched NODE_LIT wrongly masked:\n%s", out)
-	}
+	assert.That(t, !(strings.Contains(out, "<__LINE__>")), "value-mismatched NODE_LIT wrongly masked:\n%s", out)
 }
 
 func TestKeepsMultiChildBlock(t *testing.T) {
@@ -123,27 +109,21 @@ func TestKeepsMultiChildBlock(t *testing.T) {
 		"    @ NODE_LIT\n" +
 		"    +- nd_lit: 2\n"
 	out := Normalize(in)
-	if !strings.Contains(out, "NODE_BLOCK") {
-		t.Errorf("multi-child NODE_BLOCK should NOT be unwrapped:\n%s", out)
-	}
+	assert.That(t, strings.Contains(out, "NODE_BLOCK"), "multi-child NODE_BLOCK should NOT be unwrapped:\n%s", out)
 }
 
 func TestMaskLineMagicPrismFormat(t *testing.T) {
 	src := "x = 1\n__LINE__\n"
 	dump := "@ NODE_LIT (location: (2,0)-(2,8))\n+- nd_lit: 2\n"
 	out := NormalizeWithSource(dump, src)
-	if !strings.Contains(out, "<__LINE__>") {
-		t.Errorf("Prism-format __LINE__ not masked:\n%s", out)
-	}
+	assert.That(t, strings.Contains(out, "<__LINE__>"), "Prism-format __LINE__ not masked:\n%s", out)
 }
 
 func TestMaskLineMagicPreIDFormat(t *testing.T) {
 	src := "x = 1\n__LINE__\n"
 	dump := "@ NODE_LIT (id: 5, line: 2, location: (2,0)-(2,8))\n+- nd_lit: 2\n"
 	out := NormalizeWithSource(dump, src)
-	if !strings.Contains(out, "<__LINE__>") {
-		t.Errorf("(id, line, location) format __LINE__ not masked:\n%s", out)
-	}
+	assert.That(t, strings.Contains(out, "<__LINE__>"), "(id, line, location) format __LINE__ not masked:\n%s", out)
 }
 
 func TestMaskLineMagicNoNdLitFollows(t *testing.T) {
@@ -152,9 +132,7 @@ func TestMaskLineMagicNoNdLitFollows(t *testing.T) {
 	dump := "@ NODE_LIT (line: 1)\n" +
 		"# noise\n# noise\n# noise\n+- nd_lit: 1\n"
 	out := NormalizeWithSource(dump, src)
-	if strings.Contains(out, "<__LINE__>") {
-		t.Errorf("masked despite nd_lit beyond lookahead window:\n%s", out)
-	}
+	assert.That(t, !(strings.Contains(out, "<__LINE__>")), "masked despite nd_lit beyond lookahead window:\n%s", out)
 }
 
 func TestUnwrapBlockWithNonHeadField(t *testing.T) {
@@ -163,9 +141,7 @@ func TestUnwrapBlockWithNonHeadField(t *testing.T) {
 		"+- nd_unexpected:\n" +
 		"    @ NODE_LIT\n"
 	out := Normalize(in)
-	if !strings.Contains(out, "NODE_BLOCK") {
-		t.Errorf("unexpected-field NODE_BLOCK wrongly unwrapped:\n%s", out)
-	}
+	assert.That(t, strings.Contains(out, "NODE_BLOCK"), "unexpected-field NODE_BLOCK wrongly unwrapped:\n%s", out)
 }
 
 func TestStripNullBeginLastSibling(t *testing.T) {
@@ -179,9 +155,7 @@ func TestStripNullBeginLastSibling(t *testing.T) {
 		"    +- nd_body:\n" +
 		"        (null node)\n"
 	out := Normalize(in)
-	if strings.Contains(out, "NODE_BEGIN") {
-		t.Errorf("last-sibling NODE_BEGIN(null) not stripped:\n%s", out)
-	}
+	assert.That(t, !(strings.Contains(out, "NODE_BEGIN")), "last-sibling NODE_BEGIN(null) not stripped:\n%s", out)
 }
 
 func TestNormalizeRawKeepsTreeShape(t *testing.T) {
@@ -205,9 +179,7 @@ func TestNormalizeWithSourceRawMasksLineMagic(t *testing.T) {
 	src := "x = 1\n__LINE__\n"
 	dump := "# @ NODE_LIT (line: 2)\n# +- nd_lit: 2\n"
 	raw := NormalizeWithSourceRaw(dump, src)
-	if !strings.Contains(raw, "<__LINE__>") {
-		t.Errorf("raw didn't mask __LINE__:\n%s", raw)
-	}
+	assert.That(t, strings.Contains(raw, "<__LINE__>"), "raw didn't mask __LINE__:\n%s", raw)
 	if !strings.Contains(raw, "@ NODE_LIT") {
 		t.Errorf("raw lost tree shape:\n%s", raw)
 	}
@@ -240,9 +212,7 @@ func TestStripsPrismTokenLoc(t *testing.T) {
 func TestStripsNdAlen(t *testing.T) {
 	in := "@ NODE_ARRAY\n+- nd_alen: 99\n+- nd_head:\n    @ NODE_LIT\n    +- nd_lit: 1\n"
 	out := Normalize(in)
-	if strings.Contains(out, "nd_alen") {
-		t.Errorf("nd_alen line not stripped:\n%s", out)
-	}
+	assert.That(t, !(strings.Contains(out, "nd_alen")), "nd_alen line not stripped:\n%s", out)
 }
 
 func TestStripsTempPathVariants(t *testing.T) {
@@ -262,18 +232,14 @@ func TestStripsTempPathVariants(t *testing.T) {
 	}
 	// Embedded-substr case should keep the surrounding literal.
 	embedded := Normalize("@ NODE_STR\n+- nd_lit: \"(eval at /tmp/parsetree-7.rb:1)\"\n")
-	if !strings.Contains(embedded, "<TEMPFILE>") {
-		t.Errorf("expected <TEMPFILE> placeholder:\n%s", embedded)
-	}
+	assert.That(t, strings.Contains(embedded, "<TEMPFILE>"), "expected <TEMPFILE> placeholder:\n%s", embedded)
 }
 
 func TestPrismInlineChildField(t *testing.T) {
 	// Prism inlines child nodes as `+-- @ ChildNode` -- not a list field.
 	in := "@ ProgramNode\n+-- @ DefNode\n    +-- name: :foo\n"
 	out := Normalize(in)
-	if !strings.Contains(out, "DefNode") {
-		t.Errorf("inline child node lost:\n%s", out)
-	}
+	assert.That(t, strings.Contains(out, "DefNode"), "inline child node lost:\n%s", out)
 }
 
 func TestSplitFieldNameValueNoSpace(t *testing.T) {
@@ -315,9 +281,7 @@ func TestConsumeFieldBodyMissingBody(t *testing.T) {
 	// Subtree field with no body line at expected depth -- leave field empty.
 	in := "@ NODE_SCOPE\n+- nd_body:\n@ NODE_ORPHAN\n"
 	out := Normalize(in)
-	if out == "" {
-		t.Errorf("output empty for malformed body")
-	}
+	assert.That(t, !(out == ""), "output empty for malformed body")
 }
 
 func TestConsumeFieldBodyBadNodeKind(t *testing.T) {
@@ -330,33 +294,25 @@ func TestTrimTrailingStarLineRejects(t *testing.T) {
 	// `*` not preceded by `)` or NODE_X -- leave alone.
 	in := "some random *\n"
 	out := stripTrailingStars(in)
-	if out != in {
-		t.Errorf("stripped non-qualifying `*`: %q", out)
-	}
+	assert.That(t, !(out != in), "stripped non-qualifying `*`: %q", out)
 }
 
 func TestStripTrailingStarsFastPath(t *testing.T) {
 	in := "no stars at end of line\nplain text\n"
 	out := stripTrailingStars(in)
-	if out != in {
-		t.Errorf("fast-path mutated input: %q", out)
-	}
+	assert.That(t, !(out != in), "fast-path mutated input: %q", out)
 }
 
 func TestStripLeadingHashFastPath(t *testing.T) {
 	in := "no hash here\nplain line\n"
 	out := stripLeadingHash(in)
-	if out != in {
-		t.Errorf("fast-path mutated input: %q", out)
-	}
+	assert.That(t, !(out != in), "fast-path mutated input: %q", out)
 }
 
 func TestStripIDLineLocationFastPath(t *testing.T) {
 	in := "@ NODE_LIT\n+- nd_lit: 1\n"
 	out := stripIDLineLocation(in)
-	if out != in {
-		t.Errorf("fast-path mutated input: %q", out)
-	}
+	assert.That(t, !(out != in), "fast-path mutated input: %q", out)
 }
 
 // TestCollapsesRedundantParens locks in that the normalizer strips
@@ -386,9 +342,7 @@ func TestCollapsesRedundantParens(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			nw := Normalize(c.wrapped)
 			nb := Normalize(c.bare)
-			if nw != nb {
-				t.Errorf("redundant parens not collapsed\n--- wrapped ---\n%s\n--- bare ---\n%s", nw, nb)
-			}
+			assert.That(t, !(nw != nb), "redundant parens not collapsed\n--- wrapped ---\n%s\n--- bare ---\n%s", nw, nb)
 		})
 	}
 }
@@ -403,9 +357,7 @@ func TestCollapsesEmptyBegin(t *testing.T) {
 	bare := "@ ProgramNode\n+-- locals: []\n+-- statements:\n    @ StatementsNode\n    +-- body: (length: 1)\n        +-- @ IntegerNode\n            +-- value: 1\n"
 	nw := Normalize(wrapped)
 	nb := Normalize(bare)
-	if nw != nb {
-		t.Errorf("empty BeginNode not collapsed\n--- wrapped ---\n%s\n--- bare ---\n%s", nw, nb)
-	}
+	assert.That(t, !(nw != nb), "empty BeginNode not collapsed\n--- wrapped ---\n%s\n--- bare ---\n%s", nw, nb)
 }
 
 // TestKeepsBeginWithRescue verifies the BeginNode collapse is gated on
@@ -414,12 +366,8 @@ func TestCollapsesEmptyBegin(t *testing.T) {
 func TestKeepsBeginWithRescue(t *testing.T) {
 	withRescue := "@ ProgramNode\n+-- locals: []\n+-- statements:\n    @ StatementsNode\n    +-- body: (length: 1)\n        +-- @ BeginNode\n            +-- statements:\n                @ StatementsNode\n                +-- body: (length: 1)\n                    +-- @ IntegerNode\n                        +-- value: 1\n            +-- rescue_clause:\n                @ RescueNode\n                +-- exceptions: (length: 0)\n            +-- else_clause: nil\n            +-- ensure_clause: nil\n"
 	out := Normalize(withRescue)
-	if !strings.Contains(out, "BeginNode") {
-		t.Errorf("BeginNode with rescue clause incorrectly stripped:\n%s", out)
-	}
-	if !strings.Contains(out, "RescueNode") {
-		t.Errorf("RescueNode child lost:\n%s", out)
-	}
+	assert.That(t, strings.Contains(out, "BeginNode"), "BeginNode with rescue clause incorrectly stripped:\n%s", out)
+	assert.That(t, strings.Contains(out, "RescueNode"), "RescueNode child lost:\n%s", out)
 }
 
 // TestSplicesMultiStmtBegin locks in that a no-clause multi-stmt
@@ -434,9 +382,7 @@ func TestSplicesMultiStmtBegin(t *testing.T) {
 	bare := "@ ProgramNode\n+-- locals: []\n+-- statements:\n    @ StatementsNode\n    +-- body: (length: 2)\n        +-- @ CallNode\n        |   +-- name: :a\n        +-- @ CallNode\n            +-- name: :b\n"
 	nw := Normalize(wrapped)
 	nb := Normalize(bare)
-	if nw != nb {
-		t.Errorf("multi-stmt BeginNode not spliced\n--- wrapped ---\n%s\n--- bare ---\n%s", nw, nb)
-	}
+	assert.That(t, !(nw != nb), "multi-stmt BeginNode not spliced\n--- wrapped ---\n%s\n--- bare ---\n%s", nw, nb)
 }
 
 // TestKeepsBeginInExprPosition verifies the multi-stmt splice does NOT
@@ -446,9 +392,7 @@ func TestSplicesMultiStmtBegin(t *testing.T) {
 func TestKeepsBeginInExprPosition(t *testing.T) {
 	exprWrapped := "@ ProgramNode\n+-- locals: [:x]\n+-- statements:\n    @ StatementsNode\n    +-- body: (length: 1)\n        +-- @ LocalVariableWriteNode\n            +-- name: :x\n            +-- depth: 0\n            +-- value:\n                @ BeginNode\n                +-- statements:\n                    @ StatementsNode\n                    +-- body: (length: 2)\n                        +-- @ CallNode\n                        |   +-- name: :a\n                        +-- @ CallNode\n                            +-- name: :b\n                +-- rescue_clause: nil\n                +-- else_clause: nil\n                +-- ensure_clause: nil\n"
 	out := Normalize(exprWrapped)
-	if !strings.Contains(out, "BeginNode") {
-		t.Errorf("BeginNode in expression-value position incorrectly spliced:\n%s", out)
-	}
+	assert.That(t, strings.Contains(out, "BeginNode"), "BeginNode in expression-value position incorrectly spliced:\n%s", out)
 }
 
 // TestCosmeticLiteralEquivalence locks in that the normalizer collapses
@@ -489,9 +433,7 @@ func TestCosmeticLiteralEquivalence(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			na := Normalize(c.a)
 			nb := Normalize(c.b)
-			if na != nb {
-				t.Errorf("normalize should collapse cosmetic diff but didn't\n--- a ---\n%s\n--- b ---\n%s", na, nb)
-			}
+			assert.That(t, !(na != nb), "normalize should collapse cosmetic diff but didn't\n--- a ---\n%s\n--- b ---\n%s", na, nb)
 		})
 	}
 }
@@ -516,18 +458,14 @@ func TestStripIDLineLocationMalformed(t *testing.T) {
 func TestStripSiblingIndexFastPath(t *testing.T) {
 	in := "@ NODE_LIT\n+- nd_lit: 1\n"
 	out := stripSiblingIndex(in)
-	if out != in {
-		t.Errorf("fast-path mutated input: %q", out)
-	}
+	assert.That(t, !(out != in), "fast-path mutated input: %q", out)
 }
 
 func TestStripSiblingIndexMalformed(t *testing.T) {
 	// `+- nd_xxx` w/out the `(N):` suffix -- copy through.
 	in := "+- nd_head: leaf-value\n"
 	out := stripSiblingIndex(in)
-	if out != in {
-		t.Errorf("non-matching marker mangled: %q", out)
-	}
+	assert.That(t, !(out != in), "non-matching marker mangled: %q", out)
 }
 
 func TestMaskLineMagicNoNodeLitGate(t *testing.T) {
@@ -535,9 +473,7 @@ func TestMaskLineMagicNoNodeLitGate(t *testing.T) {
 	src := "__LINE__\n"
 	dump := "@ NODE_SCOPE\n+- nd_body:\n    (null node)\n"
 	out := NormalizeWithSource(dump, src)
-	if !strings.Contains(out, "NODE_SCOPE") {
-		t.Errorf("dump corrupted:\n%s", out)
-	}
+	assert.That(t, strings.Contains(out, "NODE_SCOPE"), "dump corrupted:\n%s", out)
 }
 
 func TestLineMagicLinesEmptyShortcut(t *testing.T) {
@@ -580,9 +516,7 @@ func FuzzNormalizeWithSource(f *testing.F) {
 	f.Fuzz(func(t *testing.T, dump, src string) {
 		out1 := NormalizeWithSource(dump, src)
 		out2 := NormalizeWithSource(out1, src)
-		if out1 != out2 {
-			t.Fatalf("not idempotent for src=%q\n--- once ---\n%q\n--- twice ---\n%q", src, out1, out2)
-		}
+		assert.That(t, !(out1 != out2), "not idempotent for src=%q\n--- once ---\n%q\n--- twice ---\n%q", src, out1, out2)
 	})
 }
 
@@ -622,9 +556,7 @@ func TestNormalizeOnRealFixture(t *testing.T) {
 	}
 	// Idempotent: re-normalising should not change anything.
 	out2 := NormalizeWithSource(out, string(src))
-	if out != out2 {
-		t.Errorf("not idempotent on real fixture")
-	}
+	assert.That(t, !(out != out2), "not idempotent on real fixture")
 }
 
 // findRepoRoot walks up from cwd looking for the go.mod that names this

@@ -3,6 +3,7 @@ package lexer
 import (
 	"testing"
 
+	"github.com/lczyk/assert"
 	"github.com/lczyk/goruby/token"
 )
 
@@ -90,16 +91,10 @@ func TestLexerLiteralHeredocBody(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				if !l.HasNext() {
-					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
-				}
+				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
-				if tok.Type != exp.typ {
-					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
-				}
-				if tok.Literal != exp.literal {
-					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
-				}
+				assert.Equal(t, tok.Type, exp.typ)
+				assert.Equal(t, tok.Literal, exp.literal)
 			}
 		})
 	}
@@ -159,16 +154,10 @@ func TestLexerBacktickInterpolation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				if !l.HasNext() {
-					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
-				}
+				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
-				if tok.Type != exp.typ {
-					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
-				}
-				if tok.Literal != exp.literal {
-					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
-				}
+				assert.Equal(t, tok.Type, exp.typ)
+				assert.Equal(t, tok.Literal, exp.literal)
 			}
 		})
 	}
@@ -199,9 +188,7 @@ func TestHelperIsExpressionEnd(t *testing.T) {
 		{token.EOF, false},
 		{token.ASSIGN, false},
 	} {
-		if got := isExpressionEnd(tt.tok); got != tt.want {
-			t.Errorf("isExpressionEnd(%s) = %v, want %v", tt.tok, got, tt.want)
-		}
+		assert.Equal(t, isExpressionEnd(tt.tok), tt.want)
 	}
 }
 
@@ -222,9 +209,7 @@ func TestHelperIsMethodCallTarget(t *testing.T) {
 		{token.ASSIGN, false},
 		{token.INT, false},
 	} {
-		if got := isMethodCallTarget(tt.tok); got != tt.want {
-			t.Errorf("isMethodCallTarget(%s) = %v, want %v", tt.tok, got, tt.want)
-		}
+		assert.Equal(t, isMethodCallTarget(tt.tok), tt.want)
 	}
 }
 
@@ -270,16 +255,10 @@ func TestLexerWithVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input, WithVersion(tt.version))
 			for i, exp := range tt.expects {
-				if !l.HasNext() {
-					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
-				}
+				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
-				if tok.Type != exp.typ {
-					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
-				}
-				if tok.Literal != exp.literal {
-					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
-				}
+				assert.Equal(t, tok.Type, exp.typ)
+				assert.Equal(t, tok.Literal, exp.literal)
 			}
 		})
 	}
@@ -400,16 +379,10 @@ func TestLexerUncoveredOperators(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				if !l.HasNext() {
-					t.Fatalf("pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
-				}
+				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
-				if tok.Type != exp.typ {
-					t.Errorf("pos %d: expected type %s, got %s (%q)", i, exp.typ, tok.Type, tok.Literal)
-				}
-				if tok.Literal != exp.literal {
-					t.Errorf("pos %d: expected literal %q, got %q", i, exp.literal, tok.Literal)
-				}
+				assert.Equal(t, tok.Type, exp.typ)
+				assert.Equal(t, tok.Literal, exp.literal)
 			}
 		})
 	}

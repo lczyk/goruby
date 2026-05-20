@@ -3,6 +3,7 @@ package ast
 import (
 	"testing"
 
+	"github.com/lczyk/assert"
 	"github.com/lczyk/goruby/token"
 )
 
@@ -23,7 +24,5 @@ func TestString(t *testing.T) {
 			},
 		},
 	}
-	if program.String() != "myVar = anotherVar" {
-		t.Errorf("program.String() wrong. got=%q", program.String())
-	}
+	assert.Equal(t, program.String(), "myVar = anotherVar")
 }

@@ -1,14 +1,14 @@
 package token
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/lczyk/assert"
+)
 
 func TestPosIsValid(t *testing.T) {
-	if NoPos.IsValid() {
-		t.Errorf("NoPos.IsValid() = true, want false")
-	}
-	if !Pos(1).IsValid() {
-		t.Errorf("Pos(1).IsValid() = false, want true")
-	}
+	assert.That(t, !NoPos.IsValid(), "NoPos.IsValid() should be false")
+	assert.That(t, Pos(1).IsValid(), "Pos(1).IsValid() should be true")
 }
 
 func TestPositionString(t *testing.T) {
@@ -25,9 +25,7 @@ func TestPositionString(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := c.p.String(); got != c.want {
-				t.Errorf("String() = %q, want %q", got, c.want)
-			}
+			assert.Equal(t, c.p.String(), c.want)
 		})
 	}
 }
@@ -55,35 +53,24 @@ func TestFilePosition(t *testing.T) {
 	for _, c := range cases {
 		p := f.Pos(c.off)
 		got := f.Position(p)
-		if got.Line != c.line || got.Column != c.col {
-			t.Errorf("Position(off=%d) = %d:%d, want %d:%d", c.off, got.Line, got.Column, c.line, c.col)
-		}
-		if got.Filename != "x.rb" {
-			t.Errorf("Position(off=%d).Filename = %q, want %q", c.off, got.Filename, "x.rb")
-		}
-		if got.Offset != c.off {
-			t.Errorf("Position(off=%d).Offset = %d, want %d", c.off, got.Offset, c.off)
-		}
+		assert.Equal(t, got.Line, c.line)
+		assert.Equal(t, got.Column, c.col)
+		assert.Equal(t, got.Filename, "x.rb")
+		assert.Equal(t, got.Offset, c.off)
 	}
 }
 
 func TestFilePositionInvalid(t *testing.T) {
 	f := NewFile("x.rb", 10)
-	if p := f.Position(NoPos); p.IsValid() {
-		t.Errorf("Position(NoPos) IsValid, want invalid; got %+v", p)
-	}
-	if p := f.Position(Pos(1000)); p.IsValid() {
-		t.Errorf("Position(out-of-range) IsValid, want invalid; got %+v", p)
-	}
+	assert.That(t, !f.Position(NoPos).IsValid(), "NoPos should be invalid")
+	assert.That(t, !f.Position(Pos(1000)).IsValid(), "out-of-range Pos should be invalid")
 }
 
 func TestFileAddLineOutOfOrder(t *testing.T) {
 	f := NewFile("x.rb", 100)
 	f.AddLine(10)
-	f.AddLine(5) // ignored
+	f.AddLine(5)  // ignored
 	f.AddLine(10) // duplicate, ignored
 	f.AddLine(20)
-	if f.LineCount() != 3 { // implicit 0, then 10, then 20
-		t.Errorf("LineCount() = %d, want 3", f.LineCount())
-	}
+	assert.Equal(t, f.LineCount(), 3) // implicit 0, then 10, then 20
 }

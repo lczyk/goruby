@@ -3,6 +3,7 @@ package ast
 import (
 	"testing"
 
+	"github.com/lczyk/assert"
 	"github.com/lczyk/goruby/token"
 )
 
@@ -143,12 +144,7 @@ func Test_Equal(t *testing.T) {
 		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
-			ok := Equal(tt.x, tt.y)
-
-			if ok != tt.equal {
-				t.Logf("Expected Equal to return %t, got %t", tt.equal, ok)
-				t.Fail()
-			}
+			assert.Equal(t, Equal(tt.x, tt.y), tt.equal)
 		})
 	}
 }
@@ -158,23 +154,13 @@ func Test_compare(t *testing.T) {
 	a := &Identifier{Value: "x"}
 	b := &Identifier{Value: "x"}
 	c := &Identifier{Value: "x"}
-	if !compare(a, b, c) {
-		t.Errorf("expected compare to return true for three equal identifiers")
-	}
+	assert.That(t, compare(a, b, c), "three equal identifiers")
 	d := &Identifier{Value: "y"}
-	if compare(a, b, d) {
-		t.Errorf("expected compare to return false for mismatched third arg")
-	}
+	assert.That(t, !compare(a, b, d), "mismatched third arg")
 	// len(nodes) < 2 returns false
-	if compare() {
-		t.Errorf("expected compare() to return false")
-	}
-	if compare(a) {
-		t.Errorf("expected compare with 1 node to return false")
-	}
+	assert.That(t, !compare(), "compare() with zero args")
+	assert.That(t, !compare(a), "compare() with one arg")
 	// type mismatch between pair
 	il := &IntegerLiteral{Value: 1}
-	if compare(a, il) {
-		t.Errorf("expected compare to return false for type mismatch")
-	}
+	assert.That(t, !compare(a, il), "type mismatch")
 }
