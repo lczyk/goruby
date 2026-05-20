@@ -1294,8 +1294,9 @@ func (p *parser) parseLabelExpression() ast.Expression {
 	// The LABEL token's literal is e.g. "foo:"
 	name := strings.TrimSuffix(p.curToken.Literal, ":")
 	key := ast.Init(p.arena.NewSymbolLiteral(), ast.SymbolLiteral{
-		Token: p.curToken,
-		Value: ast.Init(p.arena.NewStringLiteral(), ast.StringLiteral{Value: name}),
+		Token:     p.curToken,
+		Value:     ast.Init(p.arena.NewStringLiteral(), ast.StringLiteral{Value: name}),
+		LabelText: p.curToken.Literal,
 	})
 	if p.peekTokenOneOf(token.COMMA, token.RPAREN, token.RBRACE, token.RBRACKET, token.NEWLINE, token.SEMICOLON, token.PIPE) {
 		// Hash-value-omission (Ruby 3.1+): `foo:` is shorthand for `foo: foo`.
@@ -1756,8 +1757,9 @@ func (p *parser) parsePatternHashPair(pairs *ast.OrderedExprMap) {
 	if p.currentTokenIs(token.LABEL) {
 		name := strings.TrimSuffix(p.curToken.Literal, ":")
 		key := ast.Init(p.arena.NewSymbolLiteral(), ast.SymbolLiteral{
-			Token: p.curToken,
-			Value: ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}),
+			Token:     p.curToken,
+			Value:     ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}),
+			LabelText: p.curToken.Literal,
 		})
 		if p.peekTokenOneOf(token.COMMA, token.RBRACE, token.THEN) {
 			pairs.Set(key, ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: name}))
@@ -3018,8 +3020,9 @@ func (p *parser) parseKeyValue() (ast.Expression, ast.Expression, bool, bool) {
 	if p.currentTokenIs(token.LABEL) {
 		name := strings.TrimSuffix(p.curToken.Literal, ":")
 		key := ast.Init(p.arena.NewSymbolLiteral(), ast.SymbolLiteral{
-			Token: p.curToken,
-			Value: ast.Init(p.arena.NewStringLiteral(), ast.StringLiteral{Value: name}),
+			Token:     p.curToken,
+			Value:     ast.Init(p.arena.NewStringLiteral(), ast.StringLiteral{Value: name}),
+			LabelText: p.curToken.Literal,
 		})
 		// Hash value omission (ruby 3.1+): {x:, y:} == {x: x, y: y}
 		if p.peekTokenOneOf(token.COMMA, token.RBRACE, token.RPAREN, token.NEWLINE) {

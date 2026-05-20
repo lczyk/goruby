@@ -1541,8 +1541,16 @@ func (c *Comment) String() string       { return "#" + c.Value }
 
 // SymbolLiteral represents a symbol within the AST
 type SymbolLiteral struct {
-	Token token.Token // the ':'
+	Token token.Token // the ':' (SYMBEG) or the 'name:' (LABEL)
 	Value Expression
+	// LabelText is the source-form text of a LABEL-typed symbol (e.g.
+	// "foo:"). Populated at parse from Token.Literal so the printer can
+	// re-emit the LABEL form without consulting the token's source text.
+	// Empty for non-LABEL symbols. Carries the info that Token.Literal
+	// held; structurally non-trivial to reconstruct from Value alone
+	// because the parser stores Value as either StringLiteral{Value:"name"}
+	// or Identifier{Value:"name:"} depending on the parse context.
+	LabelText string
 }
 
 func (s *SymbolLiteral) expressionNode() {}
@@ -1554,9 +1562,16 @@ func (s *SymbolLiteral) Pos() int { return s.Token.Pos }
 // End returns the position of first character immediately after the node
 func (s *SymbolLiteral) End() int { return s.Value.End() }
 
-// TokenLiteral returns the literal from token token.SYMBOL
-func (s *SymbolLiteral) TokenLiteral() string { return s.Token.Literal }
-func (s *SymbolLiteral) String() string       { return ":" + s.Value.String() }
+// TokenLiteral returns the literal from token token.SYMBOL. For LABEL
+// tokens, returns the source-form `name:`; for plain symbols, returns
+// the `:` sigil.
+func (s *SymbolLiteral) TokenLiteral() string {
+	if s.Token.Type == token.LABEL {
+		return s.LabelText
+	}
+	return s.Token.Type.Literal()
+}
+func (s *SymbolLiteral) String() string { return ":" + s.Value.String() }
 
 // LabelString returns the symbol in label form (without leading colon).
 func (s *SymbolLiteral) LabelString() string { return s.Value.String() }
@@ -1915,9 +1930,9 @@ func (hl *HashLiteral) hashElements() []string {
 			if kv.Value != nil {
 				if sym, ok := kv.Key.(*SymbolLiteral); ok && sym.Token.Type == token.LABEL {
 					if kv.Omitted {
-						s = sym.Token.Literal
+						s = sym.LabelText
 					} else {
-						s = sym.Token.Literal + " " + kv.Value.String()
+						s = sym.LabelText + " " + kv.Value.String()
 					}
 				} else if sym, ok := kv.Key.(*SymbolLiteral); ok {
 					if slv, isStr := sym.Value.(*StringLiteral); isStr {
@@ -3126,9 +3141,9 @@ func (oe *InfixExpression) String() string {
 			if oe.Right == nil {
 				// Hash-value-omission shorthand (Ruby 3.1+): `foo:` with
 				// implicit value. Preserve the omitted form on re-emit.
-				return sym.Token.Literal
+				return sym.LabelText
 			}
-			return sym.Token.Literal + " " + oe.Right.String()
+			return sym.LabelText + " " + oe.Right.String()
 		}
 	}
 	parentPrec := rubyInfixPrec(oe.Operator)
