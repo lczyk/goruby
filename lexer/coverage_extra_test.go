@@ -3,6 +3,7 @@ package lexer
 import (
 	"testing"
 
+	"github.com/lczyk/assert"
 	"github.com/lczyk/goruby/token"
 )
 
@@ -2215,8 +2216,6 @@ func TestLexerHeredocNestedSquigInSquigInterp(t *testing.T) {
 			stringEnds++
 		}
 	}
-	if stringBegs != 2 || stringEnds != 2 {
-		t.Errorf("expected 2 STRING_BEG / 2 STRING_END, got %d / %d; tokens: %v",
-			stringBegs, stringEnds, got)
-	}
+	assert.Equal(t, stringBegs, 2)
+	assert.Equal(t, stringEnds, 2)
 }
