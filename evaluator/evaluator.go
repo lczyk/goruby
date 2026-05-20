@@ -41,6 +41,20 @@ func Eval(node ast.Node, env *object.Environment) (object.RubyObject, error) {
 	case *ast.HashLiteral:
 		return evalHashLiteral(env, n)
 
+	// Variables ------------------------------------------------------
+
+	case *ast.Identifier:
+		return evalIdentifier(env, n)
+
+	case *ast.Global:
+		return evalGlobal(env, n)
+
+	case *ast.Assignment:
+		return evalAssignment(env, n)
+
+	case ast.ExpressionList:
+		return evalExpressionList(env, n)
+
 	// Compound -------------------------------------------------------
 
 	case *ast.PrefixExpression:

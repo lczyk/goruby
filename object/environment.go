@@ -80,6 +80,14 @@ func (e *Environment) Set(name string, value RubyObject) RubyObject {
 	return value
 }
 
+// SetGlobal binds name to value on the root environment regardless of
+// the current scope. Used for ruby globals ($foo) and other constructs
+// that must outlive any block / method scope.
+func (e *Environment) SetGlobal(name string, value RubyObject) RubyObject {
+	e.root().store[name] = value
+	return value
+}
+
 // Version returns the ruby version active in this environment, resolving
 // to the root and to the package latest if unset.
 func (e *Environment) Version() token.RubyVersion {
