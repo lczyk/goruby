@@ -46,6 +46,10 @@ func callKernel(env *object.Environment, name string, args []object.RubyObject) 
 		return kernelPutc(env, args)
 	case "eval":
 		return kernelEval(env, args)
+	case "exit", "exit!":
+		return kernelExit(env, args)
+	case "abort":
+		return kernelAbort(env, args)
 	case "lambda":
 		return nil, errorf("evaluator: Kernel#lambda without block not supported; use ->( ){ ... }")
 	}
@@ -73,6 +77,40 @@ func kernelPutc(env *object.Environment, args []object.RubyObject) (object.RubyO
 		return v, nil
 	}
 	return nil, errorf("evaluator: putc: expected Integer or String, got %T", args[0])
+}
+
+// kernelExit implements Kernel#exit / Kernel#exit!: raise the
+// exitSignal which evalProgram catches and converts to a clean return.
+// Accepts an Integer exit code or a Boolean (true=0, false=1). No
+// difference from exit! at this level; we don't run at_exit / ensures
+// either way.
+func kernelExit(_ *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	var code int64
+	if len(args) >= 1 {
+		switch v := args[0].(type) {
+		case *object.Integer:
+			code = v.Value
+		case *object.Boolean:
+			if !v.Value {
+				code = 1
+			}
+		}
+	}
+	return nil, &exitSignal{Code: code}
+}
+
+// kernelAbort implements Kernel#abort: optional String arg goes to
+// stderr, then raises exitSignal with code 1. Used by mariolang-rb
+// etc. when an interpreter wants to bail out on a runtime error.
+func kernelAbort(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) >= 1 {
+		if s, ok := stringText(env, args[0]); ok {
+			// Mirror MRI: stderr write + newline.
+			env.Stderr().Write([]byte(s))
+			env.Stderr().Write([]byte{'\n'})
+		}
+	}
+	return nil, &exitSignal{Code: 1}
 }
 
 // kernelEval implements Kernel#eval(str): parses str under the

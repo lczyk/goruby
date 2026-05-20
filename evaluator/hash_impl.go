@@ -6,6 +6,18 @@ import (
 
 func callHashMethod(env *object.Environment, r *object.Hash, name string, args []object.RubyObject) (object.RubyObject, error) {
 	switch name {
+	case "default":
+		if r.Default != nil {
+			return r.Default, nil
+		}
+		return object.NIL, nil
+	case "default=":
+		if len(args) != 1 {
+			return nil, errorf("evaluator: Hash#default= expects 1 arg, got %d", len(args))
+		}
+		r.Default = args[0]
+		r.DefaultBlock = nil
+		return args[0], nil
 	case "length", "size":
 		return object.NewInteger(int64(len(r.Entries))), nil
 	case "keys":

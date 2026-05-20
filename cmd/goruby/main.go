@@ -75,6 +75,10 @@ func main() {
 
 	envOpts = append(envOpts, object.WithARGV(argv))
 	env := object.NewMainEnvironment(envOpts...)
+	// $PROGRAM_NAME (alias $0) -- MRI sets to the running script's path.
+	// Some libraries gate their driver via `if __FILE__ == $PROGRAM_NAME`.
+	env.SetGlobal("$PROGRAM_NAME", object.NewString(filename))
+	env.SetGlobal("$0", object.NewString(filename))
 	if _, err := evaluator.Eval(prog, env); err != nil {
 		die("eval:", err)
 	}

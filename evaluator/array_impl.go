@@ -8,6 +8,9 @@ import (
 
 func callArrayMethod(env *object.Environment, r *object.Array, name string, args []object.RubyObject) (object.RubyObject, error) {
 	switch name {
+	case "clear":
+		r.Elements = r.Elements[:0]
+		return r, nil
 	case "length", "size", "count":
 		if name == "count" && len(args) == 1 {
 			n := 0

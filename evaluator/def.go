@@ -471,6 +471,13 @@ type nextSignal struct{ Value object.RubyObject }
 
 func (n *nextSignal) Error() string { return "unhandled next" }
 
+// exitSignal short-circuits the entire program. Raised by Kernel#exit
+// and Kernel#exit!; caught at the top-level Eval so tests don't tear
+// down the process via os.Exit.
+type exitSignal struct{ Code int64 }
+
+func (e *exitSignal) Error() string { return "unhandled exit" }
+
 // evalJump handles break/next/redo/retry. The parser also routes
 // modifier-form return through a JumpExpression whose token is RETURN.
 func evalJump(env *object.Environment, n *ast.JumpExpression) (object.RubyObject, error) {

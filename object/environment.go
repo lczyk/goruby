@@ -41,6 +41,7 @@ type Environment struct {
 	syms    *SymbolPool
 	strings *StringPool
 	stdout  io.Writer
+	stderr  io.Writer
 	stdin   io.Reader
 	stdinBR any // *bufio.Reader cached so successive gets() share buffer state
 	version token.RubyVersion
@@ -90,6 +91,7 @@ func NewMainEnvironment(opts ...EnvOption) *Environment {
 		syms:    NewSymbolPool(),
 		strings: NewStringPool(),
 		stdout:  os.Stdout,
+		stderr:  os.Stderr,
 		stdin:   os.Stdin,
 		methods: make(map[string]RubyObject),
 	}
@@ -114,6 +116,12 @@ type EnvOption func(*Environment)
 // this environment. Zero value means "latest".
 func WithVersion(v token.RubyVersion) EnvOption {
 	return func(e *Environment) { e.version = v }
+}
+
+// WithStderr overrides the writer Kernel#abort / STDERR.puts send
+// output to. Defaults to os.Stderr.
+func WithStderr(w io.Writer) EnvOption {
+	return func(e *Environment) { e.stderr = w }
 }
 
 // WithStdout overrides the writer Kernel#puts / Kernel#p send output to.
@@ -239,6 +247,15 @@ func (e *Environment) Version() token.RubyVersion {
 
 // Stdout returns the writer Kernel#puts / Kernel#p should target.
 func (e *Environment) Stdout() io.Writer { return e.root().stdout }
+
+// Stderr returns the writer Kernel#abort and STDERR.puts target.
+func (e *Environment) Stderr() io.Writer {
+	r := e.root()
+	if r.stderr == nil {
+		return os.Stderr
+	}
+	return r.stderr
+}
 
 // Stdin returns the reader Kernel#gets and STDIN methods should pull
 // from. Defaults to os.Stdin; tests override via WithStdin.

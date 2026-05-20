@@ -8,6 +8,7 @@ var hashMethodNames = []string{
 	"length", "size", "keys", "values", "merge", "delete", "store",
 	"to_a", "empty?", "any?", "fetch", "dig", "sort", "min", "max",
 	"invert", "except", "has_key?", "key?", "include?", "member?",
+	"default", "default=",
 }
 
 func init() {

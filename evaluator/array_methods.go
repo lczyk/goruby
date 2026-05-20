@@ -11,7 +11,7 @@ var arrayMethodNames = []string{
 	"none?", "one?", "to_h", "to_a", "dig", "each_with_index",
 	"each_slice", "each_cons", "zip", "take", "drop", "join", "min",
 	"minmax", "max", "sum", "grep", "uniq", "compact", "flatten",
-	"reduce", "inject", "tally",
+	"reduce", "inject", "tally", "clear",
 }
 
 func init() {

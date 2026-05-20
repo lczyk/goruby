@@ -317,6 +317,22 @@ func callStringMethod(env *object.Environment, recv object.RubyObject, name stri
 			}
 			return object.NewArray(out...), true, nil
 		}
+		// Regexp separator: split on matches of the pattern. Empty
+		// pattern (//) is special-cased to per-character split,
+		// matching MRI.
+		if re, ok := args[0].(*object.Regex); ok {
+			var parts []string
+			if re.Source == "" {
+				parts = strings.Split(s, "")
+			} else {
+				parts = re.RE.Split(s, -1)
+			}
+			out := make([]object.RubyObject, len(parts))
+			for i, p := range parts {
+				out[i] = object.NewString(p)
+			}
+			return object.NewArray(out...), true, nil
+		}
 		sep, ok := stringText(env, args[0])
 		if !ok {
 			return nil, true, errorf("evaluator: String#split needs String sep, got %T", args[0])

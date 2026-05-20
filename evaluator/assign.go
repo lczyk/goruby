@@ -381,6 +381,24 @@ func assignTarget(env *object.Environment, target ast.Expression, value object.R
 	case *ast.Global:
 		env.SetGlobal(t.Value, value)
 		return nil
+	case *ast.InstanceVariable:
+		self := env.EnclosingSelf()
+		inst, ok := self.(*object.Instance)
+		if !ok {
+			return errorf("evaluator: @%s= outside instance context (self=%T)", t.Name.Value, self)
+		}
+		inst.Ivars["@"+t.Name.Value] = value
+		return nil
+	case *ast.ClassVariable:
+		cls := classForCVar(env)
+		if cls == nil {
+			return errorf("evaluator: @@%s= outside class context", t.Name.Value)
+		}
+		if cls.ClassVars == nil {
+			cls.ClassVars = map[string]object.RubyObject{}
+		}
+		cls.ClassVars["@@"+t.Name.Value] = value
+		return nil
 	}
 	return errorf("evaluator: unsupported multi-assignment target %T", target)
 }

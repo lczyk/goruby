@@ -134,6 +134,9 @@ func Eval(node ast.Node, env *object.Environment) (object.RubyObject, error) {
 
 	case *ast.ExceptionHandlingBlock:
 		return evalExceptionHandlingBlock(env, n)
+
+	case *ast.Keyword__FILE__:
+		return object.NewString(n.Filename), nil
 	}
 
 	return nil, errorf("evaluator: unhandled AST node type %T", node)
@@ -161,6 +164,16 @@ func evalProgram(env *object.Environment, p *ast.Program) (object.RubyObject, er
 	for _, stmt := range p.Statements {
 		v, err := Eval(stmt, env)
 		if err != nil {
+			// Kernel#exit / Kernel#abort short-circuit the program
+			// cleanly. Code 0 returns nil with no error so test
+			// harnesses see a normal end; non-zero bubbles as a
+			// regular error string so callers can act on it.
+			if es, ok := err.(*exitSignal); ok {
+				if es.Code == 0 {
+					return object.NIL, nil
+				}
+				return nil, errorf("exit: %d", es.Code)
+			}
 			return nil, err
 		}
 		result = v
@@ -360,7 +373,7 @@ func evalPrefix(env *object.Environment, n *ast.PrefixExpression) (object.RubyOb
 		if _, ok := right.(*object.Instance); ok {
 			return callMethod(env, right, "-@", nil)
 		}
-	case "!":
+	case "!", "not":
 		return object.BooleanOf(!truthy(right)), nil
 	case "+":
 		if _, ok := right.(*object.Instance); ok {
