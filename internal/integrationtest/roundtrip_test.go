@@ -23,22 +23,19 @@ func safeString(prog *ast.Program) (result string, panicMsg string) {
 	return prog.String(), ""
 }
 
-const roundtripSkipFile = "roundtrip.skip"
-
-var (
-	roundtripASTCounters counters
-	roundtripSrcCounters counters
-)
+var roundtripCounters counters
 
 func init() {
-	registerSummary("TestRoundtripAST  ", &roundtripASTCounters)
-	registerSummary("TestRoundtripSrc  ", &roundtripSrcCounters)
+	registerSummary("TestRoundtrip", &roundtripCounters)
 }
 
+// TestRoundtrip parses each golden fixture, re-prints the AST, re-parses
+// the printed form, and asserts the second print is byte-identical to the
+// first (AST-stable roundtrip). Source-stable roundtrip (input == first
+// print) is no longer tested -- TestMRIParseTreeDiff covers parse-tree
+// equivalence directly against MRI and supersedes the source-text check.
 func TestRoundtrip(t *testing.T) {
 	versions, rows := loadGoldenTSV(t)
-	skips, err := loadGoldenSkips(roundtripSkipFile, "ast", "src")
-	assert.NoError(t, err, "load %s", roundtripSkipFile)
 
 	for _, row := range rows {
 		localPath := strings.TrimPrefix(row.file, goldenPrefix)
@@ -55,6 +52,7 @@ func TestRoundtrip(t *testing.T) {
 			name := fmt.Sprintf("%s/ruby_%s", row.file, verStr)
 			t.Run(name, func(t *testing.T) {
 				t.Parallel()
+				t.Cleanup(func() { recordOutcome(t, &roundtripCounters) })
 
 				prog1, parseErr := parser.ParseFile(row.file, src, parser.AllErrors, parser.WithVersion(ver))
 				if parseErr != nil {
@@ -62,47 +60,22 @@ func TestRoundtrip(t *testing.T) {
 				}
 
 				src2, stringPanic := safeString(prog1)
-
-				var prog2 *ast.Program
-				var reParseErr error
-				if stringPanic == "" {
-					prog2, reParseErr = parser.ParseFile(row.file+"<roundtrip>", []byte(src2), parser.AllErrors, parser.WithVersion(ver))
+				if stringPanic != "" {
+					t.Fatalf("String() panicked: %s", stringPanic)
 				}
 
-				t.Run("ast", func(t *testing.T) {
-					t.Cleanup(func() { recordOutcome(t, &roundtripASTCounters) })
+				prog2, reParseErr := parser.ParseFile(row.file+"<roundtrip>", []byte(src2), parser.AllErrors, parser.WithVersion(ver))
+				if reParseErr != nil {
+					t.Fatalf("re-parse failed:\n--- regenerated source ---\n%s\n--- error ---\n%v", src2, reParseErr)
+				}
 
-					if e := skips.match("ast", row.file, ver); e != nil {
-						t.Skipf("skip: %s", e.reason)
-					}
-					if stringPanic != "" {
-						t.Fatalf("String() panicked: %s", stringPanic)
-					}
-					if reParseErr != nil {
-						t.Fatalf("re-parse failed:\n--- regenerated source ---\n%s\n--- error ---\n%v", src2, reParseErr)
-					}
-					src3, reStringPanic := safeString(prog2)
-					if reStringPanic != "" {
-						t.Fatalf("re-String() panicked: %s", reStringPanic)
-					}
-					if src2 != src3 {
-						t.Errorf("AST roundtrip not stable:\n--- first String() ---\n%s\n--- second String() ---\n%s", src2, src3)
-					}
-				})
-
-				t.Run("src", func(t *testing.T) {
-					t.Cleanup(func() { recordOutcome(t, &roundtripSrcCounters) })
-
-					if e := skips.match("src", row.file, ver); e != nil {
-						t.Skipf("skip: %s", e.reason)
-					}
-					if stringPanic != "" {
-						t.Skipf("String() panicked: %s", stringPanic)
-					}
-					if string(src) != src2 {
-						t.Errorf("source mismatch after roundtrip")
-					}
-				})
+				src3, reStringPanic := safeString(prog2)
+				if reStringPanic != "" {
+					t.Fatalf("re-String() panicked: %s", reStringPanic)
+				}
+				if src2 != src3 {
+					t.Errorf("AST roundtrip not stable:\n--- first String() ---\n%s\n--- second String() ---\n%s", src2, src3)
+				}
 			})
 		}
 	}
