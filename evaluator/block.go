@@ -64,6 +64,16 @@ func iterStep(invoke blockCallback, args []object.RubyObject) (val object.RubyOb
 	return nil, false, err
 }
 
+// yieldOne is iterStep specialised for the single-arg yield -- a
+// thin shim over the variadic form that keeps the call sites
+// uncluttered. Alloc-neutral with the inline `[]RubyObject{v}` form
+// (the slice is heap-allocated per call either way; escape analysis
+// can't prove invoke won't retain it across the call boundary), but
+// the helper makes future per-loop buffer reuse trivial.
+func yieldOne(invoke blockCallback, v object.RubyObject) (object.RubyObject, bool, error) {
+	return iterStep(invoke, []object.RubyObject{v})
+}
+
 func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, name string, args []object.RubyObject, invoke blockCallback, blk *ast.BlockExpression) (object.RubyObject, error) {
 	// Universal block-taking methods (apply to any receiver).
 	switch name {
@@ -160,12 +170,28 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 	if r, ok := recv.(*object.Range); ok {
 		switch name {
 		case "each":
+			if lo, hi, ok := rangeIntegerBounds(r); ok {
+				end := hi
+				if !r.Exclusive {
+					end++
+				}
+				for k := lo; k < end; k++ {
+					_, stop, err := yieldOne(invoke, object.NewInteger(k))
+					if err != nil {
+						return nil, err
+					}
+					if stop {
+						return r, nil
+					}
+				}
+				return r, nil
+			}
 			elems, err := rangeToSlice(env, r)
 			if err != nil {
 				return nil, err
 			}
 			for _, e := range elems {
-				_, stop, err := iterStep(invoke, []object.RubyObject{e})
+				_, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
@@ -175,13 +201,31 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 			}
 			return r, nil
 		case "map", "collect":
+			if lo, hi, ok := rangeIntegerBounds(r); ok {
+				end := hi
+				if !r.Exclusive {
+					end++
+				}
+				out := make([]object.RubyObject, 0, end-lo)
+				for k := lo; k < end; k++ {
+					v, stop, err := yieldOne(invoke, object.NewInteger(k))
+					if err != nil {
+						return nil, err
+					}
+					if stop {
+						return v, nil
+					}
+					out = append(out, v)
+				}
+				return object.NewArray(out...), nil
+			}
 			elems, err := rangeToSlice(env, r)
 			if err != nil {
 				return nil, err
 			}
-			out := []object.RubyObject{}
+			out := make([]object.RubyObject, 0, len(elems))
 			for _, e := range elems {
-				v, stop, err := iterStep(invoke, []object.RubyObject{e})
+				v, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
@@ -577,7 +621,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 		switch name {
 		case "times":
 			for k := int64(0); k < i.Value; k++ {
-				_, stop, err := iterStep(invoke, []object.RubyObject{object.NewInteger(k)})
+				_, stop, err := yieldOne(invoke, object.NewInteger(k))
 				if err != nil {
 					return nil, err
 				}
@@ -595,7 +639,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 				return nil, errorf("evaluator: Integer#upto needs Integer arg")
 			}
 			for k := i.Value; k <= to.Value; k++ {
-				_, stop, err := iterStep(invoke, []object.RubyObject{object.NewInteger(k)})
+				_, stop, err := yieldOne(invoke, object.NewInteger(k))
 				if err != nil {
 					return nil, err
 				}
@@ -613,7 +657,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 				return nil, errorf("evaluator: Integer#downto needs Integer arg")
 			}
 			for k := i.Value; k >= to.Value; k-- {
-				_, stop, err := iterStep(invoke, []object.RubyObject{object.NewInteger(k)})
+				_, stop, err := yieldOne(invoke, object.NewInteger(k))
 				if err != nil {
 					return nil, err
 				}
@@ -646,7 +690,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 				cond = func(k int64) bool { return k >= limit.Value }
 			}
 			for k := i.Value; cond(k); k += step {
-				_, stop, err := iterStep(invoke, []object.RubyObject{object.NewInteger(k)})
+				_, stop, err := yieldOne(invoke, object.NewInteger(k))
 				if err != nil {
 					return nil, err
 				}
@@ -662,7 +706,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 		case "map", "collect":
 			out := make([]object.RubyObject, 0, len(arr.Elements))
 			for _, e := range arr.Elements {
-				v, stop, err := iterStep(invoke, []object.RubyObject{e})
+				v, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
@@ -675,7 +719,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 		case "flat_map", "collect_concat":
 			out := []object.RubyObject{}
 			for _, e := range arr.Elements {
-				v, stop, err := iterStep(invoke, []object.RubyObject{e})
+				v, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
@@ -692,7 +736,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 		case "select", "filter":
 			out := make([]object.RubyObject, 0, len(arr.Elements))
 			for _, e := range arr.Elements {
-				v, stop, err := iterStep(invoke, []object.RubyObject{e})
+				v, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
@@ -707,7 +751,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 		case "reject":
 			out := make([]object.RubyObject, 0, len(arr.Elements))
 			for _, e := range arr.Elements {
-				v, stop, err := iterStep(invoke, []object.RubyObject{e})
+				v, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
@@ -721,7 +765,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 			return object.NewArray(out...), nil
 		case "each":
 			for _, e := range arr.Elements {
-				_, stop, err := iterStep(invoke, []object.RubyObject{e})
+				_, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
@@ -860,7 +904,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 		case "count":
 			n := 0
 			for _, e := range arr.Elements {
-				v, stop, err := iterStep(invoke, []object.RubyObject{e})
+				v, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
@@ -902,7 +946,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 			vals := make([]object.RubyObject, len(arr.Elements))
 			copy(vals, arr.Elements)
 			for i, e := range arr.Elements {
-				v, stop, err := iterStep(invoke, []object.RubyObject{e})
+				v, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
@@ -921,7 +965,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 			return object.NewArray(vals...), nil
 		case "find", "detect":
 			for _, e := range arr.Elements {
-				v, stop, err := iterStep(invoke, []object.RubyObject{e})
+				v, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
@@ -936,7 +980,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 		case "group_by":
 			groups := []object.HashEntry{}
 			for _, e := range arr.Elements {
-				k, stop, err := iterStep(invoke, []object.RubyObject{e})
+				k, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
@@ -961,7 +1005,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 			truthyOut := []object.RubyObject{}
 			falsyOut := []object.RubyObject{}
 			for _, e := range arr.Elements {
-				v, stop, err := iterStep(invoke, []object.RubyObject{e})
+				v, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
@@ -979,7 +1023,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 			var bestVal object.RubyObject
 			var bestKey object.RubyObject
 			for _, e := range arr.Elements {
-				k, stop, err := iterStep(invoke, []object.RubyObject{e})
+				k, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
@@ -1008,7 +1052,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 			var loVal, hiVal object.RubyObject
 			var loKey, hiKey object.RubyObject
 			for _, e := range arr.Elements {
-				k, stop, err := iterStep(invoke, []object.RubyObject{e})
+				k, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
@@ -1035,7 +1079,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 			var bestVal object.RubyObject
 			var bestKey object.RubyObject
 			for _, e := range arr.Elements {
-				k, stop, err := iterStep(invoke, []object.RubyObject{e})
+				k, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
@@ -1063,7 +1107,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 		case "take_while":
 			out := []object.RubyObject{}
 			for _, e := range arr.Elements {
-				v, stop, err := iterStep(invoke, []object.RubyObject{e})
+				v, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
@@ -1084,7 +1128,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 					out = append(out, e)
 					continue
 				}
-				v, stop, err := iterStep(invoke, []object.RubyObject{e})
+				v, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
@@ -1152,7 +1196,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 			return object.NewArray(out...), nil
 		case "any?":
 			for _, e := range arr.Elements {
-				v, stop, err := iterStep(invoke, []object.RubyObject{e})
+				v, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
@@ -1166,7 +1210,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 			return object.FALSE, nil
 		case "all?":
 			for _, e := range arr.Elements {
-				v, stop, err := iterStep(invoke, []object.RubyObject{e})
+				v, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
@@ -1180,7 +1224,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 			return object.TRUE, nil
 		case "none?":
 			for _, e := range arr.Elements {
-				v, stop, err := iterStep(invoke, []object.RubyObject{e})
+				v, stop, err := yieldOne(invoke, e)
 				if err != nil {
 					return nil, err
 				}
