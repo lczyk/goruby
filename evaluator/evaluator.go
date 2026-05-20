@@ -411,14 +411,12 @@ func evalInfix(env *object.Environment, n *ast.InfixExpression) (object.RubyObje
 
 	// User-defined operator methods on the LHS instance take precedence
 	// over the built-in Object equality check below, mirroring MRI.
-	if inst, ok := left.(*object.Instance); ok {
+	if _, ok := left.(*object.Instance); ok {
 		switch n.Operator {
-		case "+", "-", "*", "/", "%", "**", "<", "<=", ">", ">=", "<=>":
+		case "+", "-", "*", "/", "%", "**", "<", "<=", ">", ">=", "<=>", "==":
 			return callMethod(env, left, n.Operator, []object.RubyObject{right})
-		case "==":
-			return instanceEqual(env, inst, left, right)
 		case "!=":
-			eq, err := instanceEqual(env, inst, left, right)
+			eq, err := callMethod(env, left, "==", []object.RubyObject{right})
 			if err != nil {
 				return nil, err
 			}

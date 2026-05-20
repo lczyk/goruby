@@ -362,19 +362,6 @@ func makeAttrWriter(name string) *object.UserMethod {
 type attrReaderMarker string
 type attrWriterMarker string
 
-// instanceEqual resolves `==` on an Instance receiver: dispatches to a
-// user-defined `==` or `<=>` if present, falls back to Go pointer
-// identity (matching MRI's Object#==).
-func instanceEqual(env *object.Environment, inst *object.Instance, left, right object.RubyObject) (object.RubyObject, error) {
-	if _, found := dispatchClass(env, inst).LookupMethod("=="); found {
-		return callMethod(env, left, "==", []object.RubyObject{right})
-	}
-	if _, found := dispatchClass(env, inst).LookupMethod("<=>"); found {
-		return callMethod(env, left, "==", []object.RubyObject{right})
-	}
-	return object.BooleanOf(left == right), nil
-}
-
 // dispatchClass returns the class to consult for method lookup on
 // recv. Today it is exactly classOfRaw, but every method-dispatch site
 // must route through here so that the future eigenclass machinery
