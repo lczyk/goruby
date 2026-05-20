@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
-# Benchmark goruby vs MRI ruby 2.6 across a small set of workloads.
+# Benchmark goruby vs MRI ruby (2.6 + 3.4) across a small set of
+# workloads.
 #
 # For each .rb file under $WORKLOADS, run it $RUNS times with each
 # interpreter, take the best wall-clock time, and report a side-by-
-# side table with the goruby/ruby2.6 slowdown ratio.
+# side table with goruby/MRI slowdown ratios per MRI version.
 #
 # Env:
 #   GORUBY      goruby binary. default: ./bin/goruby (built via `make build`).
-#   RUBY26      MRI binary. default: .rubies/versions/2.6.0/bin/ruby.
+#   RUBY26      MRI 2.6 binary. default: .rubies/versions/2.6.0/bin/ruby.
+#   RUBY34      MRI 3.4 binary. default: .rubies/versions/3.4.4/bin/ruby.
+#               Set to empty string to skip the 3.4 column.
 #   WORKLOADS   directory of .rb workload files. default: scripts/bench-workloads.
 #   RUNS        timed iterations per (binary, workload). default: 3.
 #   ONLY        space-separated workload basenames to filter (e.g. "fib arith").
@@ -16,20 +19,32 @@
 #   scripts/bench-vs-ruby
 #   RUNS=5 scripts/bench-vs-ruby
 #   ONLY="fib class_dispatch" scripts/bench-vs-ruby
+#   RUBY34= scripts/bench-vs-ruby                   # 2.6 only
 #
 # Best-of-N (not mean) is reported because warm-cache wall time is
 # what we care about; cold/jitter runs only push the number up. Run
 # more iterations for tighter numbers.
+#
+# Note: MRI binaries built under .rubies/ are standalone (no system
+# gem path) so the script passes --disable-gems to skip the rubygems
+# prelude. goruby doesn't recognise the flag and is invoked plain.
 
 set -euo pipefail
 
 GORUBY="${GORUBY:-./bin/goruby}"
 RUBY26="${RUBY26:-.rubies/versions/2.6.0/bin/ruby}"
+RUBY34="${RUBY34-.rubies/versions/3.4.4/bin/ruby}"
 WORKLOADS="${WORKLOADS:-scripts/bench-workloads}"
 RUNS="${RUNS:-3}"
 ONLY="${ONLY:-}"
 
-# preflight: both binaries must exist and be executable.
+# Build the list of (label, binary) columns. goruby always first;
+# MRI binaries appended when present + executable. Missing 2.6 is
+# fatal (the original comparison target); missing 3.4 is a warn and
+# skip so a partial .rubies tree still produces useful output.
+declare -a LABELS=("goruby")
+declare -a BINS=("$GORUBY")
+
 if [[ ! -x "$GORUBY" ]]; then
     printf 'error: goruby binary not found at %s\n' "$GORUBY" >&2
     printf '  hint: run `make build`\n' >&2
@@ -40,6 +55,18 @@ if [[ ! -x "$RUBY26" ]]; then
     printf '  hint: run `make rubies`\n' >&2
     exit 2
 fi
+LABELS+=("ruby2.6")
+BINS+=("$RUBY26")
+
+if [[ -n "$RUBY34" ]]; then
+    if [[ -x "$RUBY34" ]]; then
+        LABELS+=("ruby3.4")
+        BINS+=("$RUBY34")
+    else
+        printf 'warn: ruby 3.4 binary not found at %s (skipping 3.4 column)\n' "$RUBY34" >&2
+    fi
+fi
+
 if [[ ! -d "$WORKLOADS" ]]; then
     printf 'error: workloads dir not found: %s\n' "$WORKLOADS" >&2
     exit 2
@@ -48,16 +75,14 @@ fi
 # time_run "$bin" "$file" -> echoes best-of-$RUNS wall time in
 # seconds to stdout. on failure (any single run errors out) echoes
 # "FAIL" instead. uses python for monotonic timing because macos lacks
-# `date +%s.%N`.
+# `date +%s.%N`. Passes --disable-gems to any MRI binary (everything
+# except goruby) so the rubygems prelude doesn't blow up on the
+# standalone .rubies/ builds.
 function time_run() {
     local bin="$1"
     local file="$2"
-    # MRI 2.6 needs --disable-gems to skip the rubygems prelude when
-    # the binary lives outside the system gem path (the .rubies/
-    # binaries are built standalone). goruby has no equivalent and
-    # tolerates the flag's absence; only pass it for the MRI binary.
     local cmd=("$bin" "$file")
-    if [[ "$bin" == "$RUBY26" ]]; then
+    if [[ "$bin" != "$GORUBY" ]]; then
         cmd=("$bin" --disable-gems "$file")
     fi
     python3 - "$RUNS" "${cmd[@]}" <<'PY'
@@ -79,9 +104,25 @@ print(f"{best:.4f}")
 PY
 }
 
-# Print header.
-printf '%-22s  %10s  %10s  %8s\n' workload goruby ruby2.6 ratio
-printf '%-22s  %10s  %10s  %8s\n' '----------------------' '----------' '----------' '--------'
+# Header. Each MRI column gets a time + ratio (goruby / mri). The
+# ratio column for the first MRI (2.6) is labelled "ratio26" and so
+# on; left as just the version number for readability.
+header_fmt='%-22s  %10s'
+header_args=(workload goruby)
+sep_fmt='%-22s  %10s'
+sep_args=('----------------------' '----------')
+for ((i=1; i<${#LABELS[@]}; i++)); do
+    header_fmt+='  %10s  %8s'
+    header_args+=("${LABELS[$i]}" "vs ${LABELS[$i]:4}")
+    sep_fmt+='  %10s  %8s'
+    sep_args+=('----------' '--------')
+done
+header_fmt+='\n'
+sep_fmt+='\n'
+# shellcheck disable=SC2059
+printf "$header_fmt" "${header_args[@]}"
+# shellcheck disable=SC2059
+printf "$sep_fmt" "${sep_args[@]}"
 
 shopt -s nullglob
 files=("$WORKLOADS"/*.rb)
@@ -90,36 +131,67 @@ if [[ ${#files[@]} -eq 0 ]]; then
     exit 1
 fi
 
-total_gor=0
-total_mri=0
-ratio_sum=0
-ratio_count=0
+# Per-MRI accumulators for the totals row. Indexed by MRI column
+# (i.e. LABELS[1..N-1]); ratio_sum[i] sums goruby/mri[i] for each
+# workload that succeeded on both binaries.
+declare -a total_bin
+declare -a ratio_sum
+declare -a ratio_count
+for ((i=0; i<${#LABELS[@]}; i++)); do
+    total_bin[i]=0
+    ratio_sum[i]=0
+    ratio_count[i]=0
+done
 
 for f in "${files[@]}"; do
     name=$(basename "$f" .rb)
     if [[ -n "$ONLY" ]] && ! [[ " $ONLY " == *" $name "* ]]; then
         continue
     fi
-    g=$(time_run "$GORUBY" "$f")
-    m=$(time_run "$RUBY26" "$f")
-    if [[ "$g" == "FAIL" || "$m" == "FAIL" ]]; then
-        printf '%-22s  %10s  %10s  %8s\n' "$name" "$g" "$m" '-'
-        continue
+    declare -a times
+    times=()
+    for ((i=0; i<${#BINS[@]}; i++)); do
+        times[i]=$(time_run "${BINS[$i]}" "$f")
+    done
+
+    g="${times[0]}"
+    row_fmt='%-22s  %10s'
+    row_args=("$name" "${g}s")
+    for ((i=1; i<${#BINS[@]}; i++)); do
+        t="${times[$i]}"
+        if [[ "$g" == "FAIL" || "$t" == "FAIL" ]]; then
+            row_fmt+='  %10s  %8s'
+            row_args+=("$t" '-')
+            continue
+        fi
+        r=$(python3 -c "print(f'{$g/$t:.2f}x')")
+        row_fmt+='  %10s  %8s'
+        row_args+=("${t}s" "$r")
+        total_bin[i]=$(python3 -c "print(${total_bin[$i]} + $t)")
+        ratio_sum[i]=$(python3 -c "print(${ratio_sum[$i]} + $g/$t)")
+        ratio_count[i]=$((ratio_count[i] + 1))
+    done
+    row_fmt+='\n'
+    if [[ "$g" != "FAIL" ]]; then
+        total_bin[0]=$(python3 -c "print(${total_bin[0]} + $g)")
     fi
-    ratio=$(python3 -c "print(f'{$g/$m:.2f}x')")
-    printf '%-22s  %10s  %10s  %8s\n' "$name" "${g}s" "${m}s" "$ratio"
-    total_gor=$(python3 -c "print($total_gor + $g)")
-    total_mri=$(python3 -c "print($total_mri + $m)")
-    ratio_sum=$(python3 -c "print($ratio_sum + $g/$m)")
-    ratio_count=$((ratio_count + 1))
+    # shellcheck disable=SC2059
+    printf "$row_fmt" "${row_args[@]}"
 done
 
-if (( ratio_count > 0 )); then
-    printf '%-22s  %10s  %10s  %8s\n' '----------------------' '----------' '----------' '--------'
-    summary=$(python3 -c "
-g, m, rs, n = $total_gor, $total_mri, $ratio_sum, $ratio_count
-print(f'{g:.4f}s {m:.4f}s {rs/n:.2f}x')
-")
-    read -r tg tm avg <<<"$summary"
-    printf '%-22s  %10s  %10s  %8s\n' "total ($ratio_count workloads)" "$tg" "$tm" "$avg"
+if (( ratio_count[1] > 0 )); then
+    # shellcheck disable=SC2059
+    printf "$sep_fmt" "${sep_args[@]}"
+    tot_fmt='%-22s  %10s'
+    tg=$(python3 -c "print(f'{${total_bin[0]}:.4f}s')")
+    tot_args=("total (${ratio_count[1]} workloads)" "$tg")
+    for ((i=1; i<${#BINS[@]}; i++)); do
+        tm=$(python3 -c "print(f'{${total_bin[$i]}:.4f}s')")
+        avg=$(python3 -c "n=${ratio_count[$i]}; rs=${ratio_sum[$i]}; print(f'{rs/n:.2f}x' if n else '-')")
+        tot_fmt+='  %10s  %8s'
+        tot_args+=("$tm" "$avg")
+    done
+    tot_fmt+='\n'
+    # shellcheck disable=SC2059
+    printf "$tot_fmt" "${tot_args[@]}"
 fi
