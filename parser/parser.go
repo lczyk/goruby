@@ -500,6 +500,17 @@ var traceNoop = func() {}
 // as an argument (no closure alloc) and restores it on return.
 func (p *parser) restoreSuppressHR(prev bool) { p.suppressHashrocket = prev }
 
+// restoreSuppressKwAndOr is the method-form of the parseBlock restore defer.
+// Using a method instead of a closure means defer doesn't have to heap-
+// allocate a closure record for the captured `prev`. parseBlock is called
+// per block in source -- many per file in real code.
+func (p *parser) restoreSuppressKwAndOr(prev bool) { p.suppressKwAndOr = prev }
+
+// swallowPanic is the defer target for recovery-only panic catches.
+// As a package-level free function it captures nothing, so defer does
+// not need to allocate a closure record.
+func swallowPanic() { recover() }
+
 // traceEnter is the indirection between the 88 `defer p.traceEnter()()` call
 // sites and `trace.TraceCtx`. Short-circuits on the cached `p.tracing` bool
 // so non-tracing parses skip the ctx.Value lookup entirely.
@@ -615,7 +626,7 @@ func (p *parser) ParseProgram() (*ast.Program, error) {
 }
 
 func stmtPos(s ast.Statement) int {
-	defer func() { recover() }()
+	defer swallowPanic()
 	return s.Pos()
 }
 
@@ -3088,7 +3099,7 @@ func (p *parser) parseBlock() ast.Expression {
 	// suppression from the enclosing call must not leak into the body.
 	prevAO := p.suppressKwAndOr
 	p.suppressKwAndOr = false
-	defer func() { p.suppressKwAndOr = prevAO }()
+	defer p.restoreSuppressKwAndOr(prevAO)
 	block := p.arena.NewBlockExpression()
 	block.Token = p.curToken
 	if p.peekTokenIs(token.NEWLINE) && p.peek2TokenIs(token.PIPE) {
