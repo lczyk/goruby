@@ -223,6 +223,16 @@ type Lexer struct {
 	// means cursor mode is not active for the current heredoc -- legacy
 	// heredocPostBody splice path is used instead.
 
+	// Squig body buffer swap (phase 5). When a squig heredoc is set up,
+	// rather than splicing the stripped body into l.input we build a small
+	// freestanding buffer of "stripped_body + delim + \n" and TEMPORARILY
+	// swap it in as l.input for the duration of body lex. At STRING_END,
+	// finishHeredoc restores the original l.input and resumes at
+	// heredocSquigRestorePos (= position past delim line in the original).
+	heredocSavedInput     string
+	heredocSavedSegEnd    int
+	heredocSquigRestorePos int
+
 	// Interpolation state.
 	braceDepth  int
 	interpStack []interpState
@@ -354,6 +364,19 @@ func (l *Lexer) syncSegEnd() { l.segEnd = len(l.input) }
 // content next, followed by what was after the heredoc.
 func (l *Lexer) finishHeredoc() {
 	l.heredocDelim = ""
+	// Phase 5: if a squig body was lexed against the stripped buffer, restore
+	// the original l.input first and reposition past the delim line in the
+	// original source. Then the cursor / splice transitions below run on the
+	// real input as if no swap had happened.
+	if l.heredocSavedInput != "" {
+		l.input = l.heredocSavedInput
+		l.segEnd = l.heredocSavedSegEnd
+		l.pos = l.heredocSquigRestorePos
+		l.start = l.pos
+		l.heredocSavedInput = ""
+		l.heredocSavedSegEnd = 0
+		l.heredocSquigRestorePos = 0
+	}
 	if l.heredocRest != (segment{}) {
 		rest := l.heredocRest
 		l.heredocRest = segment{}
@@ -2128,10 +2151,16 @@ foundEnd:
 	return lexHeredocContent
 }
 
-// stripSquigInterpBody rewrites l.input to remove the minimum common leading
-// whitespace from the heredoc body lines, so an interpolating squiggy heredoc
-// (<<~) can be lexed by lexHeredocContent without indent-aware emission. Body
-// runs from l.pos to the line whose content equals heredocDelim.
+// stripSquigInterpBody builds a stripped-body buffer for a squig heredoc
+// (<<~) and temporarily swaps l.input to it for the duration of body lex.
+// Body runs from l.pos to the line whose content equals heredocDelim.
+//
+// Phase 5 of the heredoc cursor migration: the original implementation
+// spliced the stripped body into l.input, allocating a fresh full-input
+// string per heredoc (~570MB total on the real-files bench). The buffer-
+// swap variant allocates only the stripped body plus delim+\n (a small
+// constant overhead per heredoc) and routes body lex through that buffer.
+// finishHeredoc restores l.input to the saved original when body ends.
 func stripSquigInterpBody(l *Lexer) {
 	delim := l.heredocDelim
 	bodyStart := l.pos
@@ -2184,7 +2213,14 @@ func stripSquigInterpBody(l *Lexer) {
 		l.heredocStripped = true
 	}
 	var b strings.Builder
-	b.Grow(delimLineStart - bodyStart)
+	// Stripped body + delim text + (optional \n). matchHeredocDelimLine
+	// needs the delim text present at the tail of the buffer to terminate
+	// the body lex naturally.
+	delimLineContentStart := delimLineStart + delimLineWS
+	delimEnd := delimLineContentStart + len(delim)
+	hasNewline := delimEnd < len(l.input) && l.input[delimEnd] == '\n'
+	bodyApprox := delimLineStart - bodyStart
+	b.Grow(bodyApprox + len(delim) + 1)
 	for idx, ln := range lines {
 		var lineEnd int
 		if idx+1 < len(lines) {
@@ -2198,10 +2234,28 @@ func stripSquigInterpBody(l *Lexer) {
 		}
 		b.WriteString(l.input[ln.start+strip : lineEnd])
 	}
-	stripped := b.String()
-	delimLineContentStart := delimLineStart + delimLineWS
-	l.input = l.input[:bodyStart] + stripped + l.input[delimLineContentStart:]
-	l.syncSegEnd()
+	b.WriteString(delim)
+	if hasNewline {
+		b.WriteByte('\n')
+	}
+	buf := b.String()
+
+	// Compute the resume position in the ORIGINAL input -- one byte past the
+	// delim line (the \n if present, or end-of-input).
+	restorePos := delimEnd
+	if hasNewline {
+		restorePos++
+	}
+
+	// Save original lexer state, swap l.input to the stripped buffer for
+	// body lex. finishHeredoc restores when STRING_END is emitted.
+	l.heredocSavedInput = l.input
+	l.heredocSavedSegEnd = l.segEnd
+	l.heredocSquigRestorePos = restorePos
+	l.input = buf
+	l.pos = 0
+	l.start = 0
+	l.segEnd = len(buf)
 }
 
 // matchHeredocDelimLine reports whether the line beginning at pos is the
