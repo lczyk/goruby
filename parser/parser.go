@@ -260,11 +260,16 @@ func (p *parser) lit(tok token.Token) string { return p.l.Lit(tok) }
 func (p *parser) init(filename string, src []byte, mode Mode) {
 	p.file = token.NewFile(filename, len(src))
 
-	p.l = lexer.NewBytes(src, lexer.WithVersion(p.version))
-	p.errors = []error{}
 	if p.arena == nil {
 		p.arena = ast.NewArena()
 	}
+	// Reuse the arena's literal pool storage so warm runs skip the
+	// per-parse allocations of []string headers.
+	p.l = lexer.NewBytes(src,
+		lexer.WithVersion(p.version),
+		lexer.WithLitPool(p.arena.LitPool),
+	)
+	p.errors = []error{}
 
 	p.mode = mode
 	if p.ctx == nil {
@@ -599,6 +604,10 @@ func (p *parser) ParseProgram() (*ast.Program, error) {
 	}
 	program.SetArena(p.arena)
 	program.LitPool = p.l.Pool()
+	// Write back the grown pool so the next parse on this arena starts
+	// from the warmed-up capacity (Arena.Reset truncates length to 0
+	// while keeping cap).
+	p.arena.LitPool = program.LitPool
 	if len(p.errors) != 0 {
 		return program, NewErrors("Parsing errors", p.errors...)
 	}

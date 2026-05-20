@@ -101,7 +101,21 @@ func (s *slab[T]) reset() {
 
 // Arena holds one slab per AST node type. Slabs grow lazily -- a slab that
 // is never used costs only its zero-value struct field overhead in Arena.
+//
+// LitPool is the lexer's per-token literal pool, reused across parses
+// just like the AST slabs. The parser passes the arena's current pool
+// to the lexer at init (zero-length view of the warmed-up array), the
+// lexer appends through parse, the parser writes back the grown slice
+// at parse end. Reset() truncates to zero length while keeping capacity,
+// so the next parse re-fills the same backing array.
+//
+// Same contract as the AST slabs: callers MUST NOT call Reset while a
+// previously-returned Program is still being read -- the program's
+// LitPool aliases the arena's slice, so resetting / re-parsing will
+// overwrite its contents.
 type Arena struct {
+	LitPool []string
+
 	returnStatementSlab          slab[ReturnStatement]
 	expressionStatementSlab      slab[ExpressionStatement]
 	blockStatementSlab           slab[BlockStatement]
@@ -239,6 +253,7 @@ func (a *Arena) Reset() {
 	a.infixExpressionSlab.reset()
 	a.rightwardAssignmentSlab.reset()
 	a.parenExpressionSlab.reset()
+	a.LitPool = a.LitPool[:0]
 }
 
 // Init copies src into the slot dst points at and returns dst. Lets

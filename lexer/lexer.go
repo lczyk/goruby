@@ -112,25 +112,37 @@ func WithVersion(v token.RubyVersion) Option {
 	return func(l *Lexer) { l.version = v }
 }
 
+// WithLitPool reuses the supplied []string as the lexer's literal pool
+// storage. The slice's underlying array is reused (truncated to length
+// 0 by the lexer); subsequent appends fill it without re-allocating on
+// warm runs. After lex, the caller reads back the grown slice via
+// Lexer.Pool() and writes it to its storage for the next iteration.
+// Pairs with ast.Arena.LitPool for end-to-end parse-loop reuse.
+func WithLitPool(pool []string) Option {
+	return func(l *Lexer) { l.litPool = pool[:0] }
+}
+
 // New returns a Lexer instance ready to process the given input.
 func New(input string, opts ...Option) *Lexer {
-	// litPool grows once per emitted token. Empirically Ruby source
-	// averages ~6 source bytes per token (whitespace + 3-5 char idents
-	// + 1-2 char ops); a /6 starting capacity skips most early doublings
-	// without over-allocating for tiny inputs.
-	poolCap := 16
-	if est := len(input) / 4; est > poolCap {
-		poolCap = est
-	}
 	l := &Lexer{
-		input:   input,
-		segEnd:  len(input),
-		state:   startLexer,
-		tokens:  make([]token.Token, 0, 16),
-		litPool: make([]string, 0, poolCap),
+		input:  input,
+		segEnd: len(input),
+		state:  startLexer,
+		tokens: make([]token.Token, 0, 16),
 	}
 	for _, o := range opts {
 		o(l)
+	}
+	// If WithLitPool didn't supply storage, allocate one. The /4 estimate
+	// assumes ~4 source bytes per token on average for Ruby (whitespace
+	// + 3-5 char idents + 1-2 char ops); skips most early doublings on
+	// realistic file sizes without over-allocating for tiny inputs.
+	if cap(l.litPool) == 0 {
+		poolCap := 16
+		if est := len(input) / 4; est > poolCap {
+			poolCap = est
+		}
+		l.litPool = make([]string, 0, poolCap)
 	}
 	l.hasMagicEncoding = detectMagicEncoding(input)
 	if l.version.IsSet() && !l.version.AtLeast(ruby20) && !l.hasMagicEncoding &&
