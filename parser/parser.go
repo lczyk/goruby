@@ -993,6 +993,9 @@ func (p *parser) parseExceptionHandlingBlock() ast.Expression {
 	for p.peekTokenIs(token.RESCUE) {
 		p.accept(token.RESCUE)
 		rescue := p.parseRescueBlock()
+		if rescue == nil {
+			return nil
+		}
 		block.Rescues = append(block.Rescues, rescue)
 	}
 	if p.peekTokenIs(token.ELSE) {
@@ -3174,6 +3177,9 @@ func (p *parser) parseBlock() ast.Expression {
 		for rescueInBlock && p.peekTokenIs(token.RESCUE) {
 			p.accept(token.RESCUE)
 			rescue := p.parseRescueBlock()
+			if rescue == nil {
+				return nil
+			}
 			block.Rescues = append(block.Rescues, rescue)
 		}
 		if rescueInBlock && p.peekTokenIs(token.ELSE) {
@@ -3661,6 +3667,9 @@ func (p *parser) parseModule() ast.Expression {
 	for p.peekTokenIs(token.RESCUE) {
 		p.accept(token.RESCUE)
 		rescue := p.parseRescueBlock()
+		if rescue == nil {
+			return nil
+		}
 		expr.Rescues = append(expr.Rescues, rescue)
 	}
 
@@ -3697,6 +3706,9 @@ func (p *parser) parseClass() ast.Expression {
 	for p.peekTokenIs(token.RESCUE) {
 		p.accept(token.RESCUE)
 		rescue := p.parseRescueBlock()
+		if rescue == nil {
+			return nil
+		}
 		expr.Rescues = append(expr.Rescues, rescue)
 	}
 
@@ -3727,6 +3739,9 @@ func (p *parser) parseSingletonClass() ast.Expression {
 	for p.peekTokenIs(token.RESCUE) {
 		p.accept(token.RESCUE)
 		rescue := p.parseRescueBlock()
+		if rescue == nil {
+			return nil
+		}
 		expr.Rescues = append(expr.Rescues, rescue)
 	}
 
@@ -3947,6 +3962,9 @@ parseParams:
 	for p.peekTokenIs(token.RESCUE) {
 		p.accept(token.RESCUE)
 		rescue := p.parseRescueBlock()
+		if rescue == nil {
+			return nil
+		}
 		lit.Rescues = append(lit.Rescues, rescue)
 	}
 	if p.peekTokenIs(token.ELSE) {
