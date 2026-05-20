@@ -64,51 +64,61 @@ func runEvaluatorFixture(t *testing.T, env *object.Environment, filename, src st
 	return buf.String()
 }
 
-// TestEvaluatorCorpusLiterals runs every .rb file under testdata/evaluator
-// at the corpus's canonical target version (2.6) and compares its stdout
-// against the sibling .expected file. Files declaring `# minversion:`
-// higher than the active target are skipped.
+// supportedEvaluatorSubdirs lists testdata/evaluator/ subdirs the
+// evaluator can fully handle today. Grow as more corpus categories come
+// online. The harness fails loudly if a listed subdir is empty so dead
+// entries get noticed.
+var supportedEvaluatorSubdirs = []string{
+	"literals",
+	"arithmetic",
+}
+
+// TestEvaluatorCorpus runs every .rb file under the supported corpus
+// subdirs at the corpus's canonical target version (2.6) and compares
+// its stdout against the sibling .expected file. Files declaring
+// `# minversion:` higher than the active target are skipped.
 //
 // The 2.6 pin matches scripts/eval-corpus-oracle: the .expected files
 // were authored against MRI 2.6's inspect format (e.g. `{:a=>1}`, not
 // the 3.4 shorthand `{a: 1}`).
-//
-// Restricted to the literals/ subdir until the evaluator grows beyond
-// the literals dispatch. Extend the glob as more subdirs become
-// evaluator-supported.
-func TestEvaluatorCorpusLiterals(t *testing.T) {
+func TestEvaluatorCorpus(t *testing.T) {
 	target := token.MustParseVersion("2.6")
 
-	matches, err := filepath.Glob(filepath.Join(evaluatorCorpusRoot, "literals", "*.rb"))
-	assert.NoError(t, err, "glob literals")
-	if len(matches) == 0 {
-		t.Fatal("no .rb files under testdata/evaluator/literals/")
-	}
-
-	for _, rb := range matches {
-		rb := rb
-		name := strings.TrimSuffix(filepath.Base(rb), ".rb")
-		t.Run(name, func(t *testing.T) {
-			minVer := minVersionFromHeader(t, rb)
-			if minVer.IsSet() && !target.AtLeast(minVer) {
-				t.Skipf("requires ruby %s, target is %s", minVer, target)
+	for _, sub := range supportedEvaluatorSubdirs {
+		sub := sub
+		t.Run(sub, func(t *testing.T) {
+			matches, err := filepath.Glob(filepath.Join(evaluatorCorpusRoot, sub, "*.rb"))
+			assert.NoError(t, err, "glob %s", sub)
+			if len(matches) == 0 {
+				t.Fatalf("no .rb files under testdata/evaluator/%s/", sub)
 			}
 
-			src, err := os.ReadFile(rb)
-			assert.NoError(t, err, "read %s", rb)
+			for _, rb := range matches {
+				rb := rb
+				name := strings.TrimSuffix(filepath.Base(rb), ".rb")
+				t.Run(name, func(t *testing.T) {
+					minVer := minVersionFromHeader(t, rb)
+					if minVer.IsSet() && !target.AtLeast(minVer) {
+						t.Skipf("requires ruby %s, target is %s", minVer, target)
+					}
 
-			expectedPath := strings.TrimSuffix(rb, ".rb") + ".expected"
-			want, err := os.ReadFile(expectedPath)
-			assert.NoError(t, err, "read %s", expectedPath)
+					src, err := os.ReadFile(rb)
+					assert.NoError(t, err, "read %s", rb)
 
-			var stdout bytes.Buffer
-			env := object.NewMainEnvironment(
-				object.WithVersion(target),
-				object.WithStdout(&stdout),
-			)
-			got := runEvaluatorFixture(t, env, rb, string(src))
+					expectedPath := strings.TrimSuffix(rb, ".rb") + ".expected"
+					want, err := os.ReadFile(expectedPath)
+					assert.NoError(t, err, "read %s", expectedPath)
 
-			assert.EqualLineByLine(t, string(want), got, "stdout mismatch for %s", rb)
+					var stdout bytes.Buffer
+					env := object.NewMainEnvironment(
+						object.WithVersion(target),
+						object.WithStdout(&stdout),
+					)
+					got := runEvaluatorFixture(t, env, rb, string(src))
+
+					assert.EqualLineByLine(t, string(want), got, "stdout mismatch for %s", rb)
+				})
+			}
 		})
 	}
 }
