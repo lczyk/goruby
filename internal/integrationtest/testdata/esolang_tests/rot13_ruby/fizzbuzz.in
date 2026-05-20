@@ -1,0 +1,11 @@
+(1..15).rnpu qb |v|
+  vs v % 15 == 0
+    chgf "SvmmOhmm"
+  ryfvs v % 3 == 0
+    chgf "Svmm"
+  ryfvs v % 5 == 0
+    chgf "Ohmm"
+  ryfr
+    chgf v
+  raq
+raq
