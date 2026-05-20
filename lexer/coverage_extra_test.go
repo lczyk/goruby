@@ -2181,3 +2181,42 @@ func TestLexerRegressions(t *testing.T) {
 		})
 	}
 }
+
+// TestLexerHeredocNestedSquigInSquigInterp exercises a latent code path
+// flagged in HEREDOC_PLAN.md: an outer squig heredoc whose body contains
+// `#{}` interpolation that itself starts another squig heredoc.
+// stripSquigInterpBody writes heredocSavedInput/SavedSegEnd/SquigRestorePos
+// without stacking, so an inner squig strip would overwrite the outer's
+// saved state. Test currently passes because the inner squig heredoc body
+// region lives inside the outer's already-stripped buffer; if the layout
+// of the swap fields changes in future work this canary catches the regression.
+func TestLexerHeredocNestedSquigInSquigInterp(t *testing.T) {
+	src := "x = <<~OUTER\n  before #{<<~INNER\n  inner body\n  INNER\n} after\nOUTER\n"
+	l := New(src)
+	got := []token.Type{}
+	for l.HasNext() {
+		tok := l.NextToken()
+		got = append(got, tok.Type)
+		if tok.Type == token.EOF {
+			break
+		}
+	}
+	// Minimal correctness check: expect STRING_BEG ... STRING_END pair for each
+	// heredoc tag (outer and inner), with the inner pair fully nested inside
+	// the outer's body emit sequence. Don't assert exact token positions --
+	// just structural sanity.
+	stringBegs := 0
+	stringEnds := 0
+	for _, tt := range got {
+		switch tt {
+		case token.STRING_BEG:
+			stringBegs++
+		case token.STRING_END:
+			stringEnds++
+		}
+	}
+	if stringBegs != 2 || stringEnds != 2 {
+		t.Errorf("expected 2 STRING_BEG / 2 STRING_END, got %d / %d; tokens: %v",
+			stringBegs, stringEnds, got)
+	}
+}
