@@ -325,6 +325,14 @@ assertions to guard the subsequent field access. don't reach for
 - **evaluator mri oracle**: `make eval-corpus-oracle` runs the same
   fixtures under pinned MRI and diffs stdout against `.expected`,
   catching corpus drift independently of the goruby evaluator.
+- **esolang programs**: `TestEsolangPrograms` in
+  `internal/integrationtest/esolang_test.go` runs each
+  `testdata/esolang_tests/<lang>/*.in` through the matching
+  `testdata/esolangs/<lang>.rb` interpreter under the goruby evaluator
+  and diffs stdout against the sibling `.expected`. parity check
+  against MRI on real third-party ruby code (esolang interpreters from
+  the esolangs.org wiki). regenerate `.expected` via
+  `scripts/esolang-tests-oracle` (needs `ruby` on PATH).
 - **mri golden lex / parse**: per-MRI-version syntax-check golden tables
   in `internal/integrationtest/testdata/mri-golden.tsv`. needs
   `make rubies`.
