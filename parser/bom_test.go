@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/lczyk/assert"
@@ -12,13 +13,6 @@ const bom = "\xef\xbb\xbf"
 // (EF BB BF) is transparently skipped before tokenization. Every MRI
 // from 1.9 through 4.0 strips exactly one BOM at byte 0 and continues
 // lexing the remainder normally.
-//
-// Goruby diverges from MRI in one respect: MRI's ident scanner accepts
-// U+FEFF as a valid identifier letter anywhere in source, so `BOMputs`
-// is tokenized as the ident `BOMputs`. Goruby's ident scanner still
-// rejects mid-source U+FEFF as an illegal char. The cases below are all
-// ones where the leading BOM is the ONLY BOM in source, so the parses
-// here are unambiguous.
 func TestUTF8BOMStripped(t *testing.T) {
 	cases := []struct {
 		name string
@@ -96,34 +90,45 @@ func TestUTF8BOMStripped(t *testing.T) {
 }
 
 // TestUTF8BOMSingleStripOnly asserts that only ONE leading BOM is
-// stripped. MRI strips one BOM at byte 0 then treats subsequent U+FEFF
-// bytes as identifier letters. Goruby strips one but its ident scanner
-// rejects further U+FEFF -- documented divergence. The test pins
-// goruby's behavior: a double BOM at byte 0 must remain an error.
+// stripped at byte 0 -- subsequent U+FEFF runes are not stripped, but
+// instead consumed by the ident scanner as identifier letters (matching
+// MRI). So `BOM BOM puts 1` strips the first, then `BOM puts` lexes as
+// one identifier.
 func TestUTF8BOMSingleStripOnly(t *testing.T) {
 	src := bom + bom + "puts 1\n"
-	_, err := parseSource(src)
-	assert.Error(t, err, "Illegal character")
+	prog, err := parseSource(src)
+	checkParserErrors(t, err)
+	assert.NotNil(t, prog, "no program returned")
+	// The reformatted source must still contain a U+FEFF (the second BOM
+	// that became part of an identifier). If both were stripped we'd lose
+	// it. If neither was stripped we'd have failed earlier with a lex
+	// error on the leading bytes (before the prelude ran).
+	got := prog.String()
+	assert.That(t, strings.Contains(got, bom),
+		"expected U+FEFF to appear in reformatted output, got %q", got)
 }
 
-// TestUTF8BOMOnlyAtStart asserts that a BOM anywhere except byte 0 is
-// not stripped. Goruby's ident scanner still rejects mid-source U+FEFF
-// as illegal -- divergent from MRI (which accepts it as an ident letter)
-// but consistent with goruby's current lexer.
-func TestUTF8BOMOnlyAtStart(t *testing.T) {
+// TestUTF8BOMAsIdentLetter asserts that U+FEFF is a valid identifier
+// character anywhere except byte 0 (where it is stripped). MRI's ident
+// scanner accepts U+FEFF as a letter; goruby's ident-char predicate
+// must do the same to match.
+func TestUTF8BOMAsIdentLetter(t *testing.T) {
 	cases := []struct {
 		name string
 		src  string
 	}{
-		{"bom after newline", "x = 1\n" + bom + "y = 2"},
-		{"bom after space", " " + bom + "puts 1"},
-		{"bom between tokens", "x + " + bom + " 1"},
-		{"bom at end of line", "x = 1 " + bom + "\n"},
+		{"bom as ident-start after newline", "x = 1\n" + bom + "y = 2"},
+		{"bom as ident-start after space", " " + bom + "puts 1"},
+		{"bom mid ident", "x" + bom + "y = 1"},
+		{"bom at end of ident", "x" + bom + " = 1"},
+		{"multiple bom in ident", "x" + bom + bom + "y = 1"},
+		{"leading + mid-source bom (ident)", bom + "a\n" + bom + "b = 1"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := parseSource(tc.src)
-			assert.Error(t, err, "Illegal character")
+			prog, err := parseSource(tc.src)
+			checkParserErrors(t, err)
+			assert.NotNil(t, prog, "no program returned")
 		})
 	}
 }

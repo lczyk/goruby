@@ -2752,7 +2752,17 @@ func isLetter(r rune) bool {
 	if r == '_' || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
 		return true
 	}
-	return r > 127 && unicode.IsLetter(r)
+	if r <= 127 {
+		return false
+	}
+	// MRI treats U+FEFF (ZERO WIDTH NO-BREAK SPACE / BOM) as a valid
+	// identifier letter anywhere except byte 0, where it is stripped by
+	// the New() prelude. unicode.IsLetter returns false for U+FEFF
+	// (category Cf), so handle it explicitly.
+	if r == 0xFEFF {
+		return true
+	}
+	return unicode.IsLetter(r)
 }
 
 func isDigit(r rune) bool {
@@ -2774,6 +2784,12 @@ func isIdentChar(r rune) bool {
 	}
 	if r <= 127 {
 		return false
+	}
+	// U+FEFF (BOM / ZWNBSP) is treated as a valid identifier character by
+	// MRI everywhere except byte 0 (stripped in New()). unicode category
+	// Cf is not Letter/Mark/Nd, so handle explicitly.
+	if r == 0xFEFF {
+		return true
 	}
 	return unicode.IsLetter(r) || unicode.IsMark(r) || unicode.Is(unicode.Nd, r)
 }

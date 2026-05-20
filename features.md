@@ -154,6 +154,5 @@ parser-library scope. flip checkboxes as features land in `parser/`.
 	- [x] Unicode symbols (`:αβ`, `:"метод"`, etc -- same letter rule)
 	- [x] BOM stripping on source input -- a leading UTF-8 BOM is
 	      transparently skipped before tokenization, matching MRI
-	      1.9 through 4.0. Mid-source U+FEFF remains an illegal char;
-	      MRI treats it as a valid identifier letter, which is a small
-	      divergence tracked separately.
+	      1.9 through 4.0. Mid-source U+FEFF is also accepted as a
+	      valid identifier letter, again matching MRI.
