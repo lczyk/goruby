@@ -1577,7 +1577,12 @@ func (s *SymbolLiteral) TokenLiteral() string {
 	}
 	return s.Token.Type.Literal()
 }
-func (s *SymbolLiteral) String() string { return ":" + s.Value.String() }
+func (s *SymbolLiteral) String() string {
+	if s.Value == nil {
+		return ":"
+	}
+	return ":" + s.Value.String()
+}
 
 // LabelString returns the symbol in label form (without leading colon).
 func (s *SymbolLiteral) LabelString() string { return s.Value.String() }

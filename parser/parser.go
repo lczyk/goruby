@@ -2938,6 +2938,12 @@ func (p *parser) parseSymbolLiteral() ast.Expression {
 		return symbol
 	}
 	val := p.parseExpression(precHighest)
+	if val == nil {
+		// Inner expression failed -- typically unterminated `:"..."` /
+		// `:'...'` / `:%s{...}`. Return nil so callers don't try to
+		// render a half-built SymbolLiteral.
+		return nil
+	}
 	symbol.Value = val
 	return symbol
 }
