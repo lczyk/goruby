@@ -487,14 +487,12 @@ func callMethod(env *object.Environment, recv object.RubyObject, name string, ar
 	return callMethodLegacy(env, recv, name, args)
 }
 
-// callMethodLegacy is the hand-rolled fallback dispatch. BuiltinMethod
-// adapters call it directly to reuse existing per-name implementations
-// without re-entering Send (which would loop on the adapter itself).
-// Universal Object methods have moved to object_methods.go (registered
-// on object.ObjectClass); fully-migrated builtin types (Integer, Symbol,
-// Nil, Boolean, Proc) likewise live in their own *_methods.go files.
-// What remains here are Array / Hash / Range / String per-name bodies,
-// plus the Class / Instance branches.
+// callMethodLegacy is the residual dispatch fallback after every
+// builtin's method set has migrated onto its class. What remains here
+// is the Class-receiver bridge (callOnClass) and the Instance
+// Comparable / Enumerable derivations -- both branches Send can't
+// express until those derivations themselves move onto Instance's
+// class chain. Returns NoMethodError on miss.
 func callMethodLegacy(env *object.Environment, recv object.RubyObject, name string, args []object.RubyObject) (object.RubyObject, error) {
 
 	// Class-receiver dispatch: `Foo.new`, `Foo.kind`, etc.

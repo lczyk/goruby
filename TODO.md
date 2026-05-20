@@ -20,14 +20,21 @@ preordained forbids them.
   nodes; check version each call, refill on mismatch. mri-style
   monomorphic cache. biggest single perf win available.
 
-## dispatch cleanup -- mechanical follow-on
+## dispatch cleanup -- nearly done
 
-`evaluator/callMethodLegacy` still hosts per-name bodies for Array /
-Hash / Range / String. their `<type>_methods.go` files register thin
-adapters that delegate back. inlining the bodies + deleting the matching
-type-switched arms collapses the legacy fn further toward zero. pure
-churn; no design decisions.
+Array / Hash / Range / String bodies now live in per-type helper fns
+(`callArrayMethod`, `callHashMethod`, `callStringMethod`, and Range's
+inline form in `range_methods.go`). callMethodLegacy is down to a
+Class-receiver bridge + the Instance Comparable / Enumerable
+derivations + NoMethodError. removing the Instance branch requires
+either:
 
-dead arms also sit in callMethodLegacy for fully-migrated types
-(Integer / Float / Symbol / Nil / Boolean) -- Send always wins so the
-arms never fire. safe to delete.
+- moving `comparableFromSpaceship` / `callEnumerable` to register on
+  the relevant module class (Comparable / Enumerable) at the same
+  inheritance level as user instance methods so Send finds them; or
+- keeping callMethodLegacy as the small derivation host and routing
+  Send misses through it from callMethod (current shape).
+
+callOnClass for `Foo.new` / `Foo.kind` similarly wants to live on
+ClassClass's instance-method set; deferred until eigenclass lands so
+class-method dispatch can use the same machinery.
