@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# Benchmark goruby vs MRI ruby 2.6 across a small set of workloads.
+#
+# For each .rb file under $WORKLOADS, run it $RUNS times with each
+# interpreter, take the best wall-clock time, and report a side-by-
+# side table with the goruby/ruby2.6 slowdown ratio.
+#
+# Env:
+#   GORUBY      goruby binary. default: ./bin/goruby (built via `make build`).
+#   RUBY26      MRI binary. default: .rubies/versions/2.6.0/bin/ruby.
+#   WORKLOADS   directory of .rb workload files. default: scripts/bench-workloads.
+#   RUNS        timed iterations per (binary, workload). default: 3.
+#   ONLY        space-separated workload basenames to filter (e.g. "fib arith").
+#
+# Usage:
+#   scripts/bench-vs-ruby
+#   RUNS=5 scripts/bench-vs-ruby
+#   ONLY="fib class_dispatch" scripts/bench-vs-ruby
+#
+# Best-of-N (not mean) is reported because warm-cache wall time is
+# what we care about; cold/jitter runs only push the number up. Run
+# more iterations for tighter numbers.
+
+set -euo pipefail
+
+GORUBY="${GORUBY:-./bin/goruby}"
+RUBY26="${RUBY26:-.rubies/versions/2.6.0/bin/ruby}"
+WORKLOADS="${WORKLOADS:-scripts/bench-workloads}"
+RUNS="${RUNS:-3}"
+ONLY="${ONLY:-}"
+
+# preflight: both binaries must exist and be executable.
+if [[ ! -x "$GORUBY" ]]; then
+    printf 'error: goruby binary not found at %s\n' "$GORUBY" >&2
+    printf '  hint: run `make build`\n' >&2
+    exit 2
+fi
+if [[ ! -x "$RUBY26" ]]; then
+    printf 'error: ruby 2.6 binary not found at %s\n' "$RUBY26" >&2
+    printf '  hint: run `make rubies`\n' >&2
+    exit 2
+fi
+if [[ ! -d "$WORKLOADS" ]]; then
+    printf 'error: workloads dir not found: %s\n' "$WORKLOADS" >&2
+    exit 2
+fi
+
+# time_run "$bin" "$file" -> echoes best-of-$RUNS wall time in
+# seconds to stdout. on failure (any single run errors out) echoes
+# "FAIL" instead. uses python for monotonic timing because macos lacks
+# `date +%s.%N`.
+function time_run() {
+    local bin="$1"
+    local file="$2"
+    # MRI 2.6 needs --disable-gems to skip the rubygems prelude when
+    # the binary lives outside the system gem path (the .rubies/
+    # binaries are built standalone). goruby has no equivalent and
+    # tolerates the flag's absence; only pass it for the MRI binary.
+    local cmd=("$bin" "$file")
+    if [[ "$bin" == "$RUBY26" ]]; then
+        cmd=("$bin" --disable-gems "$file")
+    fi
+    python3 - "$RUNS" "${cmd[@]}" <<'PY'
+import subprocess, sys, time
+runs = int(sys.argv[1])
+argv = sys.argv[2:]
+best = None
+for _ in range(runs):
+    t0 = time.monotonic()
+    r = subprocess.run(argv, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    dt = time.monotonic() - t0
+    if r.returncode != 0:
+        sys.stderr.write(r.stderr.decode(errors='replace'))
+        print("FAIL")
+        sys.exit(0)
+    if best is None or dt < best:
+        best = dt
+print(f"{best:.4f}")
+PY
+}
+
+# Print header.
+printf '%-22s  %10s  %10s  %8s\n' workload goruby ruby2.6 ratio
+printf '%-22s  %10s  %10s  %8s\n' '----------------------' '----------' '----------' '--------'
+
+shopt -s nullglob
+files=("$WORKLOADS"/*.rb)
+if [[ ${#files[@]} -eq 0 ]]; then
+    printf 'no .rb files in %s\n' "$WORKLOADS" >&2
+    exit 1
+fi
+
+total_gor=0
+total_mri=0
+ratio_sum=0
+ratio_count=0
+
+for f in "${files[@]}"; do
+    name=$(basename "$f" .rb)
+    if [[ -n "$ONLY" ]] && ! [[ " $ONLY " == *" $name "* ]]; then
+        continue
+    fi
+    g=$(time_run "$GORUBY" "$f")
+    m=$(time_run "$RUBY26" "$f")
+    if [[ "$g" == "FAIL" || "$m" == "FAIL" ]]; then
+        printf '%-22s  %10s  %10s  %8s\n' "$name" "$g" "$m" '-'
+        continue
+    fi
+    ratio=$(python3 -c "print(f'{$g/$m:.2f}x')")
+    printf '%-22s  %10s  %10s  %8s\n' "$name" "${g}s" "${m}s" "$ratio"
+    total_gor=$(python3 -c "print($total_gor + $g)")
+    total_mri=$(python3 -c "print($total_mri + $m)")
+    ratio_sum=$(python3 -c "print($ratio_sum + $g/$m)")
+    ratio_count=$((ratio_count + 1))
+done
+
+if (( ratio_count > 0 )); then
+    printf '%-22s  %10s  %10s  %8s\n' '----------------------' '----------' '----------' '--------'
+    summary=$(python3 -c "
+g, m, rs, n = $total_gor, $total_mri, $ratio_sum, $ratio_count
+print(f'{g:.4f}s {m:.4f}s {rs/n:.2f}x')
+")
+    read -r tg tm avg <<<"$summary"
+    printf '%-22s  %10s  %10s  %8s\n' "total ($ratio_count workloads)" "$tg" "$tm" "$avg"
+fi

@@ -20,21 +20,73 @@ preordained forbids them.
   nodes; check version each call, refill on mismatch. mri-style
   monomorphic cache. biggest single perf win available.
 
-## dispatch cleanup -- nearly done
+## dispatch cleanup -- done
 
-Array / Hash / Range / String bodies now live in per-type helper fns
-(`callArrayMethod`, `callHashMethod`, `callStringMethod`, and Range's
-inline form in `range_methods.go`). callMethodLegacy is down to a
-Class-receiver bridge + the Instance Comparable / Enumerable
-derivations + NoMethodError. removing the Instance branch requires
-either:
+`callMethodLegacy` is gone. Class-receiver dispatch (new, superclass,
+name, define) lives on ModuleClass. Comparable derivations live on
+ObjectClass, gated on `<=>`. Enumerable derivations live on
+ObjectClass, gated on `include Enumerable` + `each`. `callMethod`
+shrunk to: user class-method check, Send, NoMethodError.
 
-- moving `comparableFromSpaceship` / `callEnumerable` to register on
-  the relevant module class (Comparable / Enumerable) at the same
-  inheritance level as user instance methods so Send finds them; or
-- keeping callMethodLegacy as the small derivation host and routing
-  Send misses through it from callMethod (current shape).
+The block-aware path (`callMethodWithBlockImpl`,
+`callEnumerableBlock`) still type-switches on receivers for
+block-only methods. Migration when block dispatch moves onto class
+chains too -- needs BuiltinMethod.Fn's `block any` param exercised
+on the registration side, which is mechanical but touches every
+existing per-class registration. Defer until eigenclass lands so we
+don't redo it.
 
-callOnClass for `Foo.new` / `Foo.kind` similarly wants to live on
-ClassClass's instance-method set; deferred until eigenclass lands so
-class-method dispatch can use the same machinery.
+## perf -- harvested
+
+- **small-integer cache** -- `NewInteger` returns shared pointers
+  for values in [-128, 1152]. Already in place; no further work.
+- **inline env bindings** -- `Environment` holds up to `envInlineCap`
+  bindings inline (linear scan); only promotes to a map on overflow.
+  Cut method-call alloc roughly in half on tight workloads
+  (EvalRecursiveFib: 9047 -> 5110 allocs, -43%).
+- **Range#each / #map direct iteration** -- skip `rangeToSlice` for
+  Integer-bound ranges. Modest win (RangeIteration: 538 -> 532).
+- **<=> cache on Class** -- `LookupSpaceship` memoises
+  `LookupMethod("<=>")`, version-gated. Marginal CPU win
+  (~5ns/comparison), alloc-neutral. Infrastructure exists for
+  caching other hot methods (==, hash, each) the same way.
+
+## perf -- remaining ideas
+
+ranked by expected impact / risk ratio. (Inline call-site cache is
+the biggest single win remaining -- listed under [class machinery]
+above since it builds on the eigenclass machinery's version-gated
+lookup story; mentioned here for completeness.)
+
+- **per-iter args slice alloc on block yield** -- every
+  `iterStep(invoke, []RubyObject{v})` heap-allocates the 1-slot
+  slice because the closure boundary defeats escape analysis. Two
+  paths:
+  1. Change `blockCallback` signature to `func(args0 RubyObject,
+     rest ...RubyObject)` -- scalar fast path for the 1-arg case,
+     covers ~all yields. Touches every block callback and
+     `invokeBlock`. Medium scope.
+  2. Add a reusable buffer field on the calling loop frame --
+     `buf := make([]RubyObject, 1)` once outside the loop, reuse
+     inside. ~1 alloc per loop instead of N. Smaller but pollutes
+     every counter-loop body with a buf decl.
+  Either way: kills 100+ allocs per Range/times/each loop.
+- **method-frame env pooling** -- callEnv per method call accounts
+  for ~half of EvalRecursiveFib's 5110 allocs. Pool envs in a
+  sync.Pool, reset on release. Risk: envs alias via DefEnv closures
+  (the def-time env survives, but the call env is short-lived);
+  need a strict audit of who retains callEnv after the call
+  returns. Big win if the audit lands clean.
+- **string concat builder** -- `buf + "..."` in interpolation /
+  loop-building paths allocates a fresh `String` per `+`. A
+  bytes-level builder shared per expression would drop most of
+  EvalStringInterpolation's allocs. Lower priority -- this isn't
+  a hot path in real corpus.
+- **kwargs map alloc** -- when no kwargs are passed (most calls),
+  the dispatcher still threads `nil` through but the receiving
+  method may build an empty `map[string]RubyObject`. Audit
+  bindParams for unnecessary map allocs.
+- **dispatcher-side arg slice for 0-arg calls** -- `first`, `to_s`,
+  `inspect`, etc. all build `args = []RubyObject{}` at the call
+  site. A shared package-level `emptyArgs` would cover these.
+  Tiny win, but it's free.
