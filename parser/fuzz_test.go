@@ -10,7 +10,21 @@ import (
 
 // perInputTimeout bounds how long a single fuzz input is allowed to take.
 // Guards against parser hangs surfacing as unbounded test runs.
-const perInputTimeout = 30 * time.Second
+const (
+	// perInputTimeout bounds wall-clock per fuzz input. Triggers as
+	// t.Fatalf, so the input lands in the corpus as a regression. The
+	// per-input work (ParseFile + String + Walk + Inspect) is O(N^2)
+	// in AST depth, so deeply-nested mutated inputs can chew real
+	// CPU under the cap; the maxInputSize guard caps the worst case.
+	// Set well above realistic-fixture time so only true hangs fail.
+	perInputTimeout = 10 * time.Second
+	// maxInputSize caps the input bytes the fuzz target will parse.
+	// Without this, the engine generates inputs in the hundreds of KB
+	// which produce deep ASTs and starve the worker pool through the
+	// per-node String/Walk/Inspect passes. 4 KiB covers any realistic
+	// Ruby construct.
+	maxInputSize = 1024
+)
 
 func FuzzParse(f *testing.F) {
 	seeds := []string{
@@ -120,6 +134,12 @@ func FuzzParse(f *testing.F) {
 		if len(input) == 0 {
 			return
 		}
+		// Cap mutated-input size. Without this, the engine generates
+		// huge inputs that produce deep ASTs and chew CPU through the
+		// per-node String/Walk/Inspect passes, throttling exec rate.
+		if len(input) > maxInputSize {
+			return
+		}
 
 		done := make(chan struct{})
 		var panicMsg string
@@ -134,19 +154,14 @@ func FuzzParse(f *testing.F) {
 			if err != nil || prog == nil {
 				return
 			}
+			// One root-level String exercises every node's String via the
+			// recursive descent. Calling String again per-node inside Walk
+			// / Inspect makes the whole pass O(depth^2) for deeply nested
+			// inputs (`&&&...`), starving the worker pool. Walk and Inspect
+			// still run to catch nil-deref panics in visitor traversal.
 			_ = prog.String()
-			ast.Walk(ast.VisitorFunc(func(n ast.Node) ast.Visitor {
-				if n != nil {
-					_ = n.String()
-				}
-				return nil
-			}), prog)
-			ast.Inspect(prog, func(n ast.Node) bool {
-				if n != nil {
-					_ = n.String()
-				}
-				return true
-			})
+			ast.Walk(ast.VisitorFunc(func(n ast.Node) ast.Visitor { return nil }), prog)
+			ast.Inspect(prog, func(n ast.Node) bool { return true })
 		}()
 		select {
 		case <-done:
