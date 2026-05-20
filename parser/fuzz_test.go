@@ -42,6 +42,69 @@ func FuzzParse(f *testing.F) {
 		"x += y -= z",
 		"%w[foo bar baz]",
 		"def foo\nrescue\nend",
+		// flip-flop (cond-position `..`/`...`)
+		"if (i == 1)..(i == 5)\n  puts i\nend",
+		"if (i == 1)...(i == 5)\n  puts i\nend",
+		"puts i if (i == 1)..(i == 5)",
+		"unless (k == 2)..(k == 6)\n  puts k\nend",
+		"while (p == 0)..(p == 3)\n  p += 1\nend",
+		"((i == 1)..(i == 5)) ? :in : :out",
+		"if !((w == 3)..(w == 6))\n  puts w\nend",
+		// BOM-prefixed source (lexer prelude)
+		"\xef\xbb\xbfputs \"hi\"",
+		"\xef\xbb\xbf# coding: utf-8\nx = 1",
+		// mid-source U+FEFF as ident-letter
+		"x = 1\n\xef\xbb\xbfy = 2",
+		"x\xef\xbb\xbfy = 1",
+		// heredoc variants
+		"x = <<EOF\nbody\nEOF\n",
+		"x = <<-EOF\n  indented\n  EOF\n",
+		"x = <<~EOF\n  squiggly\nEOF\n",
+		"x = <<\"EOF\"\nhello #{name}\nEOF\n",
+		"x = <<'EOF'\nliteral #{not_interp}\nEOF\n",
+		// percent literals (beyond %w)
+		"%q{single}",
+		"%Q{double #{x}}",
+		"%i[a b c]",
+		"%s{sym}",
+		"%r{/path/}i",
+		// endless method (3.0+)
+		"def foo = 42",
+		"def bar(x) = x * 2",
+		// pattern matching / deconstruction
+		"case x\nin [a, b]\n  a + b\nend",
+		"case x\nin {a:, b:}\n  a + b\nend",
+		"case x\nin Integer => n\n  n\nend",
+		// numeric base + underscores + char literal
+		"0b1010",
+		"0xFF_FE",
+		"0o755",
+		"1_000_000",
+		"1.5e2",
+		"?a",
+		"?\\n",
+		// symbol variants
+		":\"foo\"",
+		":\"#{x}\"",
+		":'lit'",
+		// splat / multi-assign
+		"a, *b, c = 1, 2, 3, 4",
+		"[*a, *b]",
+		// modifier rescue + chained modifiers
+		"x = y rescue nil",
+		"puts x if cond rescue nil",
+		// singleton class
+		"class << obj\n  def foo\n  end\nend",
+		// retry / redo / next / break with arg
+		"begin\nretry\nrescue\nend",
+		"loop { break 42 }",
+		"loop { next :x }",
+		// for loop
+		"for i in 1..10\n  puts i\nend",
+		// global match vars + regex captures
+		"x = $1\ny = $~\n",
+		// __FILE__ / __LINE__ / __dir__
+		"__FILE__\n__LINE__\n__dir__\n",
 	}
 	// Regression seeds for crashes previously found by the fuzzer.
 	seeds = append(seeds,
