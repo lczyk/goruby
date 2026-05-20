@@ -288,6 +288,9 @@ func dispatchAttrMarker(callEnv *object.Environment, m *object.UserMethod, args 
 		}
 		inst.Ivars["@message"] = object.NewString(msg)
 		return object.NIL, true, nil
+	case nativeFn:
+		v, err := marker.fn(callEnv, args)
+		return v, true, err
 	case mathFn1:
 		if len(args) != 1 {
 			return nil, true, errorf("evaluator: wrong number of arguments (given %d, expected 1)", len(args))

@@ -39,6 +39,8 @@ func callKernel(env *object.Environment, name string, args []object.RubyObject) 
 		return kernelString(env, args)
 	case "Array":
 		return kernelArray(args)
+	case "gets":
+		return stdinGets(env, args)
 	case "lambda":
 		return nil, errorf("evaluator: Kernel#lambda without block not supported; use ->( ){ ... }")
 	}

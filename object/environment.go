@@ -21,6 +21,8 @@ type Environment struct {
 	syms    *SymbolPool
 	strings *StringPool
 	stdout  io.Writer
+	stdin   io.Reader
+	stdinBR any // *bufio.Reader cached so successive gets() share buffer state
 	version token.RubyVersion
 	methods map[string]RubyObject
 
@@ -65,6 +67,7 @@ func NewMainEnvironment(opts ...EnvOption) *Environment {
 		syms:    NewSymbolPool(),
 		strings: NewStringPool(),
 		stdout:  os.Stdout,
+		stdin:   os.Stdin,
 		methods: make(map[string]RubyObject),
 	}
 	for _, o := range opts {
@@ -95,6 +98,24 @@ func WithVersion(v token.RubyVersion) EnvOption {
 // Useful in tests for capturing output.
 func WithStdout(w io.Writer) EnvOption {
 	return func(e *Environment) { e.stdout = w }
+}
+
+// WithStdin overrides the reader Kernel#gets / STDIN.gets pull from.
+// Useful in tests for feeding deterministic input.
+func WithStdin(r io.Reader) EnvOption {
+	return func(e *Environment) { e.stdin = r }
+}
+
+// WithARGV seeds the ARGV constant with the given string arguments.
+// Mirrors MRI: command-line args after the script path land here.
+func WithARGV(args []string) EnvOption {
+	return func(e *Environment) {
+		elems := make([]RubyObject, len(args))
+		for i, a := range args {
+			elems[i] = NewString(a)
+		}
+		e.store["ARGV"] = &Array{Elements: elems}
+	}
 }
 
 // Get returns the binding for name, walking up the outer chain.
@@ -153,6 +174,17 @@ func (e *Environment) Version() token.RubyVersion {
 
 // Stdout returns the writer Kernel#puts / Kernel#p should target.
 func (e *Environment) Stdout() io.Writer { return e.root().stdout }
+
+// Stdin returns the reader Kernel#gets and STDIN methods should pull
+// from. Defaults to os.Stdin; tests override via WithStdin.
+func (e *Environment) Stdin() io.Reader { return e.root().stdin }
+
+// StdinBR returns the buffered-reader slot on the root env. Used by
+// the evaluator to cache a *bufio.Reader across successive `gets` so
+// they share line-buffering state. Caller manages the type; env just
+// holds the value.
+func (e *Environment) StdinBR() any        { return e.root().stdinBR }
+func (e *Environment) SetStdinBR(br any)   { e.root().stdinBR = br }
 
 // Symbols returns the env's symbol pool.
 func (e *Environment) Symbols() *SymbolPool { return e.root().syms }
