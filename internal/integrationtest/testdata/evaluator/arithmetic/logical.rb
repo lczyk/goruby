@@ -1,0 +1,11 @@
+puts true && true       #=> true
+puts true && false      #=> false
+puts false || true      #=> true
+puts !true              #=> false
+puts !nil               #=> true
+puts !false             #=> true
+puts nil || 42          #=> 42
+puts 1 && 2             #=> 2
+puts nil && 2           #=>
+puts false || nil       #=>
+puts true and false     #=> true

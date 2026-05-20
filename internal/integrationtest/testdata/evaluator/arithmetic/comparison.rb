@@ -1,0 +1,10 @@
+puts 1 == 1     #=> true
+puts 1 == 2     #=> false
+puts 1 != 2     #=> true
+puts 1 < 2      #=> true
+puts 2 <= 2     #=> true
+puts 3 > 2      #=> true
+puts 3 >= 3     #=> true
+puts 1 <=> 2    #=> -1
+puts 2 <=> 2    #=> 0
+puts 3 <=> 2    #=> 1

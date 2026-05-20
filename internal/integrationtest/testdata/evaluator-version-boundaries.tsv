@@ -1,0 +1,23 @@
+# evaluator version-boundary fixture metadata
+# format: min_version<TAB>fixture_path (relative to testdata/)
+# each fixture must evaluate successfully at min_version and above,
+# and must fail (parse error, NoMethodError, etc.) below min_version.
+#
+# parallel to version-boundaries.tsv (which is for parser/lexer gates).
+# entries here exercise evaluator-visible behaviour: builtin methods,
+# inspect formatting, kwargs separation, etc. some overlap with parser
+# gates is unavoidable (e.g. `it` block param at 3.4 is both surface
+# syntax and runtime semantics).
+
+1.9	evaluator/version-gates/ruby_1_9.rb
+2.0	evaluator/version-gates/ruby_2_0.rb
+2.1	evaluator/version-gates/ruby_2_1.rb
+2.3	evaluator/version-gates/ruby_2_3.rb
+2.5	evaluator/version-gates/ruby_2_5.rb
+2.6	evaluator/version-gates/ruby_2_6.rb
+2.7	evaluator/version-gates/ruby_2_7.rb
+3.0	evaluator/version-gates/ruby_3_0.rb
+3.1	evaluator/version-gates/ruby_3_1.rb
+3.2	evaluator/version-gates/ruby_3_2.rb
+3.4	evaluator/version-gates/ruby_3_4.rb
+4.0	evaluator/version-gates/ruby_4_0.rb
