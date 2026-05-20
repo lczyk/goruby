@@ -2712,6 +2712,7 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 	sl := p.arena.NewStringLiteral()
 	sl.Token = begToken
 	if strings.HasPrefix(begToken.Literal, "<<") {
+		sl.HeredocTagSource = begToken.Literal
 		if p.curToken.HeredocStripped || p.embExprDepth > 0 {
 			sl.HeredocStripped = true
 		}
@@ -5228,11 +5229,16 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 			break
 		}
 	}
+	var percentChar byte
+	if len(beg.Literal) > 0 {
+		percentChar = beg.Literal[0]
+	}
 	return ast.Init(p.arena.NewArrayLiteral(), ast.ArrayLiteral{
-		Token:     beg,
-		EndPos:    p.curToken.Pos, // STRING_END
-		Elements:  elements,
-		Multiline: multiline,
+		Token:       beg,
+		EndPos:      p.curToken.Pos, // STRING_END
+		Elements:    elements,
+		Multiline:   multiline,
+		PercentChar: percentChar,
 	})
 }
 

@@ -1042,25 +1042,22 @@ func (b *Boolean) String() string {
 // Value holds the content and Parts is nil. For interpolated strings, Parts
 // holds StringContent and expression nodes.
 type StringLiteral struct {
-	Token           token.Token      // STRING_BEG or STRING; Literal carries the heredoc tag (e.g. "<<EOS") for heredoc strings
-	Value           string           // for non-interpolated strings
-	Parts           []Expression     // for interpolated strings
-	HeredocStripped bool             // true on `<<~` heredocs whose source had a positive common indent that was stripped -- preserves MRI's NODE_DSTR (vs NODE_STR) classification on roundtrip
-	Adjacent        []*StringLiteral // adjacent string literals: `"a" "b"` -- MRI parses each separately and wraps in an outer InterpolatedString
+	Token            token.Token      // STRING_BEG or STRING
+	Value            string           // for non-interpolated strings
+	Parts            []Expression     // for interpolated strings
+	HeredocTagSource string           // source-form heredoc tag (e.g. "<<EOS", "<<~'DOC'") set at parse time for heredoc-origin literals; "" for non-heredocs
+	HeredocStripped  bool             // true on `<<~` heredocs whose source had a positive common indent that was stripped -- preserves MRI's NODE_DSTR (vs NODE_STR) classification on roundtrip
+	Adjacent         []*StringLiteral // adjacent string literals: `"a" "b"` -- MRI parses each separately and wraps in an outer InterpolatedString
 }
 
 // HeredocTag returns the heredoc tag (e.g. "<<EOS", "<<~'DOC'") for heredoc-
-// origin literals, or "" for non-heredocs. The parser sets Token to the
-// STRING_BEG / XSTR_BEG token for interpolated forms, and only heredoc
-// begin-tokens carry a "<<"-prefixed literal there. Bare STRING-token
-// literals can incidentally start with "<<" (e.g. the content of '<<') and
-// must not be misread as heredoc tags -- so the type check is load-bearing.
+// origin literals, or "" for non-heredocs. Populated at parse time from the
+// STRING_BEG / XSTR_BEG token literal; carries the tag info that used to
+// live on Token.Literal so the AST stays self-contained.
 func (sl *StringLiteral) HeredocTag() string {
 	switch sl.Token.Type {
 	case token.STRING_BEG, token.XSTR_BEG:
-		if strings.HasPrefix(sl.Token.Literal, "<<") {
-			return sl.Token.Literal
-		}
+		return sl.HeredocTagSource
 	}
 	return ""
 }
@@ -1784,6 +1781,12 @@ type ArrayLiteral struct {
 	// multi-line, single-line stays so -- or downstream SymbolFlags /
 	// StringFlags diverge.
 	Multiline bool
+	// PercentChar marks the percent-array type for `%w`/`%W`/`%i`/`%I`
+	// arrays (matching value 'w'/'W'/'i'/'I'). Zero for plain bracketed
+	// arrays. Carries the info that Token.Literal used to hold, so the
+	// printer can re-emit the percent-array form without consulting the
+	// Token's source text.
+	PercentChar byte
 }
 
 func (al *ArrayLiteral) expressionNode() {}
@@ -1797,8 +1800,14 @@ func (al *ArrayLiteral) End() int {
 	return al.EndPos
 }
 
-// TokenLiteral returns the literal of the token token.LBRACKET
-func (al *ArrayLiteral) TokenLiteral() string { return al.Token.Literal }
+// TokenLiteral returns the literal of the token token.LBRACKET, or the
+// percent-array type char for `%w`/`%W`/`%i`/`%I` arrays.
+func (al *ArrayLiteral) TokenLiteral() string {
+	if al.PercentChar != 0 {
+		return string(al.PercentChar)
+	}
+	return al.Token.Type.Literal()
+}
 func (al *ArrayLiteral) String() string {
 	// Preserve percent-literal arrays (`%w[a b]` / `%i[foo bar]` / `%W[...]`
 	// / `%I[...]`) on roundtrip. MRI assigns these symbols/strings a
@@ -1826,18 +1835,18 @@ func (al *ArrayLiteral) String() string {
 // (e.g. an interpolated symbol with embedded spaces) -- the caller falls
 // back to `[...]` form.
 func (al *ArrayLiteral) percentArrayString() (string, bool) {
-	typ := al.Token.Literal
-	switch typ {
-	case "w", "W", "i", "I":
+	switch al.PercentChar {
+	case 'w', 'W', 'i', 'I':
 	default:
 		return "", false
 	}
+	typ := string(al.PercentChar)
 	// Lowercase %w / %i resolve `\<delim>` -> `<delim>` and `\\` -> `\` in
 	// content, so a Value containing a backslash can't be safely re-emitted
 	// without knowing the original delim. Uppercase %W / %I store source
 	// bytes verbatim (escapes are preserved raw), so backslash content is
 	// fine to re-emit.
-	allowBackslash := typ == "W" || typ == "I"
+	allowBackslash := al.PercentChar == 'W' || al.PercentChar == 'I'
 	badChars := " \t\n[]"
 	if !allowBackslash {
 		badChars += "\\"
