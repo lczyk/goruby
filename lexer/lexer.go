@@ -50,7 +50,6 @@ type interpState struct {
 	heredocSquig    bool
 	heredocStripped bool
 	heredocQuote    rune
-	heredocPostBody string
 	heredocRest     segment
 }
 
@@ -79,7 +78,6 @@ func (l *Lexer) pushInterp(s interpState) {
 	s.heredocSquig = l.heredocSquig
 	s.heredocStripped = l.heredocStripped
 	s.heredocQuote = l.heredocQuote
-	s.heredocPostBody = l.heredocPostBody
 	s.heredocRest = l.heredocRest
 	l.interpStack = append(l.interpStack, s)
 }
@@ -91,7 +89,6 @@ func (l *Lexer) restoreHeredocState(s interpState) {
 	l.heredocSquig = s.heredocSquig
 	l.heredocStripped = s.heredocStripped
 	l.heredocQuote = s.heredocQuote
-	l.heredocPostBody = s.heredocPostBody
 	l.heredocRest = s.heredocRest
 }
 
@@ -214,14 +211,8 @@ type Lexer struct {
 	heredocSquig    bool // <<~
 	heredocStripped bool // <<~ source had a positive common indent that was stripped
 	heredocQuote    rune
-	heredocPostBody string // legacy: bytes from after delim to end-of-line (incl. \n);
-	// spliced back into input after the heredoc body's STRING_END so trailers
-	// like <<EOS.chop and chained heredocs like <<A, <<B both lex naturally.
-	// Phase 2+ migrates from heredocPostBody splicing to heredocRest cursor.
 	heredocRest segment // range in l.input holding rest-of-line; queued onto
-	// l.pending at body-end so the lexer reads it after STRING_END. Zero value
-	// means cursor mode is not active for the current heredoc -- legacy
-	// heredocPostBody splice path is used instead.
+	// l.pending at body-end so the lexer reads it after STRING_END.
 
 	// Squig body buffer swap (phase 5). When a squig heredoc is set up,
 	// rather than splicing the stripped body into l.input we build a small
@@ -350,12 +341,6 @@ func (l *Lexer) byteAt(off int) (byte, bool) {
 	return 0, false
 }
 
-// syncSegEnd keeps l.segEnd consistent with the current length of l.input
-// after a splice mutation. Phase 1 of the heredoc cursor migration: existing
-// splice paths still mutate l.input, so segEnd must follow. Phase 2+ converts
-// the splice sites to pending segments and this helper goes away.
-func (l *Lexer) syncSegEnd() { l.segEnd = len(l.input) }
-
 // finishHeredoc handles the transition at heredoc body end. Cursor mode
 // (heredocRest set, phase 2+): queues the after-body continuation as the
 // next pending segment and switches the view to the rest-of-line segment.
@@ -386,12 +371,6 @@ func (l *Lexer) finishHeredoc() {
 		l.pos = rest.start
 		l.segEnd = rest.end
 		l.start = l.pos
-		return
-	}
-	if l.heredocPostBody != "" {
-		l.input = l.input[:l.pos] + l.heredocPostBody + l.input[l.pos:]
-		l.heredocPostBody = ""
-		l.syncSegEnd()
 	}
 }
 
@@ -2072,13 +2051,9 @@ func lexHeredocStart(l *Lexer, indent, squig bool) StateFn {
 		nlPos++
 	}
 foundEnd:
-	cursorMode := false
 	if nlPos < l.segEnd && l.input[nlPos] == '\n' {
-		// Cursor mode: queue rest-of-line as a pending segment to be lexed
-		// after STRING_END. Jump l.pos directly to body start; no input
-		// mutation. Applies even inInterp, as long as the rest-of-line ends
-		// at a real \n rather than at an unmatched } -- the latter case
-		// stays on the splice path (phase 3b deferred).
+		// Queue rest-of-line as a pending segment to be lexed after
+		// STRING_END. Jump l.pos directly to body start; no input mutation.
 		l.heredocRest = segment{restStart, nlPos + 1}
 		if nlPos+1 == l.segEnd && len(l.pending) > 0 {
 			// Nested heredoc: the \n is at the end of the current segment
@@ -2093,53 +2068,40 @@ foundEnd:
 			l.pos = nlPos + 1
 		}
 		l.start = l.pos
-		cursorMode = true
 	} else if inInterp && nlPos < len(l.input) && l.input[nlPos] == '}' {
 		// Inside interpolation: rest-of-line stops at the unmatched }. Scan
 		// past } to find the real \n that ends the source line containing
-		// `<<EOS`. Cursor mode captures [restStart, realNl+1] as heredocRest
-		// (includes the }, the rest of outer-string content, and the \n);
-		// body source starts at realNl+1 in original input -- unless that
-		// position is at the boundary of the current cursor segment, in
-		// which case body lives in the next pending segment (nested-heredoc
-		// case mirroring the non-interp path).
+		// `<<EOS`. heredocRest captures `[restStart, realNl+1]` (includes
+		// the }, the rest of outer-string content, and the \n). Body source
+		// is at realNl+1 in original input -- unless that position sits at
+		// the current segment's boundary, in which case body lives in the
+		// next pending segment (nested-heredoc-inside-outer-rest-of-line).
 		realNl := nlPos
 		for realNl < len(l.input) && l.input[realNl] != '\n' {
 			realNl++
 		}
-		if realNl < len(l.input) {
-			l.heredocRest = segment{restStart, realNl + 1}
-			if realNl+1 >= l.segEnd && len(l.pending) > 0 {
-				body := l.pending[0]
-				l.pending = l.pending[1:]
-				l.pos = body.start
-				l.segEnd = body.end
-			} else {
-				l.pos = realNl + 1
-			}
-			l.start = l.pos
-			cursorMode = true
+		if realNl >= len(l.input) {
+			return l.errorf("unterminated heredoc")
+		}
+		l.heredocRest = segment{restStart, realNl + 1}
+		if realNl+1 >= l.segEnd && len(l.pending) > 0 {
+			body := l.pending[0]
+			l.pending = l.pending[1:]
+			l.pos = body.start
+			l.segEnd = body.end
 		} else {
-			// Unterminated heredoc (no \n before eof). Splice fallback.
-			l.heredocPostBody = l.input[restStart:nlPos]
-			l.input = l.input[:restStart]
-			l.syncSegEnd()
+			l.pos = realNl + 1
 		}
+		l.start = l.pos
 	} else {
-		// No \n and no } -- unterminated heredoc (eof). Use splice fallback.
-		l.heredocPostBody = l.input[restStart:nlPos]
-		l.input = l.input[:restStart]
-		l.syncSegEnd()
-	}
-	if !cursorMode {
-		// Consume the inserted \n (or hit eof on unterminated input).
-		for {
-			r := l.next()
-			if r == eof || r == '\n' {
-				break
-			}
-		}
-		l.ignore()
+		// No \n and no } -- unterminated heredoc (eof). Set up an empty
+		// rest segment + body cursor at end-of-input so STRING_BEG is still
+		// emitted (matches previous behaviour) and body lex errors out
+		// immediately with "unterminated heredoc".
+		l.heredocRest = segment{restStart, restStart}
+		l.pos = nlPos
+		l.start = l.pos
+		l.segEnd = nlPos
 	}
 	// All heredocs (including single-quoted) emit STRING_BEG + STRING_CONTENT + STRING_END.
 	if l.heredocQuote == '\'' {
