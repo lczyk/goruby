@@ -2073,10 +2073,12 @@ func lexHeredocStart(l *Lexer, indent, squig bool) StateFn {
 	}
 foundEnd:
 	cursorMode := false
-	if !inInterp && nlPos < l.segEnd && l.input[nlPos] == '\n' {
+	if nlPos < l.segEnd && l.input[nlPos] == '\n' {
 		// Cursor mode: queue rest-of-line as a pending segment to be lexed
 		// after STRING_END. Jump l.pos directly to body start; no input
-		// mutation.
+		// mutation. Applies even inInterp, as long as the rest-of-line ends
+		// at a real \n rather than at an unmatched } -- the latter case
+		// stays on the splice path (phase 3b deferred).
 		l.heredocRest = segment{restStart, nlPos + 1}
 		if nlPos+1 == l.segEnd && len(l.pending) > 0 {
 			// Nested heredoc: the \n is at the end of the current segment
@@ -2092,12 +2094,6 @@ foundEnd:
 		}
 		l.start = l.pos
 		cursorMode = true
-	} else if inInterp && nlPos < l.segEnd && l.input[nlPos] == '\n' {
-		// inInterp + \n: keep splice path. Cursor route here is entangled
-		// with stripSquigInterpBody mutations; phase 5 will revisit.
-		l.heredocPostBody = l.input[restStart : nlPos+1]
-		l.input = l.input[:restStart] + "\n" + l.input[nlPos+1:]
-		l.syncSegEnd()
 	} else if inInterp && nlPos < len(l.input) && l.input[nlPos] == '}' {
 		// Inside interpolation: rest-of-line stops at the unmatched }. Keep
 		// splice path here too. Phase 5 will untangle.
