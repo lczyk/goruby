@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Regenerate .expected files under internal/integrationtest/testdata/esolang_tests/
+# by running each .in fixture through the matching esolang interpreter under
+# MRI (real ruby). The goruby integration test (TestEsolangPrograms) compares
+# its evaluator output against these .expected files, so this script anchors
+# them to MRI behaviour.
+#
+# Layout:
+#   testdata/esolangs/<lang>.rb        -- interpreter source (committed)
+#   testdata/esolang_tests/<lang>/     -- one dir per interpreter
+#     <name>.in                        -- program in <lang>
+#     <name>.expected                  -- mri stdout for `ruby <interp> <name>.in`
+#
+# Env:
+#   RUBY    ruby binary. defaults to whatever `ruby` resolves on PATH.
+#
+# Usage:
+#   scripts/esolang-tests-oracle              # all langs
+#   scripts/esolang-tests-oracle arsel        # just one lang
+set -e
+
+ROOT="internal/integrationtest"
+INTERPS="${ROOT}/testdata/esolangs"
+TESTS="${ROOT}/testdata/esolang_tests"
+RUBY="${RUBY:-ruby}"
+
+if ! command -v "$RUBY" >/dev/null 2>&1; then
+    printf 'esolang-tests-oracle: ruby binary not found: %s\n' "$RUBY" >&2
+    exit 2
+fi
+
+function _process_lang() {
+    local lang="$1"
+    local interp="${INTERPS}/${lang}.rb"
+    local dir="${TESTS}/${lang}"
+    if [ ! -f "$interp" ]; then
+        printf 'esolang-tests-oracle: missing interpreter %s\n' "$interp" >&2
+        return 1
+    fi
+    if [ ! -d "$dir" ]; then
+        printf 'esolang-tests-oracle: missing test dir %s\n' "$dir" >&2
+        return 1
+    fi
+    local count=0
+    for in_file in "$dir"/*.in; do
+        [ -f "$in_file" ] || continue
+        local expected="${in_file%.in}.expected"
+        "$RUBY" "$interp" "$in_file" > "$expected"
+        count=$((count + 1))
+    done
+    printf 'esolang-tests-oracle: %s -- wrote %d .expected file(s)\n' "$lang" "$count"
+}
+
+function main() {
+    if [ "$#" -gt 0 ]; then
+        for lang in "$@"; do
+            _process_lang "$lang"
+        done
+        return
+    fi
+    for d in "$TESTS"/*/; do
+        [ -d "$d" ] || continue
+        _process_lang "$(basename "$d")"
+    done
+}
+
+main "$@"
