@@ -29,6 +29,19 @@ lint:  ## go vet + gofmt check (no writes)
 fmt:  ## gofmt the tree in place
 	gofmt -s -w $(GO_DIRS)
 
+.PHONY: gen
+gen:  ## Regenerate code from `go:generate` directives (ast/arena_gen.go)
+	go generate ./ast/...
+
+.PHONY: gen-check
+gen-check:  ## Verify generated files are in sync with their sources (CI guard)
+	@go generate ./ast/...
+	@if ! git diff --quiet -- ast/arena_gen.go; then \
+		echo "ast/arena_gen.go is out of date -- run 'make gen' and commit." >&2; \
+		git --no-pager diff --stat -- ast/arena_gen.go >&2; \
+		exit 1; \
+	fi
+
 .PHONY: spellcheck
 spellcheck:  ## Spellcheck sources and docs with cspell (via npx)
 	npx --yes cspell --no-progress --gitignore "**/*.go" "**/*.md" "makefile"
@@ -52,7 +65,7 @@ cover-open: cover  ## Run coverage and open the HTML report in a browser
 	go tool cover -html=cover.out
 
 .PHONY: verify
-verify: lint test spellcheck  ## Pre-commit gate: lint + test + spellcheck
+verify: lint test spellcheck gen-check  ## Pre-commit gate: lint + test + spellcheck + gen-check
 	@echo "All checks passed."
 
 .PHONY: gems
