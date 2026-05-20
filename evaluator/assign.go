@@ -113,7 +113,7 @@ func evalIdentifier(env *object.Environment, n *ast.Identifier) (object.RubyObje
 	}
 	if self := env.EnclosingSelf(); self != nil {
 		if inst, ok := self.(*object.Instance); ok {
-			if m, found := inst.C.LookupMethod(n.Value); found {
+			if m, found := dispatchClass(env, inst).LookupMethod(n.Value); found {
 				if um, ok := m.(*object.UserMethod); ok {
 					return invokeMethodOn(env, inst, um, nil, nil)
 				}
@@ -362,7 +362,7 @@ func evalIndexAssign(env *object.Environment, n *ast.IndexExpression, value obje
 		r.Elements[i] = value
 		return nil
 	case *object.Instance:
-		if m, found := r.C.LookupMethod("[]="); found {
+		if m, found := dispatchClass(env, r).LookupMethod("[]="); found {
 			if um, ok := m.(*object.UserMethod); ok {
 				_, err := invokeMethodOn(env, r, um, []object.RubyObject{key, value}, nil)
 				return err

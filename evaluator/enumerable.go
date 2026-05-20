@@ -27,7 +27,7 @@ func callEnumerable(env *object.Environment, inst *object.Instance, name string,
 	if !instanceIncludesEnumerable(env, inst) {
 		return nil, false, nil
 	}
-	eachMethod, ok := inst.C.LookupMethod("each")
+	eachMethod, ok := dispatchClass(env, inst).LookupMethod("each")
 	if !ok {
 		return nil, false, nil
 	}
@@ -164,7 +164,7 @@ func callEnumerableBlock(env *object.Environment, inst *object.Instance, name st
 	if !instanceIncludesEnumerable(env, inst) {
 		return nil, false, nil
 	}
-	eachMethod, ok := inst.C.LookupMethod("each")
+	eachMethod, ok := dispatchClass(env, inst).LookupMethod("each")
 	if !ok {
 		return nil, false, nil
 	}

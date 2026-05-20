@@ -14,7 +14,7 @@ func NewRange(begin, end RubyObject, exclusive bool) *Range {
 }
 
 func (r *Range) Type() Type       { return OBJECT_OBJ }
-func (r *Range) Class() RubyClass { return nil }
+func (r *Range) Class() RubyClass { return RangeClass }
 
 func (r *Range) Inspect() string {
 	op := ".."

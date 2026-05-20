@@ -49,7 +49,7 @@ func (s *String) Inspect() string {
 }
 
 func (s *String) Type() Type       { return STRING_OBJ }
-func (s *String) Class() RubyClass { return nil }
+func (s *String) Class() RubyClass { return StringClass }
 
 // FrozenString is the interned, immutable string form. The ID resolves to
 // the source text via a StringPool on the owning environment.
@@ -59,7 +59,7 @@ type FrozenString struct {
 }
 
 func (f *FrozenString) Type() Type       { return STRING_OBJ }
-func (f *FrozenString) Class() RubyClass { return nil }
+func (f *FrozenString) Class() RubyClass { return StringClass }
 
 // Inspect on a bare FrozenString cannot resolve its text without the pool;
 // the evaluator routes through Inspect(obj, v) in inspect.go. This

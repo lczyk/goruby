@@ -36,4 +36,4 @@ func (f *Float) Inspect() string {
 }
 
 func (f *Float) Type() Type       { return FLOAT_OBJ }
-func (f *Float) Class() RubyClass { return nil }
+func (f *Float) Class() RubyClass { return FloatClass }

@@ -11,7 +11,7 @@ type Symbol struct {
 }
 
 func (s *Symbol) Type() Type       { return SYMBOL_OBJ }
-func (s *Symbol) Class() RubyClass { return nil }
+func (s *Symbol) Class() RubyClass { return SymbolClass }
 
 // Inspect on a bare Symbol cannot resolve its name without access to the
 // owning pool. The evaluator routes formatting through Inspect(obj, v) in

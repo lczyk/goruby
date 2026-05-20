@@ -30,4 +30,9 @@ func (b *Boolean) Inspect() string {
 }
 
 func (b *Boolean) Type() Type       { return BOOL_OBJ }
-func (b *Boolean) Class() RubyClass { return nil }
+func (b *Boolean) Class() RubyClass {
+	if b.Value {
+		return TrueClassClass
+	}
+	return FalseClassClass
+}

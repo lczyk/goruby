@@ -51,9 +51,8 @@ type RubyObject interface {
 	Class() RubyClass
 }
 
-// RubyClass is the interface implemented by class objects. Kept minimal
-// until method dispatch lands; flesh out as the evaluator needs it.
-type RubyClass interface {
-	Name() string
-	Super() RubyClass
-}
+// RubyClass is the type returned by Class(). Aliased to *Class so the
+// receiver-side Class field/method shapes can coexist; once the
+// interface earned its keep we'll either resurrect it or drop the
+// alias.
+type RubyClass = *Class

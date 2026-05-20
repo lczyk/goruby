@@ -48,12 +48,12 @@ func evalFunctionLiteral(env *object.Environment, n *ast.FunctionLiteral) (objec
 		if cls == nil {
 			return nil, errorf("evaluator: def self.%s used outside a class body", n.Name.Value)
 		}
-		cls.ClassMethods[n.Name.Value] = m
+		cls.AddClassMethod(n.Name.Value, m)
 		return env.Symbols().Intern(n.Name.Value), nil
 	}
 
 	if cls := env.EnclosingClass(); cls != nil {
-		cls.Methods[n.Name.Value] = m
+		cls.AddMethod(n.Name.Value, m)
 		return env.Symbols().Intern(n.Name.Value), nil
 	}
 

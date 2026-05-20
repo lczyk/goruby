@@ -10,4 +10,4 @@ var NIL = &Nil{}
 
 func (n *Nil) Inspect() string  { return "nil" }
 func (n *Nil) Type() Type       { return NIL_OBJ }
-func (n *Nil) Class() RubyClass { return nil }
+func (n *Nil) Class() RubyClass { return NilClassClass }

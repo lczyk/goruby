@@ -139,7 +139,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 		}
 	}
 	if inst, ok := recv.(*object.Instance); ok {
-		if m, found := inst.C.LookupMethod(name); found {
+		if m, found := dispatchClass(env, inst).LookupMethod(name); found {
 			if um, ok := m.(*object.UserMethod); ok {
 				return invokeMethodOnWithBlock(env, inst, um, args, blk)
 			}
@@ -148,7 +148,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 			return v, err
 		}
 		// method_missing with block.
-		if mm, found := inst.C.LookupMethod("method_missing"); found {
+		if mm, found := dispatchClass(env, inst).LookupMethod("method_missing"); found {
 			if um, ok := mm.(*object.UserMethod); ok {
 				mmArgs := make([]object.RubyObject, 0, 1+len(args))
 				mmArgs = append(mmArgs, env.Symbols().Intern(name))

@@ -36,7 +36,7 @@ func NewHash(entries ...HashEntry) *Hash {
 }
 
 func (h *Hash) Type() Type       { return HASH_OBJ }
-func (h *Hash) Class() RubyClass { return nil }
+func (h *Hash) Class() RubyClass { return HashClass }
 
 // Inspect formats the hash under latest-version conventions. For
 // version-aware output, callers should use the free Inspect(obj, v) or

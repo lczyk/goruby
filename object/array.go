@@ -22,7 +22,7 @@ func NewArray(elements ...RubyObject) *Array {
 }
 
 func (a *Array) Type() Type       { return ARRAY_OBJ }
-func (a *Array) Class() RubyClass { return nil }
+func (a *Array) Class() RubyClass { return ArrayClass }
 
 // Inspect formats the array under latest-version conventions. For
 // version-aware output, callers should use the free Inspect(obj, v) or

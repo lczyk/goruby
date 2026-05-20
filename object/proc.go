@@ -11,7 +11,7 @@ type Proc struct {
 }
 
 func (p *Proc) Type() Type       { return PROC_OBJ }
-func (p *Proc) Class() RubyClass { return nil }
+func (p *Proc) Class() RubyClass { return ProcClass }
 func (p *Proc) Inspect() string {
 	if p.IsLambda {
 		return "#<Proc (lambda)>"

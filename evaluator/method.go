@@ -90,7 +90,7 @@ func evalBinaryOp(env *object.Environment, op string, left, right object.RubyObj
 // method would accept the call.
 func receiverResponds(env *object.Environment, recv object.RubyObject, name string) bool {
 	if inst, ok := recv.(*object.Instance); ok {
-		_, found := inst.C.LookupMethod(name)
+		_, found := dispatchClass(env, inst).LookupMethod(name)
 		if found {
 			return true
 		}
@@ -186,7 +186,7 @@ func compareObjectsEnv(env *object.Environment, a, b object.RubyObject) (int, bo
 		}
 	}
 	if inst, ok := a.(*object.Instance); ok {
-		if _, found := inst.C.LookupMethod("<=>"); found {
+		if _, found := dispatchClass(env, inst).LookupMethod("<=>"); found {
 			v, err := callMethod(env, a, "<=>", []object.RubyObject{b})
 			if err != nil {
 				return 0, false
@@ -257,7 +257,7 @@ func evalContextCall(env *object.Environment, n *ast.ContextCallExpression) (obj
 					}
 				}
 				if inst, ok := self.(*object.Instance); ok {
-					if m, found := inst.C.LookupMethod(n.Function.Value); found {
+					if m, found := dispatchClass(env, inst).LookupMethod(n.Function.Value); found {
 						if um, ok := m.(*object.UserMethod); ok {
 							if n.Block != nil {
 								return invokeMethodOnWithBlock(env, inst, um, args, n.Block)
@@ -481,6 +481,14 @@ func evalExpressions(env *object.Environment, exprs []ast.Expression) ([]object.
 // machinery lands. Hardcoded for the methods the literals corpus needs.
 func callMethod(env *object.Environment, recv object.RubyObject, name string, args []object.RubyObject) (object.RubyObject, error) {
 
+	// Send fast-path: if the receiver's class has the method, dispatch
+	// through it. As builtin methods migrate onto their classes this
+	// path takes over more and more; legacy fall-through remains until
+	// every type is migrated.
+	if v, ok, err := object.Send(env, recv, name, args, nil); ok {
+		return v, err
+	}
+
 	// Universal Object methods first.
 	switch name {
 	case "nil?":
@@ -634,32 +642,16 @@ func callMethod(env *object.Environment, recv object.RubyObject, name string, ar
 		}
 	}
 
-	// Instance-receiver dispatch: walk the inheritance chain for an
-	// instance method.
+	// Instance-receiver dispatch: direct user methods and method_missing
+	// already fired via Send at the top of callMethod. What's left here
+	// is the Comparable / Enumerable derivations, then the final
+	// NoMethodError.
 	if inst, ok := recv.(*object.Instance); ok {
-		if m, found := inst.C.LookupMethod(name); found {
-			if um, ok := m.(*object.UserMethod); ok {
-				return invokeMethodOn(env, inst, um, args, nil)
-			}
-		}
-		// Comparable-style ops: derive from <=> when defined.
 		if v, handled, err := comparableFromSpaceship(env, inst, name, args); handled {
 			return v, err
 		}
-		// Enumerable: derive map/select/etc. from `each` when the class
-		// includes Enumerable.
 		if v, handled, err := callEnumerable(env, inst, name, args); handled {
 			return v, err
-		}
-		// method_missing fallback: dispatches a synthetic call with
-		// the original method name prepended as a Symbol.
-		if mm, found := inst.C.LookupMethod("method_missing"); found {
-			if um, ok := mm.(*object.UserMethod); ok {
-				mmArgs := make([]object.RubyObject, 0, 1+len(args))
-				mmArgs = append(mmArgs, env.Symbols().Intern(name))
-				mmArgs = append(mmArgs, args...)
-				return invokeMethodOn(env, inst, um, mmArgs, nil)
-			}
 		}
 		return nil, errorf("evaluator: NoMethodError: undefined method `%s' for instance of %s", name, inst.C.Name)
 	}
@@ -1514,7 +1506,7 @@ func callMethod(env *object.Environment, recv object.RubyObject, name string, ar
 				// modules. `caseEqual` already does this for built-in
 				// patterns; for user-defined `===` we call directly.
 				if inst, ok := pattern.(*object.Instance); ok {
-					if _, found := inst.C.LookupMethod("==="); found {
+					if _, found := dispatchClass(env, inst).LookupMethod("==="); found {
 						v, err := callMethod(env, pattern, "===", []object.RubyObject{e})
 						if err != nil {
 							return nil, err

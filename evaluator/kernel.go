@@ -251,7 +251,7 @@ func putsString(env *object.Environment, o object.RubyObject) string {
 	case *object.Symbol:
 		return env.Symbols().Name(v.ID)
 	case *object.Instance:
-		if m, found := v.C.LookupMethod("to_s"); found {
+		if m, found := dispatchClass(env, v).LookupMethod("to_s"); found {
 			if um, ok := m.(*object.UserMethod); ok {
 				res, err := invokeMethodOn(env, v, um, nil, nil)
 				if err == nil {

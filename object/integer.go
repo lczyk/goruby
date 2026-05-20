@@ -39,4 +39,4 @@ func NewInteger(v int64) *Integer {
 
 func (i *Integer) Inspect() string  { return strconv.FormatInt(i.Value, 10) }
 func (i *Integer) Type() Type       { return INTEGER_OBJ }
-func (i *Integer) Class() RubyClass { return nil }
+func (i *Integer) Class() RubyClass { return IntegerClass }

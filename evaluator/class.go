@@ -159,18 +159,29 @@ func mainObject(env *object.Environment) object.RubyObject {
 	return inst
 }
 
-// bootstrapObjectClass returns the predefined `Object` class, creating
-// it on first use. All user classes implicitly inherit from it when no
-// superclass is named, and top-level `self` is an instance of it.
+// bootstrapObjectClass returns the predefined `Object` class. The class
+// itself is the package-level object.ObjectClass; this function only
+// ensures it's bound in env so ruby code can reach it by name.
 func bootstrapObjectClass(env *object.Environment) *object.Class {
-	if existing, ok := env.Get("Object"); ok {
-		if c, ok := existing.(*object.Class); ok {
-			return c
-		}
+	if _, ok := env.Get("Object"); !ok {
+		env.SetGlobal("Object", object.ObjectClass)
+		env.SetGlobal("BasicObject", object.BasicObjectClass)
+		env.SetGlobal("Numeric", object.NumericClass)
+		env.SetGlobal("Integer", object.IntegerClass)
+		env.SetGlobal("Float", object.FloatClass)
+		env.SetGlobal("String", object.StringClass)
+		env.SetGlobal("Symbol", object.SymbolClass)
+		env.SetGlobal("Array", object.ArrayClass)
+		env.SetGlobal("Hash", object.HashClass)
+		env.SetGlobal("Proc", object.ProcClass)
+		env.SetGlobal("Range", object.RangeClass)
+		env.SetGlobal("NilClass", object.NilClassClass)
+		env.SetGlobal("TrueClass", object.TrueClassClass)
+		env.SetGlobal("FalseClass", object.FalseClassClass)
+		env.SetGlobal("Module", object.ModuleClass)
+		env.SetGlobal("Class", object.ClassClass)
 	}
-	c := object.NewClass("Object", nil)
-	env.SetGlobal("Object", c)
-	return c
+	return object.ObjectClass
 }
 
 // evalSuper invokes the next implementation up the inheritance chain
@@ -350,10 +361,10 @@ type attrWriterMarker string
 // user-defined `==` or `<=>` if present, falls back to Go pointer
 // identity (matching MRI's Object#==).
 func instanceEqual(env *object.Environment, inst *object.Instance, left, right object.RubyObject) (object.RubyObject, error) {
-	if _, found := inst.C.LookupMethod("=="); found {
+	if _, found := dispatchClass(env, inst).LookupMethod("=="); found {
 		return callMethod(env, left, "==", []object.RubyObject{right})
 	}
-	if _, found := inst.C.LookupMethod("<=>"); found {
+	if _, found := dispatchClass(env, inst).LookupMethod("<=>"); found {
 		return callMethod(env, left, "==", []object.RubyObject{right})
 	}
 	return object.BooleanOf(left == right), nil
@@ -377,7 +388,7 @@ func comparableFromSpaceship(env *object.Environment, inst *object.Instance, nam
 		return nil, false, nil
 	}
 
-	m, ok := inst.C.LookupMethod("<=>")
+	m, ok := dispatchClass(env, inst).LookupMethod("<=>")
 	if !ok {
 		return nil, false, nil
 	}
@@ -446,6 +457,16 @@ func comparableFromSpaceship(env *object.Environment, inst *object.Instance, nam
 	return nil, false, nil
 }
 
+// dispatchClass returns the class to consult for method lookup on
+// recv. Today it is exactly classOfRaw, but every method-dispatch site
+// must route through here so that the future eigenclass machinery
+// (singleton classes attached to individual objects) can be wired in
+// at this one chokepoint instead of being grepped into every call
+// site.
+func dispatchClass(env *object.Environment, recv object.RubyObject) *object.Class {
+	return classOfRaw(env, recv)
+}
+
 // classOf returns the receiver's ruby class as a RubyObject suitable
 // for `Object#class`. Falls back to the predefined Object class for
 // receivers we don't yet model with their own Class.
@@ -456,41 +477,20 @@ func classOf(env *object.Environment, recv object.RubyObject) object.RubyObject 
 	return bootstrapObjectClass(env)
 }
 
-// classOfRaw is the typed form used by is_a? walking. Returns nil if
-// the value has no associated Class yet (e.g. literal Integer).
+// classOfRaw returns the dispatch class for recv. Now that every
+// builtin type returns its package-level class from .Class(), this
+// reads off the value directly. Falls back to ObjectClass for receivers
+// whose Class() returns nil (Regex, UserMethod, ...).
 func classOfRaw(env *object.Environment, recv object.RubyObject) *object.Class {
-	switch r := recv.(type) {
-	case *object.Instance:
-		return r.C
-	case *object.Class:
-		// `Foo.class` is `Class` in MRI; we don't model the Class
-		// metaclass yet, so return nil and let callers fall back.
-		return nil
-	case *object.Integer:
-		return lookupCoreClass(env, "Integer")
-	case *object.Float:
-		return lookupCoreClass(env, "Float")
-	case *object.String, *object.FrozenString:
-		return lookupCoreClass(env, "String")
-	case *object.Symbol:
-		return lookupCoreClass(env, "Symbol")
-	case *object.Array:
-		return lookupCoreClass(env, "Array")
-	case *object.Hash:
-		return lookupCoreClass(env, "Hash")
-	case *object.Range:
-		return lookupCoreClass(env, "Range")
-	case *object.Nil:
-		return lookupCoreClass(env, "NilClass")
-	case *object.Boolean:
-		if r.Value {
-			return lookupCoreClass(env, "TrueClass")
-		}
-		return lookupCoreClass(env, "FalseClass")
+	if c := recv.Class(); c != nil {
+		return c
 	}
-	return bootstrapObjectClass(env)
+	return object.ObjectClass
 }
 
+// lookupCoreClass resolves a core class by name through the
+// environment. After Phase 2 the env binding points at the package-
+// level class instance, so this returns the canonical pointer.
 func lookupCoreClass(env *object.Environment, name string) *object.Class {
 	if v, ok := env.Get(name); ok {
 		if c, ok := v.(*object.Class); ok {
@@ -572,6 +572,14 @@ func classNew(env *object.Environment, cls *object.Class, args []object.RubyObje
 // invokeMethodOnWithBlock is the block-carrying form of invokeMethodOn.
 func invokeMethodOnWithBlock(env *object.Environment, recv object.RubyObject, m *object.UserMethod, args []object.RubyObject, blk *ast.BlockExpression) (object.RubyObject, error) {
 	return invokeMethodOn(env, recv, m, args, blk)
+}
+
+func init() {
+	// Wire the object-package UserMethod.Call hook so dispatchers that
+	// only have a RubyMethod can run user code w/out a back-import.
+	object.UserMethodInvoker = func(env *object.Environment, recv object.RubyObject, m *object.UserMethod, args []object.RubyObject, block any) (object.RubyObject, error) {
+		return invokeMethodOn(env, recv, m, args, block)
+	}
 }
 
 // invokeMethodOn binds self to recv and calls the user method with the

@@ -6,23 +6,42 @@ package object
 type Class struct {
 	Name         string
 	Super        *Class
-	Methods      map[string]RubyObject // instance methods (UserMethod values)
-	ClassMethods map[string]RubyObject // singleton-class methods
+	Methods      map[string]RubyMethod // instance methods
+	ClassMethods map[string]RubyMethod // singleton-class methods
 	Includes     []*Class              // included modules
 	Constants    map[string]RubyObject // class / module constants
 	ClassVars    map[string]RubyObject // class variables (@@x); shared up the inheritance chain
 	IsModule     bool                  // distinguishes module from class (no .new)
+	// Version monotonically increments on any method (re)definition on
+	// this class. Reserved for future inline call-site caching: a
+	// cached (class, method) tuple is valid iff the class's Version
+	// hasn't moved since the lookup. Not yet consumed; bump now so the
+	// counter is meaningful when caches land.
+	Version uint64
 }
 
 func NewClass(name string, super *Class) *Class {
 	return &Class{
 		Name:         name,
 		Super:        super,
-		Methods:      make(map[string]RubyObject),
-		ClassMethods: make(map[string]RubyObject),
+		Methods:      make(map[string]RubyMethod),
+		ClassMethods: make(map[string]RubyMethod),
 		Constants:    make(map[string]RubyObject),
 		ClassVars:    make(map[string]RubyObject),
 	}
+}
+
+// AddMethod registers m as the instance method of the given name on c
+// and bumps c.Version so any cached call-site lookup is invalidated.
+func (c *Class) AddMethod(name string, m RubyMethod) {
+	c.Methods[name] = m
+	c.Version++
+}
+
+// AddClassMethod is the class-method counterpart of AddMethod.
+func (c *Class) AddClassMethod(name string, m RubyMethod) {
+	c.ClassMethods[name] = m
+	c.Version++
 }
 
 // LookupClassVar walks the super chain for a class variable (matches
@@ -36,13 +55,18 @@ func (c *Class) LookupClassVar(name string) (RubyObject, *Class) {
 	return nil, nil
 }
 
-func (c *Class) Type() Type       { return CLASS_OBJ }
-func (c *Class) Class() RubyClass { return nil }
-func (c *Class) Inspect() string  { return c.Name }
+func (c *Class) Type() Type { return CLASS_OBJ }
+func (c *Class) Class() RubyClass {
+	if c.IsModule {
+		return ModuleClass
+	}
+	return ClassClass
+}
+func (c *Class) Inspect() string { return c.Name }
 
 // LookupMethod walks the inheritance + include chain for an instance
 // method with the given name.
-func (c *Class) LookupMethod(name string) (RubyObject, bool) {
+func (c *Class) LookupMethod(name string) (RubyMethod, bool) {
 	for cur := c; cur != nil; cur = cur.Super {
 		if m, ok := cur.Methods[name]; ok {
 			return m, true
@@ -57,7 +81,7 @@ func (c *Class) LookupMethod(name string) (RubyObject, bool) {
 }
 
 // LookupClassMethod walks the chain for a class-level method.
-func (c *Class) LookupClassMethod(name string) (RubyObject, bool) {
+func (c *Class) LookupClassMethod(name string) (RubyMethod, bool) {
 	for cur := c; cur != nil; cur = cur.Super {
 		if m, ok := cur.ClassMethods[name]; ok {
 			return m, true
@@ -93,5 +117,5 @@ func NewInstance(c *Class) *Instance {
 }
 
 func (i *Instance) Type() Type       { return OBJECT_OBJ }
-func (i *Instance) Class() RubyClass { return nil }
+func (i *Instance) Class() RubyClass { return i.C }
 func (i *Instance) Inspect() string  { return "#<" + i.C.Name + ">" }

@@ -608,7 +608,7 @@ func evalIndex(env *object.Environment, n *ast.IndexExpression) (object.RubyObje
 	case *object.Array:
 		return arrayIndex(r, args)
 	case *object.Instance:
-		if m, found := r.C.LookupMethod("[]"); found {
+		if m, found := dispatchClass(env, r).LookupMethod("[]"); found {
 			if um, ok := m.(*object.UserMethod); ok {
 				return invokeMethodOn(env, r, um, args, nil)
 			}
