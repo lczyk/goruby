@@ -119,7 +119,7 @@ func (p *Program) End() int {
 	return p.Statements[len(p.Statements)-1].End()
 }
 func (p *Program) String() string {
-	var out bytes.Buffer
+	var out strings.Builder
 	first := true
 	for _, s := range p.Statements {
 		if s == nil {
@@ -128,7 +128,7 @@ func (p *Program) String() string {
 		if !first {
 			out.WriteByte('\n')
 		}
-		out.WriteString(s.String())
+		writeTo(s, &out)
 		first = false
 	}
 	body := relocateHeredocBodies(out.String())
@@ -307,21 +307,26 @@ type ReturnStatement struct {
 }
 
 func (rs *ReturnStatement) String() string {
-	var out bytes.Buffer
-	out.WriteString(rs.TokenLiteral())
+	var b strings.Builder
+	rs.WriteTo(&b)
+	return b.String()
+}
+
+func (rs *ReturnStatement) WriteTo(b *strings.Builder) {
+	b.WriteString(rs.TokenLiteral())
 	if rs.ReturnValue != nil {
-		out.WriteString(" ")
+		b.WriteByte(' ')
 		if al, ok := rs.ReturnValue.(*ArrayLiteral); ok && al.Token.Type != token.LBRACKET {
-			elems := make([]string, len(al.Elements))
 			for i, e := range al.Elements {
-				elems[i] = e.String()
+				if i > 0 {
+					b.WriteString(", ")
+				}
+				writeTo(e, b)
 			}
-			out.WriteString(strings.Join(elems, ", "))
 		} else {
-			out.WriteString(rs.ReturnValue.String())
+			writeTo(rs.ReturnValue, b)
 		}
 	}
-	return out.String()
 }
 func (rs *ReturnStatement) statementNode() {}
 
@@ -341,10 +346,15 @@ type ExpressionStatement struct {
 }
 
 func (es *ExpressionStatement) String() string {
+	var b strings.Builder
+	es.WriteTo(&b)
+	return b.String()
+}
+
+func (es *ExpressionStatement) WriteTo(b *strings.Builder) {
 	if es.Expression != nil {
-		return es.Expression.String()
+		writeTo(es.Expression, b)
 	}
-	return ""
 }
 func (es *ExpressionStatement) statementNode() {}
 
@@ -386,13 +396,23 @@ func (bs *BlockStatement) TokenLiteral() string {
 	return bs.Token.Type.Literal()
 }
 func (bs *BlockStatement) String() string {
-	stmts := make([]string, 0, len(bs.Statements))
+	var b strings.Builder
+	bs.WriteTo(&b)
+	return b.String()
+}
+
+func (bs *BlockStatement) WriteTo(b *strings.Builder) {
+	first := true
 	for _, s := range bs.Statements {
-		if s != nil {
-			stmts = append(stmts, s.String())
+		if s == nil {
+			continue
 		}
+		if !first {
+			b.WriteByte('\n')
+		}
+		writeTo(s, b)
+		first = false
 	}
-	return strings.Join(stmts, "\n")
 }
 
 // ExceptionHandlingBlock represents a begin/end block where exceptions are rescued
@@ -416,26 +436,30 @@ func (eh *ExceptionHandlingBlock) End() int { return eh.EndPos }
 // TokenLiteral returns the token literal from 'begin'
 func (eh *ExceptionHandlingBlock) TokenLiteral() string { return eh.BeginToken.Type.Literal() }
 func (eh *ExceptionHandlingBlock) String() string {
-	var out bytes.Buffer
-	out.WriteString(eh.BeginToken.Type.Literal())
-	out.WriteString("\n")
-	out.WriteString(eh.TryBody.String())
-	out.WriteString("\n")
+	var b strings.Builder
+	eh.WriteTo(&b)
+	return b.String()
+}
+
+func (eh *ExceptionHandlingBlock) WriteTo(b *strings.Builder) {
+	b.WriteString(eh.BeginToken.Type.Literal())
+	b.WriteByte('\n')
+	writeTo(eh.TryBody, b)
+	b.WriteByte('\n')
 	for _, r := range eh.Rescues {
-		out.WriteString(r.String())
+		writeTo(r, b)
 	}
 	if eh.ElseBody != nil {
-		out.WriteString("else\n")
-		out.WriteString(eh.ElseBody.String())
-		out.WriteString("\n")
+		b.WriteString("else\n")
+		writeTo(eh.ElseBody, b)
+		b.WriteByte('\n')
 	}
 	if eh.EnsureBody != nil {
-		out.WriteString("ensure\n")
-		out.WriteString(eh.EnsureBody.String())
-		out.WriteString("\n")
+		b.WriteString("ensure\n")
+		writeTo(eh.EnsureBody, b)
+		b.WriteByte('\n')
 	}
-	out.WriteString("end")
-	return out.String()
+	b.WriteString("end")
 }
 
 // A RescueBlock represents a rescue block
@@ -457,24 +481,29 @@ func (rb *RescueBlock) End() int { return rb.Body.End() }
 // TokenLiteral returns the token literal from 'rescue'
 func (rb *RescueBlock) TokenLiteral() string { return rb.Token.Type.Literal() }
 func (rb *RescueBlock) String() string {
-	var out bytes.Buffer
-	out.WriteString("rescue")
+	var b strings.Builder
+	rb.WriteTo(&b)
+	return b.String()
+}
+
+func (rb *RescueBlock) WriteTo(b *strings.Builder) {
+	b.WriteString("rescue")
 	if len(rb.ExceptionClasses) != 0 {
-		out.WriteString(" ")
-		classes := make([]string, len(rb.ExceptionClasses))
+		b.WriteByte(' ')
 		for i, c := range rb.ExceptionClasses {
-			classes[i] = c.String()
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			writeTo(c, b)
 		}
-		out.WriteString(strings.Join(classes, ", "))
 	}
 	if rb.Exception != nil {
-		out.WriteString(" => ")
-		out.WriteString(rb.Exception.String())
+		b.WriteString(" => ")
+		writeTo(rb.Exception, b)
 	}
-	out.WriteString("\n")
-	out.WriteString(rb.Body.String())
-	out.WriteString("\n")
-	return out.String()
+	b.WriteByte('\n')
+	writeTo(rb.Body, b)
+	b.WriteByte('\n')
 }
 
 // Assignment represents a generic assignment
@@ -485,23 +514,27 @@ type Assignment struct {
 }
 
 func (a *Assignment) String() string {
-	var out bytes.Buffer
-	out.WriteString(a.Left.String())
+	var b strings.Builder
+	a.WriteTo(&b)
+	return b.String()
+}
+
+func (a *Assignment) WriteTo(b *strings.Builder) {
+	writeTo(a.Left, b)
 	op := a.Token.Type.Literal()
 	if op == "" {
 		op = "="
 	}
-	out.WriteString(" ")
-	out.WriteString(op)
-	out.WriteString(" ")
+	b.WriteByte(' ')
+	b.WriteString(op)
+	b.WriteByte(' ')
 	rhs := a.Right
 	if op != "=" {
 		if inf, ok := rhs.(*InfixExpression); ok && inf.Left != nil && inf.Left.String() == a.Left.String() {
 			rhs = inf.Right
 		}
 	}
-	out.WriteString(rhs.String())
-	return out.String()
+	writeTo(rhs, b)
 }
 func (a *Assignment) expressionNode() {}
 
@@ -521,10 +554,14 @@ type InstanceVariable struct {
 }
 
 func (i *InstanceVariable) String() string {
-	var out bytes.Buffer
-	out.WriteString(i.Token.Type.Literal())
-	out.WriteString(i.Name.String())
-	return out.String()
+	var b strings.Builder
+	i.WriteTo(&b)
+	return b.String()
+}
+
+func (i *InstanceVariable) WriteTo(b *strings.Builder) {
+	b.WriteString(i.Token.Type.Literal())
+	writeTo(i.Name, b)
 }
 func (i *InstanceVariable) literalNode()    {}
 func (i *InstanceVariable) expressionNode() {}
@@ -545,10 +582,14 @@ type ClassVariable struct {
 }
 
 func (c *ClassVariable) String() string {
-	var out bytes.Buffer
-	out.WriteString(c.Token.Type.Literal())
-	out.WriteString(c.Name.String())
-	return out.String()
+	var b strings.Builder
+	c.WriteTo(&b)
+	return b.String()
+}
+
+func (c *ClassVariable) WriteTo(b *strings.Builder) {
+	b.WriteString(c.Token.Type.Literal())
+	writeTo(c.Name, b)
 }
 func (c *ClassVariable) literalNode()    {}
 func (c *ClassVariable) expressionNode() {}
@@ -569,19 +610,25 @@ type MultiAssignment struct {
 }
 
 func (m *MultiAssignment) String() string {
-	var out bytes.Buffer
-	vars := make([]string, len(m.Variables))
+	var b strings.Builder
+	m.WriteTo(&b)
+	return b.String()
+}
+
+func (m *MultiAssignment) WriteTo(b *strings.Builder) {
 	for i, v := range m.Variables {
-		vars[i] = v.Value
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(v.Value)
 	}
-	out.WriteString(strings.Join(vars, ", "))
-	out.WriteString(" = ")
-	values := make([]string, len(m.Values))
+	b.WriteString(" = ")
 	for i, v := range m.Values {
-		values[i] = v.String()
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		writeTo(v, b)
 	}
-	out.WriteString(strings.Join(values, ", "))
-	return out.String()
 }
 func (m *MultiAssignment) literalNode() {}
 
@@ -601,7 +648,8 @@ type Self struct {
 	PosOff int
 }
 
-func (s *Self) String() string  { return "self" }
+func (s *Self) String() string             { return "self" }
+func (s *Self) WriteTo(b *strings.Builder) { b.WriteString("self") }
 func (s *Self) expressionNode() {}
 func (s *Self) literalNode()    {}
 
@@ -622,18 +670,23 @@ type YieldExpression struct {
 }
 
 func (y *YieldExpression) String() string {
-	var out bytes.Buffer
-	out.WriteString(y.Token.Type.Literal())
+	var b strings.Builder
+	y.WriteTo(&b)
+	return b.String()
+}
+
+func (y *YieldExpression) WriteTo(b *strings.Builder) {
+	b.WriteString(y.Token.Type.Literal())
 	if len(y.Arguments) != 0 {
-		args := []string{}
-		for _, a := range y.Arguments {
-			args = append(args, a.String())
+		b.WriteByte('(')
+		for i, a := range y.Arguments {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			writeTo(a, b)
 		}
-		out.WriteString("(")
-		out.WriteString(strings.Join(args, ", "))
-		out.WriteString(")")
+		b.WriteByte(')')
 	}
-	return out.String()
 }
 func (y *YieldExpression) expressionNode() {}
 
@@ -659,24 +712,29 @@ type SuperExpression struct {
 }
 
 func (s *SuperExpression) String() string {
-	var out bytes.Buffer
-	out.WriteString(s.Token.Type.Literal())
+	var b strings.Builder
+	s.WriteTo(&b)
+	return b.String()
+}
+
+func (s *SuperExpression) WriteTo(b *strings.Builder) {
+	b.WriteString(s.Token.Type.Literal())
 	if s.Arguments != nil {
-		args := []string{}
-		for _, a := range s.Arguments {
-			args = append(args, a.String())
+		b.WriteByte('(')
+		for i, a := range s.Arguments {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			writeTo(a, b)
 		}
-		out.WriteString("(")
-		out.WriteString(strings.Join(args, ", "))
-		out.WriteString(")")
+		b.WriteByte(')')
 	}
 	if s.Block != nil {
 		if s.Block.Token.Type == token.LBRACE {
-			out.WriteString(" ")
+			b.WriteByte(' ')
 		}
-		out.WriteString(s.Block.String())
+		writeTo(s.Block, b)
 	}
-	return out.String()
 }
 func (s *SuperExpression) expressionNode() {}
 
@@ -700,7 +758,15 @@ func (b *BeginBlock) Pos() int             { return b.Token.Pos }
 func (b *BeginBlock) End() int             { return b.Body.End() }
 func (b *BeginBlock) TokenLiteral() string { return b.Token.Type.Literal() }
 func (b *BeginBlock) String() string {
-	return "BEGIN {\n" + b.Body.String() + "\n}"
+	var sb strings.Builder
+	b.WriteTo(&sb)
+	return sb.String()
+}
+
+func (b *BeginBlock) WriteTo(sb *strings.Builder) {
+	sb.WriteString("BEGIN {\n")
+	writeTo(b.Body, sb)
+	sb.WriteString("\n}")
 }
 
 // EndBlock represents a top-level END { ... } block
@@ -714,7 +780,15 @@ func (e *EndBlock) Pos() int             { return e.Token.Pos }
 func (e *EndBlock) End() int             { return e.Body.End() }
 func (e *EndBlock) TokenLiteral() string { return e.Token.Type.Literal() }
 func (e *EndBlock) String() string {
-	return "END {\n" + e.Body.String() + "\n}"
+	var b strings.Builder
+	e.WriteTo(&b)
+	return b.String()
+}
+
+func (e *EndBlock) WriteTo(b *strings.Builder) {
+	b.WriteString("END {\n")
+	writeTo(e.Body, b)
+	b.WriteString("\n}")
 }
 
 // Keyword__FILE__ represents __FILE__ in the AST
@@ -723,7 +797,8 @@ type Keyword__FILE__ struct {
 	Filename string
 }
 
-func (f *Keyword__FILE__) String() string  { return f.Token.Type.Literal() }
+func (f *Keyword__FILE__) String() string             { return f.Token.Type.Literal() }
+func (f *Keyword__FILE__) WriteTo(b *strings.Builder) { b.WriteString(f.Token.Type.Literal()) }
 func (f *Keyword__FILE__) expressionNode() {}
 func (f *Keyword__FILE__) literalNode()    {}
 
@@ -742,7 +817,8 @@ type Keyword__LINE__ struct {
 	PosOff int
 }
 
-func (l *Keyword__LINE__) String() string       { return "__LINE__" }
+func (l *Keyword__LINE__) String() string             { return "__LINE__" }
+func (l *Keyword__LINE__) WriteTo(b *strings.Builder) { b.WriteString("__LINE__") }
 func (l *Keyword__LINE__) expressionNode()      {}
 func (l *Keyword__LINE__) literalNode()         {}
 func (l *Keyword__LINE__) Pos() int             { return l.PosOff }
@@ -755,7 +831,8 @@ type Keyword__DIR__ struct {
 	PosOff int
 }
 
-func (d *Keyword__DIR__) String() string       { return "__dir__" }
+func (d *Keyword__DIR__) String() string             { return "__dir__" }
+func (d *Keyword__DIR__) WriteTo(b *strings.Builder) { b.WriteString("__dir__") }
 func (d *Keyword__DIR__) expressionNode()      {}
 func (d *Keyword__DIR__) literalNode()         {}
 func (d *Keyword__DIR__) Pos() int             { return d.PosOff }
@@ -768,7 +845,8 @@ type Keyword__CALLEE__ struct {
 	PosOff int
 }
 
-func (c *Keyword__CALLEE__) String() string       { return "__callee__" }
+func (c *Keyword__CALLEE__) String() string             { return "__callee__" }
+func (c *Keyword__CALLEE__) WriteTo(b *strings.Builder) { b.WriteString("__callee__") }
 func (c *Keyword__CALLEE__) expressionNode()      {}
 func (c *Keyword__CALLEE__) literalNode()         {}
 func (c *Keyword__CALLEE__) Pos() int             { return c.PosOff }
@@ -781,7 +859,8 @@ type Keyword__METHOD__ struct {
 	PosOff int
 }
 
-func (m *Keyword__METHOD__) String() string       { return "__method__" }
+func (m *Keyword__METHOD__) String() string             { return "__method__" }
+func (m *Keyword__METHOD__) WriteTo(b *strings.Builder) { b.WriteString("__method__") }
 func (m *Keyword__METHOD__) expressionNode()      {}
 func (m *Keyword__METHOD__) literalNode()         {}
 func (m *Keyword__METHOD__) Pos() int             { return m.PosOff }
@@ -794,7 +873,8 @@ type Keyword__ENCODING__ struct {
 	PosOff int
 }
 
-func (e *Keyword__ENCODING__) String() string       { return "__ENCODING__" }
+func (e *Keyword__ENCODING__) String() string             { return "__ENCODING__" }
+func (e *Keyword__ENCODING__) WriteTo(b *strings.Builder) { b.WriteString("__ENCODING__") }
 func (e *Keyword__ENCODING__) expressionNode()      {}
 func (e *Keyword__ENCODING__) literalNode()         {}
 func (e *Keyword__ENCODING__) Pos() int             { return e.PosOff }
@@ -812,7 +892,14 @@ func (u *UsingExpression) Pos() int             { return u.Token.Pos }
 func (u *UsingExpression) End() int             { return u.Expr.End() }
 func (u *UsingExpression) TokenLiteral() string { return u.Token.Type.Literal() }
 func (u *UsingExpression) String() string {
-	return "using " + u.Expr.String()
+	var b strings.Builder
+	u.WriteTo(&b)
+	return b.String()
+}
+
+func (u *UsingExpression) WriteTo(b *strings.Builder) {
+	b.WriteString("using ")
+	writeTo(u.Expr, b)
 }
 
 // RefineExpression represents a `refine Class do ... end` block
@@ -828,10 +915,20 @@ func (r *RefineExpression) Pos() int             { return r.Token.Pos }
 func (r *RefineExpression) End() int             { return r.EndPos }
 func (r *RefineExpression) TokenLiteral() string { return r.Token.Type.Literal() }
 func (r *RefineExpression) String() string {
+	var b strings.Builder
+	r.WriteTo(&b)
+	return b.String()
+}
+
+func (r *RefineExpression) WriteTo(b *strings.Builder) {
+	b.WriteString("refine ")
+	writeTo(r.Expr, b)
 	if r.Body == nil {
-		return "refine " + r.Expr.String()
+		return
 	}
-	return "refine " + r.Expr.String() + " do\n" + r.Body.String() + "\nend"
+	b.WriteString(" do\n")
+	writeTo(r.Body, b)
+	b.WriteString("\nend")
 }
 
 // An Identifier represents an identifier in the program
@@ -845,6 +942,13 @@ func (i *Identifier) String() string {
 		return ""
 	}
 	return i.Value
+}
+
+func (i *Identifier) WriteTo(b *strings.Builder) {
+	if i == nil {
+		return
+	}
+	b.WriteString(i.Value)
 }
 func (i *Identifier) expressionNode() {}
 func (i *Identifier) literalNode()    {}
@@ -867,7 +971,8 @@ type Global struct {
 	Value string
 }
 
-func (g *Global) String() string  { return g.Value }
+func (g *Global) String() string             { return g.Value }
+func (g *Global) WriteTo(b *strings.Builder) { b.WriteString(g.Value) }
 func (g *Global) expressionNode() {}
 
 // Pos returns the position of first character belonging to the node
@@ -888,15 +993,19 @@ type ScopedIdentifier struct {
 }
 
 func (i *ScopedIdentifier) String() string {
-	var out bytes.Buffer
+	var b strings.Builder
+	i.WriteTo(&b)
+	return b.String()
+}
+
+func (i *ScopedIdentifier) WriteTo(b *strings.Builder) {
 	if i.Outer != nil {
-		out.WriteString(i.Outer.String())
+		writeTo(i.Outer, b)
 	}
-	out.WriteString(i.Token.Type.Literal())
+	b.WriteString(i.Token.Type.Literal())
 	if i.Inner != nil {
-		out.WriteString(i.Inner.String())
+		writeTo(i.Inner, b)
 	}
-	return out.String()
 }
 func (i *ScopedIdentifier) expressionNode() {}
 func (i *ScopedIdentifier) literalNode()    {}
@@ -943,33 +1052,35 @@ func (il *IntegerLiteral) End() int { return il.PosOff + len(il.String()) }
 // TokenLiteral returns the literal form (same as String).
 func (il *IntegerLiteral) TokenLiteral() string { return il.String() }
 func (il *IntegerLiteral) String() string {
+	var b strings.Builder
+	il.WriteTo(&b)
+	return b.String()
+}
+
+func (il *IntegerLiteral) WriteTo(b *strings.Builder) {
 	base := int(il.Base)
 	if base == 0 {
 		base = 10
 	}
-	var digits string
-	if il.BigInt != nil {
-		digits = il.BigInt.Text(base)
-	} else {
-		digits = strconv.FormatInt(il.Value, base)
-	}
-	var prefix string
 	switch base {
 	case 2:
-		prefix = "0b"
+		b.WriteString("0b")
 	case 8:
-		prefix = "0o"
+		b.WriteString("0o")
 	case 16:
-		prefix = "0x"
+		b.WriteString("0x")
 	}
-	var suffix string
+	if il.BigInt != nil {
+		b.WriteString(il.BigInt.Text(base))
+	} else {
+		b.WriteString(strconv.FormatInt(il.Value, base))
+	}
 	if il.Rational {
-		suffix = "r"
+		b.WriteByte('r')
 	}
 	if il.Imaginary {
-		suffix += "i"
+		b.WriteByte('i')
 	}
-	return prefix + digits + suffix
 }
 
 // FloatLiteral represents a floating-point number in the AST. Underscore
@@ -999,27 +1110,27 @@ func (fl *FloatLiteral) End() int { return fl.PosOff + len(fl.String()) }
 // TokenLiteral returns the literal form (same as String).
 func (fl *FloatLiteral) TokenLiteral() string { return fl.String() }
 func (fl *FloatLiteral) String() string {
-	// Ruby's lexer rejects scientific notation followed by `r` / `i` (e.g.
-	// `2e-07r` is a SyntaxError). When a suffix is set, use fixed-point
-	// `'f'` form so re-parse succeeds. Plain floats keep `'g'` -- shorter
-	// for tiny / huge values, and re-parses fine.
+	var b strings.Builder
+	fl.WriteTo(&b)
+	return b.String()
+}
+
+func (fl *FloatLiteral) WriteTo(b *strings.Builder) {
 	verb := byte('g')
 	if fl.Rational || fl.Imaginary {
 		verb = 'f'
 	}
 	s := strconv.FormatFloat(fl.Value, verb, -1, 64)
-	// Ensure decimal point or exponent so re-parse stays a float
-	// (strconv would emit "5" for 5.0, which lexes as integer).
+	b.WriteString(s)
 	if !strings.ContainsAny(s, ".eE") {
-		s += ".0"
+		b.WriteString(".0")
 	}
 	if fl.Rational {
-		s += "r"
+		b.WriteByte('r')
 	}
 	if fl.Imaginary {
-		s += "i"
+		b.WriteByte('i')
 	}
-	return s
 }
 
 // Nil represents the 'nil' keyword.
@@ -1038,8 +1149,9 @@ func (n *Nil) Pos() int { return n.PosOff }
 func (n *Nil) End() int { return n.PosOff + 3 }
 
 // TokenLiteral returns the literal from the token token.NIL
-func (n *Nil) TokenLiteral() string { return "nil" }
-func (n *Nil) String() string       { return "nil" }
+func (n *Nil) TokenLiteral() string         { return "nil" }
+func (n *Nil) String() string               { return "nil" }
+func (n *Nil) WriteTo(b *strings.Builder)   { b.WriteString("nil") }
 
 // Boolean represents a boolean in the AST.
 // Pointer-free (Pos + bool) so arena chunks of Boolean are noscan-eligible.
@@ -1074,6 +1186,14 @@ func (b *Boolean) String() string {
 		return "true"
 	}
 	return "false"
+}
+
+func (b *Boolean) WriteTo(sb *strings.Builder) {
+	if b.Value {
+		sb.WriteString("true")
+	} else {
+		sb.WriteString("false")
+	}
 }
 
 // StringLiteral represents a string in the AST. For non-interpolated strings,
