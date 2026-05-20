@@ -21,18 +21,25 @@
 # --- parse phase -------------------------------------------------------------
 
 parse 2.0..2.1 internal/integrationtest/testdata/mri-tests/enc/test_euc_jp.rb: version-aware rejection not implemented
+parse 2.5..2.7 internal/integrationtest/testdata/mri-tests/enc/test_euc_jp.rb: encoding load fails under --disable-gems
 parse 3.0 internal/integrationtest/testdata/mri-tests/enc/test_euc_jp.rb: version-aware rejection not implemented
 parse 2.0..2.1 internal/integrationtest/testdata/mri-tests/enc/test_shift_jis.rb: version-aware rejection not implemented
+parse 2.5..2.7 internal/integrationtest/testdata/mri-tests/enc/test_shift_jis.rb: encoding load fails under --disable-gems
 parse 3.0 internal/integrationtest/testdata/mri-tests/enc/test_shift_jis.rb: version-aware rejection not implemented
 parse 2.0..2.1 internal/integrationtest/testdata/mri-tests/enc/test_windows_1251.rb: version-aware rejection not implemented
+parse 2.5..2.7 internal/integrationtest/testdata/mri-tests/enc/test_windows_1251.rb: encoding load fails under --disable-gems
 parse 3.0 internal/integrationtest/testdata/mri-tests/enc/test_windows_1251.rb: version-aware rejection not implemented
 parse 2.0..2.1 internal/integrationtest/testdata/mri-tests/enc/test_windows_1252.rb: version-aware rejection not implemented
+parse 2.5..2.7 internal/integrationtest/testdata/mri-tests/enc/test_windows_1252.rb: encoding load fails under --disable-gems
 parse 3.0 internal/integrationtest/testdata/mri-tests/enc/test_windows_1252.rb: version-aware rejection not implemented
 parse 3.1 internal/integrationtest/testdata/mri-tests/test_keyword.rb: version-aware rejection not implemented
+parse 2.5..2.7 internal/integrationtest/testdata/mri-tests/test_m17n.rb: encoding load fails under --disable-gems
 parse 3.0 internal/integrationtest/testdata/mri-tests/test_m17n.rb: version-aware rejection not implemented
 parse 2.0..2.1 internal/integrationtest/testdata/mri-tests/test_mixed_unicode_escapes.rb: version-aware rejection not implemented
+parse 2.5..2.7 internal/integrationtest/testdata/mri-tests/test_mixed_unicode_escapes.rb: encoding load fails under --disable-gems
 parse 3.0 internal/integrationtest/testdata/mri-tests/test_mixed_unicode_escapes.rb: version-aware rejection not implemented
 parse 2.3 internal/integrationtest/testdata/mri-tests/test_regexp.rb: version-aware rejection not implemented
+parse 2.5..2.7 internal/integrationtest/testdata/mri-tests/test_regexp.rb: encoding load fails under --disable-gems
 parse 3.0 internal/integrationtest/testdata/mri-tests/test_regexp.rb: version-aware rejection not implemented
 parse 3.4.. internal/integrationtest/testdata/ruby-extra/parser/loops_control.rb: version-aware rejection not implemented
 parse 3.4.. internal/integrationtest/testdata/ruby-extra/parser/stress_test.rb: version-aware rejection not implemented
