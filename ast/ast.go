@@ -52,6 +52,38 @@ func IsLiteral(n Node) bool {
 	return ok
 }
 
+// WriteToer is the opt-in builder-direct printing interface. Nodes that
+// implement it can render directly into a shared strings.Builder, avoiding
+// the O(N^2) intermediate-string allocation that the recursive String()
+// pattern incurs for deeply-nested ASTs.
+//
+// Nodes not yet migrated fall through to String() via the writeTo helper.
+type WriteToer interface {
+	WriteTo(b *strings.Builder)
+}
+
+// writeTo writes the rendering of n into b. Uses n.WriteTo if implemented,
+// otherwise falls back to n.String(). Internal call sites in node String /
+// WriteTo methods use this to recurse into children without caring whether
+// the child has migrated.
+func writeTo(n Node, b *strings.Builder) {
+	if w, ok := n.(WriteToer); ok {
+		w.WriteTo(b)
+		return
+	}
+	b.WriteString(n.String())
+}
+
+// Format renders n into a string. Equivalent to n.String() but routes
+// through WriteTo for any node that has migrated to direct-builder
+// rendering. Prefer this over n.String() at call sites that build their
+// own buffer -- it lets the migrated subtree share that buffer.
+func Format(n Node) string {
+	var b strings.Builder
+	writeTo(n, &b)
+	return b.String()
+}
+
 // A Program node is the root node within the AST.
 type Program struct {
 	pos        int
@@ -2916,6 +2948,12 @@ func operandHasLeadingSpace(e Expression) bool {
 }
 
 func (pe *PrefixExpression) String() string {
+	var b strings.Builder
+	pe.WriteTo(&b)
+	return b.String()
+}
+
+func (pe *PrefixExpression) WriteTo(b *strings.Builder) {
 	// Drop the outer parens when the operand is "atomic" enough that
 	// MRI wouldn't add a ParenthesesNode on re-parse. The exact rules
 	// differ per operator: - / + fold a numeric literal into a single
@@ -2931,15 +2969,8 @@ func (pe *PrefixExpression) String() string {
 			*Identifier, *InstanceVariable, *ClassVariable, *Global,
 			*Self, *Nil, *Boolean, *ScopedIdentifier,
 			*ParenExpression, *StringLiteral:
-			// MRI folds leading negative numeric via tUMINUS_NUM; for
-			// other terminals / call / index chains / explicit-paren
-			// groups / string literals (frozen-string `-"str"` form)
-			// the unary binds to the result either way so no
-			// outer parens needed.
 			atomic = true
 		case *InfixExpression:
-			// `**` binds tighter than unary -/+: `-x**y` parses as
-			// `-(x**y)` directly. Skip the defensive wrap.
 			if r.Operator == "**" {
 				atomic = true
 			}
@@ -2956,27 +2987,14 @@ func (pe *PrefixExpression) String() string {
 			atomic = true
 		}
 	}
-	// `not` is the lowest-precedence unary; any embedding context (assign rhs,
-	// arg list, infix operand, if/while head) accepts `not X` without an
-	// outer ParenthesesNode wrap. `*` / `**` (splat / double-splat) only
-	// appear in grammar-delimited positions and don't need a wrap either.
 	wrap := pe.Operator != "^" && pe.Operator != "not" &&
 		pe.Operator != "*" && pe.Operator != "**" && !atomic
 
-	var out bytes.Buffer
 	if wrap {
-		out.WriteString("(")
+		b.WriteByte('(')
 	}
-	out.WriteString(pe.Operator)
+	b.WriteString(pe.Operator)
 	if pe.Right != nil {
-		// `not` form selection:
-		// - pre-2.0 MRI rejects `not X` for non-atomic X (require parens).
-		// - on modern MRI, `not(X)` and `not X` normalise to the same
-		//   CallNode (opening_loc / closing_loc are stripped).
-		// - empty grouped expr `not ()` -> ParenExpression{Expr:nil}.
-		//   Emit with a space to keep the source-level form (`not()` is a
-		//   different MRI shape -- call-paren with no args, NODE_BEGIN(nil)
-		//   recv vs receiver=nil).
 		if pe.Operator == "not" {
 			needWrap := true
 			switch r := pe.Right.(type) {
@@ -2984,60 +3002,49 @@ func (pe *PrefixExpression) String() string {
 				*Boolean, *Nil, *Self, *IntegerLiteral, *FloatLiteral,
 				*ScopedIdentifier, *RegexLiteral, *StringLiteral,
 				*SymbolLiteral, *ArrayLiteral, *HashLiteral:
-				// Atomic-enough that pre-2.0 MRI accepts `not X` without
-				// requiring parens. ContextCallExpression / IndexExpression
-				// are NOT here -- pre-2.0 rejects `not x.foo` / `not x[0]`.
 				needWrap = false
 			case *ParenExpression:
 				if r.Expr == nil && len(r.Stmts) == 0 {
-					// `not ()` -- preserve with space + inner empty parens
-					out.WriteString(" ")
-					out.WriteString(r.String())
+					b.WriteByte(' ')
+					writeTo(r, b)
 					if wrap {
-						out.WriteString(")")
+						b.WriteByte(')')
 					}
-					return out.String()
+					return
 				}
-				// `not (X)` already provides outer parens via ParenExpression
 				needWrap = false
 			}
 			if needWrap {
-				out.WriteString("(")
-				out.WriteString(pe.Right.String())
-				out.WriteString(")")
+				b.WriteByte('(')
+				writeTo(pe.Right, b)
+				b.WriteByte(')')
 			} else {
-				out.WriteString(" ")
-				out.WriteString(pe.Right.String())
+				b.WriteByte(' ')
+				writeTo(pe.Right, b)
 			}
 			if wrap {
-				out.WriteString(")")
+				b.WriteByte(')')
 			}
-			return out.String()
+			return
 		}
 		if pe.Operator == "defined?" {
-			out.WriteString(" ")
+			b.WriteByte(' ')
 		}
-		// For unary `-` / `+`: if the source had whitespace between the
-		// operator and the operand, MRI preserves the unary as a CallNode
-		// (e.g. `[- 1]` -> `[-@(1)]`); the no-space form `-1` folds to a
-		// negative literal. Emit a separating space to keep the call form
-		// on re-parse.
 		if (pe.Operator == "-" || pe.Operator == "+") && operandHasLeadingSpace(pe.Right) {
-			out.WriteString(" ")
+			b.WriteByte(' ')
 		}
 		needsParens := pe.Operator == "^" && pinNeedsParens(pe.Right)
 		if needsParens {
-			out.WriteString("(")
+			b.WriteByte('(')
 		}
-		out.WriteString(pe.Right.String())
+		writeTo(pe.Right, b)
 		if needsParens {
-			out.WriteString(")")
+			b.WriteByte(')')
 		}
 	}
 	if wrap {
-		out.WriteString(")")
+		b.WriteByte(')')
 	}
-	return out.String()
 }
 
 // An InfixExpression represents an infix operator in the AST
@@ -3147,14 +3154,24 @@ func rubyInfixRightAssoc(op string) bool {
 }
 
 func (oe *InfixExpression) String() string {
+	var b strings.Builder
+	oe.WriteTo(&b)
+	return b.String()
+}
+
+func (oe *InfixExpression) WriteTo(b *strings.Builder) {
 	if oe.Operator == ":" {
 		if sym, ok := oe.Left.(*SymbolLiteral); ok && sym.Token.Type == token.LABEL {
 			if oe.Right == nil {
 				// Hash-value-omission shorthand (Ruby 3.1+): `foo:` with
 				// implicit value. Preserve the omitted form on re-emit.
-				return sym.LabelText
+				b.WriteString(sym.LabelText)
+				return
 			}
-			return sym.LabelText + " " + oe.Right.String()
+			b.WriteString(sym.LabelText)
+			b.WriteByte(' ')
+			writeTo(oe.Right, b)
+			return
 		}
 	}
 	parentPrec := rubyInfixPrec(oe.Operator)
@@ -3163,25 +3180,27 @@ func (oe *InfixExpression) String() string {
 	// always-wrap so unfamiliar ops can't change parse on re-read.
 	wrapAll := parentPrec == 0
 
-	render := func(child Expression, isLeft bool) string {
+	render := func(child Expression, isLeft bool) {
 		if child == nil {
-			return ""
+			return
 		}
-		s := child.String()
 		inf, ok := child.(*InfixExpression)
 		if !ok {
-			return s
+			writeTo(child, b)
+			return
 		}
 		// Modifier `rescue` parses its RHS via the `expr` grammar (not `arg`),
 		// so anything down to `and`/`or` is absorbed without parens. Skipping
 		// the defensive wrap matches MRI's parsetree (rescue_expression =
 		// AndNode directly, not ParenthesesNode(AndNode)).
 		if oe.Operator == "rescue" && !isLeft {
-			return s
+			writeTo(child, b)
+			return
 		}
 		childPrec := rubyInfixPrec(inf.Operator)
 		if childPrec == 0 {
-			return s // child already wraps itself
+			writeTo(child, b) // child already wraps itself
+			return
 		}
 		var need bool
 		switch {
@@ -3195,23 +3214,25 @@ func (oe *InfixExpression) String() string {
 			}
 		}
 		if !need {
-			// strip the child's own outer wrap if it added one
-			return s
+			writeTo(child, b)
+			return
 		}
-		return "(" + s + ")"
+		b.WriteByte('(')
+		writeTo(child, b)
+		b.WriteByte(')')
 	}
 
-	var out bytes.Buffer
 	if wrapAll {
-		out.WriteString("(")
+		b.WriteByte('(')
 	}
-	out.WriteString(render(oe.Left, true))
-	out.WriteString(" " + oe.Operator + " ")
-	out.WriteString(render(oe.Right, false))
+	render(oe.Left, true)
+	b.WriteByte(' ')
+	b.WriteString(oe.Operator)
+	b.WriteByte(' ')
+	render(oe.Right, false)
 	if wrapAll {
-		out.WriteString(")")
+		b.WriteByte(')')
 	}
-	return out.String()
 }
 
 // RightwardAssignment represents a rightward assignment / one-line pattern match (expr => target)
@@ -3250,25 +3271,40 @@ func (pe *ParenExpression) Pos() int             { return pe.Token.Pos }
 func (pe *ParenExpression) End() int             { return pe.EndPos }
 func (pe *ParenExpression) TokenLiteral() string { return pe.Token.Type.Literal() }
 func (pe *ParenExpression) String() string {
+	var b strings.Builder
+	pe.WriteTo(&b)
+	return b.String()
+}
+
+func (pe *ParenExpression) WriteTo(b *strings.Builder) {
 	if len(pe.Stmts) > 0 {
-		parts := make([]string, len(pe.Stmts))
+		b.WriteByte('(')
 		for i, s := range pe.Stmts {
-			parts[i] = s.String()
+			if i > 0 {
+				b.WriteString("; ")
+			}
+			writeTo(s, b)
 		}
-		return "(" + strings.Join(parts, "; ") + ")"
+		b.WriteByte(')')
+		return
 	}
 	if pe.MultipleStmts && pe.Expr != nil {
 		// Source had a leading/trailing void `;` -- emit `(;expr)` so MRI
 		// re-parses with ParenthesesNodeFlags=multiple_statements.
-		return "(;" + pe.Expr.String() + ")"
+		b.WriteString("(;")
+		writeTo(pe.Expr, b)
+		b.WriteByte(')')
+		return
 	}
 	if pe.Expr == nil {
-		return "()"
+		b.WriteString("()")
+		return
 	}
 	// Skip the wrap when Expr already emits its own outer parens.
 	switch e := pe.Expr.(type) {
 	case *ParenExpression:
-		return pe.Expr.String()
+		writeTo(pe.Expr, b)
+		return
 	case *PrefixExpression:
 		// PrefixExpression never self-wraps `not`, and self-wraps -/+/!/~
 		// only when operand is non-atomic; otherwise it emits bare and
@@ -3276,16 +3312,23 @@ func (pe *ParenExpression) String() string {
 		// doesn't see a ParenthesesNode on re-parse).
 		s := e.String()
 		if !(strings.HasPrefix(s, "(") && strings.HasSuffix(s, ")")) {
-			return "(" + s + ")"
+			b.WriteByte('(')
+			b.WriteString(s)
+			b.WriteByte(')')
+			return
 		}
-		return s
+		b.WriteString(s)
+		return
 	case *InfixExpression:
 		// Unknown-operator fallback in InfixExpression.String() wraps in ().
 		if rubyInfixPrec(e.Operator) == 0 {
-			return e.String()
+			writeTo(e, b)
+			return
 		}
 	}
-	return "(" + pe.Expr.String() + ")"
+	b.WriteByte('(')
+	writeTo(pe.Expr, b)
+	b.WriteByte(')')
 }
 
 // FlipFlop is the stateful `..` / `...` predicate that Ruby produces when
