@@ -230,7 +230,6 @@ var defaultExpressionTerminators = []token.Type{
 type parser struct {
 	file    *token.File
 	l       *lexer.Lexer
-	src     string // cached lexer input; used by tok.LitOf(p.src) for raw-source token text
 	errors  []error
 	version token.RubyVersion
 	arena   *ast.Arena // bump allocator for AST nodes; attached to Program at the end
@@ -253,29 +252,15 @@ type parser struct {
 	comments           []*ast.Comment
 }
 
-// lit resolves a token's literal text. For source-slice tokens
-// (LitOff < 0) it reads from p.src -- the parser's cached, immutable
-// view of the lexer's input. Using p.src instead of the lexer's
-// (mutable, heredoc-swap-aware) l.input is what lets us read source-
-// slice tokens correctly even if the lexer is mid-heredoc-body and has
-// temporarily swapped its input buffer. For pool-backed tokens it
-// returns pool[LitOff] (zero-alloc).
-func (p *parser) lit(tok token.Token) string {
-	if tok.LitOff >= 0 {
-		pool := p.l.Pool()
-		if int(tok.LitOff) < len(pool) {
-			return pool[tok.LitOff]
-		}
-		return ""
-	}
-	return tok.LitOf(p.src)
-}
+// lit resolves a token's literal text via the lexer pool. Zero-alloc
+// substring view. The parser never reaches into the source bytes
+// directly -- the pool is the sole text channel.
+func (p *parser) lit(tok token.Token) string { return p.l.Lit(tok) }
 
 func (p *parser) init(filename string, src []byte, mode Mode) {
 	p.file = token.NewFile(filename, len(src))
 
 	p.l = lexer.NewBytes(src, lexer.WithVersion(p.version))
-	p.src = p.l.Input()
 	p.errors = []error{}
 	if p.arena == nil {
 		p.arena = ast.NewArena()

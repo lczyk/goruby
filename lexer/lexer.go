@@ -114,11 +114,20 @@ func WithVersion(v token.RubyVersion) Option {
 
 // New returns a Lexer instance ready to process the given input.
 func New(input string, opts ...Option) *Lexer {
+	// litPool grows once per emitted token. Empirically Ruby source
+	// averages ~6 source bytes per token (whitespace + 3-5 char idents
+	// + 1-2 char ops); a /6 starting capacity skips most early doublings
+	// without over-allocating for tiny inputs.
+	poolCap := 16
+	if est := len(input) / 4; est > poolCap {
+		poolCap = est
+	}
 	l := &Lexer{
-		input:  input,
-		segEnd: len(input),
-		state:  startLexer,
-		tokens: make([]token.Token, 0, 16),
+		input:   input,
+		segEnd:  len(input),
+		state:   startLexer,
+		tokens:  make([]token.Token, 0, 16),
+		litPool: make([]string, 0, poolCap),
 	}
 	for _, o := range opts {
 		o(l)
@@ -288,52 +297,37 @@ func (l *Lexer) HasNext() bool {
 // the parser to resolve token spans via Token.LitOf(src) during parse.
 func (l *Lexer) Input() string { return l.input }
 
-// Pool returns the lexer's literal pool: per-token-text storage for the
-// emitLiteral path (escape-decoded STRING_CONTENT, percent-prefix
-// STRING_BEG, heredoc tags, regex flags, error messages, etc). Source-
-// slice tokens carry LitOff = -1 and don't appear here -- consumers
-// resolve their text via tok.LitOf(src). ast.Program holds the pool
-// reference post-parse so AST queries that need decoded literals
-// continue to work after src is dropped.
+// Pool returns the lexer's literal pool. Every emitted token has an
+// entry indexed by Token.LitOff: source-slice tokens hold a zero-alloc
+// substring view of l.input, processed tokens (escape-decoded
+// STRING_CONTENT, percent-prefix STRING_BEG, heredoc tags, regex flags,
+// ILLEGAL messages) hold their decoded form. The pool survives src
+// drop -- ast.Program holds the reference post-parse so consumers never
+// need to keep the original source bytes alive.
 func (l *Lexer) Pool() []string { return l.litPool }
 
-// Lit returns the literal text for tok. For pool-backed tokens it returns
-// pool[LitOff] (zero-alloc). For source-slice tokens it falls back to
-// tok.LitOf(l.input) -- callers that may read mid-heredoc-swap (where
-// l.input is a transient buffer) should pass their own cached source
-// string to tok.LitOf directly instead.
+// Lit returns the literal text for tok via pool[LitOff]. Zero-alloc.
 func (l *Lexer) Lit(tok token.Token) string {
-	if tok.LitOff >= 0 && int(tok.LitOff) < len(l.litPool) {
-		return l.litPool[tok.LitOff]
+	if tok.LitOff < 0 || int(tok.LitOff) >= len(l.litPool) {
+		return ""
 	}
-	return tok.LitOf(l.input)
+	return l.litPool[tok.LitOff]
 }
 
-// newToken builds a source-slice token. Pos/End refer to the source span
-// l.start..l.pos. LitOff = -1 marks the token as not having an entry in
-// l.litPool -- consumers reconstruct the text via tok.LitOf(src).
-//
-// During heredoc body lex (l.heredocSwapped) the lexer's input has been
-// swapped to a transient buffer; tokens emitted with Pos pointing into
-// that buffer are unreadable once the swap is restored. To keep their
-// text reachable, the bytes are captured into the pool right away (the
-// token becomes a pool-backed one via newTokenLit).
+// newToken builds a source-slice token. Pos/End refer to the source
+// span l.start..l.pos. The substring view is appended to l.litPool so
+// the text is reachable independent of l.input -- this matters when the
+// caller (parser, tests) reads the token after heredoc-body lex has
+// temporarily swapped l.input, or after src has been dropped entirely.
 func (l *Lexer) newToken(t token.Type) token.Token {
-	if l.heredocSwapped {
-		return l.newTokenLit(t, l.input[l.start:l.pos])
-	}
-	return token.Token{
-		Type:   t,
-		Pos:    l.start,
-		End:    int32(l.pos - l.start),
-		LitOff: -1,
-	}
+	return l.newTokenLit(t, l.input[l.start:l.pos])
 }
 
-// newTokenLit builds a token whose literal text doesn't match its source
-// span (escape-decoded STRING_CONTENT, percent-prefix STRING_BEG, heredoc
-// tag, regex flags, error message). The literal is appended to l.litPool
-// and Token.LitOff indexes into it. End remains the source span length.
+// newTokenLit builds a token whose literal is supplied explicitly rather
+// than read from the source span (escape-decoded STRING_CONTENT, percent-
+// prefix STRING_BEG, heredoc tag, regex flags, error message). The
+// literal is appended to l.litPool and Token.LitOff indexes into it.
+// End remains the source span length.
 func (l *Lexer) newTokenLit(t token.Type, literal string) token.Token {
 	off := int32(len(l.litPool))
 	l.litPool = append(l.litPool, literal)
