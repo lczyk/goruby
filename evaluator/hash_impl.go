@@ -42,7 +42,14 @@ func callHashMethod(env *object.Environment, r *object.Hash, name string, args [
 				}
 			}
 		}
-		return object.NewHash(out...), nil
+		merged := object.NewHash(out...)
+		// MRI Hash#merge preserves the receiver's default value /
+		// default block on the result. Mirror that so block-default
+		// hashes built up via `.merge({...})` still trigger their
+		// default block on missing keys.
+		merged.Default = r.Default
+		merged.DefaultBlock = r.DefaultBlock
+		return merged, nil
 	case "delete":
 		if len(args) != 1 {
 			return nil, errorf("evaluator: Hash#delete expects 1 arg, got %d", len(args))

@@ -6,6 +6,7 @@ import (
 
 	"github.com/lczyk/goruby/ast"
 	"github.com/lczyk/goruby/object"
+	"github.com/lczyk/goruby/parser"
 )
 
 // callKernel dispatches Kernel-level (implicit-self) calls. Until a full
@@ -41,10 +42,55 @@ func callKernel(env *object.Environment, name string, args []object.RubyObject) 
 		return kernelArray(args)
 	case "gets":
 		return stdinGets(env, args)
+	case "putc":
+		return kernelPutc(env, args)
+	case "eval":
+		return kernelEval(env, args)
 	case "lambda":
 		return nil, errorf("evaluator: Kernel#lambda without block not supported; use ->( ){ ... }")
 	}
 	return nil, errorf("evaluator: NoMethodError: undefined method `%s' for main:Object", name)
+}
+
+// kernelPutc implements Kernel#putc: writes a single character /
+// byte to stdout. Accepts an Integer (taken mod 256) or a String
+// (writes its first byte). Returns the argument.
+func kernelPutc(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) != 1 {
+		return nil, errorf("evaluator: putc: wrong number of arguments (given %d, expected 1)", len(args))
+	}
+	w := env.Stdout()
+	switch v := args[0].(type) {
+	case *object.Integer:
+		b := byte(v.Value & 0xff)
+		_, _ = w.Write([]byte{b})
+		return v, nil
+	case *object.String:
+		if len(v.Buf) == 0 {
+			return v, nil
+		}
+		_, _ = w.Write(v.Buf[:1])
+		return v, nil
+	}
+	return nil, errorf("evaluator: putc: expected Integer or String, got %T", args[0])
+}
+
+// kernelEval implements Kernel#eval(str): parses str under the
+// current ruby version and evaluates it in env. Useful for the host
+// of esolang interpreters that build ruby source dynamically.
+func kernelEval(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) < 1 {
+		return nil, errorf("evaluator: eval: wrong number of arguments (given %d, expected 1..)", len(args))
+	}
+	src, ok := stringText(env, args[0])
+	if !ok {
+		return nil, errorf("evaluator: eval: expected String, got %T", args[0])
+	}
+	prog, err := parser.ParseFile("(eval)", []byte(src), 0, parser.WithVersion(env.Version()))
+	if err != nil {
+		return nil, errorf("evaluator: eval: parse: %s", err.Error())
+	}
+	return Eval(prog, env)
 }
 
 // kernelLoop implements Kernel#loop { ... } -- runs the block forever

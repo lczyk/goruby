@@ -36,6 +36,43 @@ func stdinReader(env *object.Environment) *bufio.Reader {
 func bootstrapIO(env *object.Environment) {
 	bootstrapFileClass(env)
 	bootstrapSTDIN(env)
+	bootstrapARGF(env)
+}
+
+func bootstrapARGF(env *object.Environment) *object.Class {
+	if existing, ok := env.Get("ARGF"); ok {
+		if c, ok := existing.(*object.Class); ok {
+			return c
+		}
+	}
+	c := object.NewClass("ARGF", nil)
+	c.ClassMethods["read"] = &object.UserMethod{Name: "read", Body: nativeFn{fn: argfRead}}
+	env.SetGlobal("ARGF", c)
+	return c
+}
+
+// argfRead reads the concatenation of every file named in ARGV; if
+// ARGV is empty or unset, falls back to slurping stdin. Mirrors MRI's
+// ARGF.read.
+func argfRead(env *object.Environment, _ []object.RubyObject) (object.RubyObject, error) {
+	if argv, ok := env.Get("ARGV"); ok {
+		if arr, ok := argv.(*object.Array); ok && len(arr.Elements) > 0 {
+			var buf []byte
+			for _, e := range arr.Elements {
+				s, ok := e.(*object.String)
+				if !ok {
+					return nil, errorf("evaluator: ARGF.read: ARGV element not String: %T", e)
+				}
+				data, err := os.ReadFile(s.Value())
+				if err != nil {
+					return nil, errorf("evaluator: ARGF.read: %s", err.Error())
+				}
+				buf = append(buf, data...)
+			}
+			return object.NewStringFromBytes(buf), nil
+		}
+	}
+	return stdinReadAll(env, nil)
 }
 
 func bootstrapFileClass(env *object.Environment) *object.Class {
@@ -65,6 +102,8 @@ func bootstrapSTDIN(env *object.Environment) *object.Class {
 	c.ClassMethods["readline"] = &object.UserMethod{Name: "readline", Body: nativeFn{fn: stdinGets}}
 	c.ClassMethods["eof?"] = &object.UserMethod{Name: "eof?", Body: nativeFn{fn: stdinEOF}}
 	c.ClassMethods["eof"] = &object.UserMethod{Name: "eof", Body: nativeFn{fn: stdinEOF}}
+	c.ClassMethods["getbyte"] = &object.UserMethod{Name: "getbyte", Body: nativeFn{fn: stdinGetbyte}}
+	c.ClassMethods["getc"] = &object.UserMethod{Name: "getc", Body: nativeFn{fn: stdinGetc}}
 	env.SetGlobal("STDIN", c)
 	return c
 }
@@ -136,6 +175,30 @@ func stdinReadAll(env *object.Environment, _ []object.RubyObject) (object.RubyOb
 		return nil, errorf("evaluator: STDIN.read: %s", err.Error())
 	}
 	return object.NewStringFromBytes(data), nil
+}
+
+func stdinGetbyte(env *object.Environment, _ []object.RubyObject) (object.RubyObject, error) {
+	br := stdinReader(env)
+	b, err := br.ReadByte()
+	if err == io.EOF {
+		return object.NIL, nil
+	}
+	if err != nil {
+		return nil, errorf("evaluator: STDIN.getbyte: %s", err.Error())
+	}
+	return object.NewInteger(int64(b)), nil
+}
+
+func stdinGetc(env *object.Environment, _ []object.RubyObject) (object.RubyObject, error) {
+	br := stdinReader(env)
+	r, _, err := br.ReadRune()
+	if err == io.EOF {
+		return object.NIL, nil
+	}
+	if err != nil {
+		return nil, errorf("evaluator: STDIN.getc: %s", err.Error())
+	}
+	return object.NewString(string(r)), nil
 }
 
 func stdinEOF(env *object.Environment, _ []object.RubyObject) (object.RubyObject, error) {

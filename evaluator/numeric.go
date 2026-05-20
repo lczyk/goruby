@@ -109,6 +109,16 @@ func intInfix(op string, l, r int64) (object.RubyObject, error) {
 			return object.NewInteger(1), nil
 		}
 		return object.NewInteger(0), nil
+	case "&":
+		return object.NewInteger(l & r), nil
+	case "|":
+		return object.NewInteger(l | r), nil
+	case "^":
+		return object.NewInteger(l ^ r), nil
+	case "<<":
+		return object.NewInteger(l << uint(r)), nil
+	case ">>":
+		return object.NewInteger(l >> uint(r)), nil
 	}
 	return nil, nil
 }

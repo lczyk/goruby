@@ -464,9 +464,13 @@ func callStringMethod(env *object.Environment, recv object.RubyObject, name stri
 		if len(args) != 2 {
 			return nil, true, errorf("evaluator: String#gsub expects 2 args, got %d", len(args))
 		}
+		if h, ok := args[1].(*object.Hash); ok {
+			out, err := stringGsubHash(env, s, args[0], h)
+			return out, true, err
+		}
 		repl, ok := stringText(env, args[1])
 		if !ok {
-			return nil, true, errorf("evaluator: String#gsub replacement must be String")
+			return nil, true, errorf("evaluator: String#gsub replacement must be String or Hash")
 		}
 		if re, ok := args[0].(*object.Regex); ok {
 			return object.NewString(re.RE.ReplaceAllString(s, repl)), true, nil
@@ -496,8 +500,8 @@ func callStringMethod(env *object.Environment, recv object.RubyObject, name stri
 		if !ok1 || !ok2 {
 			return nil, true, errorf("evaluator: String#tr needs String args")
 		}
-		fromRunes := []rune(from)
-		toRunes := []rune(to)
+		fromRunes := expandTrRanges(from)
+		toRunes := expandTrRanges(to)
 		mapping := func(r rune) rune {
 			for i, f := range fromRunes {
 				if r == f {

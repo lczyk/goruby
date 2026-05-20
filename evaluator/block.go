@@ -235,6 +235,16 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 				}
 			}
 			return recv, nil
+		case "gsub":
+			if len(args) != 1 {
+				return nil, errorf("evaluator: String#gsub { ... } expects 1 pattern arg, got %d", len(args))
+			}
+			return stringGsubBlock(env, s, args[0], invoke)
+		case "sub":
+			if len(args) != 1 {
+				return nil, errorf("evaluator: String#sub { ... } expects 1 pattern arg, got %d", len(args))
+			}
+			return stringSubBlock(env, s, args[0], invoke)
 		}
 	}
 	if h, ok := recv.(*object.Hash); ok {
