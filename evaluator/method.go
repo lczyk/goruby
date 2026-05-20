@@ -190,7 +190,7 @@ func compareObjectsEnv(env *object.Environment, a, b object.RubyObject) (int, bo
 		}
 	}
 	if inst, ok := a.(*object.Instance); ok {
-		if _, found := dispatchClass(env, inst).LookupMethod("<=>"); found {
+		if _, found := dispatchClass(env, inst).LookupSpaceship(); found {
 			v, err := callMethod(env, a, "<=>", []object.RubyObject{b})
 			if err != nil {
 				return 0, false

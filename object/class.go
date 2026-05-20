@@ -13,11 +13,19 @@ type Class struct {
 	ClassVars    map[string]RubyObject // class variables (@@x); shared up the inheritance chain
 	IsModule     bool                  // distinguishes module from class (no .new)
 	// Version monotonically increments on any method (re)definition on
-	// this class. Reserved for future inline call-site caching: a
-	// cached (class, method) tuple is valid iff the class's Version
-	// hasn't moved since the lookup. Not yet consumed; bump now so the
-	// counter is meaningful when caches land.
+	// this class. Inline call-site caches (e.g. spaceshipCache below)
+	// compare against Version to detect invalidation.
 	Version uint64
+
+	// spaceshipCache memoises the result of LookupMethod("<=>") for
+	// this class. Comparable derivations (Object#<, #<=, etc. on
+	// ObjectClass) hit this on every comparison in a tight loop; the
+	// LookupMethod walk dominates otherwise. spaceshipCacheVersion
+	// records the Version observed at cache fill, so any method
+	// (re)definition that bumps Version invalidates the entry.
+	spaceshipCache        RubyMethod
+	spaceshipCacheVersion uint64
+	spaceshipCacheValid   bool
 }
 
 func NewClass(name string, super *Class) *Class {
@@ -71,6 +79,22 @@ func (c *Class) Class() RubyClass {
 	return ClassClass
 }
 func (c *Class) Inspect() string { return c.Name }
+
+// LookupSpaceship returns this class's `<=>` method, cached. Cache is
+// version-gated against the class's Version counter: any AddMethod /
+// AddClassMethod on c (or its ancestors, through the bumped Version)
+// invalidates the entry on next call. Returns nil, false when no
+// `<=>` exists anywhere in the chain.
+func (c *Class) LookupSpaceship() (RubyMethod, bool) {
+	if c.spaceshipCacheValid && c.spaceshipCacheVersion == c.Version {
+		return c.spaceshipCache, c.spaceshipCache != nil
+	}
+	m, _ := c.LookupMethod("<=>")
+	c.spaceshipCache = m
+	c.spaceshipCacheVersion = c.Version
+	c.spaceshipCacheValid = true
+	return m, m != nil
+}
 
 // LookupMethod walks the inheritance + include chain for an instance
 // method with the given name.

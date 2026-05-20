@@ -33,7 +33,7 @@ func init() {
 			// `equal?`). Other comparisons require <=>.
 			if name == "==" {
 				if inst, ok := recv.(*object.Instance); ok {
-					if _, has := dispatchClass(env, inst).LookupMethod("<=>"); !has {
+					if _, has := dispatchClass(env, inst).LookupSpaceship(); !has {
 						return object.BooleanOf(recv == args[0]), nil
 					}
 				} else {
@@ -102,13 +102,15 @@ func init() {
 
 // spaceshipCompare invokes the receiver's <=> against other, returning
 // the resulting integer. Errors with NoMethodError if recv is not an
-// Instance or its class doesn't define <=>.
+// Instance or its class doesn't define <=>. Uses the per-class
+// spaceship cache to skip the LookupMethod walk on repeated calls --
+// the common case in any sort / min / max / comparison loop.
 func spaceshipCompare(env *object.Environment, recv, other object.RubyObject, name string) (int64, error) {
 	inst, ok := recv.(*object.Instance)
 	if !ok {
 		return 0, errorf("evaluator: NoMethodError: undefined method `%s' for %T", name, recv)
 	}
-	m, ok := dispatchClass(env, inst).LookupMethod("<=>")
+	m, ok := dispatchClass(env, inst).LookupSpaceship()
 	if !ok {
 		return 0, errorf("evaluator: NoMethodError: undefined method `%s' for instance of %s", name, inst.C.Name)
 	}
