@@ -288,9 +288,23 @@ func (l *Lexer) HasNext() bool {
 // is removed.
 func (l *Lexer) Input() string { return l.input }
 
+// newToken builds a token whose End reflects the source span l.start..l.pos
+// regardless of whether literal mirrors the raw source slice (plain emit)
+// or carries processed text (escape-decoded, percent-prefix, etc). Keeping
+// End source-anchored is what lets Token.LitOf(src) work uniformly across
+// emit / emitLiteral paths.
+func (l *Lexer) newToken(t token.Type, literal string) token.Token {
+	return token.Token{
+		Type:    t,
+		Literal: literal,
+		Pos:     l.start,
+		End:     int32(l.pos - l.start),
+	}
+}
+
 // emit passes a token back to the client.
 func (l *Lexer) emit(t token.Type) {
-	tok := token.NewToken(t, l.input[l.start:l.pos], l.start)
+	tok := l.newToken(t, l.input[l.start:l.pos])
 	tok.HadWhitespace = l.tokenHadWhitespace
 	if t == token.STRING_END || t == token.XSTR_END {
 		tok.HeredocStripped = l.heredocStripped
@@ -305,7 +319,7 @@ func (l *Lexer) emit(t token.Type) {
 // emitLiteral emits a token of the given type with an explicit literal,
 // ignoring the input between l.start and l.pos. start is advanced to pos.
 func (l *Lexer) emitLiteral(t token.Type, literal string) {
-	tok := token.NewToken(t, literal, l.start)
+	tok := l.newToken(t, literal)
 	tok.HadWhitespace = l.tokenHadWhitespace
 	if t == token.STRING_END || t == token.XSTR_END {
 		tok.HeredocStripped = l.heredocStripped
@@ -320,7 +334,7 @@ func (l *Lexer) emitLiteral(t token.Type, literal string) {
 // emitLiteralSQ is emitLiteral but marks the token as SingleQuoted so the
 // printer renders it with single quotes.
 func (l *Lexer) emitLiteralSQ(t token.Type, literal string) {
-	tok := token.NewToken(t, literal, l.start)
+	tok := l.newToken(t, literal)
 	tok.HadWhitespace = l.tokenHadWhitespace
 	tok.SingleQuoted = true
 	l.tokenHadWhitespace = false
@@ -1316,7 +1330,7 @@ func lexSingleQuoteString(l *Lexer) StateFn {
 		r = l.next()
 	}
 	l.backup()
-	tok := token.NewToken(token.STRING, l.input[l.start:l.pos], l.start)
+	tok := l.newToken(token.STRING, l.input[l.start:l.pos])
 	tok.HadWhitespace = l.tokenHadWhitespace
 	tok.SingleQuoted = true
 	l.tokenHadWhitespace = false
@@ -1423,7 +1437,7 @@ func lexCharacterLiteral(l *Lexer) StateFn {
 	// After the char/escape, emit the character as a string. Mark with
 	// IsCharLit so the printer can re-emit as `?X` (preserves MRI's
 	// StringFlags shape -- char literals always inherit source encoding).
-	tok := token.NewToken(token.STRING, l.input[l.start:l.pos], l.start)
+	tok := l.newToken(token.STRING, l.input[l.start:l.pos])
 	tok.HadWhitespace = l.tokenHadWhitespace
 	tok.IsCharLit = true
 	l.tokenHadWhitespace = false
@@ -1682,7 +1696,7 @@ func lexPercentLiteralBodySQ(l *Lexer, opener, closer rune, paired bool, tok tok
 				depth--
 				if depth == 0 {
 					l.backup()
-					sq := token.NewToken(tok, l.input[l.start:l.pos], l.start)
+					sq := l.newToken(tok, l.input[l.start:l.pos])
 					sq.HadWhitespace = l.tokenHadWhitespace
 					sq.SingleQuoted = true
 					l.tokenHadWhitespace = false
@@ -1698,7 +1712,7 @@ func lexPercentLiteralBodySQ(l *Lexer, opener, closer rune, paired bool, tok tok
 		} else {
 			if r == closer {
 				l.backup()
-				sq := token.NewToken(tok, l.input[l.start:l.pos], l.start)
+				sq := l.newToken(tok, l.input[l.start:l.pos])
 				sq.HadWhitespace = l.tokenHadWhitespace
 				sq.SingleQuoted = true
 				l.tokenHadWhitespace = false
@@ -2642,7 +2656,7 @@ func lexRegexContent(l *Lexer) StateFn {
 					break
 				}
 			}
-			tok := token.NewToken(token.REGEX_END, opts, l.start)
+			tok := l.newToken(token.REGEX_END, opts)
 			l.lastToken = tok
 			l.tokens = append(l.tokens, tok)
 			l.start = l.pos
