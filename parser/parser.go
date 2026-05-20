@@ -255,7 +255,7 @@ type parser struct {
 func (p *parser) init(filename string, src []byte, mode Mode) {
 	p.file = token.NewFile(filename, len(src))
 
-	p.l = lexer.New(string(src), lexer.WithVersion(p.version))
+	p.l = lexer.NewBytes(src, lexer.WithVersion(p.version))
 	p.errors = []error{}
 	if p.arena == nil {
 		p.arena = ast.NewArena()

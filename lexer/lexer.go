@@ -5,9 +5,20 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+	"unsafe"
 
 	"github.com/lczyk/goruby/token"
 )
+
+// unsafeBytesToString returns a string view over b without copying. The
+// returned string aliases b's backing storage, so b must not be mutated
+// while the string is in use. Used by NewBytes to avoid a redundant copy.
+func unsafeBytesToString(b []byte) string {
+	if len(b) == 0 {
+		return ""
+	}
+	return unsafe.String(unsafe.SliceData(b), len(b))
+}
 
 const (
 	eof = -1
@@ -118,6 +129,19 @@ func New(input string, opts ...Option) *Lexer {
 		l.invalidEncoding = true
 	}
 	return l
+}
+
+// NewBytes is like New but accepts a []byte without copying. The lexer
+// holds a string view over the byte slice -- callers MUST NOT mutate the
+// backing array while the Lexer is in use. Use this from hot paths (e.g.
+// parser bootstrap) to avoid the byte->string copy that string(b) would
+// otherwise allocate.
+//
+// Internally l.input is never mutated post-construction (the heredoc
+// cursor model in HEREDOC_PLAN.md eliminated all splices), so the
+// zero-copy view is safe for the lexer's own reads.
+func NewBytes(input []byte, opts ...Option) *Lexer {
+	return New(unsafeBytesToString(input), opts...)
 }
 
 // detectMagicEncoding reports whether the source has a `# coding:` /

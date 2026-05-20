@@ -38,7 +38,7 @@ func BenchmarkLexRealFiles(b *testing.B) {
 				b.Fatal(err)
 			}
 			totalBytes += int64(len(src))
-			l := New(string(src))
+			l := NewBytes(src)
 			for l.HasNext() {
 				tok := l.NextToken()
 				_ = tok
