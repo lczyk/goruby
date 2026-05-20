@@ -152,6 +152,8 @@ parser-library scope. flip checkboxes as features land in `parser/`.
 	      `ภาษา` -- letters from any script; non-letter codepoints
 	      like emoji are rejected as `ILLEGAL` to match MRI)
 	- [x] Unicode symbols (`:αβ`, `:"метод"`, etc -- same letter rule)
-	- [ ] BOM stripping on source input -- a leading UTF-8 BOM is not
-	      removed; ruby's parser strips it. small gap; usually a noop
-	      for typical sources.
+	- [x] BOM stripping on source input -- a leading UTF-8 BOM is
+	      transparently skipped before tokenization, matching MRI
+	      1.9 through 4.0. Mid-source U+FEFF remains an illegal char;
+	      MRI treats it as a valid identifier letter, which is a small
+	      divergence tracked separately.

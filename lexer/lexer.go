@@ -127,6 +127,15 @@ func WithLitPool(pool []string) Option {
 
 // New returns a Lexer instance ready to process the given input.
 func New(input string, opts ...Option) *Lexer {
+	// Strip a leading UTF-8 BOM (EF BB BF). MRI 1.9-4.0 strip exactly one
+	// BOM at byte 0; any further U+FEFF bytes are treated as valid
+	// identifier letters by MRI's ident scanner. Goruby's ident scanner
+	// still rejects mid-source U+FEFF as an illegal char -- minor
+	// divergence from MRI, scoped as a separate follow-up since it needs
+	// changes to the ident-letter predicate, not the prelude.
+	if strings.HasPrefix(input, "\xef\xbb\xbf") {
+		input = input[3:]
+	}
 	l := &Lexer{
 		input:  input,
 		segEnd: len(input),
