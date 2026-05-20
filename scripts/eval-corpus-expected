@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Derive .expected files from `#=> value` markers in evaluator corpus ruby files.
+#
+# Marker rules:
+#   - any source line containing `#=>` contributes one line to expected stdout.
+#   - the value is the text after the first `#=>` token, with one leading space
+#     stripped if present. trailing whitespace is preserved.
+#   - empty marker (`#=>` with nothing after) emits an empty line.
+#   - lines without `#=>` contribute nothing.
+#
+# Header support (parsed elsewhere, ignored here):
+#   - a line of the form `# minversion: 2.7` near the top of the file declares
+#     the lowest ruby version the program is expected to work under. the
+#     oracle uses this to skip incompatible targets; the marker generator
+#     leaves it alone since `#=>` does not appear inside it.
+#
+# Output is written to a sibling `.expected` file (same dir, same stem).
+#
+# Usage:
+#   scripts/eval-corpus-expected                # default: internal/integrationtest/testdata/evaluator/
+#   scripts/eval-corpus-expected path/to/file.rb [more.rb ...]
+#   scripts/eval-corpus-expected path/to/dir    # recurses
+set -e
+
+DEFAULT_ROOT="internal/integrationtest/testdata/evaluator"
+COUNT=0
+
+function _process_file() {
+    local rb="$1"
+    local expected="${rb%.rb}.expected"
+    awk '
+        match($0, /#=>/) {
+            v = substr($0, RSTART + 3)
+            sub(/^ /, "", v)
+            print v
+        }
+    ' "$rb" > "$expected"
+    COUNT=$((COUNT + 1))
+}
+
+function _collect() {
+    local arg="$1"
+    if [ -d "$arg" ]; then
+        find "$arg" -type f -name '*.rb' | sort
+    elif [ -f "$arg" ]; then
+        printf '%s\n' "$arg"
+    else
+        printf 'eval-corpus-expected: not a file or dir: %s\n' "$arg" >&2
+        exit 2
+    fi
+}
+
+function main() {
+    local targets=("$@")
+    if [ ${#targets[@]} -eq 0 ]; then
+        targets=("$DEFAULT_ROOT")
+    fi
+    local files
+    for t in "${targets[@]}"; do
+        while IFS= read -r f; do
+            _process_file "$f"
+        done < <(_collect "$t")
+    done
+    printf 'eval-corpus-expected: wrote %d .expected file(s)\n' "$COUNT"
+}
+
+main "$@"

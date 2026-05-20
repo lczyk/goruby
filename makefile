@@ -141,6 +141,14 @@ little-oracle: rubies gems  ## Like `oracle` but only against MRI 2.6 (fast iter
 		ORACLE_VER=2.6 ./scripts/gotest-dots --name=little-oracle $(GOTEST) -v -tags=oracle -timeout 5m -run TestMRIParseTreeDiff ./internal/integrationtest/...; \
 	fi
 
+.PHONY: eval-corpus-expected
+eval-corpus-expected:  ## Regenerate .expected files for the evaluator corpus from `#=>` markers
+	@./scripts/eval-corpus-expected
+
+.PHONY: eval-corpus-oracle
+eval-corpus-oracle:  ## Run evaluator corpus under pinned MRI and diff stdout vs .expected (ORACLE_VER=2.6.0; V=1 for verbose)
+	@./scripts/eval-corpus-oracle
+
 .PHONY: clean
 clean:  ## Remove generated files
 	rm -f cover.out cover.html
