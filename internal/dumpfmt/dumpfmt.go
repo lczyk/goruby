@@ -51,9 +51,12 @@ func ParseFormat(s string) (Format, error) {
 func Encode(w io.Writer, format Format, v any) error {
 	switch format {
 	case FormatJSON:
-		enc := json.NewEncoder(w)
-		enc.SetIndent("", "  ")
-		return enc.Encode(v)
+		bw := bufio.NewWriter(w)
+		if err := writeJSON(bw, v, 0); err != nil {
+			return err
+		}
+		bw.WriteByte('\n')
+		return bw.Flush()
 	case FormatYAML:
 		bw := bufio.NewWriter(w)
 		if err := writeYAML(bw, v, 0, false); err != nil {
@@ -73,11 +76,9 @@ func EncodeStream(w io.Writer, format Format, items []any) error {
 	switch format {
 	case FormatJSON:
 		for _, item := range items {
-			b, err := json.Marshal(item)
-			if err != nil {
+			if err := writeJSONCompact(bw, item); err != nil {
 				return err
 			}
-			bw.Write(b)
 			bw.WriteByte('\n')
 		}
 		return nil
@@ -202,6 +203,185 @@ func writeYAMLMap(w *bufio.Writer, m map[string]any, indent int, inSeq bool) err
 	return nil
 }
 
+// writeJSON emits v as a pretty-printed JSON value with two-space
+// indentation. Map keys are sorted alphabetically to give stable output.
+func writeJSON(w *bufio.Writer, v any, indent int) error {
+	v = normalise(v)
+	switch val := v.(type) {
+	case nil:
+		w.WriteString("null")
+		return nil
+	case bool:
+		if val {
+			w.WriteString("true")
+		} else {
+			w.WriteString("false")
+		}
+		return nil
+	case int64:
+		w.WriteString(strconv.FormatInt(val, 10))
+		return nil
+	case uint64:
+		w.WriteString(strconv.FormatUint(val, 10))
+		return nil
+	case float64:
+		w.WriteString(strconv.FormatFloat(val, 'g', -1, 64))
+		return nil
+	case string:
+		writeJSONString(w, val)
+		return nil
+	case []any:
+		if len(val) == 0 {
+			w.WriteString("[]")
+			return nil
+		}
+		w.WriteString("[\n")
+		for i, item := range val {
+			writeIndent(w, indent+1)
+			if err := writeJSON(w, item, indent+1); err != nil {
+				return err
+			}
+			if i < len(val)-1 {
+				w.WriteByte(',')
+			}
+			w.WriteByte('\n')
+		}
+		writeIndent(w, indent)
+		w.WriteByte(']')
+		return nil
+	case map[string]any:
+		if len(val) == 0 {
+			w.WriteString("{}")
+			return nil
+		}
+		keys := make([]string, 0, len(val))
+		for k := range val {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		w.WriteString("{\n")
+		for i, k := range keys {
+			writeIndent(w, indent+1)
+			writeJSONString(w, k)
+			w.WriteString(": ")
+			if err := writeJSON(w, val[k], indent+1); err != nil {
+				return err
+			}
+			if i < len(keys)-1 {
+				w.WriteByte(',')
+			}
+			w.WriteByte('\n')
+		}
+		writeIndent(w, indent)
+		w.WriteByte('}')
+		return nil
+	}
+	return fmt.Errorf("dumpfmt: unsupported value type %T", v)
+}
+
+// writeJSONCompact emits v as a single-line JSON value (no whitespace).
+// Used for JSONL streaming.
+func writeJSONCompact(w *bufio.Writer, v any) error {
+	v = normalise(v)
+	switch val := v.(type) {
+	case nil:
+		w.WriteString("null")
+		return nil
+	case bool:
+		if val {
+			w.WriteString("true")
+		} else {
+			w.WriteString("false")
+		}
+		return nil
+	case int64:
+		w.WriteString(strconv.FormatInt(val, 10))
+		return nil
+	case uint64:
+		w.WriteString(strconv.FormatUint(val, 10))
+		return nil
+	case float64:
+		w.WriteString(strconv.FormatFloat(val, 'g', -1, 64))
+		return nil
+	case string:
+		writeJSONString(w, val)
+		return nil
+	case []any:
+		w.WriteByte('[')
+		for i, item := range val {
+			if i > 0 {
+				w.WriteByte(',')
+			}
+			if err := writeJSONCompact(w, item); err != nil {
+				return err
+			}
+		}
+		w.WriteByte(']')
+		return nil
+	case map[string]any:
+		keys := make([]string, 0, len(val))
+		for k := range val {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		w.WriteByte('{')
+		for i, k := range keys {
+			if i > 0 {
+				w.WriteByte(',')
+			}
+			writeJSONString(w, k)
+			w.WriteByte(':')
+			if err := writeJSONCompact(w, val[k]); err != nil {
+				return err
+			}
+		}
+		w.WriteByte('}')
+		return nil
+	}
+	return fmt.Errorf("dumpfmt: unsupported value type %T", v)
+}
+
+// writeJSONString writes s as a JSON-quoted string. Handles the
+// mandatory escapes (\", \\, control chars) and leaves the rest as-is.
+func writeJSONString(w *bufio.Writer, s string) {
+	w.WriteByte('"')
+	start := 0
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c == '"' || c == '\\' || c < 0x20 {
+			if start < i {
+				w.WriteString(s[start:i])
+			}
+			switch c {
+			case '"':
+				w.WriteString(`\"`)
+			case '\\':
+				w.WriteString(`\\`)
+			case '\n':
+				w.WriteString(`\n`)
+			case '\r':
+				w.WriteString(`\r`)
+			case '\t':
+				w.WriteString(`\t`)
+			case '\b':
+				w.WriteString(`\b`)
+			case '\f':
+				w.WriteString(`\f`)
+			default:
+				w.WriteString(`\u00`)
+				const hex = "0123456789abcdef"
+				w.WriteByte(hex[c>>4])
+				w.WriteByte(hex[c&0xF])
+			}
+			start = i + 1
+		}
+	}
+	if start < len(s) {
+		w.WriteString(s[start:])
+	}
+	w.WriteByte('"')
+}
+
 func writeIndent(w *bufio.Writer, level int) {
 	for range level {
 		w.WriteString("  ")
@@ -227,17 +407,19 @@ func isInlineScalar(v any) bool {
 // dump makes the polymorphic tree easier to scan.
 func mapKeys(m map[string]any) []string {
 	keys := make([]string, 0, len(m))
-	hasType := false
 	for k := range m {
-		if k == "_type" {
-			hasType = true
-			continue
-		}
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	if hasType {
-		keys = append([]string{"_type"}, keys...)
+	// Move "_type" to the front if present (sorted position varies).
+	for i, k := range keys {
+		if k == "_type" {
+			if i != 0 {
+				copy(keys[1:i+1], keys[:i])
+				keys[0] = "_type"
+			}
+			break
+		}
 	}
 	return keys
 }
@@ -366,8 +548,32 @@ func typedTree(rv reflect.Value, typeName string) any {
 // the emitter handles, and replaces reflect-zero values with nil so the
 // rest of the emitter can stay type-switch driven.
 func normalise(v any) any {
-	if v == nil {
+	// Fast path: canonical types pass through without touching reflect.
+	switch x := v.(type) {
+	case nil:
 		return nil
+	case string, bool, int64, uint64, float64, []any, map[string]any:
+		return v
+	case int:
+		return int64(x)
+	case int8:
+		return int64(x)
+	case int16:
+		return int64(x)
+	case int32:
+		return int64(x)
+	case uint:
+		return uint64(x)
+	case uint8:
+		return uint64(x)
+	case uint16:
+		return uint64(x)
+	case uint32:
+		return uint64(x)
+	case uintptr:
+		return uint64(x)
+	case float32:
+		return float64(x)
 	}
 	rv := reflect.ValueOf(v)
 	switch rv.Kind() {
