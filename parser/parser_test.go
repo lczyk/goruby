@@ -784,9 +784,7 @@ func TestGlobalExpression(t *testing.T) {
 
 	global, ok := stmt.Expression.(*ast.Global)
 	assert.That(t, ok, "expression not *ast.Global. got=%T", stmt.Expression)
-	if global.Value != "$foobar" {
-		t.Errorf("ident.Value not %s. got=%s", "$foobar", global.Value)
-	}
+	assert.Equal(t, global.Value, "$foobar")
 	assert.That(t, !(global.TokenLiteral() != "$foobar"))
 }
 
@@ -1378,12 +1376,7 @@ func TestBooleanExpression(t *testing.T) {
 
 		boolean, ok := stmt.Expression.(*ast.Boolean)
 		assert.That(t, ok, "exp not *ast.Boolean. got=%T", stmt.Expression)
-		if boolean.Value != tt.expectedBoolean {
-			t.Errorf(
-				"boolean.Value not %t. got=%t",
-				tt.expectedBoolean,
-				boolean.Value)
-		}
+		assert.Equal(t, boolean.Value, tt.expectedBoolean)
 	}
 }
 
@@ -1638,16 +1631,11 @@ func TestConditionalExpressionWithAlternative(t *testing.T) {
 			program, err := parseSource(tt.input)
 			checkParserErrors(t, err)
 
-			if len(program.Statements) != 1 {
-				t.Fatalf("program.Body does not contain %d statements. got=%d\n",
-					1, len(program.Statements))
-			}
+			assert.Len(t, program.Statements, 1)
 
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			if !ok {
-				t.Fatalf("program.Statements[0] is not ast.ExpressionStatement. got=%T",
+			assert.That(t, ok, "program.Statements[0] is not ast.ExpressionStatement. got=%T",
 					program.Statements[0])
-			}
 
 			exp, ok := stmt.Expression.(*ast.ConditionalExpression)
 			assert.That(t, ok, "stmt.Expression is not ast.IfExpression. got=%T", stmt.Expression)
@@ -1656,31 +1644,21 @@ func TestConditionalExpressionWithAlternative(t *testing.T) {
 				return
 			}
 
-			if len(exp.Consequence.Statements) != 1 {
-				t.Errorf("consequence is not 1 statements. got=%d\n",
-					len(exp.Consequence.Statements))
-			}
+			assert.Len(t, exp.Consequence.Statements, 1)
 
 			consequence, ok := exp.Consequence.Statements[0].(*ast.ExpressionStatement)
-			if !ok {
-				t.Fatalf("Statements[0] is not ast.ExpressionStatement. got=%T",
+			assert.That(t, ok, "Statements[0] is not ast.ExpressionStatement. got=%T",
 					exp.Consequence.Statements[0])
-			}
 
 			if !testLiteralExpression(t, consequence.Expression, tt.consequence) {
 				return
 			}
 
-			if len(exp.Alternative.Statements) != 1 {
-				t.Errorf("exp.Alternative.Statements does not contain 1 statements. got=%d\n",
-					len(exp.Alternative.Statements))
-			}
+			assert.Len(t, exp.Alternative.Statements, 1)
 
 			alternative, ok := exp.Alternative.Statements[0].(*ast.ExpressionStatement)
-			if !ok {
-				t.Fatalf("Statements[0] is not ast.ExpressionStatement. got=%T",
+			assert.That(t, ok, "Statements[0] is not ast.ExpressionStatement. got=%T",
 					exp.Alternative.Statements[0])
-			}
 
 			if !testLiteralExpression(t, alternative.Expression, tt.alternative) {
 				return
@@ -1702,16 +1680,11 @@ func TestConditionalExpressionWithAlternative(t *testing.T) {
 		program, err := parseSource(tt.input)
 		checkParserErrors(t, err)
 
-		if len(program.Statements) != 1 {
-			t.Fatalf("program.Body does not contain %d statements. got=%d\n",
-				1, len(program.Statements))
-		}
+		assert.Len(t, program.Statements, 1)
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		if !ok {
-			t.Fatalf("program.Statements[0] is not ast.ExpressionStatement. got=%T",
+		assert.That(t, ok, "program.Statements[0] is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
-		}
 
 		exp, ok := stmt.Expression.(*ast.ConditionalExpression)
 		assert.That(t, ok, "stmt.Expression is not ast.IfExpression. got=%T", stmt.Expression)
@@ -1720,32 +1693,22 @@ func TestConditionalExpressionWithAlternative(t *testing.T) {
 			return
 		}
 
-		if len(exp.Consequence.Statements) != 1 {
-			t.Errorf("consequence is not 1 statements. got=%d\n",
-				len(exp.Consequence.Statements))
-		}
+		assert.Len(t, exp.Consequence.Statements, 1)
 
 		consequence, ok := exp.Consequence.Statements[0].(*ast.ExpressionStatement)
-		if !ok {
-			t.Fatalf("Statements[0] is not ast.ExpressionStatement. got=%T",
+		assert.That(t, ok, "Statements[0] is not ast.ExpressionStatement. got=%T",
 				exp.Consequence.Statements[0])
-		}
 
 		if consequence.String() != tt.consequence {
 			t.Logf("Expected consequence to equal %s, got %s", tt.consequence, consequence.String())
 			t.Fail()
 		}
 
-		if len(exp.Alternative.Statements) != 1 {
-			t.Errorf("exp.Alternative.Statements does not contain 1 statements. got=%d\n",
-				len(exp.Alternative.Statements))
-		}
+		assert.Len(t, exp.Alternative.Statements, 1)
 
 		alternative, ok := exp.Alternative.Statements[0].(*ast.ExpressionStatement)
-		if !ok {
-			t.Fatalf("Statements[0] is not ast.ExpressionStatement. got=%T",
+		assert.That(t, ok, "Statements[0] is not ast.ExpressionStatement. got=%T",
 				exp.Alternative.Statements[0])
-		}
 
 		if !testLiteralExpression(t, alternative.Expression, tt.alternative) {
 			return
@@ -2611,16 +2574,10 @@ func TestCallExpressionParameterParsing(t *testing.T) {
 				return
 			}
 
-			if len(exp.Arguments) != len(tt.expectedArgs) {
-				t.Fatalf("wrong number of arguments. want=%d, got=%d",
-					len(tt.expectedArgs), len(exp.Arguments))
-			}
+			assert.Equal(t, len(exp.Arguments), len(tt.expectedArgs))
 
 			for i, arg := range tt.expectedArgs {
-				if exp.Arguments[i].String() != arg {
-					t.Errorf("argument %d wrong. want=%q, got=%q", i,
-						arg, exp.Arguments[i].String())
-				}
+				assert.Equal(t, exp.Arguments[i].String(), arg)
 			}
 		})
 	}
@@ -2633,22 +2590,15 @@ func TestContextCallExpression(t *testing.T) {
 		program, err := parseSource(input)
 		checkParserErrors(t, err)
 
-		if len(program.Statements) != 1 {
-			t.Fatalf("program.Statements does not contain %d statements. got=%d\n",
-				1, len(program.Statements))
-		}
+		assert.Len(t, program.Statements, 1)
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		if !ok {
-			t.Fatalf("stmt is not ast.ExpressionStatement. got=%T",
+		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
-		}
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		if !ok {
-			t.Fatalf("stmt.Expression is not ast.ContextCallExpression. got=%T",
+		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
-		}
 
 		if !testIdentifier(t, exp.Context, "foo") {
 			return
@@ -2677,16 +2627,12 @@ func TestContextCallExpression(t *testing.T) {
 		}
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		if !ok {
-			t.Fatalf("stmt is not ast.ExpressionStatement. got=%T",
+		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
-		}
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		if !ok {
-			t.Fatalf("stmt.Expression is not ast.ContextCallExpression. got=%T",
+		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
-		}
 
 		if !testIdentifier(t, exp.Context, "foo") {
 			return
@@ -2713,22 +2659,15 @@ func TestContextCallExpression(t *testing.T) {
 		program, err := parseSource(input)
 		checkParserErrors(t, err)
 
-		if len(program.Statements) != 1 {
-			t.Fatalf("program.Statements does not contain %d statements. got=%d\n",
-				1, len(program.Statements))
-		}
+		assert.Len(t, program.Statements, 1)
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		if !ok {
-			t.Fatalf("stmt is not ast.ExpressionStatement. got=%T",
+		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
-		}
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		if !ok {
-			t.Fatalf("stmt.Expression is not ast.ContextCallExpression. got=%T",
+		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
-		}
 
 		if !testIdentifier(t, exp.Context, "foo") {
 			return
@@ -2750,22 +2689,15 @@ func TestContextCallExpression(t *testing.T) {
 		program, err := parseSource(input)
 		checkParserErrors(t, err)
 
-		if len(program.Statements) != 1 {
-			t.Fatalf("program.Statements does not contain %d statements. got=%d\n",
-				1, len(program.Statements))
-		}
+		assert.Len(t, program.Statements, 1)
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		if !ok {
-			t.Fatalf("stmt is not ast.ExpressionStatement. got=%T",
+		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
-		}
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		if !ok {
-			t.Fatalf("stmt.Expression is not ast.ContextCallExpression. got=%T",
+		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
-		}
 
 		if !testIdentifier(t, exp.Context, "foo") {
 			return
@@ -2792,22 +2724,15 @@ func TestContextCallExpression(t *testing.T) {
 		program, err := parseSource(input)
 		checkParserErrors(t, err)
 
-		if len(program.Statements) != 1 {
-			t.Fatalf("program.Statements does not contain %d statements. got=%d\n",
-				1, len(program.Statements))
-		}
+		assert.Len(t, program.Statements, 1)
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		if !ok {
-			t.Fatalf("stmt is not ast.ExpressionStatement. got=%T",
+		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
-		}
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		if !ok {
-			t.Fatalf("stmt.Expression is not ast.ContextCallExpression. got=%T",
+		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
-		}
 
 		if !testIdentifier(t, exp.Context, "foo") {
 			return
@@ -2825,22 +2750,15 @@ func TestContextCallExpression(t *testing.T) {
 		program, err := parseSource(input)
 		checkParserErrors(t, err)
 
-		if len(program.Statements) != 1 {
-			t.Fatalf("program.Statements does not contain %d statements. got=%d\n",
-				1, len(program.Statements))
-		}
+		assert.Len(t, program.Statements, 1)
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		if !ok {
-			t.Fatalf("stmt is not ast.ExpressionStatement. got=%T",
+		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
-		}
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		if !ok {
-			t.Fatalf("stmt.Expression is not ast.ContextCallExpression. got=%T",
+		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
-		}
 
 		if _, ok := exp.Context.(*ast.Self); !ok {
 			t.Logf("exp.Context is not ast.Self, got=%T", exp.Context)
@@ -2902,10 +2820,8 @@ func TestContextCallExpression(t *testing.T) {
 		assert.That(t, ok)
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		if !ok {
-			t.Fatalf("stmt.Expression is not ast.ContextCallExpression. got=%T",
+		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
-		}
 
 		if !testIntegerLiteral(t, exp.Context, 1) {
 			return
@@ -2929,10 +2845,8 @@ func TestContextCallExpression(t *testing.T) {
 		assert.That(t, ok)
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		if !ok {
-			t.Fatalf("stmt.Expression is not ast.ContextCallExpression. got=%T",
+		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
-		}
 
 		if !testIntegerLiteral(t, exp.Context, 1) {
 			return
@@ -2956,10 +2870,8 @@ func TestContextCallExpression(t *testing.T) {
 		assert.That(t, ok)
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		if !ok {
-			t.Fatalf("stmt.Expression is not ast.ContextCallExpression. got=%T",
+		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
-		}
 
 		if !testIntegerLiteral(t, exp.Context, 1) {
 			return
@@ -2981,22 +2893,15 @@ func TestContextCallExpression(t *testing.T) {
 		program, err := parseSource(input)
 		checkParserErrors(t, err)
 
-		if len(program.Statements) != 1 {
-			t.Fatalf("program.Statements does not contain %d statements. got=%d\n",
-				1, len(program.Statements))
-		}
+		assert.Len(t, program.Statements, 1)
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		if !ok {
-			t.Fatalf("stmt is not ast.ExpressionStatement. got=%T",
+		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
-		}
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		if !ok {
-			t.Fatalf("stmt.Expression is not ast.ContextCallExpression. got=%T",
+		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
-		}
 
 		if !testIdentifier(t, exp.Function, "foo") {
 			return
@@ -3014,22 +2919,15 @@ func TestContextCallExpression(t *testing.T) {
 		program, err := parseSource(input)
 		checkParserErrors(t, err)
 
-		if len(program.Statements) != 1 {
-			t.Fatalf("program.Statements does not contain %d statements. got=%d\n",
-				1, len(program.Statements))
-		}
+		assert.Len(t, program.Statements, 1)
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		if !ok {
-			t.Fatalf("stmt is not ast.ExpressionStatement. got=%T",
+		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
-		}
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		if !ok {
-			t.Fatalf("stmt.Expression is not ast.ContextCallExpression. got=%T",
+		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
-		}
 
 		if !testIdentifier(t, exp.Function, "Integer") {
 			return
@@ -3047,22 +2945,15 @@ func TestContextCallExpression(t *testing.T) {
 		program, err := parseSource(input)
 		checkParserErrors(t, err)
 
-		if len(program.Statements) != 1 {
-			t.Fatalf("program.Statements does not contain %d statements. got=%d\n",
-				1, len(program.Statements))
-		}
+		assert.Len(t, program.Statements, 1)
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		if !ok {
-			t.Fatalf("stmt is not ast.ExpressionStatement. got=%T",
+		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
-		}
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		if !ok {
-			t.Fatalf("stmt.Expression is not ast.ContextCallExpression. got=%T",
+		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
-		}
 
 		if !testIdentifier(t, exp.Function, "add") {
 			return
@@ -3083,16 +2974,12 @@ func TestContextCallExpression(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		if !ok {
-			t.Fatalf("stmt is not ast.ExpressionStatement. got=%T",
+		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
-		}
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		if !ok {
-			t.Fatalf("stmt.Expression is not ast.ContextCallExpression. got=%T",
+		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
-		}
 
 		context, ok := exp.Context.(*ast.ContextCallExpression)
 		assert.That(t, ok)
@@ -3122,16 +3009,12 @@ func TestContextCallExpression(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		if !ok {
-			t.Fatalf("stmt is not ast.ExpressionStatement. got=%T",
+		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
-		}
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		if !ok {
-			t.Fatalf("stmt.Expression is not ast.ContextCallExpression. got=%T",
+		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
-		}
 
 		context, ok := exp.Context.(*ast.ContextCallExpression)
 		assert.That(t, ok)
@@ -3161,16 +3044,12 @@ func TestContextCallExpression(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		if !ok {
-			t.Fatalf("stmt is not ast.ExpressionStatement. got=%T",
+		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
-		}
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		if !ok {
-			t.Fatalf("stmt.Expression is not ast.ContextCallExpression. got=%T",
+		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
-		}
 
 		context, ok := exp.Context.(*ast.ContextCallExpression)
 		assert.That(t, ok)
@@ -3196,16 +3075,12 @@ func TestContextCallExpression(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		if !ok {
-			t.Fatalf("stmt is not ast.ExpressionStatement. got=%T",
+		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
-		}
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		if !ok {
-			t.Fatalf("stmt.Expression is not ast.ContextCallExpression. got=%T",
+		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
-		}
 
 		context, ok := exp.Context.(*ast.ContextCallExpression)
 		assert.That(t, ok)
@@ -3231,16 +3106,12 @@ func TestContextCallExpression(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		if !ok {
-			t.Fatalf("stmt is not ast.ExpressionStatement. got=%T",
+		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
-		}
 
 		expr, ok := stmt.Expression.(*ast.ContextCallExpression)
-		if !ok {
-			t.Fatalf("stmt.Expression is not ast.ContextCallExpression. got=%T",
+		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
-		}
 
 		if !testIdentifier(t, expr.Context, "foo") {
 			return
@@ -3259,16 +3130,12 @@ func TestContextCallExpression(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		if !ok {
-			t.Fatalf("stmt is not ast.ExpressionStatement. got=%T",
+		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
-		}
 
 		expr, ok := stmt.Expression.(*ast.ContextCallExpression)
-		if !ok {
-			t.Fatalf("stmt.Expression is not ast.ContextCallExpression. got=%T",
+		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
-		}
 
 		if !testIdentifier(t, expr.Context, "foo") {
 			return
@@ -3860,9 +3727,7 @@ func TestLabelExpression(t *testing.T) {
 	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	infix, ok := stmt.Expression.(*ast.InfixExpression)
 	assert.That(t, ok, "expected *ast.InfixExpression, got %T", stmt.Expression)
-	if infix.Operator != ":" {
-		t.Errorf("expected operator ':', got %q", infix.Operator)
-	}
+	assert.Equal(t, infix.Operator, ":")
 }
 
 func TestInstanceVariableNoIdent(t *testing.T) {

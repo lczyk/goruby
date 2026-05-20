@@ -477,9 +477,8 @@ func TestMaskLineMagicNoNodeLitGate(t *testing.T) {
 }
 
 func TestLineMagicLinesEmptyShortcut(t *testing.T) {
-	if got := lineMagicLines("x = 1\nputs y\n"); got != nil {
-		t.Errorf("non-nil map for source w/out __LINE__: %v", got)
-	}
+	got := lineMagicLines("x = 1\nputs y\n")
+	assert.Nil(t, got)
 }
 
 func FuzzNormalize(f *testing.F) {

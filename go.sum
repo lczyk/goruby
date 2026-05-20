@@ -1,5 +1,7 @@
 github.com/lczyk/assert v0.6.0 h1:V8MxjKrBU37Z/RXCxxwLhpCLH5zQQlZTStG3mSJpXtk=
 github.com/lczyk/assert v0.6.0/go.mod h1:Vv3LWPfjC/FbJ3IXb22YNWxZWicc1x6R7hzDCf+RARc=
+github.com/lczyk/assert v0.7.0 h1:1FkKu2L4VPrmuqv2S1xZ6bQjDTItXGJ63oEMWB6D/C0=
+github.com/lczyk/assert v0.7.0/go.mod h1:Vv3LWPfjC/FbJ3IXb22YNWxZWicc1x6R7hzDCf+RARc=
 github.com/lczyk/trace v0.3.0 h1:dLqMi3VI5aHfFDjjVq0LnTt8IbyajkQGYvxn2LV/Yf4=
 github.com/lczyk/trace v0.3.0/go.mod h1:OQ0MipMhtokIca9dJMxv1SHPj8B8R3qZTpqUsLqVZdM=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
