@@ -54,9 +54,28 @@ func Eval(node ast.Node, env *object.Environment) (object.RubyObject, error) {
 
 	case *ast.ContextCallExpression:
 		return evalContextCall(env, n)
+
+	case *ast.ParenExpression:
+		return evalParen(env, n)
 	}
 
 	return nil, errorf("evaluator: unhandled AST node type %T", node)
+}
+
+func evalParen(env *object.Environment, n *ast.ParenExpression) (object.RubyObject, error) {
+	// Multi-statement form `(a; b; c)` returns the last value.
+	if len(n.Stmts) > 0 {
+		var result object.RubyObject = object.NIL
+		for _, e := range n.Stmts {
+			v, err := Eval(e, env)
+			if err != nil {
+				return nil, err
+			}
+			result = v
+		}
+		return result, nil
+	}
+	return Eval(n.Expr, env)
 }
 
 func evalProgram(env *object.Environment, p *ast.Program) (object.RubyObject, error) {
@@ -223,6 +242,30 @@ func evalPrefix(env *object.Environment, n *ast.PrefixExpression) (object.RubyOb
 }
 
 func evalInfix(env *object.Environment, n *ast.InfixExpression) (object.RubyObject, error) {
+	// Short-circuit operators: evaluate the right side only when needed
+	// and preserve ruby's "return the operand that decided the result"
+	// semantics (not coerced to bool).
+	switch n.Operator {
+	case "&&", "and":
+		left, err := Eval(n.Left, env)
+		if err != nil {
+			return nil, err
+		}
+		if !truthy(left) {
+			return left, nil
+		}
+		return Eval(n.Right, env)
+	case "||", "or":
+		left, err := Eval(n.Left, env)
+		if err != nil {
+			return nil, err
+		}
+		if truthy(left) {
+			return left, nil
+		}
+		return Eval(n.Right, env)
+	}
+
 	left, err := Eval(n.Left, env)
 	if err != nil {
 		return nil, err
@@ -231,12 +274,18 @@ func evalInfix(env *object.Environment, n *ast.InfixExpression) (object.RubyObje
 	if err != nil {
 		return nil, err
 	}
+
 	switch n.Operator {
 	case "==":
 		return object.BooleanOf(rubyEqual(left, right)), nil
 	case "!=":
 		return object.BooleanOf(!rubyEqual(left, right)), nil
 	}
+
+	if v, handled, err := numericInfix(n.Operator, left, right); handled {
+		return v, err
+	}
+
 	return nil, errorf("evaluator: unsupported infix %q for %T / %T", n.Operator, left, right)
 }
 
