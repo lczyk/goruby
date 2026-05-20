@@ -56,12 +56,13 @@ type interpState struct {
 	// the inner heredoc clobbers the lexer's heredoc fields, so the outer
 	// heredoc body lexer would fail to find its closing delimiter on pop.
 	// Restored on pop so the outer heredoc resumes with its own state.
-	heredocDelim    string
-	heredocIndent   bool
-	heredocSquig    bool
-	heredocStripped bool
-	heredocQuote    rune
-	heredocRest     segment
+	heredocDelim     string
+	heredocIndent    bool
+	heredocSquig     bool
+	heredocStripped  bool
+	heredocQuote     rune
+	heredocRest      segment
+	heredocMinIndent int
 }
 
 // pushInterp pushes an interpState, capturing the current heredoc-related
@@ -90,6 +91,7 @@ func (l *Lexer) pushInterp(s interpState) {
 	s.heredocStripped = l.heredocStripped
 	s.heredocQuote = l.heredocQuote
 	s.heredocRest = l.heredocRest
+	s.heredocMinIndent = l.heredocMinIndent
 	l.interpStack = append(l.interpStack, s)
 }
 
@@ -101,6 +103,7 @@ func (l *Lexer) restoreHeredocState(s interpState) {
 	l.heredocStripped = s.heredocStripped
 	l.heredocQuote = s.heredocQuote
 	l.heredocRest = s.heredocRest
+	l.heredocMinIndent = s.heredocMinIndent
 }
 
 // Option configures the lexer.
@@ -260,16 +263,12 @@ type Lexer struct {
 	heredocRest segment // range in l.input holding rest-of-line; queued onto
 	// l.pending at body-end so the lexer reads it after STRING_END.
 
-	// Squig body buffer swap (phase 5). When a squig heredoc is set up,
-	// rather than splicing the stripped body into l.input we build a small
-	// freestanding buffer of "stripped_body + delim + \n" and TEMPORARILY
-	// swap it in as l.input for the duration of body lex. At STRING_END,
-	// finishHeredoc restores the original l.input and resumes at
-	// heredocSquigRestorePos (= position past delim line in the original).
-	heredocSwapped         bool   // true while l.input points at the stripped buffer
-	heredocSavedInput      string // original l.input, restored on body end
-	heredocSavedSegEnd     int    // original l.segEnd, restored on body end
-	heredocSquigRestorePos int    // position in original l.input to resume at
+	// Squig body strip-at-emit. Computed once at squig-heredoc setup by
+	// scanning the body lines for the minimum common indent. While > 0,
+	// emit() of STRING_CONTENT / XSTR_CONTENT routes through newTokenLit
+	// with the per-line strip applied. Zero outside squig bodies (or in
+	// squig bodies whose minimum indent happens to be 0).
+	heredocMinIndent int
 
 	// Interpolation state.
 	braceDepth  int
@@ -351,9 +350,19 @@ func (l *Lexer) newTokenLit(t token.Type, literal string) token.Token {
 	}
 }
 
-// emit passes a token back to the client.
+// emit passes a token back to the client. For STRING_CONTENT /
+// XSTR_CONTENT inside a squig heredoc body (l.heredocMinIndent > 0),
+// the source slice is stripped per-line by minIndent before being
+// pooled, replacing the older swap-l.input-to-stripped-buffer scheme.
 func (l *Lexer) emit(t token.Type) {
-	tok := l.newToken(t)
+	var tok token.Token
+	if l.heredocMinIndent > 0 && (t == token.STRING_CONTENT || t == token.XSTR_CONTENT) {
+		seg := l.input[l.start:l.pos]
+		atLineStart := l.start == 0 || l.input[l.start-1] == '\n'
+		tok = l.newTokenLit(t, stripSquigSegment(seg, l.heredocMinIndent, atLineStart))
+	} else {
+		tok = l.newToken(t)
+	}
 	tok.HadWhitespace = l.tokenHadWhitespace
 	if t == token.STRING_END || t == token.XSTR_END {
 		tok.HeredocStripped = l.heredocStripped
@@ -442,20 +451,7 @@ func (l *Lexer) byteAt(off int) (byte, bool) {
 // content next, followed by what was after the heredoc.
 func (l *Lexer) finishHeredoc() {
 	l.heredocDelim = ""
-	// Phase 5: if a squig body was lexed against the stripped buffer, restore
-	// the original l.input first and reposition past the delim line in the
-	// original source. Then the cursor / splice transitions below run on the
-	// real input as if no swap had happened.
-	if l.heredocSwapped {
-		l.input = l.heredocSavedInput
-		l.segEnd = l.heredocSavedSegEnd
-		l.pos = l.heredocSquigRestorePos
-		l.start = l.pos
-		l.heredocSwapped = false
-		l.heredocSavedInput = ""
-		l.heredocSavedSegEnd = 0
-		l.heredocSquigRestorePos = 0
-	}
+	l.heredocMinIndent = 0
 	if l.heredocRest != (segment{}) {
 		rest := l.heredocRest
 		l.heredocRest = segment{}
@@ -2186,7 +2182,7 @@ foundEnd:
 	// All heredocs (including single-quoted) emit STRING_BEG + STRING_CONTENT + STRING_END.
 	if l.heredocQuote == '\'' {
 		if l.heredocSquig {
-			setupSquigBodyBuffer(l)
+			setupSquigBody(l)
 		}
 		tag := buildHeredocTag(l.heredocIndent, l.heredocSquig, '\'', l.heredocDelim)
 		l.emitLiteral(token.STRING_BEG, tag)
@@ -2194,7 +2190,7 @@ foundEnd:
 	}
 	if l.heredocSquig {
 		// Pre-strip indentation so the interp lexer sees normalised content.
-		setupSquigBodyBuffer(l)
+		setupSquigBody(l)
 	}
 	tag := buildHeredocTag(l.heredocIndent, l.heredocSquig, l.heredocQuote, l.heredocDelim)
 	if l.heredocQuote == '`' {
@@ -2205,29 +2201,22 @@ foundEnd:
 	return lexHeredocContent
 }
 
-// setupSquigBodyBuffer builds a stripped-body buffer for a squig heredoc
-// (<<~) and temporarily swaps l.input to it for the duration of body lex.
-// Body runs from l.pos to the line whose content equals heredocDelim.
+// setupSquigBody scans ahead from l.pos to the closing delim line of a
+// squig heredoc body to compute the minimum common leading-whitespace
+// indent across non-blank lines. The result is stashed on
+// l.heredocMinIndent; subsequent STRING_CONTENT / XSTR_CONTENT emits
+// during body lex strip that many leading-WS chars per line via the
+// pool (see emit()).
 //
-// Phase 5 of the heredoc cursor migration: the original implementation
-// spliced the stripped body into l.input, allocating a fresh full-input
-// string per heredoc (~570MB total on the real-files bench). The buffer-
-// swap variant allocates only the stripped body plus delim+\n (a small
-// constant overhead per heredoc) and routes body lex through that buffer.
-// finishHeredoc restores l.input to the saved original when body ends.
-func setupSquigBodyBuffer(l *Lexer) {
+// This replaces the earlier swap-l.input-to-stripped-buffer approach
+// (HEREDOC_PLAN.md phase 5). The buffer swap was necessary when token
+// text had to be a slice of l.input -- now that pool entries are
+// independent strings, we can leave l.input untouched and strip at
+// emit time. Removes ~100 lines of buffer build + 4 swap state fields.
+func setupSquigBody(l *Lexer) {
 	delim := l.heredocDelim
-	bodyStart := l.pos
-	pos := bodyStart
-	type lineInfo struct {
-		start  int
-		indent int
-		blank  bool
-	}
-	var lines []lineInfo
+	pos := l.pos
 	minIndent := -1
-	delimLineStart := -1
-	delimLineWS := 0
 	for pos < len(l.input) {
 		lineStart := pos
 		i := pos
@@ -2241,13 +2230,9 @@ func setupSquigBodyBuffer(l *Lexer) {
 		}
 		content := l.input[i:eol]
 		if content == delim {
-			delimLineStart = lineStart
-			delimLineWS = indent
 			break
 		}
-		blank := content == ""
-		lines = append(lines, lineInfo{lineStart, indent, blank})
-		if !blank {
+		if content != "" {
 			if minIndent < 0 || indent < minIndent {
 				minIndent = indent
 			}
@@ -2257,60 +2242,58 @@ func setupSquigBodyBuffer(l *Lexer) {
 		}
 		pos = eol + 1
 	}
-	if delimLineStart < 0 {
-		return
-	}
 	if minIndent < 0 {
 		minIndent = 0
 	}
 	if minIndent > 0 {
 		l.heredocStripped = true
 	}
+	l.heredocMinIndent = minIndent
+}
+
+// stripSquigSegment applies squig heredoc indent stripping to a body
+// fragment. Each line gets at most minIndent leading-WS chars removed
+// (blank lines naturally cap at their own indent length because the
+// skipWS loop runs out of WS before reaching minIndent). atLineStart
+// controls whether the fragment's first byte is at a line boundary --
+// when emitting a STRING_CONTENT that begins right after a #{...}
+// interpolation it isn't, so the leading WS of the post-interp text
+// must be preserved.
+func stripSquigSegment(seg string, minIndent int, atLineStart bool) string {
+	if minIndent == 0 {
+		return seg
+	}
 	var b strings.Builder
-	// Stripped body + delim text + (optional \n). matchHeredocDelimLine
-	// needs the delim text present at the tail of the buffer to terminate
-	// the body lex naturally.
-	delimLineContentStart := delimLineStart + delimLineWS
-	delimEnd := delimLineContentStart + len(delim)
-	hasNewline := delimEnd < len(l.input) && l.input[delimEnd] == '\n'
-	bodyApprox := delimLineStart - bodyStart
-	b.Grow(bodyApprox + len(delim) + 1)
-	for idx, ln := range lines {
-		var lineEnd int
-		if idx+1 < len(lines) {
-			lineEnd = lines[idx+1].start
-		} else {
-			lineEnd = delimLineStart
+	b.Grow(len(seg))
+	i := 0
+	if atLineStart {
+		i = skipSquigWS(seg, 0, minIndent)
+	}
+	for i < len(seg) {
+		nl := strings.IndexByte(seg[i:], '\n')
+		if nl < 0 {
+			b.WriteString(seg[i:])
+			break
 		}
-		strip := minIndent
-		if ln.blank && strip > ln.indent {
-			strip = ln.indent
-		}
-		b.WriteString(l.input[ln.start+strip : lineEnd])
+		nl += i
+		b.WriteString(seg[i : nl+1])
+		i = skipSquigWS(seg, nl+1, minIndent)
 	}
-	b.WriteString(delim)
-	if hasNewline {
-		b.WriteByte('\n')
-	}
-	buf := b.String()
+	return b.String()
+}
 
-	// Compute the resume position in the ORIGINAL input -- one byte past the
-	// delim line (the \n if present, or end-of-input).
-	restorePos := delimEnd
-	if hasNewline {
-		restorePos++
+// skipSquigWS returns the index after up to max leading space/tab chars
+// starting at from in s.
+func skipSquigWS(s string, from, max int) int {
+	end := from + max
+	if end > len(s) {
+		end = len(s)
 	}
-
-	// Save original lexer state, swap l.input to the stripped buffer for
-	// body lex. finishHeredoc restores when STRING_END is emitted.
-	l.heredocSwapped = true
-	l.heredocSavedInput = l.input
-	l.heredocSavedSegEnd = l.segEnd
-	l.heredocSquigRestorePos = restorePos
-	l.input = buf
-	l.pos = 0
-	l.start = 0
-	l.segEnd = len(buf)
+	i := from
+	for i < end && (s[i] == ' ' || s[i] == '\t') {
+		i++
+	}
+	return i
 }
 
 // matchHeredocDelimLine reports whether the line beginning at pos is the
@@ -2398,8 +2381,7 @@ func lexHeredocBody(l *Lexer) StateFn {
 			if matched {
 				after := l.pos
 				l.pos = contentEnd
-				content := l.input[l.start:l.pos]
-				l.emitLiteral(token.STRING_CONTENT, content)
+				l.emit(token.STRING_CONTENT)
 				l.emitLiteral(token.STRING_END, "")
 				l.pos = after
 				// Consume rest of delimiter line (handles <<EOS.chop etc.)
