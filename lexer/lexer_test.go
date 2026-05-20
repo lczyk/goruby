@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/lczyk/assert"
+	"github.com/lczyk/assert/require"
 	"github.com/lczyk/goruby/token"
 )
 
@@ -577,7 +578,7 @@ func TestLexerHeredoc(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF", i)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF", i)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -664,7 +665,7 @@ func TestLexerStringInterpolation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -825,7 +826,7 @@ func TestLexerHeredocInterpolation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -911,7 +912,7 @@ func TestLexerRegex(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -968,7 +969,7 @@ func TestLexerMultilineLiterals(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF", i)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF", i)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -1060,7 +1061,7 @@ func TestLexerRegexInterpolation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -1163,7 +1164,7 @@ func TestLexerGlobalVariables(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -1224,7 +1225,7 @@ func TestLexerLineContinuation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -1271,7 +1272,7 @@ func TestLexerEndMarker(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -1411,7 +1412,7 @@ func TestLexerPercentLiteral(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -1508,7 +1509,7 @@ func TestBlockComments(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -1722,7 +1723,7 @@ func TestRegexContext(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/lczyk/assert"
+	"github.com/lczyk/assert/require"
 	"github.com/lczyk/goruby/token"
 )
 
@@ -245,7 +246,7 @@ func TestLexerIdentifiers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -353,7 +354,7 @@ func TestLexerUnicodeIdentifiers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -456,7 +457,7 @@ func TestLexerIdentifierInContexts(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -607,7 +608,7 @@ func TestLexerUnicodeExtended(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				if exp.typ == token.ILLEGAL {
 					assert.Equal(t, tok.Type, token.ILLEGAL)

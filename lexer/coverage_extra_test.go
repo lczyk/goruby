@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/lczyk/assert"
+	"github.com/lczyk/assert/require"
 	"github.com/lczyk/goruby/token"
 )
 
@@ -88,7 +89,7 @@ func TestLexerPercentContentOctBrace(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -112,7 +113,7 @@ func TestLexerBacktickContentOctBrace(t *testing.T) {
 		{token.XSTR_END, "`"},
 	}
 	for i, exp := range expected {
-		assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+		require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 		tok := l.NextToken()
 		assert.Equal(t, tok.Type, exp.typ)
 		assert.Equal(t, l.Lit(tok), exp.literal)
@@ -163,7 +164,7 @@ func TestLexerRegexOctBraceAndOptions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -292,7 +293,7 @@ func TestLexerHeredocEdgeCases(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -341,7 +342,7 @@ func TestLexerGlobalEdgeCases(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -372,7 +373,7 @@ func TestLexerDigitEdgeCases(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -427,7 +428,7 @@ func TestLexerStringContentEdgeCases(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -472,7 +473,7 @@ func TestLexerPercentLiteralMoreEdgeCases(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -632,7 +633,7 @@ func TestLexerStartLexerEdgeCases(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -723,7 +724,7 @@ func TestLexerDigitExponentEdgeCases(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -793,7 +794,7 @@ func TestLexerHeredocIndentedMatch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)

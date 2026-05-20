@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/lczyk/assert"
+	"github.com/lczyk/assert/require"
 	"github.com/lczyk/goruby/token"
 )
 
@@ -91,7 +92,7 @@ func TestLexerLiteralHeredocBody(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -154,7 +155,7 @@ func TestLexerBacktickInterpolation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -255,7 +256,7 @@ func TestLexerWithVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input, WithVersion(tt.version))
 			for i, exp := range tt.expects {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)
@@ -379,7 +380,7 @@ func TestLexerUncoveredOperators(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := New(tt.input)
 			for i, exp := range tt.expected {
-				assert.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
+				require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
 				tok := l.NextToken()
 				assert.Equal(t, tok.Type, exp.typ)
 				assert.Equal(t, l.Lit(tok), exp.literal)

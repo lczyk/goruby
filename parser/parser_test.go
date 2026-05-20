@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/lczyk/assert"
+	"github.com/lczyk/assert/require"
 	"github.com/lczyk/goruby/ast"
 	"github.com/lczyk/goruby/token"
 	"github.com/pkg/errors"
@@ -181,10 +182,10 @@ func TestAssignment(t *testing.T) {
 
 			assert.That(t, !(len(program.Statements) != 1))
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok)
+			require.That(t, ok)
 
 			assign, ok := stmt.Expression.(*ast.Assignment)
-			assert.That(t, ok)
+			require.That(t, ok)
 
 			{
 				actual := reflect.TypeOf(assign.Left)
@@ -231,10 +232,10 @@ func TestAssignmentOperator(t *testing.T) {
 				t.FailNow()
 			}
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok)
+			require.That(t, ok)
 
 			assign, ok := stmt.Expression.(*ast.Assignment)
-			assert.That(t, ok)
+			require.That(t, ok)
 
 			{
 				actual := reflect.TypeOf(assign.Left)
@@ -281,10 +282,10 @@ func TestVariableExpression(t *testing.T) {
 
 			assert.That(t, !(len(program.Statements) != 1))
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok)
+			require.That(t, ok)
 
 			variable, ok := stmt.Expression.(*ast.Assignment)
-			assert.That(t, ok)
+			require.That(t, ok)
 
 			if !testIdentifier(t, variable.Left, tt.expectedIdentifier) {
 				return
@@ -373,10 +374,10 @@ func TestWhileExpression(t *testing.T) {
 			}
 
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok)
+			require.That(t, ok)
 
 			_, ok = stmt.Expression.(*ast.LoopExpression)
-			assert.That(t, ok)
+			require.That(t, ok)
 		})
 	}
 }
@@ -389,10 +390,10 @@ func TestGlobalAssignment(t *testing.T) {
 
 	assert.That(t, !(len(program.Statements) != 1))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok)
+	require.That(t, ok)
 
 	variable, ok := stmt.Expression.(*ast.Assignment)
-	assert.That(t, ok)
+	require.That(t, ok)
 
 	expectedGlobal := "$foo"
 
@@ -491,9 +492,9 @@ func TestInstanceVariable(t *testing.T) {
 	assert.That(t, !(len(program.Statements) != 1))
 
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok)
+	require.That(t, ok)
 	instVar, ok := stmt.Expression.(*ast.InstanceVariable)
-	assert.That(t, ok, "Expression not %T. got=%T", instVar, stmt.Expression)
+	require.That(t, ok, "Expression not %T. got=%T", instVar, stmt.Expression)
 
 	testLiteralExpression(t, instVar.Name, "foo")
 }
@@ -588,9 +589,9 @@ end
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok)
+		require.That(t, ok)
 		begin, ok := stmt.Expression.(*ast.ExceptionHandlingBlock)
-		assert.That(t, ok, "Expression not %T. got=%T", begin, stmt.Expression)
+		require.That(t, ok, "Expression not %T. got=%T", begin, stmt.Expression)
 
 		body := begin.TryBody.String()
 		if body != tt.body {
@@ -649,7 +650,7 @@ func TestReturnStatements(t *testing.T) {
 			assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 			stmt := program.Statements[0]
 			returnStmt, ok := stmt.(*ast.ReturnStatement)
-			assert.That(t, ok, "stmt not *ast.ReturnStatement. got=%T", stmt)
+			require.That(t, ok, "stmt not *ast.ReturnStatement. got=%T", stmt)
 			assert.That(t, !(returnStmt.TokenLiteral() != "return"), "returnStmt.TokenLiteral not 'return', got %q", returnStmt.TokenLiteral())
 			if tt.expectedValue == nil {
 				assert.Nil(t, returnStmt.ReturnValue)
@@ -748,10 +749,10 @@ func TestIdentifierExpression(t *testing.T) {
 
 		assert.That(t, !(len(program.Statements) != 1))
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok)
+		require.That(t, ok)
 
 		ident, ok := stmt.Expression.(*ast.Identifier)
-		assert.That(t, ok, "expression not *ast.Identifier. got=%T", stmt.Expression)
+		require.That(t, ok, "expression not *ast.Identifier. got=%T", stmt.Expression)
 		assert.That(t, !(ident.Value != "foobar"), "ident.Value not %s. got=%s", "foobar", ident.Value)
 		assert.That(t, !(ident.TokenLiteral() != "foobar"))
 	})
@@ -763,10 +764,10 @@ func TestIdentifierExpression(t *testing.T) {
 
 		assert.That(t, !(len(program.Statements) != 1))
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok)
+		require.That(t, ok)
 
 		ident, ok := stmt.Expression.(*ast.Identifier)
-		assert.That(t, ok, "expression not *ast.Identifier. got=%T", stmt.Expression)
+		require.That(t, ok, "expression not *ast.Identifier. got=%T", stmt.Expression)
 		assert.That(t, !(ident.Value != "Foobar"), "ident.Value not %s. got=%s", "Foobar", ident.Value)
 		assert.That(t, !(ident.TokenLiteral() != "Foobar"))
 	})
@@ -780,10 +781,10 @@ func TestGlobalExpression(t *testing.T) {
 
 	assert.That(t, !(len(program.Statements) != 1))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok)
+	require.That(t, ok)
 
 	global, ok := stmt.Expression.(*ast.Global)
-	assert.That(t, ok, "expression not *ast.Global. got=%T", stmt.Expression)
+	require.That(t, ok, "expression not *ast.Global. got=%T", stmt.Expression)
 	assert.Equal(t, global.Value, "$foobar")
 	assert.That(t, !(global.TokenLiteral() != "$foobar"))
 }
@@ -796,7 +797,7 @@ func TestScopedIdentifierExpression(t *testing.T) {
 
 	assert.That(t, !(len(program.Statements) != 1))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok)
+	require.That(t, ok)
 
 	_, ok = stmt.Expression.(*ast.ScopedIdentifier)
 	if !ok {
@@ -813,10 +814,10 @@ func TestSelfExpression(t *testing.T) {
 
 	assert.That(t, !(len(program.Statements) != 1))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok)
+	require.That(t, ok)
 
 	_, ok = stmt.Expression.(*ast.Self)
-	assert.That(t, ok, "expression not *ast.Self. got=%T", stmt.Expression)
+	require.That(t, ok, "expression not *ast.Self. got=%T", stmt.Expression)
 }
 
 func TestKeyword__FILE__(t *testing.T) {
@@ -828,10 +829,10 @@ func TestKeyword__FILE__(t *testing.T) {
 
 		assert.That(t, !(len(program.Statements) != 1))
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok)
+		require.That(t, ok)
 
 		file, ok := stmt.Expression.(*ast.Keyword__FILE__)
-		assert.That(t, ok, "expression not *ast.Keyword__FILE__. got=%T", stmt.Expression)
+		require.That(t, ok, "expression not *ast.Keyword__FILE__. got=%T", stmt.Expression)
 
 		expected := "a_filename.rb"
 
@@ -888,10 +889,10 @@ func TestYieldExpression(t *testing.T) {
 
 		assert.That(t, !(len(program.Statements) != 1))
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok)
+		require.That(t, ok)
 
 		yield, ok := stmt.Expression.(*ast.YieldExpression)
-		assert.That(t, ok, "expression not *ast.YieldExpression. got=%T", stmt.Expression)
+		require.That(t, ok, "expression not *ast.YieldExpression. got=%T", stmt.Expression)
 
 		if len(yield.Arguments) != len(tt.expectedArgs) {
 			t.Logf("Expected %d arguments, got %d", len(tt.expectedArgs), len(yield.Arguments))
@@ -940,9 +941,9 @@ func TestIntegerLiteralExpression(t *testing.T) {
 
 			assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 			literal, ok := stmt.Expression.(*ast.IntegerLiteral)
-			assert.That(t, ok, "expected *ast.IntegerLiteral, got %T", stmt.Expression)
+			require.That(t, ok, "expected *ast.IntegerLiteral, got %T", stmt.Expression)
 			if tt.expectBig {
 				assert.NotNil(t, literal.BigInt)
 			} else {
@@ -973,10 +974,10 @@ func TestParsingPrefixExpressions(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok)
+		require.That(t, ok)
 
 		exp, ok := stmt.Expression.(*ast.PrefixExpression)
-		assert.That(t, ok, "stmt is not ast.PrefixExpression. got=%T", stmt.Expression)
+		require.That(t, ok, "stmt is not ast.PrefixExpression. got=%T", stmt.Expression)
 		assert.That(t, !(exp.Operator != tt.operator))
 		if !testLiteralExpression(t, exp.Right, tt.value) {
 			return
@@ -1027,7 +1028,7 @@ func TestParsingInfixExpressions(t *testing.T) {
 			assert.That(t, !(len(program.Statements) != 1))
 
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok)
+			require.That(t, ok)
 
 			if !testInfixExpression(t, stmt.Expression, tt.leftValue,
 				tt.operator, tt.rightValue) {
@@ -1044,10 +1045,10 @@ func TestParsingInfixExpressions(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok)
+		require.That(t, ok)
 
 		_, ok = stmt.Expression.(*ast.InfixExpression)
-		assert.That(t, ok)
+		require.That(t, ok)
 	})
 	t.Run("call expression no args", func(t *testing.T) {
 		input := "foo.bar <=> 13"
@@ -1058,10 +1059,10 @@ func TestParsingInfixExpressions(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok)
+		require.That(t, ok)
 
 		_, ok = stmt.Expression.(*ast.InfixExpression)
-		assert.That(t, ok)
+		require.That(t, ok)
 	})
 	t.Run("call expression with one arg", func(t *testing.T) {
 		input := "foo.bar 3 <=> 13"
@@ -1072,10 +1073,10 @@ func TestParsingInfixExpressions(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok)
+		require.That(t, ok)
 
 		_, ok = stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok)
+		require.That(t, ok)
 	})
 	t.Run("call expression with two args", func(t *testing.T) {
 		input := "foo.bar 3, 5 <=> 13"
@@ -1086,10 +1087,10 @@ func TestParsingInfixExpressions(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok)
+		require.That(t, ok)
 
 		_, ok = stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok)
+		require.That(t, ok)
 	})
 	t.Run("complex infix with call expression with just a block", func(t *testing.T) {
 		input := "1 + 21 * 8 - 3 <=> foo { |x| x }"
@@ -1098,7 +1099,7 @@ func TestParsingInfixExpressions(t *testing.T) {
 		checkParserErrors(t, err)
 
 		_, ok := expr.(*ast.InfixExpression)
-		assert.That(t, ok)
+		require.That(t, ok)
 	})
 	t.Run("easy infix with call expression with just a block", func(t *testing.T) {
 		input := "1 <=> foo { |x| x }"
@@ -1107,7 +1108,7 @@ func TestParsingInfixExpressions(t *testing.T) {
 		checkParserErrors(t, err)
 
 		_, ok := expr.(*ast.InfixExpression)
-		assert.That(t, ok)
+		require.That(t, ok)
 	})
 }
 
@@ -1315,10 +1316,10 @@ func TestBlockExpression(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok)
+		require.That(t, ok)
 
 		call, ok := stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok, "exp not *ast.ContextCallExpression. got=%T", stmt.Expression)
+		require.That(t, ok, "exp not *ast.ContextCallExpression. got=%T", stmt.Expression)
 
 		block := call.Block
 		if block == nil {
@@ -1372,10 +1373,10 @@ func TestBooleanExpression(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok)
+		require.That(t, ok)
 
 		boolean, ok := stmt.Expression.(*ast.Boolean)
-		assert.That(t, ok, "exp not *ast.Boolean. got=%T", stmt.Expression)
+		require.That(t, ok, "exp not *ast.Boolean. got=%T", stmt.Expression)
 		assert.Equal(t, boolean.Value, tt.expectedBoolean)
 	}
 }
@@ -1389,7 +1390,7 @@ func TestNilExpression(t *testing.T) {
 	assert.That(t, !(len(program.Statements) != 1))
 
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok)
+	require.That(t, ok)
 
 	if _, ok := stmt.Expression.(*ast.Nil); !ok {
 		t.Fatalf("exp not *ast.Nil. got=%T", stmt.Expression)
@@ -1461,10 +1462,10 @@ func TestConditionalExpression(t *testing.T) {
 				assert.That(t, !(len(program.Statements) != 1))
 
 				stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-				assert.That(t, ok)
+				require.That(t, ok)
 
 				exp, ok := stmt.Expression.(*ast.ConditionalExpression)
-				assert.That(t, ok)
+				require.That(t, ok)
 
 				if !testInfixExpression(
 					t,
@@ -1479,7 +1480,7 @@ func TestConditionalExpression(t *testing.T) {
 				consequenceBody := ""
 				for _, stmt := range exp.Consequence.Statements {
 					consequence, ok := stmt.(*ast.ExpressionStatement)
-					assert.That(t, ok)
+					require.That(t, ok)
 
 					consequenceBody += consequence.Expression.String()
 				}
@@ -1526,13 +1527,13 @@ func TestConditionalExpression(t *testing.T) {
 			assert.That(t, !(len(program.Statements) != 1))
 
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok)
+			require.That(t, ok)
 
 			exp, ok := stmt.Expression.(*ast.ConditionalExpression)
-			assert.That(t, ok)
+			require.That(t, ok)
 
 			call, ok := exp.Condition.(*ast.ContextCallExpression)
-			assert.That(t, ok)
+			require.That(t, ok)
 
 			if call.Function.String() != tt.condMethod {
 				t.Logf(
@@ -1565,7 +1566,7 @@ func TestConditionalExpression(t *testing.T) {
 			consequenceBody := ""
 			for _, stmt := range exp.Consequence.Statements {
 				consequence, ok := stmt.(*ast.ExpressionStatement)
-				assert.That(t, ok)
+				require.That(t, ok)
 
 				consequenceBody += consequence.Expression.String()
 			}
@@ -1634,11 +1635,11 @@ func TestConditionalExpressionWithAlternative(t *testing.T) {
 			assert.Len(t, program.Statements, 1)
 
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "program.Statements[0] is not ast.ExpressionStatement. got=%T",
+			require.That(t, ok, "program.Statements[0] is not ast.ExpressionStatement. got=%T",
 					program.Statements[0])
 
 			exp, ok := stmt.Expression.(*ast.ConditionalExpression)
-			assert.That(t, ok, "stmt.Expression is not ast.IfExpression. got=%T", stmt.Expression)
+			require.That(t, ok, "stmt.Expression is not ast.IfExpression. got=%T", stmt.Expression)
 
 			if !testInfixExpression(t, exp.Condition, tt.condition[0], tt.condition[1], tt.condition[2]) {
 				return
@@ -1647,7 +1648,7 @@ func TestConditionalExpressionWithAlternative(t *testing.T) {
 			assert.Len(t, exp.Consequence.Statements, 1)
 
 			consequence, ok := exp.Consequence.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "Statements[0] is not ast.ExpressionStatement. got=%T",
+			require.That(t, ok, "Statements[0] is not ast.ExpressionStatement. got=%T",
 					exp.Consequence.Statements[0])
 
 			if !testLiteralExpression(t, consequence.Expression, tt.consequence) {
@@ -1657,7 +1658,7 @@ func TestConditionalExpressionWithAlternative(t *testing.T) {
 			assert.Len(t, exp.Alternative.Statements, 1)
 
 			alternative, ok := exp.Alternative.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "Statements[0] is not ast.ExpressionStatement. got=%T",
+			require.That(t, ok, "Statements[0] is not ast.ExpressionStatement. got=%T",
 					exp.Alternative.Statements[0])
 
 			if !testLiteralExpression(t, alternative.Expression, tt.alternative) {
@@ -1683,11 +1684,11 @@ func TestConditionalExpressionWithAlternative(t *testing.T) {
 		assert.Len(t, program.Statements, 1)
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok, "program.Statements[0] is not ast.ExpressionStatement. got=%T",
+		require.That(t, ok, "program.Statements[0] is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ConditionalExpression)
-		assert.That(t, ok, "stmt.Expression is not ast.IfExpression. got=%T", stmt.Expression)
+		require.That(t, ok, "stmt.Expression is not ast.IfExpression. got=%T", stmt.Expression)
 
 		if !testInfixExpression(t, exp.Condition, tt.condition[0], tt.condition[1], tt.condition[2]) {
 			return
@@ -1696,7 +1697,7 @@ func TestConditionalExpressionWithAlternative(t *testing.T) {
 		assert.Len(t, exp.Consequence.Statements, 1)
 
 		consequence, ok := exp.Consequence.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok, "Statements[0] is not ast.ExpressionStatement. got=%T",
+		require.That(t, ok, "Statements[0] is not ast.ExpressionStatement. got=%T",
 				exp.Consequence.Statements[0])
 
 		if consequence.String() != tt.consequence {
@@ -1707,7 +1708,7 @@ func TestConditionalExpressionWithAlternative(t *testing.T) {
 		assert.Len(t, exp.Alternative.Statements, 1)
 
 		alternative, ok := exp.Alternative.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok, "Statements[0] is not ast.ExpressionStatement. got=%T",
+		require.That(t, ok, "Statements[0] is not ast.ExpressionStatement. got=%T",
 				exp.Alternative.Statements[0])
 
 		if !testLiteralExpression(t, alternative.Expression, tt.alternative) {
@@ -1780,10 +1781,10 @@ func TestCaseExpression(t *testing.T) {
 
 			assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 
 			caseExpr, ok := stmt.Expression.(*ast.CaseExpression)
-			assert.That(t, ok, "expected *ast.CaseExpression, got %T", stmt.Expression)
+			require.That(t, ok, "expected *ast.CaseExpression, got %T", stmt.Expression)
 
 			if tt.hasCondition {
 				assert.NotNil(t, caseExpr.Condition)
@@ -1993,10 +1994,10 @@ func TestFunctionLiteralParsing(t *testing.T) {
 			assert.That(t, !(len(program.Statements) != 1))
 
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok)
+			require.That(t, ok)
 
 			function, ok := stmt.Expression.(*ast.FunctionLiteral)
-			assert.That(t, ok)
+			require.That(t, ok)
 
 			receiver := ""
 			if function.Receiver != nil {
@@ -2023,7 +2024,7 @@ func TestFunctionLiteralParsing(t *testing.T) {
 			assert.That(t, !(len(function.Body.Statements) != 1))
 
 			bodyStmt, ok := function.Body.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok)
+			require.That(t, ok)
 
 			statement := bodyStmt.String()
 			if statement != tt.bodyStatement {
@@ -2051,10 +2052,10 @@ func TestFunctionLiteralParsing(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok)
+		require.That(t, ok)
 
 		_, ok = stmt.Expression.(*ast.FunctionLiteral)
-		assert.That(t, ok)
+		require.That(t, ok)
 	})
 }
 
@@ -2171,7 +2172,7 @@ func TestBlockExpressionParsing(t *testing.T) {
 			assert.That(t, !(len(block.Body.Statements) != 1))
 
 			bodyStmt, ok := block.Body.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok)
+			require.That(t, ok)
 
 			statement := bodyStmt.String()
 			if statement != tt.bodyStatement {
@@ -2451,7 +2452,7 @@ func TestCallExpressionParsing(t *testing.T) {
 			checkParserErrors(t, err)
 
 			call, ok := expr.(*ast.ContextCallExpression)
-			assert.That(t, ok)
+			require.That(t, ok)
 
 			if !testIdentifier(t, call.Function, tt.funcName) {
 				return
@@ -2568,7 +2569,7 @@ func TestCallExpressionParameterParsing(t *testing.T) {
 
 			stmt := program.Statements[0].(*ast.ExpressionStatement)
 			exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-			assert.That(t, ok)
+			require.That(t, ok)
 
 			if !testIdentifier(t, exp.Function, tt.expectedIdent) {
 				return
@@ -2593,11 +2594,11 @@ func TestContextCallExpression(t *testing.T) {
 		assert.Len(t, program.Statements, 1)
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
+		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
+		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
 
 		if !testIdentifier(t, exp.Context, "foo") {
@@ -2627,11 +2628,11 @@ func TestContextCallExpression(t *testing.T) {
 		}
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
+		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
+		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
 
 		if !testIdentifier(t, exp.Context, "foo") {
@@ -2662,11 +2663,11 @@ func TestContextCallExpression(t *testing.T) {
 		assert.Len(t, program.Statements, 1)
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
+		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
+		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
 
 		if !testIdentifier(t, exp.Context, "foo") {
@@ -2692,11 +2693,11 @@ func TestContextCallExpression(t *testing.T) {
 		assert.Len(t, program.Statements, 1)
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
+		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
+		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
 
 		if !testIdentifier(t, exp.Context, "foo") {
@@ -2727,11 +2728,11 @@ func TestContextCallExpression(t *testing.T) {
 		assert.Len(t, program.Statements, 1)
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
+		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
+		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
 
 		if !testIdentifier(t, exp.Context, "foo") {
@@ -2753,11 +2754,11 @@ func TestContextCallExpression(t *testing.T) {
 		assert.Len(t, program.Statements, 1)
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
+		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
+		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
 
 		if _, ok := exp.Context.(*ast.Self); !ok {
@@ -2817,10 +2818,10 @@ func TestContextCallExpression(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok)
+		require.That(t, ok)
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
+		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
 
 		if !testIntegerLiteral(t, exp.Context, 1) {
@@ -2842,10 +2843,10 @@ func TestContextCallExpression(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok)
+		require.That(t, ok)
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
+		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
 
 		if !testIntegerLiteral(t, exp.Context, 1) {
@@ -2867,10 +2868,10 @@ func TestContextCallExpression(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok)
+		require.That(t, ok)
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
+		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
 
 		if !testIntegerLiteral(t, exp.Context, 1) {
@@ -2896,11 +2897,11 @@ func TestContextCallExpression(t *testing.T) {
 		assert.Len(t, program.Statements, 1)
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
+		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
+		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
 
 		if !testIdentifier(t, exp.Function, "foo") {
@@ -2922,11 +2923,11 @@ func TestContextCallExpression(t *testing.T) {
 		assert.Len(t, program.Statements, 1)
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
+		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
+		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
 
 		if !testIdentifier(t, exp.Function, "Integer") {
@@ -2948,11 +2949,11 @@ func TestContextCallExpression(t *testing.T) {
 		assert.Len(t, program.Statements, 1)
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
+		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
+		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
 
 		if !testIdentifier(t, exp.Function, "add") {
@@ -2974,15 +2975,15 @@ func TestContextCallExpression(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
+		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
+		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
 
 		context, ok := exp.Context.(*ast.ContextCallExpression)
-		assert.That(t, ok)
+		require.That(t, ok)
 
 		if !testIdentifier(t, context.Context, "foo") {
 			return
@@ -3009,15 +3010,15 @@ func TestContextCallExpression(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
+		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
+		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
 
 		context, ok := exp.Context.(*ast.ContextCallExpression)
-		assert.That(t, ok)
+		require.That(t, ok)
 
 		if !testIntegerLiteral(t, context.Context, 1) {
 			return
@@ -3044,15 +3045,15 @@ func TestContextCallExpression(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
+		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
+		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
 
 		context, ok := exp.Context.(*ast.ContextCallExpression)
-		assert.That(t, ok)
+		require.That(t, ok)
 
 		if !testIdentifier(t, context.Function, "add") {
 			return
@@ -3075,15 +3076,15 @@ func TestContextCallExpression(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
+		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
+		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
 
 		context, ok := exp.Context.(*ast.ContextCallExpression)
-		assert.That(t, ok)
+		require.That(t, ok)
 
 		if !testIdentifier(t, context.Function, "add") {
 			return
@@ -3106,11 +3107,11 @@ func TestContextCallExpression(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
+		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
 
 		expr, ok := stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
+		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
 
 		if !testIdentifier(t, expr.Context, "foo") {
@@ -3130,11 +3131,11 @@ func TestContextCallExpression(t *testing.T) {
 		assert.That(t, !(len(program.Statements) != 1))
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		assert.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
+		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
 				program.Statements[0])
 
 		expr, ok := stmt.Expression.(*ast.ContextCallExpression)
-		assert.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
+		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
 				stmt.Expression)
 
 		if !testIdentifier(t, expr.Context, "foo") {
@@ -3166,7 +3167,7 @@ func TestStringLiteralExpression(t *testing.T) {
 
 			stmt := program.Statements[0].(*ast.ExpressionStatement)
 			literal, ok := stmt.Expression.(*ast.StringLiteral)
-			assert.That(t, ok, "exp not *ast.StringLiteral. got=%T", stmt.Expression)
+			require.That(t, ok, "exp not *ast.StringLiteral. got=%T", stmt.Expression)
 
 			if tt.expectParts {
 				assert.That(t, !(len(literal.Parts) == 0), "expected Parts to be non-empty")
@@ -3188,9 +3189,9 @@ func TestInterpolatedRegex(t *testing.T) {
 			checkParserErrors(t, err)
 			assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 			_, ok = stmt.Expression.(*ast.RegexLiteral)
-			assert.That(t, ok, "expected *ast.RegexLiteral, got %T", stmt.Expression)
+			require.That(t, ok, "expected *ast.RegexLiteral, got %T", stmt.Expression)
 		})
 	}
 }
@@ -3251,7 +3252,7 @@ func TestSymbolExpression(t *testing.T) {
 
 		stmt := program.Statements[0].(*ast.ExpressionStatement)
 		literal, ok := stmt.Expression.(*ast.SymbolLiteral)
-		assert.That(t, ok, "exp not *ast.SymbolLiteral. got=%T", stmt.Expression)
+		require.That(t, ok, "exp not *ast.SymbolLiteral. got=%T", stmt.Expression)
 
 		assert.That(t, !(literal.Value.String() != tt.value), "literal.Value not %q. got=%q", tt.value, literal.Value)
 	}
@@ -3269,7 +3270,7 @@ func TestParsingArrayLiterals(t *testing.T) {
 
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 	array, ok := stmt.Expression.(*ast.ArrayLiteral)
-	assert.That(t, ok, "exp not ast.ArrayLiteral. got=%T", stmt.Expression)
+	require.That(t, ok, "exp not ast.ArrayLiteral. got=%T", stmt.Expression)
 
 	assert.That(t, !(len(array.Elements) != 4), "len(array.Elements) not 4. got=%d", len(array.Elements))
 	testIntegerLiteral(t, array.Elements[0], 1)
@@ -3286,7 +3287,7 @@ func TestParsingIndexExpressions(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		indexExp, ok := stmt.Expression.(*ast.IndexExpression)
-		assert.That(t, ok, "exp not *ast.IndexExpression. got=%T", stmt.Expression)
+		require.That(t, ok, "exp not *ast.IndexExpression. got=%T", stmt.Expression)
 
 		if !testIdentifier(t, indexExp.Left, "myArray") {
 			return
@@ -3304,7 +3305,7 @@ func TestParsingIndexExpressions(t *testing.T) {
 
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 			indexExp, ok := stmt.Expression.(*ast.IndexExpression)
-			assert.That(t, ok, "exp not *ast.IndexExpression. got=%T", stmt.Expression)
+			require.That(t, ok, "exp not *ast.IndexExpression. got=%T", stmt.Expression)
 
 			if !testIdentifier(t, indexExp.Left, "myArray") {
 				return
@@ -3325,7 +3326,7 @@ func TestParsingIndexExpressions(t *testing.T) {
 
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 			indexExp, ok := stmt.Expression.(*ast.IndexExpression)
-			assert.That(t, ok, "exp not *ast.IndexExpression. got=%T", stmt.Expression)
+			require.That(t, ok, "exp not *ast.IndexExpression. got=%T", stmt.Expression)
 
 			if !testIdentifier(t, indexExp.Left, "myArray") {
 				return
@@ -3348,7 +3349,7 @@ func TestParsingIndexExpressions(t *testing.T) {
 
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 			indexExp, ok := stmt.Expression.(*ast.IndexExpression)
-			assert.That(t, ok, "exp not *ast.IndexExpression. got=%T", stmt.Expression)
+			require.That(t, ok, "exp not *ast.IndexExpression. got=%T", stmt.Expression)
 
 			if !testIdentifier(t, indexExp.Left, "myArray") {
 				return
@@ -3375,7 +3376,7 @@ func TestParsingModuleExpressions(t *testing.T) {
 
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 	_, ok = stmt.Expression.(*ast.ModuleExpression)
-	assert.That(t, ok, "exp not *ast.ModuleExpression. got=%T", stmt.Expression)
+	require.That(t, ok, "exp not *ast.ModuleExpression. got=%T", stmt.Expression)
 }
 
 func TestParsingClassExpressions(t *testing.T) {
@@ -3387,7 +3388,7 @@ func TestParsingClassExpressions(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		class, ok := stmt.Expression.(*ast.ClassExpression)
-		assert.That(t, ok, "exp not *ast.ClassExpression. got=%T", stmt.Expression)
+		require.That(t, ok, "exp not *ast.ClassExpression. got=%T", stmt.Expression)
 
 		className := "A"
 		if className != class.Name.String() {
@@ -3403,7 +3404,7 @@ func TestParsingClassExpressions(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		class, ok := stmt.Expression.(*ast.ClassExpression)
-		assert.That(t, ok, "exp not *ast.ClassExpression. got=%T", stmt.Expression)
+		require.That(t, ok, "exp not *ast.ClassExpression. got=%T", stmt.Expression)
 
 		className := "A"
 		if className != class.Name.Value {
@@ -3434,10 +3435,10 @@ func TestParsingSingletonClassExpressions(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		sc, ok := stmt.Expression.(*ast.SingletonClassExpression)
-		assert.That(t, ok, "exp not *ast.SingletonClassExpression. got=%T", stmt.Expression)
+		require.That(t, ok, "exp not *ast.SingletonClassExpression. got=%T", stmt.Expression)
 
 		selfExpr, ok := sc.Expr.(*ast.Self)
-		assert.That(t, ok, "exp not *ast.Self. got=%T", sc.Expr)
+		require.That(t, ok, "exp not *ast.Self. got=%T", sc.Expr)
 		_ = selfExpr
 	})
 
@@ -3449,10 +3450,10 @@ func TestParsingSingletonClassExpressions(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		sc, ok := stmt.Expression.(*ast.SingletonClassExpression)
-		assert.That(t, ok, "exp not *ast.SingletonClassExpression. got=%T", stmt.Expression)
+		require.That(t, ok, "exp not *ast.SingletonClassExpression. got=%T", stmt.Expression)
 
 		ident, ok := sc.Expr.(*ast.Identifier)
-		assert.That(t, ok, "exp not *ast.Identifier. got=%T", sc.Expr)
+		require.That(t, ok, "exp not *ast.Identifier. got=%T", sc.Expr)
 		if ident.Value != "some_var" {
 			t.Logf("Expected expr 'some_var', got %q", ident.Value)
 			t.Fail()
@@ -3477,9 +3478,9 @@ func TestContextCallScopeOperator(t *testing.T) {
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	sid, ok := stmt.Expression.(*ast.ScopedIdentifier)
-	assert.That(t, ok, "expected *ast.ScopedIdentifier, got %T", stmt.Expression)
+	require.That(t, ok, "expected *ast.ScopedIdentifier, got %T", stmt.Expression)
 	if sid.Outer == nil || sid.Outer.Value != "Foo" {
 		t.Errorf("expected Outer 'Foo', got %v", sid.Outer)
 	}
@@ -3491,9 +3492,9 @@ func TestContextCallNoArgs(t *testing.T) {
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	cce, ok := stmt.Expression.(*ast.ContextCallExpression)
-	assert.That(t, ok, "expected *ast.ContextCallExpression, got %T", stmt.Expression)
+	require.That(t, ok, "expected *ast.ContextCallExpression, got %T", stmt.Expression)
 	assert.That(t, !(len(cce.Arguments) != 0), "expected 0 arguments, got %d", len(cce.Arguments))
 }
 
@@ -3503,9 +3504,9 @@ func TestCallExpressionWithParensNonIdent(t *testing.T) {
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	_, ok = stmt.Expression.(*ast.ContextCallExpression)
-	assert.That(t, ok, "expected *ast.ContextCallExpression, got %T", stmt.Expression)
+	require.That(t, ok, "expected *ast.ContextCallExpression, got %T", stmt.Expression)
 }
 
 func TestExceptionHandlingEnsure(t *testing.T) {
@@ -3514,9 +3515,9 @@ func TestExceptionHandlingEnsure(t *testing.T) {
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	block, ok := stmt.Expression.(*ast.ExceptionHandlingBlock)
-	assert.That(t, ok, "expected *ast.ExceptionHandlingBlock, got %T", stmt.Expression)
+	require.That(t, ok, "expected *ast.ExceptionHandlingBlock, got %T", stmt.Expression)
 	assert.NotNil(t, block.EnsureBody)
 }
 
@@ -3561,9 +3562,9 @@ func TestFloatLiteralExpression(t *testing.T) {
 			checkParserErrors(t, err)
 			assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 			_, ok = stmt.Expression.(*ast.FloatLiteral)
-			assert.That(t, ok, "expected *ast.FloatLiteral, got %T", stmt.Expression)
+			require.That(t, ok, "expected *ast.FloatLiteral, got %T", stmt.Expression)
 		})
 	}
 }
@@ -3586,9 +3587,9 @@ func TestJumpExpression(t *testing.T) {
 			checkParserErrors(t, err)
 			assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 			jmp, ok := stmt.Expression.(*ast.JumpExpression)
-			assert.That(t, ok, "expected *ast.JumpExpression, got %T", stmt.Expression)
+			require.That(t, ok, "expected *ast.JumpExpression, got %T", stmt.Expression)
 			if tt.expectVal && jmp.Value == nil {
 				t.Errorf("expected Value to be set")
 			}
@@ -3607,9 +3608,9 @@ func TestDefinedExpression(t *testing.T) {
 			checkParserErrors(t, err)
 			assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 			expr, ok := stmt.Expression.(*ast.DefinedExpression)
-			assert.That(t, ok, "expected *ast.DefinedExpression, got %T", stmt.Expression)
+			require.That(t, ok, "expected *ast.DefinedExpression, got %T", stmt.Expression)
 			assert.NotNil(t, expr.Expr)
 		})
 	}
@@ -3621,9 +3622,9 @@ func TestRescueModifier(t *testing.T) {
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	infix, ok := stmt.Expression.(*ast.InfixExpression)
-	assert.That(t, ok, "expected *ast.InfixExpression, got %T", stmt.Expression)
+	require.That(t, ok, "expected *ast.InfixExpression, got %T", stmt.Expression)
 	assert.That(t, !(infix.Operator != "rescue"), "expected operator 'rescue', got %q", infix.Operator)
 }
 
@@ -3649,9 +3650,9 @@ func TestSplatExpression(t *testing.T) {
 			checkParserErrors(t, err)
 			assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 			splat, ok := stmt.Expression.(*ast.SplatExpression)
-			assert.That(t, ok, "expected *ast.SplatExpression, got %T", stmt.Expression)
+			require.That(t, ok, "expected *ast.SplatExpression, got %T", stmt.Expression)
 			got := splat.String()
 			assert.Equal(t, got, tt.expected)
 		})
@@ -3664,9 +3665,9 @@ func TestTopLevelScope(t *testing.T) {
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	_, ok = stmt.Expression.(*ast.ScopedIdentifier)
-	assert.That(t, ok, "expected *ast.ScopedIdentifier, got %T", stmt.Expression)
+	require.That(t, ok, "expected *ast.ScopedIdentifier, got %T", stmt.Expression)
 }
 
 func TestClassVariable(t *testing.T) {
@@ -3675,9 +3676,9 @@ func TestClassVariable(t *testing.T) {
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	cv, ok := stmt.Expression.(*ast.ClassVariable)
-	assert.That(t, ok, "expected *ast.ClassVariable, got %T", stmt.Expression)
+	require.That(t, ok, "expected *ast.ClassVariable, got %T", stmt.Expression)
 	if cv.Name == nil || cv.Name.Value != "foo" {
 		t.Errorf("expected Name.Value 'foo', got %v", cv.Name)
 	}
@@ -3689,9 +3690,9 @@ func TestKeyword__LINE__(t *testing.T) {
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	line, ok := stmt.Expression.(*ast.Keyword__LINE__)
-	assert.That(t, ok, "expected *ast.Keyword__LINE__, got %T", stmt.Expression)
+	require.That(t, ok, "expected *ast.Keyword__LINE__, got %T", stmt.Expression)
 	assert.That(t, !(line.TokenLiteral() != "__LINE__"), "expected TokenLiteral '__LINE__', got %q", line.TokenLiteral())
 }
 
@@ -3701,9 +3702,9 @@ func TestEncodingKeyword(t *testing.T) {
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	enc, ok := stmt.Expression.(*ast.Keyword__ENCODING__)
-	assert.That(t, ok, "expected *ast.Keyword__ENCODING__, got %T", stmt.Expression)
+	require.That(t, ok, "expected *ast.Keyword__ENCODING__, got %T", stmt.Expression)
 	assert.That(t, !(enc.TokenLiteral() != "__ENCODING__"), "expected TokenLiteral '__ENCODING__', got %q", enc.TokenLiteral())
 }
 
@@ -3724,9 +3725,9 @@ func TestLabelExpression(t *testing.T) {
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	infix, ok := stmt.Expression.(*ast.InfixExpression)
-	assert.That(t, ok, "expected *ast.InfixExpression, got %T", stmt.Expression)
+	require.That(t, ok, "expected *ast.InfixExpression, got %T", stmt.Expression)
 	assert.Equal(t, infix.Operator, ":")
 }
 
@@ -3755,9 +3756,9 @@ func TestSetterAssignment(t *testing.T) {
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	cce, ok := stmt.Expression.(*ast.ContextCallExpression)
-	assert.That(t, ok, "expected *ast.ContextCallExpression, got %T", stmt.Expression)
+	require.That(t, ok, "expected *ast.ContextCallExpression, got %T", stmt.Expression)
 	assert.That(t, !(cce.Function.Value != "x="), "expected Function 'x=', got %q", cce.Function.Value)
 	assert.That(t, !(len(cce.Arguments) != 1), "expected 1 argument, got %d", len(cce.Arguments))
 }
@@ -3770,9 +3771,9 @@ func TestContextCallNonIdent(t *testing.T) {
 			checkParserErrors(t, err)
 			assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 			_, ok = stmt.Expression.(*ast.ContextCallExpression)
-			assert.That(t, ok, "expected *ast.ContextCallExpression, got %T", stmt.Expression)
+			require.That(t, ok, "expected *ast.ContextCallExpression, got %T", stmt.Expression)
 		})
 	}
 }
@@ -3783,7 +3784,7 @@ func TestCallBlockOnInfix(t *testing.T) {
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 	_, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 }
 
 func TestInterpolatedRegexEmbexpr(t *testing.T) {
@@ -3792,9 +3793,9 @@ func TestInterpolatedRegexEmbexpr(t *testing.T) {
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	rl, ok := stmt.Expression.(*ast.RegexLiteral)
-	assert.That(t, ok, "expected *ast.RegexLiteral, got %T", stmt.Expression)
+	require.That(t, ok, "expected *ast.RegexLiteral, got %T", stmt.Expression)
 	assert.That(t, !(len(rl.Parts) == 0), "expected Parts to be non-empty")
 }
 
@@ -3831,9 +3832,9 @@ func TestKeywordRestParameter(t *testing.T) {
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	fl, ok := stmt.Expression.(*ast.FunctionLiteral)
-	assert.That(t, ok, "expected *ast.FunctionLiteral, got %T", stmt.Expression)
+	require.That(t, ok, "expected *ast.FunctionLiteral, got %T", stmt.Expression)
 	assert.That(t, !(len(fl.Parameters) != 1), "expected 1 param, got %d", len(fl.Parameters))
 	assert.That(t, fl.Parameters[0].IsKeywordRest, "expected IsKeywordRest")
 	assert.That(t, !(fl.Parameters[0].Name.Value != "kwargs"), "expected name 'kwargs', got %q", fl.Parameters[0].Name.Value)
@@ -3845,9 +3846,9 @@ func TestFirstParamKeyword(t *testing.T) {
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	fl, ok := stmt.Expression.(*ast.FunctionLiteral)
-	assert.That(t, ok, "expected *ast.FunctionLiteral, got %T", stmt.Expression)
+	require.That(t, ok, "expected *ast.FunctionLiteral, got %T", stmt.Expression)
 	assert.That(t, !(len(fl.Parameters) != 1), "expected 1 param, got %d", len(fl.Parameters))
 	assert.That(t, fl.Parameters[0].IsKeyword, "expected IsKeyword")
 }
@@ -3858,9 +3859,9 @@ func TestArgumentForwarding(t *testing.T) {
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	fl, ok := stmt.Expression.(*ast.FunctionLiteral)
-	assert.That(t, ok, "expected *ast.FunctionLiteral, got %T", stmt.Expression)
+	require.That(t, ok, "expected *ast.FunctionLiteral, got %T", stmt.Expression)
 	assert.That(t, !(len(fl.Parameters) != 1), "expected 1 param, got %d", len(fl.Parameters))
 	assert.That(t, fl.Parameters[0].IsForwarding, "expected IsForwarding")
 }
@@ -3871,9 +3872,9 @@ func TestAnonymousBlockForwarding(t *testing.T) {
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	fl, ok := stmt.Expression.(*ast.FunctionLiteral)
-	assert.That(t, ok, "expected *ast.FunctionLiteral, got %T", stmt.Expression)
+	require.That(t, ok, "expected *ast.FunctionLiteral, got %T", stmt.Expression)
 	assert.NotNil(t, fl.CapturedBlock)
 	assert.Nil(t, fl.CapturedBlock.Name)
 }
@@ -3904,9 +3905,9 @@ func TestRightwardAssignment(t *testing.T) {
 			checkParserErrors(t, err)
 			assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 			ra, ok := stmt.Expression.(*ast.RightwardAssignment)
-			assert.That(t, ok, "expected *ast.RightwardAssignment, got %T", stmt.Expression)
+			require.That(t, ok, "expected *ast.RightwardAssignment, got %T", stmt.Expression)
 			if ra.Left == nil || ra.Right == nil {
 				t.Errorf("expected Left and Right to be set")
 			}
@@ -3920,9 +3921,9 @@ func TestCaseInExpression(t *testing.T) {
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	caseExpr, ok := stmt.Expression.(*ast.CaseExpression)
-	assert.That(t, ok, "expected *ast.CaseExpression, got %T", stmt.Expression)
+	require.That(t, ok, "expected *ast.CaseExpression, got %T", stmt.Expression)
 	assert.That(t, !(len(caseExpr.InClauses) != 1), "expected 1 in clause, got %d", len(caseExpr.InClauses))
 	assert.NotNil(t, caseExpr.InClauses[0].Body)
 }
@@ -3935,9 +3936,9 @@ func TestBeginlessRange(t *testing.T) {
 			checkParserErrors(t, err)
 			assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 			infix, ok := stmt.Expression.(*ast.InfixExpression)
-			assert.That(t, ok, "expected *ast.InfixExpression, got %T", stmt.Expression)
+			require.That(t, ok, "expected *ast.InfixExpression, got %T", stmt.Expression)
 			assert.Nil(t, infix.Left)
 		})
 	}
@@ -3949,9 +3950,9 @@ func TestAliasExpression(t *testing.T) {
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	a, ok := stmt.Expression.(*ast.AliasExpression)
-	assert.That(t, ok, "expected *ast.AliasExpression, got %T", stmt.Expression)
+	require.That(t, ok, "expected *ast.AliasExpression, got %T", stmt.Expression)
 	if a.NewName.Value != "new" || a.OldName.Value != "old" {
 		t.Errorf("expected new/old, got %q/%q", a.NewName.Value, a.OldName.Value)
 	}
@@ -3972,9 +3973,9 @@ func TestUndefExpression(t *testing.T) {
 			checkParserErrors(t, err)
 			assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 			u, ok := stmt.Expression.(*ast.UndefExpression)
-			assert.That(t, ok, "expected *ast.UndefExpression, got %T", stmt.Expression)
+			require.That(t, ok, "expected *ast.UndefExpression, got %T", stmt.Expression)
 			assert.That(t, !(len(u.Names) != tt.wantNames), "expected %d names, got %d", tt.wantNames, len(u.Names))
 		})
 	}
@@ -3996,9 +3997,9 @@ func TestLambdaExpression(t *testing.T) {
 			checkParserErrors(t, err)
 			assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 			fl, ok := stmt.Expression.(*ast.FunctionLiteral)
-			assert.That(t, ok, "expected *ast.FunctionLiteral, got %T", stmt.Expression)
+			require.That(t, ok, "expected *ast.FunctionLiteral, got %T", stmt.Expression)
 			assert.That(t, fl.IsLambda, "expected IsLambda to be true")
 			assert.That(t, !(len(fl.Parameters) != tt.wantParams), "expected %d params, got %d", tt.wantParams, len(fl.Parameters))
 			assert.NotNil(t, fl.Body)
@@ -4022,9 +4023,9 @@ func TestSuperExpression(t *testing.T) {
 			checkParserErrors(t, err)
 			assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
+			require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 			sup, ok := stmt.Expression.(*ast.SuperExpression)
-			assert.That(t, ok, "expected *ast.SuperExpression, got %T", stmt.Expression)
+			require.That(t, ok, "expected *ast.SuperExpression, got %T", stmt.Expression)
 			assert.That(t, !(len(sup.Arguments) != tt.wantArgs), "expected %d args, got %d", tt.wantArgs, len(sup.Arguments))
 		})
 	}
@@ -4340,7 +4341,7 @@ func TestPercentLiterals(t *testing.T) {
 				t.Fatal("no statements")
 			}
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "expected ExpressionStatement, got %T", program.Statements[0])
+			require.That(t, ok, "expected ExpressionStatement, got %T", program.Statements[0])
 			assert.That(t, !(stmt.Expression.String() != tt.expected), "expected %q, got %q", tt.expected, stmt.Expression.String())
 		})
 	}
@@ -4365,9 +4366,9 @@ func TestHeredocParsing(t *testing.T) {
 				t.Fatal("no statements")
 			}
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "expected ExpressionStatement, got %T", program.Statements[0])
+			require.That(t, ok, "expected ExpressionStatement, got %T", program.Statements[0])
 			_, ok = stmt.Expression.(*ast.StringLiteral)
-			assert.That(t, ok, "expected StringLiteral, got %T", stmt.Expression)
+			require.That(t, ok, "expected StringLiteral, got %T", stmt.Expression)
 		})
 	}
 }
@@ -4389,9 +4390,9 @@ func TestSafeNavigation(t *testing.T) {
 				t.Fatal("no statements")
 			}
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "expected ExpressionStatement, got %T", program.Statements[0])
+			require.That(t, ok, "expected ExpressionStatement, got %T", program.Statements[0])
 			call, ok := stmt.Expression.(*ast.ContextCallExpression)
-			assert.That(t, ok, "expected ContextCallExpression, got %T", stmt.Expression)
+			require.That(t, ok, "expected ContextCallExpression, got %T", stmt.Expression)
 			if call != nil && call.OpType != token.LONELY {
 				t.Errorf("expected LONELY OpType, got %s", call.OpType)
 			}
@@ -4418,9 +4419,9 @@ func TestEndlessMethod(t *testing.T) {
 				t.Fatal("no statements")
 			}
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "expected ExpressionStatement, got %T", program.Statements[0])
+			require.That(t, ok, "expected ExpressionStatement, got %T", program.Statements[0])
 			fn, ok := stmt.Expression.(*ast.FunctionLiteral)
-			assert.That(t, ok, "expected FunctionLiteral, got %T", stmt.Expression)
+			require.That(t, ok, "expected FunctionLiteral, got %T", stmt.Expression)
 			if fn.Body == nil || len(fn.Body.Statements) == 0 {
 				t.Error("endless method body is empty")
 			}
@@ -4444,7 +4445,7 @@ func TestBacktickXStr(t *testing.T) {
 				t.Fatal("no statements")
 			}
 			_, ok := program.Statements[0].(*ast.ExpressionStatement)
-			assert.That(t, ok, "expected ExpressionStatement, got %T", program.Statements[0])
+			require.That(t, ok, "expected ExpressionStatement, got %T", program.Statements[0])
 		})
 	}
 }
