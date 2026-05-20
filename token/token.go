@@ -327,10 +327,35 @@ func (tok Type) String() string {
 
 var keywords map[string]Type
 
+// typeFixedLits[t] is the canonical literal text for Type t when t is a
+// keyword, operator, or punctuation token whose source text is fully
+// determined by its type. Empty for variable-content types (IDENT, INT,
+// STRING, NEWLINE-as-name etc).
+var typeFixedLits [TypeMax + 1]string
+
 func init() {
 	keywords = make(map[string]Type)
 	for i := keyword_beg + 1; i < keyword_end; i++ {
 		keywords[tokens[i]] = i
+	}
+	variable := map[Type]bool{
+		ILLEGAL: true, EOF: true,
+		IDENT: true, CONST: true, GLOBAL: true, CLASS_VAR: true,
+		INT: true, FLOAT: true, STRING: true, REGEX: true, XSTR: true,
+		STRING_BEG: true, STRING_CONTENT: true, STRING_END: true,
+		XSTR_BEG: true, XSTR_CONTENT: true, XSTR_END: true,
+		REGEX_BEG: true, REGEX_END: true,
+		NEWLINE: true, HASH: true,
+		EMBEXPR_BEG: true, EMBEXPR_END: true,
+		LABEL: true, SYMBEG: true,
+	}
+	for i := Type(0); i <= TypeMax; i++ {
+		if variable[i] {
+			continue
+		}
+		if int(i) < len(tokens) {
+			typeFixedLits[i] = tokens[i]
+		}
 	}
 }
 
@@ -354,24 +379,62 @@ func LookupIdent(ident string) Type {
 // and the narrower field lets Token pack to 32B instead of 40B.
 type Type int32
 
-// NewToken returns a new Token associated with the given Type typ, the Literal
-// literal and the Position pos
+// NewToken returns a new Token associated with the given Type typ, the
+// Literal literal and the Position pos. The End field is filled from
+// len(literal) so callers gain a complete source span without having to
+// thread the end offset through every emit site.
 func NewToken(typ Type, literal string, pos int) Token {
-	return Token{Type: typ, Literal: literal, Pos: pos}
+	return Token{Type: typ, Literal: literal, Pos: pos, End: int32(len(literal))}
 }
 
 // A Token represents a known token with its literal representation.
 // Field order is tuned for compact layout: the 16B string header sits first
-// (8B align), then the 8B Pos, then int32 Type and four trailing bools pack
-// into the final 8B without padding. Total: 32B.
+// (8B align), then 8B Pos, 4B End, 4B Type, and four trailing bools fit in
+// the final 4B. Total: 36B -> 40B padded.
+//
+// The End field stores the token's source length (so the exclusive end
+// offset is Pos + int(End)). Redundant with len(Literal) for now, exposed
+// so consumers can migrate off Literal without re-deriving spans. Once
+// readers are off Literal, Literal is removed and Token packs into 24B.
 type Token struct {
 	Literal         string
 	Pos             int
+	End             int32
 	Type            Type
 	HadWhitespace   bool // true if whitespace was skipped before this token
 	SingleQuoted    bool // true for STRING tokens emitted from a single-quoted source literal
 	IsCharLit       bool // true for STRING tokens emitted from a `?X` character literal
 	HeredocStripped bool // true on STRING_BEG for `<<~` heredocs whose source had a positive common indent
+}
+
+// EndPos returns the exclusive end byte offset of the token in source.
+func (tok Token) EndPos() int { return tok.Pos + int(tok.End) }
+
+// LitOf returns the token's source text given the original lexer input.
+// Returns "" for synthetic / position-less tokens (Pos < 0 or zero-length).
+// Migration target for callers currently reading tok.Literal directly --
+// usable while the parser still holds source. After-parse readers must use
+// AST-stored values instead.
+func (tok Token) LitOf(source string) string {
+	if tok.End == 0 {
+		return ""
+	}
+	end := tok.Pos + int(tok.End)
+	if tok.Pos < 0 || end > len(source) {
+		return ""
+	}
+	return source[tok.Pos:end]
+}
+
+// Literal returns the compile-time-constant literal text for fixed-literal
+// types (keywords, operators, punctuation). Returns "" for variable-content
+// types (IDENT, INT, STRING, ...) -- callers must use LitOf(source) or an
+// AST-stored value instead.
+func (t Type) Literal() string {
+	if 0 <= t && t < Type(len(typeFixedLits)) {
+		return typeFixedLits[t]
+	}
+	return ""
 }
 
 // IsLiteral returns true for tokens corresponding to identifiers

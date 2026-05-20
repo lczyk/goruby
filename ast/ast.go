@@ -288,7 +288,7 @@ func (rs *ReturnStatement) String() string {
 func (rs *ReturnStatement) statementNode() {}
 
 // TokenLiteral returns the 'return' token literal
-func (rs *ReturnStatement) TokenLiteral() string { return rs.Token.Literal }
+func (rs *ReturnStatement) TokenLiteral() string { return rs.Token.Type.Literal() }
 
 // Pos returns the position of first character belonging to the node
 func (rs *ReturnStatement) Pos() int { return rs.Token.Pos }
@@ -317,7 +317,12 @@ func (es *ExpressionStatement) Pos() int { return es.Expression.Pos() }
 func (es *ExpressionStatement) End() int { return es.Expression.End() }
 
 // TokenLiteral returns the first token of the Expression
-func (es *ExpressionStatement) TokenLiteral() string { return es.Token.Literal }
+func (es *ExpressionStatement) TokenLiteral() string {
+	if es.Expression != nil {
+		return es.Expression.TokenLiteral()
+	}
+	return ""
+}
 
 // BlockStatement represents a list of statements
 type BlockStatement struct {
@@ -336,7 +341,12 @@ func (bs *BlockStatement) Pos() int { return bs.Token.Pos }
 func (bs *BlockStatement) End() int { return bs.EndPos }
 
 // TokenLiteral returns '{' or the first token from the first statement
-func (bs *BlockStatement) TokenLiteral() string { return bs.Token.Literal }
+func (bs *BlockStatement) TokenLiteral() string {
+	if len(bs.Statements) > 0 && bs.Statements[0] != nil {
+		return bs.Statements[0].TokenLiteral()
+	}
+	return bs.Token.Type.Literal()
+}
 func (bs *BlockStatement) String() string {
 	stmts := make([]string, 0, len(bs.Statements))
 	for _, s := range bs.Statements {
@@ -366,10 +376,10 @@ func (eh *ExceptionHandlingBlock) Pos() int { return eh.BeginToken.Pos }
 func (eh *ExceptionHandlingBlock) End() int { return eh.EndPos }
 
 // TokenLiteral returns the token literal from 'begin'
-func (eh *ExceptionHandlingBlock) TokenLiteral() string { return eh.BeginToken.Literal }
+func (eh *ExceptionHandlingBlock) TokenLiteral() string { return eh.BeginToken.Type.Literal() }
 func (eh *ExceptionHandlingBlock) String() string {
 	var out bytes.Buffer
-	out.WriteString(eh.BeginToken.Literal)
+	out.WriteString(eh.BeginToken.Type.Literal())
 	out.WriteString("\n")
 	out.WriteString(eh.TryBody.String())
 	out.WriteString("\n")
@@ -407,7 +417,7 @@ func (rb *RescueBlock) Pos() int { return rb.Token.Pos }
 func (rb *RescueBlock) End() int { return rb.Body.End() }
 
 // TokenLiteral returns the token literal from 'rescue'
-func (rb *RescueBlock) TokenLiteral() string { return rb.Token.Literal }
+func (rb *RescueBlock) TokenLiteral() string { return rb.Token.Type.Literal() }
 func (rb *RescueBlock) String() string {
 	var out bytes.Buffer
 	out.WriteString("rescue")
@@ -439,7 +449,7 @@ type Assignment struct {
 func (a *Assignment) String() string {
 	var out bytes.Buffer
 	out.WriteString(a.Left.String())
-	op := a.Token.Literal
+	op := a.Token.Type.Literal()
 	if op == "" {
 		op = "="
 	}
@@ -464,7 +474,7 @@ func (a *Assignment) Pos() int { return a.Left.Pos() }
 func (a *Assignment) End() int { return a.Right.End() }
 
 // TokenLiteral returns the literal of the ASSIGN token
-func (a *Assignment) TokenLiteral() string { return a.Token.Literal }
+func (a *Assignment) TokenLiteral() string { return a.Token.Type.Literal() }
 
 // An InstanceVariable represents an instance variable in the AST
 type InstanceVariable struct {
@@ -474,7 +484,7 @@ type InstanceVariable struct {
 
 func (i *InstanceVariable) String() string {
 	var out bytes.Buffer
-	out.WriteString(i.Token.Literal)
+	out.WriteString(i.Token.Type.Literal())
 	out.WriteString(i.Name.String())
 	return out.String()
 }
@@ -488,7 +498,7 @@ func (i *InstanceVariable) Pos() int { return i.Token.Pos }
 func (i *InstanceVariable) End() int { return i.Name.End() }
 
 // TokenLiteral returns the literal of the AT token
-func (i *InstanceVariable) TokenLiteral() string { return i.Token.Literal }
+func (i *InstanceVariable) TokenLiteral() string { return i.Token.Type.Literal() }
 
 // A ClassVariable represents a class variable in the AST
 type ClassVariable struct {
@@ -498,7 +508,7 @@ type ClassVariable struct {
 
 func (c *ClassVariable) String() string {
 	var out bytes.Buffer
-	out.WriteString(c.Token.Literal)
+	out.WriteString(c.Token.Type.Literal())
 	out.WriteString(c.Name.String())
 	return out.String()
 }
@@ -512,7 +522,7 @@ func (c *ClassVariable) Pos() int { return c.Token.Pos }
 func (c *ClassVariable) End() int { return c.Name.End() }
 
 // TokenLiteral returns the literal of the CLASS_VAR token
-func (c *ClassVariable) TokenLiteral() string { return c.Token.Literal }
+func (c *ClassVariable) TokenLiteral() string { return c.Token.Type.Literal() }
 
 // MultiAssignment represents multiple variables on the lefthand side
 type MultiAssignment struct {
@@ -545,7 +555,7 @@ func (m *MultiAssignment) End() int        { return m.Values[len(m.Values)-1].En
 func (m *MultiAssignment) expressionNode() {}
 
 // TokenLiteral returns the literal of the first variable token
-func (m *MultiAssignment) TokenLiteral() string { return m.Variables[0].Token.Literal }
+func (m *MultiAssignment) TokenLiteral() string { return m.Variables[0].TokenLiteral() }
 
 // Self represents self in the current context in the program.
 // Pointer-free (just a Pos) so arena chunks of Self are noscan-eligible.
@@ -575,7 +585,7 @@ type YieldExpression struct {
 
 func (y *YieldExpression) String() string {
 	var out bytes.Buffer
-	out.WriteString(y.Token.Literal)
+	out.WriteString(y.Token.Type.Literal())
 	if len(y.Arguments) != 0 {
 		args := []string{}
 		for _, a := range y.Arguments {
@@ -601,7 +611,7 @@ func (y *YieldExpression) End() int {
 }
 
 // TokenLiteral returns the literal of the token.YIELD token
-func (y *YieldExpression) TokenLiteral() string { return y.Token.Literal }
+func (y *YieldExpression) TokenLiteral() string { return y.Token.Type.Literal() }
 
 // SuperExpression represents a `super` call with optional arguments
 type SuperExpression struct {
@@ -612,7 +622,7 @@ type SuperExpression struct {
 
 func (s *SuperExpression) String() string {
 	var out bytes.Buffer
-	out.WriteString(s.Token.Literal)
+	out.WriteString(s.Token.Type.Literal())
 	if s.Arguments != nil {
 		args := []string{}
 		for _, a := range s.Arguments {
@@ -635,11 +645,11 @@ func (s *SuperExpression) expressionNode() {}
 func (s *SuperExpression) Pos() int { return s.Token.Pos }
 func (s *SuperExpression) End() int {
 	if len(s.Arguments) == 0 {
-		return s.Pos() + len(s.Token.Literal)
+		return s.Token.EndPos()
 	}
 	return s.Arguments[len(s.Arguments)-1].End()
 }
-func (s *SuperExpression) TokenLiteral() string { return s.Token.Literal }
+func (s *SuperExpression) TokenLiteral() string { return s.Token.Type.Literal() }
 
 // BeginBlock represents a top-level BEGIN { ... } block
 type BeginBlock struct {
@@ -650,7 +660,7 @@ type BeginBlock struct {
 func (b *BeginBlock) expressionNode()      {}
 func (b *BeginBlock) Pos() int             { return b.Token.Pos }
 func (b *BeginBlock) End() int             { return b.Body.End() }
-func (b *BeginBlock) TokenLiteral() string { return b.Token.Literal }
+func (b *BeginBlock) TokenLiteral() string { return b.Token.Type.Literal() }
 func (b *BeginBlock) String() string {
 	return "BEGIN {\n" + b.Body.String() + "\n}"
 }
@@ -664,7 +674,7 @@ type EndBlock struct {
 func (e *EndBlock) expressionNode()      {}
 func (e *EndBlock) Pos() int             { return e.Token.Pos }
 func (e *EndBlock) End() int             { return e.Body.End() }
-func (e *EndBlock) TokenLiteral() string { return e.Token.Literal }
+func (e *EndBlock) TokenLiteral() string { return e.Token.Type.Literal() }
 func (e *EndBlock) String() string {
 	return "END {\n" + e.Body.String() + "\n}"
 }
@@ -675,7 +685,7 @@ type Keyword__FILE__ struct {
 	Filename string
 }
 
-func (f *Keyword__FILE__) String() string  { return f.Token.Literal }
+func (f *Keyword__FILE__) String() string  { return f.Token.Type.Literal() }
 func (f *Keyword__FILE__) expressionNode() {}
 func (f *Keyword__FILE__) literalNode()    {}
 
@@ -686,7 +696,7 @@ func (f *Keyword__FILE__) Pos() int { return f.Token.Pos }
 func (f *Keyword__FILE__) End() int { return f.Token.Pos + 8 }
 
 // TokenLiteral returns the literal of the token.FILE__ token
-func (f *Keyword__FILE__) TokenLiteral() string { return f.Token.Literal }
+func (f *Keyword__FILE__) TokenLiteral() string { return f.Token.Type.Literal() }
 
 // Keyword__LINE__ represents __LINE__ in the AST.
 // Pointer-free so arena chunks are noscan-eligible.
@@ -762,7 +772,7 @@ type UsingExpression struct {
 func (u *UsingExpression) expressionNode()      {}
 func (u *UsingExpression) Pos() int             { return u.Token.Pos }
 func (u *UsingExpression) End() int             { return u.Expr.End() }
-func (u *UsingExpression) TokenLiteral() string { return u.Token.Literal }
+func (u *UsingExpression) TokenLiteral() string { return u.Token.Type.Literal() }
 func (u *UsingExpression) String() string {
 	return "using " + u.Expr.String()
 }
@@ -778,7 +788,7 @@ type RefineExpression struct {
 func (r *RefineExpression) expressionNode()      {}
 func (r *RefineExpression) Pos() int             { return r.Token.Pos }
 func (r *RefineExpression) End() int             { return r.EndPos }
-func (r *RefineExpression) TokenLiteral() string { return r.Token.Literal }
+func (r *RefineExpression) TokenLiteral() string { return r.Token.Type.Literal() }
 func (r *RefineExpression) String() string {
 	if r.Body == nil {
 		return "refine " + r.Expr.String()
@@ -811,7 +821,7 @@ func (i *Identifier) End() int { return i.Token.Pos + len(i.Value) }
 func (i *Identifier) IsConstant() bool { return i.Token.Type == token.CONST }
 
 // TokenLiteral returns the literal of the token.IDENT token
-func (i *Identifier) TokenLiteral() string { return i.Token.Literal }
+func (i *Identifier) TokenLiteral() string { return i.Value }
 
 // Global represents a global in the AST
 type Global struct {
@@ -830,7 +840,7 @@ func (g *Global) End() int     { return g.Token.Pos + len(g.Value) }
 func (g *Global) literalNode() {}
 
 // TokenLiteral returns the literal of the token.GLOBAL token
-func (g *Global) TokenLiteral() string { return g.Token.Literal }
+func (g *Global) TokenLiteral() string { return g.Value }
 
 // ScopedIdentifier represents a scoped Constant declaration
 type ScopedIdentifier struct {
@@ -844,7 +854,7 @@ func (i *ScopedIdentifier) String() string {
 	if i.Outer != nil {
 		out.WriteString(i.Outer.String())
 	}
-	out.WriteString(i.Token.Literal)
+	out.WriteString(i.Token.Type.Literal())
 	if i.Inner != nil {
 		out.WriteString(i.Inner.String())
 	}
@@ -860,7 +870,7 @@ func (i *ScopedIdentifier) Pos() int { return i.Outer.Pos() }
 func (i *ScopedIdentifier) End() int { return i.Inner.End() }
 
 // TokenLiteral returns the literal of the token.SCOPE token
-func (i *ScopedIdentifier) TokenLiteral() string { return i.Token.Literal }
+func (i *ScopedIdentifier) TokenLiteral() string { return i.Token.Type.Literal() }
 
 // IntegerLiteral represents an integer in the AST. Base preserves the
 // source-form prefix (2 / 8 / 16) so MRI re-reads the same IntegerBaseFlags
@@ -1587,7 +1597,7 @@ func (ce *ConditionalExpression) End() int {
 }
 
 // TokenLiteral returns the literal from token token.IF or token.UNLESS
-func (ce *ConditionalExpression) TokenLiteral() string { return ce.Token.Literal }
+func (ce *ConditionalExpression) TokenLiteral() string { return ce.Token.Type.Literal() }
 func (ce *ConditionalExpression) String() string {
 	var out bytes.Buffer
 	if ce.Token.Type == token.QMARK {
@@ -1605,12 +1615,12 @@ func (ce *ConditionalExpression) String() string {
 	if ce.EndPos == 0 && ce.Token.Type != token.KW_ELSIF && ce.Alternative == nil {
 		out.WriteString(ce.Consequence.String())
 		out.WriteString(" ")
-		out.WriteString(ce.Token.Literal)
+		out.WriteString(ce.Token.Type.Literal())
 		out.WriteString(" ")
 		out.WriteString(ce.Condition.String())
 		return out.String()
 	}
-	out.WriteString(ce.Token.Literal)
+	out.WriteString(ce.Token.Type.Literal())
 	out.WriteString(" ")
 	out.WriteString(ce.Condition.String())
 	out.WriteString("\n")
@@ -1669,7 +1679,7 @@ func (ce *LoopExpression) End() int {
 }
 
 // TokenLiteral returns the literal from token token.WHILE
-func (ce *LoopExpression) TokenLiteral() string { return ce.Token.Literal }
+func (ce *LoopExpression) TokenLiteral() string { return ce.Token.Type.Literal() }
 func (ce *LoopExpression) String() string {
 	var out bytes.Buffer
 	if ce.PostTest && ce.Block != nil && len(ce.Block.Statements) == 1 {
@@ -1677,14 +1687,14 @@ func (ce *LoopExpression) String() string {
 			if bb, ok := es.Expression.(*ExceptionHandlingBlock); ok {
 				out.WriteString(bb.String())
 				out.WriteString(" ")
-				out.WriteString(ce.Token.Literal)
+				out.WriteString(ce.Token.Type.Literal())
 				out.WriteString(" ")
 				out.WriteString(ce.Condition.String())
 				return out.String()
 			}
 		}
 	}
-	out.WriteString(ce.Token.Literal)
+	out.WriteString(ce.Token.Type.Literal())
 	out.WriteString(" ")
 	out.WriteString(ce.Condition.String())
 	if ce.Block != nil {
@@ -1883,7 +1893,7 @@ func (hl *HashLiteral) Pos() int { return hl.Token.Pos }
 func (hl *HashLiteral) End() int { return hl.EndPos }
 
 // TokenLiteral returns the literal of the token token.LBRACE
-func (hl *HashLiteral) TokenLiteral() string { return hl.Token.Literal }
+func (hl *HashLiteral) TokenLiteral() string { return hl.Token.Type.Literal() }
 func (hl *HashLiteral) hashElements() []string {
 	type posStr struct {
 		pos int
@@ -2051,7 +2061,7 @@ func (b *BlockCapture) String() string {
 }
 
 // TokenLiteral returns the literal of the token
-func (b *BlockCapture) TokenLiteral() string { return b.Token.Literal }
+func (b *BlockCapture) TokenLiteral() string { return b.Token.Type.Literal() }
 
 // A FunctionLiteral represents a function definition in the AST
 type FunctionLiteral struct {
@@ -2091,7 +2101,7 @@ func (fl *FunctionLiteral) End() int {
 }
 
 // TokenLiteral returns the literal from token.DEF
-func (fl *FunctionLiteral) TokenLiteral() string { return fl.Token.Literal }
+func (fl *FunctionLiteral) TokenLiteral() string { return fl.Token.Type.Literal() }
 func (fl *FunctionLiteral) String() string {
 	var out bytes.Buffer
 	params := []string{}
@@ -2265,7 +2275,7 @@ func (ie *IndexExpression) End() int {
 }
 
 // TokenLiteral returns the literal from token.LBRACKET
-func (ie *IndexExpression) TokenLiteral() string { return ie.Token.Literal }
+func (ie *IndexExpression) TokenLiteral() string { return ie.Token.Type.Literal() }
 func (ie *IndexExpression) String() string {
 	var out bytes.Buffer
 	out.WriteString(ie.Left.String())
@@ -2441,7 +2451,7 @@ func (b *BlockExpression) Pos() int { return b.Token.Pos }
 func (b *BlockExpression) End() int { return b.EndPos }
 
 // TokenLiteral returns the literal from the Token
-func (b *BlockExpression) TokenLiteral() string { return b.Token.Literal }
+func (b *BlockExpression) TokenLiteral() string { return b.Token.Type.Literal() }
 
 // String returns a string representation of the block statement
 func (b *BlockExpression) String() string {
@@ -2512,7 +2522,7 @@ func (m *ModuleExpression) Pos() int { return m.Token.Pos }
 func (m *ModuleExpression) End() int { return m.EndPos }
 
 // TokenLiteral returns the literal from token.MODULE
-func (m *ModuleExpression) TokenLiteral() string { return m.Token.Literal }
+func (m *ModuleExpression) TokenLiteral() string { return m.Token.Type.Literal() }
 func (m *ModuleExpression) String() string {
 	var out bytes.Buffer
 	out.WriteString(m.TokenLiteral())
@@ -2548,7 +2558,7 @@ func (m *ClassExpression) Pos() int { return m.Token.Pos }
 func (m *ClassExpression) End() int { return m.EndPos }
 
 // TokenLiteral returns the literal from token.CLASS
-func (m *ClassExpression) TokenLiteral() string { return m.Token.Literal }
+func (m *ClassExpression) TokenLiteral() string { return m.Token.Type.Literal() }
 func (m *ClassExpression) String() string {
 	var out bytes.Buffer
 	out.WriteString(m.TokenLiteral())
@@ -2588,7 +2598,7 @@ func (s *SingletonClassExpression) Pos() int { return s.Token.Pos }
 func (s *SingletonClassExpression) End() int { return s.EndPos }
 
 // TokenLiteral returns the literal from token.CLASS
-func (s *SingletonClassExpression) TokenLiteral() string { return s.Token.Literal }
+func (s *SingletonClassExpression) TokenLiteral() string { return s.Token.Type.Literal() }
 func (s *SingletonClassExpression) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.TokenLiteral())
@@ -2636,7 +2646,7 @@ func (s *SplatExpression) End() int {
 }
 
 // TokenLiteral returns the literal from the * token
-func (s *SplatExpression) TokenLiteral() string { return s.Token.Literal }
+func (s *SplatExpression) TokenLiteral() string { return s.Token.Type.Literal() }
 
 // ArgumentForwarding represents `...` in a call argument context: foo(...)
 type ArgumentForwarding struct {
@@ -2685,7 +2695,7 @@ func (c *CaseExpression) expressionNode() {}
 
 func (c *CaseExpression) Pos() int             { return c.Token.Pos }
 func (c *CaseExpression) End() int             { return c.EndPos }
-func (c *CaseExpression) TokenLiteral() string { return c.Token.Literal }
+func (c *CaseExpression) TokenLiteral() string { return c.Token.Type.Literal() }
 
 // A WhenClause represents a single when branch in a case expression
 type WhenClause struct {
@@ -2697,8 +2707,8 @@ type WhenClause struct {
 func (w *WhenClause) String() string {
 	var out bytes.Buffer
 	keyword := "when"
-	if w.Token.Literal != "" {
-		keyword = w.Token.Literal
+	if lit := w.Token.Type.Literal(); lit != "" {
+		keyword = lit
 	}
 	out.WriteString(keyword)
 	out.WriteString(" ")
@@ -2730,7 +2740,7 @@ func (w *WhenClause) expressionNode() {}
 
 func (w *WhenClause) Pos() int             { return w.Token.Pos }
 func (w *WhenClause) End() int             { return w.Body.End() }
-func (w *WhenClause) TokenLiteral() string { return w.Token.Literal }
+func (w *WhenClause) TokenLiteral() string { return w.Token.Type.Literal() }
 
 // A DefinedExpression represents defined?(expr)
 type DefinedExpression struct {
@@ -2750,7 +2760,7 @@ func (d *DefinedExpression) expressionNode() {}
 
 func (d *DefinedExpression) Pos() int             { return d.Token.Pos }
 func (d *DefinedExpression) End() int             { return d.Expr.End() }
-func (d *DefinedExpression) TokenLiteral() string { return d.Token.Literal }
+func (d *DefinedExpression) TokenLiteral() string { return d.Token.Type.Literal() }
 
 // A JumpExpression represents break, next, redo, or retry with an optional value
 type JumpExpression struct {
@@ -2765,11 +2775,11 @@ func (j *JumpExpression) String() string {
 			for i, e := range al.Elements {
 				elems[i] = e.String()
 			}
-			return j.Token.Literal + " " + strings.Join(elems, ", ")
+			return j.Token.Type.Literal() + " " + strings.Join(elems, ", ")
 		}
-		return j.Token.Literal + " " + j.Value.String()
+		return j.Token.Type.Literal() + " " + j.Value.String()
 	}
-	return j.Token.Literal
+	return j.Token.Type.Literal()
 }
 func (j *JumpExpression) expressionNode() {}
 
@@ -2781,11 +2791,11 @@ func (j *JumpExpression) End() int {
 	if j.Value != nil {
 		return j.Value.End()
 	}
-	return j.Token.Pos + len(j.Token.Literal)
+	return j.Token.EndPos()
 }
 
 // TokenLiteral returns the literal from the keyword token
-func (j *JumpExpression) TokenLiteral() string { return j.Token.Literal }
+func (j *JumpExpression) TokenLiteral() string { return j.Token.Type.Literal() }
 
 // AliasExpression represents an `alias new_name old_name` statement
 type AliasExpression struct {
@@ -2801,7 +2811,7 @@ func (a *AliasExpression) expressionNode() {}
 
 func (a *AliasExpression) Pos() int             { return a.Token.Pos }
 func (a *AliasExpression) End() int             { return a.OldName.End() }
-func (a *AliasExpression) TokenLiteral() string { return a.Token.Literal }
+func (a *AliasExpression) TokenLiteral() string { return a.Token.Type.Literal() }
 
 // UndefExpression represents an `undef method1, method2, ...` statement
 type UndefExpression struct {
@@ -2823,7 +2833,7 @@ func (u *UndefExpression) expressionNode() {}
 
 func (u *UndefExpression) Pos() int             { return u.Token.Pos }
 func (u *UndefExpression) End() int             { return u.Names[len(u.Names)-1].End() }
-func (u *UndefExpression) TokenLiteral() string { return u.Token.Literal }
+func (u *UndefExpression) TokenLiteral() string { return u.Token.Type.Literal() }
 
 // PrefixExpression represents a prefix operator
 type PrefixExpression struct {
@@ -2841,7 +2851,7 @@ func (pe *PrefixExpression) Pos() int { return pe.Token.Pos }
 func (pe *PrefixExpression) End() int { return pe.Right.End() }
 
 // TokenLiteral returns the literal from the prefix operator token
-func (pe *PrefixExpression) TokenLiteral() string { return pe.Token.Literal }
+func (pe *PrefixExpression) TokenLiteral() string { return pe.Token.Type.Literal() }
 func pinNeedsParens(right Expression) bool {
 	switch right.(type) {
 	case *Identifier, *InstanceVariable, *ClassVariable, *Global,
@@ -3030,11 +3040,11 @@ func (oe *InfixExpression) End() int {
 	if oe.Right != nil {
 		return oe.Right.End()
 	}
-	return oe.Token.Pos + len(oe.Token.Literal)
+	return oe.Token.EndPos()
 }
 
 // TokenLiteral returns the literal from the infix operator token
-func (oe *InfixExpression) TokenLiteral() string { return oe.Token.Literal }
+func (oe *InfixExpression) TokenLiteral() string { return oe.Token.Type.Literal() }
 // rubyInfixPrec returns Ruby operator precedence (higher = binds tighter).
 // Returns 0 for unknown operators, which falls back to the conservative
 // always-wrap behaviour in InfixExpression.String().
@@ -3180,7 +3190,7 @@ func (ra *RightwardAssignment) expressionNode() {}
 
 func (ra *RightwardAssignment) Pos() int             { return ra.Left.Pos() }
 func (ra *RightwardAssignment) End() int             { return ra.Right.End() }
-func (ra *RightwardAssignment) TokenLiteral() string { return ra.Token.Literal }
+func (ra *RightwardAssignment) TokenLiteral() string { return ra.Token.Type.Literal() }
 func (ra *RightwardAssignment) String() string {
 	var out bytes.Buffer
 	out.WriteString(ra.Left.String())
@@ -3203,7 +3213,7 @@ type ParenExpression struct {
 func (pe *ParenExpression) expressionNode()      {}
 func (pe *ParenExpression) Pos() int             { return pe.Token.Pos }
 func (pe *ParenExpression) End() int             { return pe.EndPos }
-func (pe *ParenExpression) TokenLiteral() string { return pe.Token.Literal }
+func (pe *ParenExpression) TokenLiteral() string { return pe.Token.Type.Literal() }
 func (pe *ParenExpression) String() string {
 	if len(pe.Stmts) > 0 {
 		parts := make([]string, len(pe.Stmts))
