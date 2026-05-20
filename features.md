@@ -146,6 +146,12 @@ parser-library scope. flip checkboxes as features land in `parser/`.
 ## misc
 
 - [x] comments (`#`)
-- [ ] full UTF-8 source support
-	- [ ] Unicode identifiers
-	- [ ] Unicode symbols
+- [x] UTF-8 source support (lexer accepts non-ASCII letters via
+      `unicode.IsLetter`; magic encoding comments honoured per MRI)
+	- [x] Unicode identifiers (`αβ`, `метод`, `Établissement`, `اختبر!`,
+	      `ภาษา` -- letters from any script; non-letter codepoints
+	      like emoji are rejected as `ILLEGAL` to match MRI)
+	- [x] Unicode symbols (`:αβ`, `:"метод"`, etc -- same letter rule)
+	- [ ] BOM stripping on source input -- a leading UTF-8 BOM is not
+	      removed; ruby's parser strips it. small gap; usually a noop
+	      for typical sources.
