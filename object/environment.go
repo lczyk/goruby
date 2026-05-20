@@ -22,6 +22,39 @@ type Environment struct {
 	strings *StringPool
 	stdout  io.Writer
 	version token.RubyVersion
+	methods map[string]RubyObject
+
+	// MethodFrame marks an environment that backs a method call. Block
+	// scoping stops walking outward at the nearest method frame so a
+	// block can't reach into the surrounding caller's locals through a
+	// method body in between.
+	MethodFrame bool
+
+	// CurrentBlock is the block (if any) passed to the method that
+	// owns this frame; `yield` resolves to it. Stored as `any` so the
+	// object package needn't depend on the evaluator's block type.
+	CurrentBlock any
+
+	// Self is the ruby `self` value visible in this frame. nil means
+	// "inherit from outer"; the root frame leaves it unset and the
+	// evaluator falls back to the main object.
+	Self RubyObject
+
+	// CurrentClass is the open class body being executed (set inside
+	// `class Foo ... end`). nil at top level.
+	CurrentClass *Class
+
+	// CurrentMethodName / CurrentMethodArgs are set on a method's call
+	// frame so `super` can find the next-up implementation and (for
+	// implicit-args super) reuse the original argument list.
+	CurrentMethodName string
+	CurrentMethodArgs []RubyObject
+
+	// CurrentKwargs holds keyword args supplied by the caller, made
+	// available to bindParams when the callee declares IsKeyword
+	// parameters. Stashed on the call frame because plumbing kwargs
+	// through every dispatcher signature would balloon the API.
+	CurrentKwargs map[string]RubyObject
 }
 
 // NewMainEnvironment returns a fresh root environment with default stdout
@@ -32,6 +65,7 @@ func NewMainEnvironment(opts ...EnvOption) *Environment {
 		syms:    NewSymbolPool(),
 		strings: NewStringPool(),
 		stdout:  os.Stdout,
+		methods: make(map[string]RubyObject),
 	}
 	for _, o := range opts {
 		o(e)
@@ -88,6 +122,25 @@ func (e *Environment) SetGlobal(name string, value RubyObject) RubyObject {
 	return value
 }
 
+// AssignVisible binds name in whichever enclosing scope already holds
+// it; if none does, binds locally. Mirrors ruby block-scoping where a
+// block writes through to an outer local var that's already defined.
+// The walk stops at the nearest method frame so a block can't reach
+// past its enclosing method.
+func (e *Environment) AssignVisible(name string, value RubyObject) RubyObject {
+	for cur := e; cur != nil; cur = cur.outer {
+		if _, ok := cur.store[name]; ok {
+			cur.store[name] = value
+			return value
+		}
+		if cur.MethodFrame {
+			break
+		}
+	}
+	e.store[name] = value
+	return value
+}
+
 // Version returns the ruby version active in this environment, resolving
 // to the root and to the package latest if unset.
 func (e *Environment) Version() token.RubyVersion {
@@ -106,6 +159,56 @@ func (e *Environment) Symbols() *SymbolPool { return e.root().syms }
 
 // Strings returns the env's frozen-string pool.
 func (e *Environment) Strings() *StringPool { return e.root().strings }
+
+// SetMethod registers a top-level method on the root environment.
+func (e *Environment) SetMethod(name string, m RubyObject) {
+	e.root().methods[name] = m
+}
+
+// GetMethod returns the top-level method bound to name, if any.
+func (e *Environment) GetMethod(name string) (RubyObject, bool) {
+	m, ok := e.root().methods[name]
+	return m, ok
+}
+
+// EnclosingBlock walks outward to the nearest method frame and returns
+// that frame's CurrentBlock, if any. Used by `yield` to find the block
+// passed to the current method.
+func (e *Environment) EnclosingBlock() any {
+	for cur := e; cur != nil; cur = cur.outer {
+		if cur.MethodFrame {
+			return cur.CurrentBlock
+		}
+	}
+	return nil
+}
+
+// EnclosingSelf walks outward to the nearest frame with a bound Self
+// and returns it. Returns nil if none -- callers use that to mean
+// top-level main.
+func (e *Environment) EnclosingSelf() RubyObject {
+	for cur := e; cur != nil; cur = cur.outer {
+		if cur.Self != nil {
+			return cur.Self
+		}
+	}
+	return nil
+}
+
+// Outer returns the immediately enclosing scope, or nil at the root.
+// Exposed so evaluator-side walks (super, etc.) can climb the chain.
+func (e *Environment) Outer() *Environment { return e.outer }
+
+// EnclosingClass walks outward to the nearest frame with a CurrentClass
+// set, returning it. nil at top level.
+func (e *Environment) EnclosingClass() *Class {
+	for cur := e; cur != nil; cur = cur.outer {
+		if cur.CurrentClass != nil {
+			return cur.CurrentClass
+		}
+	}
+	return nil
+}
 
 func (e *Environment) root() *Environment {
 	for e.outer != nil {

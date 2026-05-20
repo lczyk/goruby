@@ -18,6 +18,14 @@ type HashEntry struct {
 // dominating, swap in a hybrid (linear small, map fallback large).
 type Hash struct {
 	Entries []HashEntry
+	// Default is the static default value returned by `h[missing]`
+	// when no default block is set; nil means "fall back to NIL".
+	Default RubyObject
+	// DefaultBlock is invoked as `block.call(h, missing_key)` when set
+	// and the key is missing. Stored as `any` so the object package
+	// stays free of the evaluator's Proc type details (it's actually
+	// a *Proc).
+	DefaultBlock any
 }
 
 // NewHash returns a Hash containing the given entries (in order).
