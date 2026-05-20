@@ -7,15 +7,35 @@ import (
 	"github.com/lczyk/goruby/token"
 )
 
+// envInlineCap is the number of bindings each Environment holds
+// inline before promoting to a map. Chosen to cover typical method
+// frames (1-4 params + block-locals) without overshooting; bigger
+// frames pay the map cost only when they actually need it.
+const envInlineCap = 6
+
+// envEntry pairs a binding name with its value for inline storage.
+type envEntry struct {
+	name  string
+	value RubyObject
+}
+
 // Environment holds the runtime state available during evaluation:
 // variable bindings, the symbol/string pools, the active ruby version,
 // and stdout for Kernel#puts / Kernel#p.
 //
 // Environments chain via Outer to model block/method scopes. Pools and
 // stdout live on the root and are reached through the chain.
+//
+// Local bindings use a small inline array first (linear scan, no map
+// alloc) and only promote to a real map once the binding count
+// exceeds envInlineCap. Most call frames -- method calls with a
+// handful of params, blocks with one or two block-locals -- stay in
+// the inline path and avoid per-frame map allocation.
 type Environment struct {
-	store map[string]RubyObject
-	outer *Environment
+	inline  [envInlineCap]envEntry
+	inlineN int
+	store   map[string]RubyObject // overflow once inline fills up
+	outer   *Environment
 
 	// Root-only fields. Non-root environments delegate to Outer.
 	syms    *SymbolPool
@@ -60,7 +80,10 @@ type Environment struct {
 }
 
 // NewMainEnvironment returns a fresh root environment with default stdout
-// (os.Stdout), fresh pools, and a latest-version target.
+// (os.Stdout), fresh pools, and a latest-version target. The root is
+// expected to accumulate many bindings (constants, top-level
+// methods), so its store map is allocated up front to skip the
+// inline-then-promote work the transient frames benefit from.
 func NewMainEnvironment(opts ...EnvOption) *Environment {
 	e := &Environment{
 		store:   make(map[string]RubyObject),
@@ -77,12 +100,11 @@ func NewMainEnvironment(opts ...EnvOption) *Environment {
 }
 
 // NewEnclosedEnvironment returns a child environment whose lookups fall
-// through to outer if not found locally.
+// through to outer if not found locally. The store map stays nil until
+// the first Set so block-only scopes that just read enclosing locals
+// (the common case in tight iteration) skip the map alloc entirely.
 func NewEnclosedEnvironment(outer *Environment) *Environment {
-	return &Environment{
-		store: make(map[string]RubyObject),
-		outer: outer,
-	}
+	return &Environment{outer: outer}
 }
 
 // EnvOption configures a root Environment at construction time.
@@ -114,13 +136,13 @@ func WithARGV(args []string) EnvOption {
 		for i, a := range args {
 			elems[i] = NewString(a)
 		}
-		e.store["ARGV"] = &Array{Elements: elems}
+		e.setLocal("ARGV", &Array{Elements: elems})
 	}
 }
 
 // Get returns the binding for name, walking up the outer chain.
 func (e *Environment) Get(name string) (RubyObject, bool) {
-	if v, ok := e.store[name]; ok {
+	if v, ok := e.getLocal(name); ok {
 		return v, true
 	}
 	if e.outer != nil {
@@ -129,9 +151,52 @@ func (e *Environment) Get(name string) (RubyObject, bool) {
 	return nil, false
 }
 
+// getLocal looks up name in this env's own bindings (inline + store)
+// without consulting outer.
+func (e *Environment) getLocal(name string) (RubyObject, bool) {
+	for i := 0; i < e.inlineN; i++ {
+		if e.inline[i].name == name {
+			return e.inline[i].value, true
+		}
+	}
+	if e.store != nil {
+		if v, ok := e.store[name]; ok {
+			return v, true
+		}
+	}
+	return nil, false
+}
+
+// setLocal writes name=value in this env's own bindings. Updates an
+// existing entry in place; otherwise appends to the inline array, or
+// promotes to the store map once inline fills up.
+func (e *Environment) setLocal(name string, value RubyObject) {
+	for i := 0; i < e.inlineN; i++ {
+		if e.inline[i].name == name {
+			e.inline[i].value = value
+			return
+		}
+	}
+	if e.store != nil {
+		if _, ok := e.store[name]; ok {
+			e.store[name] = value
+			return
+		}
+	}
+	if e.inlineN < envInlineCap {
+		e.inline[e.inlineN] = envEntry{name: name, value: value}
+		e.inlineN++
+		return
+	}
+	if e.store == nil {
+		e.store = make(map[string]RubyObject)
+	}
+	e.store[name] = value
+}
+
 // Set binds name to value in the local scope.
 func (e *Environment) Set(name string, value RubyObject) RubyObject {
-	e.store[name] = value
+	e.setLocal(name, value)
 	return value
 }
 
@@ -139,7 +204,7 @@ func (e *Environment) Set(name string, value RubyObject) RubyObject {
 // the current scope. Used for ruby globals ($foo) and other constructs
 // that must outlive any block / method scope.
 func (e *Environment) SetGlobal(name string, value RubyObject) RubyObject {
-	e.root().store[name] = value
+	e.root().setLocal(name, value)
 	return value
 }
 
@@ -150,15 +215,15 @@ func (e *Environment) SetGlobal(name string, value RubyObject) RubyObject {
 // past its enclosing method.
 func (e *Environment) AssignVisible(name string, value RubyObject) RubyObject {
 	for cur := e; cur != nil; cur = cur.outer {
-		if _, ok := cur.store[name]; ok {
-			cur.store[name] = value
+		if _, ok := cur.getLocal(name); ok {
+			cur.setLocal(name, value)
 			return value
 		}
 		if cur.MethodFrame {
 			break
 		}
 	}
-	e.store[name] = value
+	e.setLocal(name, value)
 	return value
 }
 
