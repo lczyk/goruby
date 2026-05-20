@@ -8,8 +8,6 @@ package evaluator
 
 import (
 	"fmt"
-
-	"github.com/lczyk/goruby/token"
 )
 
 // Error represents an evaluator-internal error. Distinct from ruby
@@ -25,8 +23,3 @@ func errorf(format string, args ...any) *Error {
 	return &Error{Msg: fmt.Sprintf(format, args...)}
 }
 
-// versionError mirrors parser.versionError: produced when source uses a
-// runtime feature introduced after the active target version.
-func versionError(minVer token.RubyVersion, feature string) *Error {
-	return &Error{Msg: fmt.Sprintf("%s requires ruby %s or later", feature, minVer)}
-}

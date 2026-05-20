@@ -3,6 +3,7 @@ package evaluator
 import (
 	"github.com/lczyk/goruby/ast"
 	"github.com/lczyk/goruby/object"
+	"github.com/lczyk/goruby/token"
 )
 
 // rubyObjects packs an ExpressionList's element values. Distinct from
@@ -27,11 +28,123 @@ func evalExpressionList(env *object.Environment, list ast.ExpressionList) (objec
 	return vals, nil
 }
 
+// evalShortCircuitAssign implements `x ||= rhs` / `x &&= rhs` for the
+// common Identifier LHS shape, honouring ruby's "undefined LHS reads as
+// nil for op-assign" rule. Returns handled=false for shapes we don't
+// special-case (e.g. attr setters); the caller falls back to the
+// generic Assignment path.
+func evalShortCircuitAssign(env *object.Environment, n *ast.Assignment) (object.RubyObject, bool, error) {
+	id, ok := n.Left.(*ast.Identifier)
+	if !ok {
+		return nil, false, nil
+	}
+	cur, defined := env.Get(id.Value)
+	if !defined {
+		cur = object.NIL
+	}
+
+	if n.Token.Type == token.ORASSIGN {
+		if truthy(cur) {
+			return cur, true, nil
+		}
+		// Parser-desugared RHS is `lhs || rhs`; we already know lhs
+		// is falsy, so the InfixExpression evaluates to its right
+		// operand. Pull that directly.
+		rhs, err := evalAssignRHS(env, n.Right)
+		if err != nil {
+			return nil, true, err
+		}
+		env.AssignVisible(id.Value, expandSingle(rhs))
+		return rhs, true, nil
+	}
+	// ANDASSIGN: only assign when current is truthy.
+	if !truthy(cur) {
+		return cur, true, nil
+	}
+	rhs, err := evalAssignRHS(env, n.Right)
+	if err != nil {
+		return nil, true, err
+	}
+	env.AssignVisible(id.Value, expandSingle(rhs))
+	return rhs, true, nil
+}
+
+// evalAssignRHS pulls the rhs operand of the parser-desugared
+// `lhs OP rhs` shape produced for `||=` / `&&=`. Falls back to the
+// whole expression when the shape doesn't match.
+func evalAssignRHS(env *object.Environment, e ast.Expression) (object.RubyObject, error) {
+	if infix, ok := e.(*ast.InfixExpression); ok {
+		return Eval(infix.Right, env)
+	}
+	return Eval(e, env)
+}
+
 func evalIdentifier(env *object.Environment, n *ast.Identifier) (object.RubyObject, error) {
+	// `block_given?` reads the current method frame's block slot.
+	if n.Value == "block_given?" {
+		return object.BooleanOf(env.EnclosingBlock() != nil), nil
+	}
+	// Visibility keywords used bare inside a class body are no-ops --
+	// the evaluator doesn't track visibility yet.
+	if env.EnclosingClass() != nil {
+		switch n.Value {
+		case "private", "public", "protected", "module_function":
+			return object.NIL, nil
+		}
+	}
+	if isConstantName(n.Value) {
+		if cls := env.EnclosingClass(); cls != nil {
+			if v, ok := lookupConstant(cls, n.Value); ok {
+				return v, nil
+			}
+		}
+		if v, ok := env.Get(n.Value); ok {
+			return v, nil
+		}
+		return nil, errorf("evaluator: NameError: uninitialized constant %s", n.Value)
+	}
 	if v, ok := env.Get(n.Value); ok {
 		return v, nil
 	}
+	if m, ok := env.GetMethod(n.Value); ok {
+		if um, ok := m.(*object.UserMethod); ok {
+			return callUserMethod(env, um, nil)
+		}
+	}
+	if self := env.EnclosingSelf(); self != nil {
+		if inst, ok := self.(*object.Instance); ok {
+			if m, found := inst.C.LookupMethod(n.Value); found {
+				if um, ok := m.(*object.UserMethod); ok {
+					return invokeMethodOn(env, inst, um, nil, nil)
+				}
+			}
+		}
+	}
+	// Final fallback: try Kernel builtins for bare-name identifiers
+	// (`puts` / `print` / `p` etc. used as statements without parens
+	// or arguments). Suppresses the NameError when the builtin exists.
+	if v, kerr := callKernel(env, n.Value, nil); kerr == nil {
+		return v, nil
+	}
 	return nil, errorf("evaluator: NameError: undefined local variable or method `%s'", n.Value)
+}
+
+func isConstantName(s string) bool {
+	if s == "" {
+		return false
+	}
+	c := s[0]
+	return c >= 'A' && c <= 'Z'
+}
+
+// lookupConstant walks the class chain looking for a named constant.
+func lookupConstant(cls *object.Class, name string) (object.RubyObject, bool) {
+	for cur := cls; cur != nil; cur = cur.Super {
+		if v, ok := cur.Constants[name]; ok {
+			return v, true
+		}
+	}
+	return nil, false
 }
 
 func evalGlobal(env *object.Environment, n *ast.Global) (object.RubyObject, error) {
@@ -44,6 +157,16 @@ func evalGlobal(env *object.Environment, n *ast.Global) (object.RubyObject, erro
 }
 
 func evalAssignment(env *object.Environment, n *ast.Assignment) (object.RubyObject, error) {
+	// `||=` / `&&=`: parser desugars to `lhs = lhs || rhs` / `lhs && rhs`,
+	// but in ruby an undefined LHS does NOT raise -- it's treated as nil
+	// (||=) or skipped entirely (&&=). Detect by token type so the
+	// short-circuit evaluation matches MRI for previously-unbound names.
+	if n.Token.Type == token.ORASSIGN || n.Token.Type == token.ANDASSIGN {
+		if v, handled, err := evalShortCircuitAssign(env, n); handled {
+			return v, err
+		}
+	}
+
 	right, err := Eval(n.Right, env)
 	if err != nil {
 		return nil, err
@@ -51,13 +174,56 @@ func evalAssignment(env *object.Environment, n *ast.Assignment) (object.RubyObje
 
 	switch lhs := n.Left.(type) {
 	case *ast.Identifier:
-		env.Set(lhs.Value, expandSingle(right))
+		v := expandSingle(right)
+		if isConstantName(lhs.Value) {
+			// Anonymous-class naming: when an unnamed (or differently
+			// named) class is assigned to a Constant, take on that
+			// Constant's name -- mirrors MRI's `Foo = Class.new`.
+			if c, ok := v.(*object.Class); ok && (c.Name == "" || c.Name == "StructClass" || c.Name == "Data") {
+				c.Name = lhs.Value
+			}
+			if cls := env.EnclosingClass(); cls != nil {
+				cls.Constants[lhs.Value] = v
+			} else {
+				env.SetGlobal(lhs.Value, v)
+			}
+			return right, nil
+		}
+		env.AssignVisible(lhs.Value, v)
 		return right, nil
 	case *ast.Global:
 		env.SetGlobal(lhs.Value, expandSingle(right))
 		return right, nil
 	case ast.ExpressionList:
 		return evalMultiAssign(env, lhs, right)
+	case *ast.IndexExpression:
+		if err := evalIndexAssign(env, lhs, expandSingle(right)); err != nil {
+			return nil, err
+		}
+		return right, nil
+	case *ast.InstanceVariable:
+		self := env.EnclosingSelf()
+		inst, ok := self.(*object.Instance)
+		if !ok {
+			return nil, errorf("evaluator: @%s set outside an instance context", lhs.Name.Value)
+		}
+		inst.Ivars["@"+lhs.Name.Value] = expandSingle(right)
+		return right, nil
+	case *ast.ClassVariable:
+		cls := classForCVar(env)
+		if cls == nil {
+			return nil, errorf("evaluator: @@%s set outside a class", lhs.Name.Value)
+		}
+		key := "@@" + lhs.Name.Value
+		// If an ancestor already owns the cvar, update there (MRI's
+		// cvar-sharing semantics); otherwise create on the current
+		// class.
+		_, owner := cls.LookupClassVar(key)
+		if owner == nil {
+			owner = cls
+		}
+		owner.ClassVars[key] = expandSingle(right)
+		return right, nil
 	}
 	return nil, errorf("evaluator: unsupported assignment lhs %T", n.Left)
 }
@@ -75,17 +241,68 @@ func expandSingle(o object.RubyObject) object.RubyObject {
 func evalMultiAssign(env *object.Environment, lhs ast.ExpressionList, right object.RubyObject) (object.RubyObject, error) {
 	values := unpackMultiRHS(right)
 
+	splatIdx := -1
 	for i, target := range lhs {
-		var v object.RubyObject
+		if _, ok := target.(*ast.SplatExpression); ok {
+			splatIdx = i
+			break
+		}
+	}
+
+	if splatIdx == -1 {
+		for i, target := range lhs {
+			var v object.RubyObject
+			if i < len(values) {
+				v = values[i]
+			} else {
+				v = object.NIL
+			}
+			if err := assignTarget(env, target, v); err != nil {
+				return nil, err
+			}
+		}
+		return right, nil
+	}
+
+	preCount := splatIdx
+	postCount := len(lhs) - splatIdx - 1
+
+	for i := 0; i < preCount; i++ {
+		var v object.RubyObject = object.NIL
 		if i < len(values) {
 			v = values[i]
-		} else {
-			v = object.NIL
 		}
-		if err := assignTarget(env, target, v); err != nil {
+		if err := assignTarget(env, lhs[i], v); err != nil {
 			return nil, err
 		}
 	}
+
+	splatLen := len(values) - preCount - postCount
+	if splatLen < 0 {
+		splatLen = 0
+	}
+	splatVals := make([]object.RubyObject, splatLen)
+	if splatLen > 0 {
+		copy(splatVals, values[preCount:preCount+splatLen])
+	}
+	sp, _ := lhs[splatIdx].(*ast.SplatExpression)
+	if sp.Right != nil {
+		if err := assignTarget(env, sp.Right, object.NewArray(splatVals...)); err != nil {
+			return nil, err
+		}
+	}
+
+	for i := 0; i < postCount; i++ {
+		var v object.RubyObject = object.NIL
+		srcIdx := preCount + splatLen + i
+		if srcIdx < len(values) {
+			v = values[srcIdx]
+		}
+		if err := assignTarget(env, lhs[splatIdx+1+i], v); err != nil {
+			return nil, err
+		}
+	}
+
 	return right, nil
 }
 
@@ -105,10 +322,61 @@ func unpackMultiRHS(o object.RubyObject) []object.RubyObject {
 	return []object.RubyObject{o}
 }
 
+func evalIndexAssign(env *object.Environment, n *ast.IndexExpression, value object.RubyObject) error {
+	recv, err := Eval(n.Left, env)
+	if err != nil {
+		return err
+	}
+	if len(n.Arguments) != 1 {
+		return errorf("evaluator: []= with %d args not yet supported", len(n.Arguments))
+	}
+	key, err := Eval(n.Arguments[0], env)
+	if err != nil {
+		return err
+	}
+	switch r := recv.(type) {
+	case *object.Hash:
+		for i, e := range r.Entries {
+			if rubyEqual(e.Key, key) {
+				r.Entries[i].Value = value
+				return nil
+			}
+		}
+		r.Entries = append(r.Entries, object.HashEntry{Key: key, Value: value})
+		return nil
+	case *object.Array:
+		idx, ok := key.(*object.Integer)
+		if !ok {
+			return errorf("evaluator: Array#[]= needs Integer index, got %T", key)
+		}
+		i := int(idx.Value)
+		if i < 0 {
+			i += len(r.Elements)
+			if i < 0 {
+				return errorf("evaluator: IndexError: index too small")
+			}
+		}
+		for i >= len(r.Elements) {
+			r.Elements = append(r.Elements, object.NIL)
+		}
+		r.Elements[i] = value
+		return nil
+	case *object.Instance:
+		if m, found := r.C.LookupMethod("[]="); found {
+			if um, ok := m.(*object.UserMethod); ok {
+				_, err := invokeMethodOn(env, r, um, []object.RubyObject{key, value}, nil)
+				return err
+			}
+		}
+		return errorf("evaluator: NoMethodError: undefined method `[]=' for instance of %s", r.C.Name)
+	}
+	return errorf("evaluator: []= not yet supported on %T", recv)
+}
+
 func assignTarget(env *object.Environment, target ast.Expression, value object.RubyObject) error {
 	switch t := target.(type) {
 	case *ast.Identifier:
-		env.Set(t.Value, value)
+		env.AssignVisible(t.Value, value)
 		return nil
 	case *ast.Global:
 		env.SetGlobal(t.Value, value)

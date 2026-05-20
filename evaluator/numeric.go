@@ -59,7 +59,7 @@ func intInfix(op string, l, r int64) (object.RubyObject, error) {
 		return object.NewInteger(l * r), nil
 	case "/":
 		if r == 0 {
-			return nil, errorf("evaluator: ZeroDivisionError: divided by 0")
+			return nil, errZeroDivision
 		}
 		// MRI Integer#/ is floor division: -7 / 2 == -4.
 		q := l / r
@@ -69,7 +69,7 @@ func intInfix(op string, l, r int64) (object.RubyObject, error) {
 		return object.NewInteger(q), nil
 	case "%":
 		if r == 0 {
-			return nil, errorf("evaluator: ZeroDivisionError: divided by 0")
+			return nil, errZeroDivision
 		}
 		// MRI Integer#% follows the floor-division remainder: result has
 		// the same sign as the divisor.

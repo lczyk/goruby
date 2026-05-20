@@ -1,4 +1,3 @@
-# skip-evaluator: needs class definitions
 class Counter
   def initialize
     @count = 0

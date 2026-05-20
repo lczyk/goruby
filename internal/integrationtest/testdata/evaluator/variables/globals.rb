@@ -1,4 +1,3 @@
-# skip-evaluator: needs def
 $count = 0
 
 def bump
