@@ -228,31 +228,6 @@ func TestHelperIsMethodCallTarget(t *testing.T) {
 	}
 }
 
-func TestHelperPeekPastWhitespace(t *testing.T) {
-	tests := []struct {
-		name string
-		in   string
-		want rune
-	}{
-		{"empty", "", -1},
-		{"only spaces", "   ", -1},
-		{"only tabs", "\t\t", -1},
-		{"mixed whitespace", " \t ", -1},
-		{"char after space", "  a", 'a'},
-		{"char at start", "x", 'x'},
-		{"char after newline", "\nx", '\n'}, // newline is NOT skipped
-		{"char after tab", "\tx", 'x'},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			l := New(tt.in)
-			if got := l.peekPastWhitespace(); got != tt.want {
-				t.Errorf("peekPastWhitespace() = %c (%d), want %c (%d)", got, got, tt.want, tt.want)
-			}
-		})
-	}
-}
-
 func TestLexerWithVersion(t *testing.T) {
 	tests := []struct {
 		name    string

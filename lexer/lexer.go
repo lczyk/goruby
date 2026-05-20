@@ -512,20 +512,6 @@ func (l *Lexer) peek() rune {
 	return r
 }
 
-// peekPastWhitespace returns the first non-whitespace rune after the
-// current position, without consuming input. Returns -1 at EOF.
-func (l *Lexer) peekPastWhitespace() rune {
-	pos := l.pos
-	for pos < len(l.input) {
-		r := rune(l.input[pos])
-		if !isWhitespace(r) {
-			return r
-		}
-		pos++
-	}
-	return -1
-}
-
 // peekSecond returns the rune after the next rune, without consuming.
 func (l *Lexer) peekSecond() rune {
 	w := l.width
