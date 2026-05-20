@@ -527,7 +527,13 @@ func (a *Assignment) WriteTo(b *strings.Builder) {
 	b.WriteByte(' ')
 	rhs := a.Right
 	if op != "=" {
-		if inf, ok := rhs.(*InfixExpression); ok && inf.Left != nil && inf.Left.String() == a.Left.String() {
+		// Compound op-assignments (`a += 1`) are parsed as
+		// `a = a + 1` where the inner Left aliases the outer Left
+		// (same pointer, set in parseAssignmentOperator). Detect that
+		// alias to suppress the redundant lhs in the RHS. Pointer
+		// compare -- not String() -- because String() comparison on
+		// nested compound assignments is exponential.
+		if inf, ok := rhs.(*InfixExpression); ok && inf.Left == a.Left {
 			rhs = inf.Right
 		}
 	}
