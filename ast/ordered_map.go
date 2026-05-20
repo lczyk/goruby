@@ -49,3 +49,22 @@ func (m *OrderedExprMap) Len() int {
 func (m *OrderedExprMap) Entries() []keyValue {
 	return m.entries
 }
+
+// Reset truncates the entries slice to zero length while preserving the
+// backing array's capacity. Used by Arena.NewHashLiteral to reuse the
+// slot's hashmap storage across parses -- the slice header stays alive
+// over Reset so the next parse's Set() calls fill the same backing array.
+//
+// The retained slice still holds references to keyValue entries from the
+// prior parse until they get overwritten. Callers that need to free those
+// references sooner should call ResetClear instead.
+func (m *OrderedExprMap) Reset() {
+	// Zero each entry so the prior parse's Expression references become
+	// collectible -- the slice cap is reused, so without zeroing the
+	// arena slab would keep those AST sub-trees pinned via the keyValue
+	// pointer fields.
+	for i := range m.entries {
+		m.entries[i] = keyValue{}
+	}
+	m.entries = m.entries[:0]
+}
