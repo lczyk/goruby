@@ -29,9 +29,16 @@ const evaluatorCorpusRoot = "testdata/evaluator"
 // scripts/eval-corpus-oracle so harness and shell oracle agree.
 var minVersionRe = regexp.MustCompile(`^\s*#\s*minversion:\s*([0-9]+(?:\.[0-9]+)?)`)
 
-// minVersionFromHeader returns the parsed minimum ruby version declared
-// in the first 5 lines of the file, or the zero value if no header.
-func minVersionFromHeader(t *testing.T, path string) token.RubyVersion {
+// skipEvaluatorRe matches the `# skip-evaluator: <reason>` header. Used
+// to temporarily exclude fixtures that exercise features the evaluator
+// can't run yet, while keeping the file MRI-runnable for the bash
+// oracle. Remove the header once the gap is closed.
+var skipEvaluatorRe = regexp.MustCompile(`^\s*#\s*skip-evaluator:\s*(.+)`)
+
+// fixtureHeader reads up to 5 leading lines of path and returns the
+// declared minversion (zero if absent) and skip-evaluator reason
+// (empty if absent).
+func fixtureHeader(t *testing.T, path string) (minVer token.RubyVersion, skipReason string) {
 	t.Helper()
 	f, err := os.Open(path)
 	assert.NoError(t, err, "open %s", path)
@@ -39,14 +46,17 @@ func minVersionFromHeader(t *testing.T, path string) token.RubyVersion {
 
 	sc := bufio.NewScanner(f)
 	for i := 0; i < 5 && sc.Scan(); i++ {
-		m := minVersionRe.FindStringSubmatch(sc.Text())
-		if m != nil {
+		line := sc.Text()
+		if m := minVersionRe.FindStringSubmatch(line); m != nil {
 			v, perr := token.ParseVersion(m[1])
 			assert.NoError(t, perr, "parse minversion %q", m[1])
-			return v
+			minVer = v
+		}
+		if m := skipEvaluatorRe.FindStringSubmatch(line); m != nil {
+			skipReason = strings.TrimSpace(m[1])
 		}
 	}
-	return token.RubyVersion{}
+	return
 }
 
 // runEvaluatorFixture parses src under env.Version() and evaluates it,
@@ -71,6 +81,7 @@ func runEvaluatorFixture(t *testing.T, env *object.Environment, filename, src st
 var supportedEvaluatorSubdirs = []string{
 	"literals",
 	"arithmetic",
+	"variables",
 }
 
 // TestEvaluatorCorpus runs every .rb file under the supported corpus
@@ -97,9 +108,12 @@ func TestEvaluatorCorpus(t *testing.T) {
 				rb := rb
 				name := strings.TrimSuffix(filepath.Base(rb), ".rb")
 				t.Run(name, func(t *testing.T) {
-					minVer := minVersionFromHeader(t, rb)
+					minVer, skipReason := fixtureHeader(t, rb)
 					if minVer.IsSet() && !target.AtLeast(minVer) {
 						t.Skipf("requires ruby %s, target is %s", minVer, target)
+					}
+					if skipReason != "" {
+						t.Skipf("skip-evaluator: %s", skipReason)
 					}
 
 					src, err := os.ReadFile(rb)
