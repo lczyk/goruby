@@ -51,8 +51,26 @@ bench:  ## Run benchmarks (override scope/duration: PKG=... BENCH=... BENCHTIME=
 	go test -run '^$$' -bench '$(or $(BENCH),.)' -benchmem -benchtime '$(or $(BENCHTIME),1s)' $(or $(PKG),./...)
 
 .PHONY: fuzz
-fuzz:  ## Fuzz a single target (override: PKG=... FUZZ=... FUZZTIME=...)
-	go test -run='^$$' -fuzz='$(or $(FUZZ),FuzzParse)' -fuzztime='$(or $(FUZZTIME),30s)' $(or $(PKG),./parser/)
+fuzz:  ## Fuzz all targets sequentially (override: PKG=... FUZZ=<single> FUZZTIME=...)
+	@FUZZTIME='$(or $(FUZZTIME),30s)'; \
+	if [ -n "$(FUZZ)" ]; then \
+		go test -run='^$$' -fuzz='$(FUZZ)' -fuzztime="$$FUZZTIME" $(or $(PKG),./parser/); \
+	else \
+		for pkg in $$(go list $(or $(PKG),./...)); do \
+			for t in $$(go test -list='^Fuzz' "$$pkg" 2>/dev/null | grep '^Fuzz' || true); do \
+				echo "==> $$pkg $$t ($$FUZZTIME)"; \
+				go test -run='^$$' -fuzz="^$$t$$" -fuzztime="$$FUZZTIME" "$$pkg" || exit 1; \
+			done; \
+		done; \
+	fi
+
+.PHONY: fuzz-list
+fuzz-list:  ## List all fuzz targets (override: PKG=...)
+	@for pkg in $$(go list $(or $(PKG),./...)); do \
+		for t in $$(go test -list='^Fuzz' "$$pkg" 2>/dev/null | grep '^Fuzz' || true); do \
+			echo "$$pkg $$t"; \
+		done; \
+	done
 
 .PHONY: cover
 cover:  ## Coverage profile + HTML report (cover.out, cover.html)
