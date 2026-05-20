@@ -22,6 +22,11 @@ type Node interface {
 	TokenLiteral() string
 	// String returns a string representation of the node
 	String() string
+	// WriteTo writes the rendering of this node into the shared builder.
+	// Equivalent to String() but lets callers avoid the intermediate
+	// allocation when assembling parent strings. Always present so the
+	// recursive print path is alloc-free.
+	WriteTo(b *strings.Builder)
 }
 
 // A Statement represents a statement within the AST
@@ -52,35 +57,19 @@ func IsLiteral(n Node) bool {
 	return ok
 }
 
-// WriteToer is the opt-in builder-direct printing interface. Nodes that
-// implement it can render directly into a shared strings.Builder, avoiding
-// the O(N^2) intermediate-string allocation that the recursive String()
-// pattern incurs for deeply-nested ASTs.
-//
-// Nodes not yet migrated fall through to String() via the writeTo helper.
-type WriteToer interface {
-	WriteTo(b *strings.Builder)
-}
-
-// writeTo writes the rendering of n into b. Uses n.WriteTo if implemented,
-// otherwise falls back to n.String(). Internal call sites in node String /
-// WriteTo methods use this to recurse into children without caring whether
-// the child has migrated.
+// writeTo writes the rendering of n into b. Every Node implements WriteTo
+// per the interface contract, so this is a direct method call with no
+// type-assert overhead.
 func writeTo(n Node, b *strings.Builder) {
-	if w, ok := n.(WriteToer); ok {
-		w.WriteTo(b)
-		return
-	}
-	b.WriteString(n.String())
+	n.WriteTo(b)
 }
 
 // Format renders n into a string. Equivalent to n.String() but routes
-// through WriteTo for any node that has migrated to direct-builder
-// rendering. Prefer this over n.String() at call sites that build their
-// own buffer -- it lets the migrated subtree share that buffer.
+// through the shared-builder WriteTo path so a node's children render
+// straight into the same buffer.
 func Format(n Node) string {
 	var b strings.Builder
-	writeTo(n, &b)
+	n.WriteTo(&b)
 	return b.String()
 }
 
@@ -118,6 +107,14 @@ func (p *Program) End() int {
 	}
 	return p.Statements[len(p.Statements)-1].End()
 }
+func (p *Program) WriteTo(b *strings.Builder) {
+	// Program's String has post-processing (relocateHeredocBodies + magic
+	// encoding header). WriteTo defers to String so the post-processing
+	// runs; this means embedding a Program as a child is a one-shot copy.
+	// In practice Program is only ever the root, so this is fine.
+	b.WriteString(p.String())
+}
+
 func (p *Program) String() string {
 	var out strings.Builder
 	first := true
@@ -1725,7 +1722,11 @@ func (c *Comment) End() int { return c.Token.Pos + len(c.Value) }
 
 // TokenLiteral returns the literal from token token.STRING
 func (c *Comment) TokenLiteral() string { return c.Value }
-func (c *Comment) String() string       { return "#" + c.Value }
+func (c *Comment) String() string { return "#" + c.Value }
+func (c *Comment) WriteTo(b *strings.Builder) {
+	b.WriteByte('#')
+	b.WriteString(c.Value)
+}
 
 // SymbolLiteral represents a symbol within the AST
 type SymbolLiteral struct {
@@ -1936,7 +1937,8 @@ func (i *ImplicitRest) literalNode()         {}
 func (i *ImplicitRest) Pos() int             { return i.PosOff }
 func (i *ImplicitRest) End() int             { return i.PosOff }
 func (i *ImplicitRest) TokenLiteral() string { return "" }
-func (i *ImplicitRest) String() string       { return "" }
+func (i *ImplicitRest) String() string             { return "" }
+func (i *ImplicitRest) WriteTo(b *strings.Builder) {}
 
 // ExpressionList represents a list of expressions within the AST divided by commas
 type ExpressionList []Expression
