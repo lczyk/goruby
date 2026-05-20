@@ -470,6 +470,22 @@ func splitKwargInfix(e ast.Expression) (string, ast.Expression, bool) {
 func evalExpressions(env *object.Environment, exprs []ast.Expression) ([]object.RubyObject, error) {
 	out := make([]object.RubyObject, 0, len(exprs))
 	for _, e := range exprs {
+		// `f(*args)`: expand a splat argument inline. Arrays splice in
+		// element-wise; non-arrays land as a single arg (matching MRI's
+		// implicit to_a for non-Array splats -- approximated here as
+		// "just pass through").
+		if sp, ok := e.(*ast.SplatExpression); ok && sp.Operator == "*" {
+			v, err := Eval(sp.Right, env)
+			if err != nil {
+				return nil, err
+			}
+			if arr, ok := v.(*object.Array); ok {
+				out = append(out, arr.Elements...)
+				continue
+			}
+			out = append(out, v)
+			continue
+		}
 		v, err := Eval(e, env)
 		if err != nil {
 			return nil, err

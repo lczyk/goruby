@@ -33,6 +33,15 @@ function _process_lang() {
     local lang="$1"
     local interp="${INTERPS}/${lang}.rb"
     local dir="${TESTS}/${lang}"
+    # Gem-distributed interpreters live under testdata/gems/<lang>/
+    # rather than testdata/esolangs/; mirror the resolver in
+    # esolang_test.go's resolveEsolangInterp.
+    if [ ! -f "$interp" ]; then
+        case "$lang" in
+            pyramid-scheme) interp="${ROOT}/testdata/gems/pyramid-scheme/pyra.rb" ;;
+            *)              interp="${ROOT}/testdata/gems/${lang}/${lang}.rb" ;;
+        esac
+    fi
     if [ ! -f "$interp" ]; then
         printf 'esolang-tests-oracle: missing interpreter %s\n' "$interp" >&2
         return 1

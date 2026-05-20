@@ -2,6 +2,7 @@ package evaluator
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -627,6 +628,12 @@ func callStringMethod(env *object.Environment, recv object.RubyObject, name stri
 			v = -v
 		}
 		return object.NewInteger(v), true, nil
+	case "to_f":
+		// Best-effort: skip leading ws + optional sign, consume digits
+		// and optional `.` + decimals + optional exponent. Trailing
+		// garbage is ignored, mirroring MRI.
+		f, _ := strconv.ParseFloat(strings.TrimSpace(s), 64)
+		return object.NewFloat(f), true, nil
 	}
 	return nil, false, nil
 }

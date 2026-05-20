@@ -25,6 +25,27 @@ const (
 	esolangTestsDir  = "testdata/esolang_tests"
 )
 
+// resolveEsolangInterp looks for the interpreter source under
+// testdata/esolangs/<lang>.rb first; if that misses, falls back to a
+// few common shapes under testdata/gems/<lang>/ for gem-distributed
+// interpreters (e.g. pyramid-scheme's pyra.rb).
+func resolveEsolangInterp(lang string) string {
+	cands := []string{
+		filepath.Join(esolangInterpDir, lang+".rb"),
+		filepath.Join("testdata/gems", lang, lang+".rb"),
+	}
+	switch lang {
+	case "pyramid-scheme":
+		cands = append(cands, "testdata/gems/pyramid-scheme/pyra.rb")
+	}
+	for _, p := range cands {
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	return ""
+}
+
 // TestEsolangPrograms runs each <esolangTestsDir>/<lang>/*.in through
 // the sibling <esolangInterpDir>/<lang>.rb interpreter under the goruby
 // evaluator and compares stdout against the pre-recorded .expected.
@@ -42,9 +63,9 @@ func TestEsolangPrograms(t *testing.T) {
 			continue
 		}
 		lang := sub.Name()
-		interp := filepath.Join(esolangInterpDir, lang+".rb")
-		if _, err := os.Stat(interp); err != nil {
-			t.Errorf("%s: missing interpreter %s", lang, interp)
+		interp := resolveEsolangInterp(lang)
+		if interp == "" {
+			t.Errorf("%s: missing interpreter (looked under %s and gems)", lang, esolangInterpDir)
 			continue
 		}
 		interpSrc, err := os.ReadFile(interp)

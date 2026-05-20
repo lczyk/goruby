@@ -235,7 +235,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 				out = append(out, v)
 			}
 			return object.NewArray(out...), nil
-		case "select", "filter", "reject", "find", "detect", "all?", "any?", "none?", "count", "group_by", "partition", "min_by", "max_by", "take_while", "drop_while", "each_slice", "each_cons", "reduce", "inject", "chunk_while", "slice_when", "each_with_object", "each_with_index", "sort", "sort_by":
+		case "select", "filter", "find_all", "reject", "find", "detect", "all?", "any?", "none?", "count", "group_by", "partition", "min_by", "max_by", "take_while", "drop_while", "each_slice", "each_cons", "reduce", "inject", "chunk_while", "slice_when", "each_with_object", "each_with_index", "sort", "sort_by":
 			elems, err := rangeToSlice(env, r)
 			if err != nil {
 				return nil, err
@@ -339,7 +339,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 				out = append(out, v)
 			}
 			return object.NewArray(out...), nil
-		case "select", "filter":
+		case "select", "filter", "find_all":
 			out := []object.HashEntry{}
 			for _, e := range h.Entries {
 				v, stop, err := iterStep(invoke, []object.RubyObject{e.Key, e.Value})
@@ -733,7 +733,7 @@ func callMethodWithBlockImpl(env *object.Environment, recv object.RubyObject, na
 				}
 			}
 			return object.NewArray(out...), nil
-		case "select", "filter":
+		case "select", "filter", "find_all":
 			out := make([]object.RubyObject, 0, len(arr.Elements))
 			for _, e := range arr.Elements {
 				v, stop, err := yieldOne(invoke, e)

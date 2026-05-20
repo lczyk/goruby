@@ -61,7 +61,7 @@ func callEnumerableBlock(env *object.Environment, inst *object.Instance, name st
 			return nil, true, err
 		}
 		return object.NewArray(out...), true, nil
-	case "select", "filter":
+	case "select", "filter", "find_all":
 		out := []object.RubyObject{}
 		_, err := runEach(func(a []object.RubyObject) (object.RubyObject, error) {
 			e := joinYieldArgs(a)

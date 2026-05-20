@@ -618,6 +618,10 @@ func evalIndex(env *object.Environment, n *ast.IndexExpression) (object.RubyObje
 		return object.NIL, nil
 	case *object.Array:
 		return arrayIndex(r, args)
+	case *object.Proc:
+		// Proc#[] is sugar for #call: `p[a, b]` invokes the proc with
+		// the given args. Same dispatch as `.()` / `.call`.
+		return invokeProc(env, r, args)
 	case *object.Instance:
 		if m, found := dispatchClass(env, r).LookupMethod("[]"); found {
 			if um, ok := m.(*object.UserMethod); ok {
