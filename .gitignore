@@ -38,8 +38,7 @@ internal/integrationtest/testdata/gems/
 # MRI ruby source fixtures for integration tests
 internal/integrationtest/testdata/rubies/
 
-goruby/
-bin/
+/goruby
 .claude/
 
 # Local cache for MRI parsetree dumps (parsetree_test.go)

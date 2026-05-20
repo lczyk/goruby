@@ -4,7 +4,7 @@
 // reformatting. With --check, the command exits non-zero if input and
 // output differ and writes a unified diff to stderr.
 //
-//	parse-roundtrip [--version=X.Y] [--check] [file]
+//	parse-roundtrip [--ruby-version=X.Y] [--check] [file]
 //
 // Without a positional argument, reads source from stdin.
 //
@@ -17,36 +17,54 @@ package main
 
 import (
 	"bufio"
-	"flag"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
+	flags "github.com/jessevdk/go-flags"
 	"github.com/lczyk/goruby/ast"
+	"github.com/lczyk/goruby/internal/version"
 	"github.com/lczyk/goruby/parser"
 	"github.com/lczyk/goruby/token"
+	ver "github.com/lczyk/version/go"
 )
 
+type Options struct {
+	RubyVersion string `long:"ruby-version" description:"target ruby version (e.g. 2.7); empty = latest" value-name:"X.Y"`
+	Check       bool   `long:"check" description:"exit non-zero on input/output mismatch and write a diff to stderr"`
+	Version     bool   `short:"v" long:"version" description:"print version and exit"`
+}
+
 func main() {
-	version := flag.String("version", "", "target ruby version (e.g. 2.7); empty = latest")
-	check := flag.Bool("check", false, "exit non-zero on input/output mismatch and write a diff to stderr")
-	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: parse-roundtrip [--version=X.Y] [--check] [file]")
-		flag.PrintDefaults()
+	var opts Options
+	p := flags.NewParser(&opts, flags.Default)
+	p.Usage = "[--ruby-version=X.Y] [--check] [file]"
+	args, err := p.Parse()
+	if err != nil {
+		var fe *flags.Error
+		if errors.As(err, &fe) && fe.Type == flags.ErrHelp {
+			os.Exit(0)
+		}
+		os.Exit(2)
 	}
-	flag.Parse()
+
+	if opts.Version {
+		fmt.Println(ver.FormatVersion(version.Version, version.CommitSHA, version.BuildDate, version.BuildInfo))
+		return
+	}
 
 	var verOpt []parser.Option
-	if *version != "" {
-		v, err := token.ParseVersion(*version)
+	if opts.RubyVersion != "" {
+		v, err := token.ParseVersion(opts.RubyVersion)
 		if err != nil {
 			die("parse version:", err)
 		}
 		verOpt = append(verOpt, parser.WithVersion(v))
 	}
 
-	filename, src := readInput()
+	filename, src := readInput(args)
 
 	prog, err := parser.ParseFile(filename, src, parser.ParseComments, verOpt...)
 	if err != nil {
@@ -55,7 +73,7 @@ func main() {
 
 	out := ast.Format(prog)
 
-	if *check {
+	if opts.Check {
 		if out == string(src) {
 			return
 		}
@@ -68,19 +86,18 @@ func main() {
 	}
 }
 
-func readInput() (filename string, src []byte) {
-	if flag.NArg() == 0 {
+func readInput(args []string) (filename string, src []byte) {
+	if len(args) == 0 {
 		data, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			die("read stdin:", err)
 		}
 		return "<stdin>", data
 	}
-	if flag.NArg() > 1 {
-		flag.Usage()
-		os.Exit(2)
+	if len(args) > 1 {
+		die("usage:", fmt.Errorf("too many positional arguments"))
 	}
-	filename = flag.Arg(0)
+	filename = args[0]
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		die("read input:", err)

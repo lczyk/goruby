@@ -48,8 +48,10 @@ directly, re-emit via `(*ast.Program).String()`, or evaluate via
 - `cmd/lex-dump` -- token stream dump (yaml/jsonl) for a ruby file
 - `cmd/parse-roundtrip` -- parse then re-emit via `ast.Format`; `--check`
   for diff-mode
-- `cmd/eval` -- run a ruby file through the goruby evaluator; stdout is
-  the program's output. accepts `--version=X.Y`
+- `cmd/goruby` -- run a ruby program through the goruby evaluator;
+  stdout is the program's output. accepts `-e <script>` (repeatable),
+  a single positional file, or stdin if neither is given. accepts
+  `--version=X.Y`
 - `cmd/normalize-parsetree` -- cli wrapping `parsetreenorm` for ad-hoc diffs
 - `cmd/gen-arena` -- codegen for `ast/arena_gen.go` (see below)
 - `internal/integrationtest` -- gem / mri-golden / mri-parsetree-diff /

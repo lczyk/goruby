@@ -1,8 +1,14 @@
+github.com/jessevdk/go-flags v1.6.1 h1:Cvu5U8UGrLay1rZfv/zP7iLpSHGUZ/Ou68T0iX1bBK4=
+github.com/jessevdk/go-flags v1.6.1/go.mod h1:Mk8T1hIAWpOiJiHa9rJASDK2UGWji0EuPGBnNLMooyc=
 github.com/lczyk/assert v0.6.0 h1:V8MxjKrBU37Z/RXCxxwLhpCLH5zQQlZTStG3mSJpXtk=
 github.com/lczyk/assert v0.6.0/go.mod h1:Vv3LWPfjC/FbJ3IXb22YNWxZWicc1x6R7hzDCf+RARc=
 github.com/lczyk/assert v0.7.0 h1:1FkKu2L4VPrmuqv2S1xZ6bQjDTItXGJ63oEMWB6D/C0=
 github.com/lczyk/assert v0.7.0/go.mod h1:Vv3LWPfjC/FbJ3IXb22YNWxZWicc1x6R7hzDCf+RARc=
 github.com/lczyk/trace v0.3.0 h1:dLqMi3VI5aHfFDjjVq0LnTt8IbyajkQGYvxn2LV/Yf4=
 github.com/lczyk/trace v0.3.0/go.mod h1:OQ0MipMhtokIca9dJMxv1SHPj8B8R3qZTpqUsLqVZdM=
+github.com/lczyk/version/go v0.5.0 h1:PRge4vy77pPUcYiThEwaLMaHvMe4Xad1XKTOgdLOlVY=
+github.com/lczyk/version/go v0.5.0/go.mod h1:8CHgUp1ILDx0+yN/F53SM/QKRjVEXjt3Od4D4L0986Y=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
+golang.org/x/sys v0.21.0 h1:rF+pYz3DAGSQAxAu1CbC7catZg4ebC4UIeIhKxBZvws=
+golang.org/x/sys v0.21.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=

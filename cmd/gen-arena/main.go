@@ -24,7 +24,7 @@ package main
 
 import (
 	"bytes"
-	"flag"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/format"
@@ -32,12 +32,34 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+
+	flags "github.com/jessevdk/go-flags"
+	"github.com/lczyk/goruby/internal/version"
+	ver "github.com/lczyk/version/go"
 )
 
+type Options struct {
+	In      string `long:"in" description:"directory containing ast.go + arena.go" default:"." value-name:"DIR"`
+	Out     string `long:"out" description:"output file path (relative to --in)" default:"arena_gen.go" value-name:"PATH"`
+	Version bool   `short:"v" long:"version" description:"print version and exit"`
+}
+
 func main() {
-	inDir := flag.String("in", ".", "directory containing ast.go + arena.go")
-	outPath := flag.String("out", "arena_gen.go", "output file path (relative to -in)")
-	flag.Parse()
+	var opts Options
+	p := flags.NewParser(&opts, flags.Default)
+	if _, err := p.Parse(); err != nil {
+		var fe *flags.Error
+		if errors.As(err, &fe) && fe.Type == flags.ErrHelp {
+			os.Exit(0)
+		}
+		os.Exit(2)
+	}
+	if opts.Version {
+		fmt.Println(ver.FormatVersion(version.Version, version.CommitSHA, version.BuildDate, version.BuildInfo))
+		return
+	}
+	inDir := &opts.In
+	outPath := &opts.Out
 
 	astPath := filepath.Join(*inDir, "ast.go")
 	arenaPath := filepath.Join(*inDir, "arena.go")

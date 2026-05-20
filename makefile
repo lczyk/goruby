@@ -1,12 +1,42 @@
 .SUFFIXES:
 
-GO_DIRS := ./ast ./lexer ./parser ./token ./internal
+GO_DIRS := ./ast ./lexer ./parser ./token ./internal ./object ./evaluator ./cmd
+
+SRCS := $(shell find ./ast ./lexer ./parser ./token ./object ./evaluator ./cmd ./internal -name '*.go' ! -name 'version.go' 2>/dev/null)
 
 help:  ## Show this help
 	@echo "Available targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 GOTEST := $(shell command -v gotest 2>/dev/null || echo go test)
+
+CMDS := $(notdir $(wildcard cmd/*))
+BINS := $(addprefix ./bin/,$(CMDS))
+
+.PHONY: build
+build: $(BINS)  ## Build all cmd/* binaries (compressed with upx if available)
+
+./bin/%: $(SRCS) generate-version makefile go.mod go.sum
+	mkdir -p ./bin
+	go build -o $@ ./cmd/$*
+	@if command -v upx >/dev/null 2>&1; then \
+		upx $@ || echo "upx failed, skipping compression"; \
+	fi
+
+.PHONY: generate-version
+generate-version:  ## Generate internal/version/version.go from VERSION + git state
+	go run github.com/lczyk/version/go/cmd/generate-version -out ./internal/version/version.go -pkg version -init
+
+.PHONY: du
+du: $(BINS)  ## Show binary sizes
+	du -h $(BINS)
+
+.PHONY: install
+install: $(BINS)  ## Symlink all binaries into ~/.local/bin
+	mkdir -p $(HOME)/.local/bin
+	@for b in $(CMDS); do \
+		ln -sfv "$(PWD)/bin/$$b" "$(HOME)/.local/bin/$$b"; \
+	done
 
 .PHONY: unit
 unit:  ## Run unit tests with race detection (pytest-style dots; pass V=1 for verbose)
@@ -152,3 +182,5 @@ eval-corpus-oracle:  ## Run evaluator corpus under pinned MRI and diff stdout vs
 .PHONY: clean
 clean:  ## Remove generated files
 	rm -f cover.out cover.html
+	rm -f ./internal/version/version.go
+	rm -rf ./bin

@@ -21,30 +21,46 @@ package main
 
 import (
 	"bytes"
-	"flag"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 
+	flags "github.com/jessevdk/go-flags"
 	"github.com/lczyk/goruby/internal/parsetreenorm"
+	"github.com/lczyk/goruby/internal/version"
+	ver "github.com/lczyk/version/go"
 )
 
+type Options struct {
+	Raw     bool `long:"raw" description:"skip the flat-form reparse; keep indented tree shape"`
+	Version bool `short:"v" long:"version" description:"print version and exit"`
+}
+
 func main() {
-	raw := flag.Bool("raw", false, "skip the flat-form reparse; keep indented tree shape")
-	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: normalize-parsetree [--raw] [<ruby-bin> <input.rb>]")
-		flag.PrintDefaults()
+	var opts Options
+	p := flags.NewParser(&opts, flags.Default)
+	p.Usage = "[--raw] [<ruby-bin> <input.rb>]"
+	args, err := p.Parse()
+	if err != nil {
+		var fe *flags.Error
+		if errors.As(err, &fe) && fe.Type == flags.ErrHelp {
+			os.Exit(0)
+		}
+		os.Exit(2)
 	}
-	flag.Parse()
-	args := flag.Args()
+	if opts.Version {
+		fmt.Println(ver.FormatVersion(version.Version, version.CommitSHA, version.BuildDate, version.BuildInfo))
+		return
+	}
 	switch len(args) {
 	case 0:
-		runStdin(*raw)
+		runStdin(opts.Raw)
 	case 2:
-		runDump(args[0], args[1], *raw)
+		runDump(args[0], args[1], opts.Raw)
 	default:
-		flag.Usage()
+		fmt.Fprintln(os.Stderr, "usage: normalize-parsetree [--raw] [<ruby-bin> <input.rb>]")
 		os.Exit(2)
 	}
 }
