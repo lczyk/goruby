@@ -124,6 +124,7 @@ func FuzzParse(f *testing.F) {
 	seeds = append(seeds,
 		"alia, alias",         // nil-leak into ExpressionList from alias without args
 		"begin\nrescue A A=", // nil Right on Assignment from EOF after `=` inside rescue arg
+		"begin\nrescue[",     // nil element in ArrayLiteral when `[` followed by EOF as rescue exception class
 	)
 	for _, s := range seeds {
 		f.Add(s)

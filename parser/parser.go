@@ -4998,6 +4998,9 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 	}
 
 	next := p.parseExpression(precComma)
+	if next == nil {
+		return list
+	}
 	// `do/end` normally binds to the outermost call, not the inner arg.
 	// Exception: `proc`/`lambda` bare identifiers as arg are conventionally
 	// a proc literal -- attach the block to them.
@@ -5081,6 +5084,9 @@ func (p *parser) parseExpressionList(end ...token.Type) []ast.Expression {
 			}
 		}
 		next = p.parseExpression(precComma)
+		if next == nil {
+			return list
+		}
 		// `proc`/`lambda` arg do/end -- attach block to proc literal.
 		if id, ok := next.(*ast.Identifier); ok && p.peekTokenIs(token.DO) &&
 			(id.Value == "proc" || id.Value == "lambda") {
