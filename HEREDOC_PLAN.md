@@ -173,14 +173,15 @@ rough per-phase alloc delta (from current 4368 allocs/op on LexRealFiles):
 - (4-partial) delim O(n^2) fix landed -- commit `52e895e`. LexRealFiles allocs -26%.
 - **phase 1 done** -- commit `77fe3d2`. cursor primitives added; behavior unchanged.
 - **phase 2 done** -- commit `330ee17`. Non-interp main path + 4 body-end sites use cursor. byteAt lookahead added.
-- **phase 3 deferred** -- inInterp cursor entangled with stripSquigInterpBody splice. Will move once phase 5 lands.
+- **phase 3 deferred (second attempt failed)** -- with phase 5 done, the original strip-splice entanglement is gone, but a separate failure mode appeared: when inInterp pushes interpState then lexHeredocStart cursor for the inner heredoc, finishHeredoc's cursor switch clobbers the outer heredoc's state (and l.pending entries from outer don't survive). Full fix would require interpState to also save/restore `heredocRest` and `pending`, plus careful ordering of finishHeredoc vs interpStack pop. Attempt broke 731 integration tests (e.g. `mri-tests/test_alias.rb` heredoc-in-interp constructs); reverted. Cleanly possible but deserves its own focused session.
 - **phase 4 done** -- commit `330ee17` (folded in). Nested heredocs (`<<A, <<B`) handled via `pending[0]` pop when `\n` at segment boundary.
-- **phase 5 deferred** -- stripSquigInterpBody splice cursor conversion requires generalizing `segment` with overlay data and updating ~53 direct `l.input[...]` reads across body lex / matchHeredocDelimLine. Too invasive for current session; needs dedicated effort.
-- **phase 6 deferred** -- depends on phase 3 / 5 to remove heredocPostBody field.
+- **phase 5 done** -- commit `f68cb41`. stripSquigInterpBody no longer mutates l.input; allocates small stripped+delim buffer and temporarily swaps l.input for body lex. LexRealFiles bytes/op 4.4MB -> 2.4MB (-45%).
+- **phase 6 deferred** -- removing heredocPostBody and the splice fallback paths requires phase 3 to be done first.
 
 ### measured outcome (vs pre-(4-partial) baseline)
 
-- `BenchmarkLexRealFiles` bytes/op: 9.3MB -> 4.4MB **(-52%)**.
-- `BenchmarkParseRealFiles` bytes/op: 27.6MB -> 21.9MB **(-21%)**.
-- `BenchmarkParseRealFiles` MB/s: 60.7 -> 63.0 (+4%).
-- `BenchmarkLexRealFiles` allocs/op: 5901 -> 4197 (-29%).
+After phase 5:
+- `BenchmarkLexRealFiles` bytes/op: 9.3MB -> 2.4MB **(-74%)**.
+- `BenchmarkParseRealFiles` bytes/op: 27.6MB -> 19.9MB **(-28%)**.
+- `BenchmarkLexRealFiles` allocs/op: 5901 -> 4072 (-31%).
+- `BenchmarkLexSquigHeredoc` allocs/op: 14 -> 7 (-50%).
