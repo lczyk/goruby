@@ -185,3 +185,64 @@ After phase 5:
 - `BenchmarkParseRealFiles` bytes/op: 27.6MB -> 19.9MB **(-28%)**.
 - `BenchmarkLexRealFiles` allocs/op: 5901 -> 4072 (-31%).
 - `BenchmarkLexSquigHeredoc` allocs/op: 14 -> 7 (-50%).
+
+## phase 3 plan (deferred -- own session)
+
+context: 2 attempts in current session both failed. with phase 5 done, the original "strip-splice mutates l.input under cursor" entanglement is gone, but a deeper issue surfaced: cursor-mode inner heredoc inside `#{}` clobbers outer state and `l.pending` invariants don't survive the interpState push/pop.
+
+### failure case
+
+```ruby
+assert_no_memory_leak([], "#{<<~"begin;"}", "#{<<~'end;'}", rss: true)
+begin;
+  ...body lines...
+end;
+```
+
+token order needed: `IDENT(assert_no_memory_leak) ( [] , STRING_BEG EMBEXPR_BEG STRING_BEG[heredoc-1] body STRING_END[heredoc-1] EMBEXPR_END STRING_END , STRING_BEG EMBEXPR_BEG STRING_BEG[heredoc-2] body STRING_END[heredoc-2] EMBEXPR_END STRING_END , rss : true )` then both heredoc bodies' source-lines lex *after* the outer `)\n`.
+
+splice version handles this because postBody re-injection puts the outer-string-and-rest-of-line literally adjacent to the body region. cursor must achieve the same logical order without input mutation.
+
+### two specific bugs the cursor attempt hit
+
+1. **`interpState` doesn't save `heredocRest`.** when entering `#{}`, the outer heredoc's `heredocRest` (zero if outer is a regular string, non-zero if outer is itself a heredoc body) is not in `interpState`. inner heredoc setup writes to `heredocRest`. inner `finishHeredoc` clears it. on `}` pop, outer's `heredocRest` is not restored -- which matters when outer is a heredoc.
+
+2. **`l.pending` lifetime crosses interpState boundaries.** inner `finishHeredoc` queues `{after-inner-body, l.segEnd}` to the front of `l.pending`. that segment is the original-source continuation *after* both the outer string AND the inner heredoc -- it must survive the `}` pop because the outer string still has rest-of-content to lex, and *its* after-outer-content is what was at `l.pos` before the inner heredoc started.
+
+   so `pending` cannot be naively saved/restored across interpState push/pop: inner additions must persist, but they must be sequenced correctly with outer continuations.
+
+### design
+
+**save/restore split.** `interpState` gets new field `savedHeredocRest segment`. on push: snapshot `l.heredocRest`. on pop: restore it. `pending` is **not** in interpState; lives as a single shared FIFO whose entries are added by inner finishHeredoc and consumed in order.
+
+**ordering invariant.** at the point inner `finishHeredoc` runs, `l.pos` is at the end of the body+delim+newline region. cursor switch:
+- push `{l.pos, l.segEnd}` to front of pending -- this is "outer-string-rest-content AND all source past outer string".
+- jump `l.pos = heredocRest.start, l.segEnd = heredocRest.end` -- inner heredoc's rest-of-line, which contains the `}` that closes `#{}` plus rest of outer string content up to its closing `"`.
+
+after `}` token is emitted (advancing l.pos inside rest-of-line segment), interpState pops. `heredocRest` restored to outer's (typically zero). lex continues consuming rest of outer string content. when rest-of-line segment exhausts (hit its trailing `\n` or just end), pending pops the next entry -- which is the after-inner-body continuation, correctly resuming original source.
+
+**multi-heredoc-per-line.** `"#{<<A}"foo#{<<B}"bar"`: two heredocs in two `#{}`s on the same outer source line. each pushes its own interpState. each inner finishHeredoc queues its own after-body-continuation to pending front. order in pending after both: `[after-B-continuation, after-A-continuation, ...]`. when both `}`s have popped and outer string closes, lexer reads its source-line trailing content, then on segment exhaustion pops after-B (B's body+delim is later in source than A's), then after-A. wait -- check this order: bodies appear in source as `body-of-A\nA\nbody-of-B\nB\n`. so after-A-continuation is at byte position past `A\n` = where body-of-B starts. but body-of-B has already been consumed by B's heredoc setup (which read it from `l.input` directly). so after-A-continuation should be byte position past `B\n` = where source after both heredocs continues. need to verify the front-push order is correct, or use a different ordering.
+
+### concrete steps
+
+1. **add `savedHeredocRest segment` to interpState struct.** update `pushInterp` and `restoreHeredocState` to snapshot/restore it (in addition to the existing heredoc fields).
+2. **enable cursor for `inInterp && \n` case** in `lexHeredocStart`. straightforward analogue of the non-interp `\n` branch.
+3. **enable cursor for `inInterp && }` case** in `lexHeredocStart`. `realNl` scan to find the body boundary, then `heredocRest = {restStart, realNl+1}`, jump `l.pos = realNl+1`.
+4. **trace through `"#{<<A}rest"` by hand** to verify token Pos values, NEWLINE suppression, EMBEXPR_END ordering.
+5. **add targeted unit tests** in `lexer/coverage_extra_test.go`:
+   - `"#{<<EOS}\nbody\nEOS\n"` -- simplest heredoc-in-interp.
+   - `"#{<<~MSG}\n  body\nMSG\n"` -- squig variant; verifies phase 5 swap + cursor coexist.
+   - `"a#{<<A}b#{<<B}c"\nbody-a\nA\nbody-b\nB` -- two heredocs in two interps on same outer source line.
+   - heredoc-in-interp-in-heredoc (the existing adversarial fixture).
+6. **iterate against `make test`** until lexer+parser green; then `make oracle`. expect `mri-tests/test_alias.rb`, `test_settracefunc.rb`, `test_string.rb` etc. to be the canaries.
+7. **once green, do phase 6**: remove `heredocPostBody` field, the 4 body-end re-injection sites in `finishHeredoc`, the splice fallback branches in `lexHeredocStart`, and the `heredocPostBody` save in interpState.
+
+### risk areas
+
+- **token Pos consistency.** cursor mode emits tokens at positions in original (unspliced) source. splice mode emitted at positions in mutated input. line-table (`AddLine`) consumes NEWLINE tokens; positions must be increasing-enough that line lookups don't degrade. test by checking parser error messages line/col fields against MRI golden files.
+- **`HeredocStripped` flag** on STRING_END for squig must still be set. phase 5 keeps it set inside `stripSquigInterpBody`; verify still propagates after swap restoration.
+- **nested heredoc inside an outer heredoc body that's inside an outer-outer interp.** existing test: `internal/integrationtest/testdata/ruby-extra/parser/adversarial/heredoc_in_heredoc_interp.rb`. run as canary.
+
+### estimate
+
+4-6 hours focused. core change is small (~50 LOC delta) but verification surface is large. land on its own branch.
