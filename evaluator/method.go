@@ -477,163 +477,26 @@ func evalExpressions(env *object.Environment, exprs []ast.Expression) ([]object.
 	return out, nil
 }
 
-// callMethod is the minimal hand-rolled dispatcher used until the class
-// machinery lands. Hardcoded for the methods the literals corpus needs.
+// callMethod dispatches `name` on `recv`. Send is consulted first; if
+// no class-owned method matches, fall back to the legacy hand-rolled
+// switch in callMethodLegacy. The legacy path shrinks as each builtin
+// type's methods migrate onto its class.
 func callMethod(env *object.Environment, recv object.RubyObject, name string, args []object.RubyObject) (object.RubyObject, error) {
-
-	// Send fast-path: if the receiver's class has the method, dispatch
-	// through it. As builtin methods migrate onto their classes this
-	// path takes over more and more; legacy fall-through remains until
-	// every type is migrated.
 	if v, ok, err := object.Send(env, recv, name, args, nil); ok {
 		return v, err
 	}
+	return callMethodLegacy(env, recv, name, args)
+}
 
-	// Universal Object methods first.
-	switch name {
-	case "nil?":
-		_, isNil := recv.(*object.Nil)
-		return object.BooleanOf(isNil), nil
-	case "class":
-		return classOf(env, recv), nil
-	case "inspect":
-		return object.NewString(env.Inspect(recv)), nil
-	case "itself":
-		return recv, nil
-	case "instance_variable_get":
-		if len(args) != 1 {
-			return nil, errorf("evaluator: instance_variable_get expects 1 arg")
-		}
-		name, ok := symbolOrString(env, args[0])
-		if !ok {
-			return nil, errorf("evaluator: instance_variable_get: name must be Symbol or String")
-		}
-		inst, ok := recv.(*object.Instance)
-		if !ok {
-			return object.NIL, nil
-		}
-		key := name
-		if len(key) == 0 || key[0] != '@' {
-			key = "@" + key
-		}
-		if v, ok := inst.Ivars[key]; ok {
-			return v, nil
-		}
-		return object.NIL, nil
-	case "instance_variable_set":
-		if len(args) != 2 {
-			return nil, errorf("evaluator: instance_variable_set expects 2 args")
-		}
-		name, ok := symbolOrString(env, args[0])
-		if !ok {
-			return nil, errorf("evaluator: instance_variable_set: name must be Symbol or String")
-		}
-		inst, ok := recv.(*object.Instance)
-		if !ok {
-			return nil, errorf("evaluator: instance_variable_set: receiver must be an instance, got %T", recv)
-		}
-		key := name
-		if len(key) == 0 || key[0] != '@' {
-			key = "@" + key
-		}
-		inst.Ivars[key] = args[1]
-		return args[1], nil
-	case "instance_variables":
-		inst, ok := recv.(*object.Instance)
-		if !ok {
-			return object.NewArray(), nil
-		}
-		out := make([]object.RubyObject, 0, len(inst.Ivars))
-		for k := range inst.Ivars {
-			out = append(out, env.Symbols().Intern(k))
-		}
-		return object.NewArray(out...), nil
-	case "frozen?":
-		// We don't track freezing yet; symbols / integers / nil / bool
-		// are conceptually frozen and others report false.
-		switch recv.(type) {
-		case *object.Symbol, *object.Integer, *object.Float, *object.Nil, *object.Boolean:
-			return object.TRUE, nil
-		}
-		return object.FALSE, nil
-	case "dup", "clone":
-		return recv, nil
-	case "tap":
-		// without block: identity
-		return recv, nil
-	case "equal?":
-		if len(args) != 1 {
-			return nil, errorf("evaluator: equal? expects 1 arg")
-		}
-		// Identity comparison: same Go pointer.
-		return object.BooleanOf(recv == args[0]), nil
-	case "eql?":
-		// MRI Object#eql? defaults to identity; numerics override to
-		// type-strict equality. We approximate with strict typed
-		// equality which is what every test case in scope needs.
-		if len(args) != 1 {
-			return nil, errorf("evaluator: eql? expects 1 arg")
-		}
-		return object.BooleanOf(rubyEqual(recv, args[0])), nil
-	case "send", "__send__", "public_send":
-		if len(args) < 1 {
-			return nil, errorf("evaluator: send needs a method name")
-		}
-		mname, ok := symbolOrString(env, args[0])
-		if !ok {
-			return nil, errorf("evaluator: send: method name must be Symbol or String")
-		}
-		return callMethod(env, recv, mname, args[1:])
-	case "method":
-		// Returns a callable bound to (recv, sym). We approximate with
-		// a Proc that calls back.
-		if len(args) != 1 {
-			return nil, errorf("evaluator: Object#method expects 1 arg")
-		}
-		mname, ok := symbolOrString(env, args[0])
-		if !ok {
-			return nil, errorf("evaluator: Object#method: name must be Symbol or String")
-		}
-		return procFromBound(env, recv, mname), nil
-	case "respond_to?":
-		if len(args) != 1 {
-			return nil, errorf("evaluator: wrong number of arguments to respond_to? (given %d, expected 1)", len(args))
-		}
-		mname, ok := symbolOrString(env, args[0])
-		if !ok {
-			return nil, errorf("evaluator: respond_to? needs Symbol or String, got %T", args[0])
-		}
-		return object.BooleanOf(receiverResponds(env, recv, mname)), nil
-	case "is_a?", "kind_of?", "instance_of?":
-		if len(args) != 1 {
-			return nil, errorf("evaluator: wrong number of arguments to Object#%s (given %d, expected 1)", name, len(args))
-		}
-		target, ok := args[0].(*object.Class)
-		if !ok {
-			return nil, errorf("evaluator: TypeError: class or module required")
-		}
-		c := classOfRaw(env, recv)
-		if c == nil {
-			return object.FALSE, nil
-		}
-		if name == "instance_of?" {
-			return object.BooleanOf(c == target), nil
-		}
-		return object.BooleanOf(c.IsAncestor(target)), nil
-	}
-
-	// Proc-receiver dispatch: `.call` / `.()` (parser rewrites `.()` to
-	// `.call`) / `.yield`.
-	if p, ok := recv.(*object.Proc); ok {
-		switch name {
-		case "call", "yield", "()", "[]":
-			return invokeProc(env, p, args)
-		case "lambda?":
-			return object.BooleanOf(p.IsLambda), nil
-		case "arity":
-			return procArity(p), nil
-		}
-	}
+// callMethodLegacy is the hand-rolled fallback dispatch. BuiltinMethod
+// adapters call it directly to reuse existing per-name implementations
+// without re-entering Send (which would loop on the adapter itself).
+// Universal Object methods have moved to object_methods.go (registered
+// on object.ObjectClass); fully-migrated builtin types (Integer, Symbol,
+// Nil, Boolean, Proc) likewise live in their own *_methods.go files.
+// What remains here are Array / Hash / Range / String per-name bodies,
+// plus the Class / Instance branches.
+func callMethodLegacy(env *object.Environment, recv object.RubyObject, name string, args []object.RubyObject) (object.RubyObject, error) {
 
 	// Class-receiver dispatch: `Foo.new`, `Foo.kind`, etc.
 	if cls, ok := recv.(*object.Class); ok {

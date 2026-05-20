@@ -21,6 +21,14 @@ type Class struct {
 }
 
 func NewClass(name string, super *Class) *Class {
+	// Default super to Object so user-defined and ad-hoc classes
+	// inherit universal methods (send, class, is_a?, ...) via Send's
+	// chain walk. ObjectClass / BasicObjectClass set their own super
+	// explicitly during package init so this never collides on
+	// bootstrap.
+	if super == nil && ObjectClass != nil && name != "Object" && name != "BasicObject" {
+		super = ObjectClass
+	}
 	return &Class{
 		Name:         name,
 		Super:        super,

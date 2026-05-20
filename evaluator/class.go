@@ -82,12 +82,17 @@ func evalScopedIdentifier(env *object.Environment, n *ast.ScopedIdentifier) (obj
 }
 
 // lookupOrCreateClass returns the existing class bound to name on the
-// root env, or creates and stores a fresh one.
+// root env, or creates and stores a fresh one. User classes without an
+// explicit superclass default to Object so universal methods (send,
+// method, is_a?, ...) are reachable via Send's chain walk.
 func lookupOrCreateClass(env *object.Environment, name string, super *object.Class) *object.Class {
 	if existing, ok := env.Get(name); ok {
 		if c, ok := existing.(*object.Class); ok {
 			return c
 		}
+	}
+	if super == nil {
+		super = object.ObjectClass
 	}
 	c := object.NewClass(name, super)
 	env.SetGlobal(name, c)
@@ -477,27 +482,15 @@ func classOf(env *object.Environment, recv object.RubyObject) object.RubyObject 
 	return bootstrapObjectClass(env)
 }
 
-// classOfRaw returns the dispatch class for recv. Now that every
-// builtin type returns its package-level class from .Class(), this
-// reads off the value directly. Falls back to ObjectClass for receivers
-// whose Class() returns nil (Regex, UserMethod, ...).
-func classOfRaw(env *object.Environment, recv object.RubyObject) *object.Class {
+// classOfRaw returns the dispatch class for recv. Every builtin type
+// returns its package-level class from .Class(), so this reads off the
+// value directly. Falls back to ObjectClass for receivers whose
+// Class() returns nil (Regex, UserMethod, ...).
+func classOfRaw(_ *object.Environment, recv object.RubyObject) *object.Class {
 	if c := recv.Class(); c != nil {
 		return c
 	}
 	return object.ObjectClass
-}
-
-// lookupCoreClass resolves a core class by name through the
-// environment. After Phase 2 the env binding points at the package-
-// level class instance, so this returns the canonical pointer.
-func lookupCoreClass(env *object.Environment, name string) *object.Class {
-	if v, ok := env.Get(name); ok {
-		if c, ok := v.(*object.Class); ok {
-			return c
-		}
-	}
-	return bootstrapObjectClass(env)
 }
 
 // callOnClass dispatches a method call where the receiver is a Class
