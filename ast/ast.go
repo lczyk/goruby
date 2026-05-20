@@ -1342,11 +1342,23 @@ func heredocDelimFromTag(tag string) string {
 }
 
 func (sl *StringLiteral) String() string {
-	s := sl.stringOnce()
+	var b strings.Builder
+	sl.WriteTo(&b)
+	return b.String()
+}
+
+// WriteTo on StringLiteral keeps the existing stringOnce / adjacent
+// pipeline -- the body has heredoc-aware buffer juggling that would be
+// invasive to refactor; this layer just routes the final string into the
+// shared builder. Same allocation profile as the prior String, but lets
+// upstream callers (InfixExpression, ContextCallExpression) avoid the
+// intermediate they used to do via child.String().
+func (sl *StringLiteral) WriteTo(b *strings.Builder) {
+	b.WriteString(sl.stringOnce())
 	for _, a := range sl.Adjacent {
-		s += " " + a.String()
+		b.WriteByte(' ')
+		writeTo(a, b)
 	}
-	return s
 }
 
 func (sl *StringLiteral) stringOnce() string {
@@ -1541,8 +1553,9 @@ func (sc *StringContent) Pos() int { return sc.Token.Pos }
 func (sc *StringContent) End() int { return sc.Token.Pos + len(sc.Value) }
 
 // TokenLiteral returns the literal of the STRING_CONTENT token
-func (sc *StringContent) TokenLiteral() string { return sc.Value }
-func (sc *StringContent) String() string       { return sc.Value }
+func (sc *StringContent) TokenLiteral() string         { return sc.Value }
+func (sc *StringContent) String() string               { return sc.Value }
+func (sc *StringContent) WriteTo(b *strings.Builder)   { b.WriteString(sc.Value) }
 
 // EmbeddedVariable represents a `#@ivar`, `#@@cvar`, or `#$gvar` shorthand
 // interpolation inside a string -- distinguished from `#{@ivar}` etc., which
@@ -1555,7 +1568,16 @@ func (ev *EmbeddedVariable) expressionNode()      {}
 func (ev *EmbeddedVariable) Pos() int             { return ev.Variable.Pos() }
 func (ev *EmbeddedVariable) End() int             { return ev.Variable.End() }
 func (ev *EmbeddedVariable) TokenLiteral() string { return ev.Variable.TokenLiteral() }
-func (ev *EmbeddedVariable) String() string       { return "#" + ev.Variable.String() }
+func (ev *EmbeddedVariable) String() string {
+	var b strings.Builder
+	ev.WriteTo(&b)
+	return b.String()
+}
+
+func (ev *EmbeddedVariable) WriteTo(b *strings.Builder) {
+	b.WriteByte('#')
+	writeTo(ev.Variable, b)
+}
 
 // RegexLiteral represents a regex literal in the AST.
 type RegexLiteral struct {
@@ -1578,10 +1600,18 @@ func (rl *RegexLiteral) End() int {
 	return rl.Token.Pos + len(rl.Value)
 }
 func (rl *RegexLiteral) TokenLiteral() string { return rl.Value }
+
+// WriteTo is a thin delegation to String for RegexLiteral. The String body
+// has delimiter-pick + interpolation handling that's tedious to inline; the
+// gain from sharing the parent's builder is marginal because regexes don't
+// deeply recurse.
+func (rl *RegexLiteral) WriteTo(b *strings.Builder) { b.WriteString(rl.String()) }
+
 func (rl *RegexLiteral) String() string {
-	// If the regex content includes `/`, switch to %r-style delimiters so we
-	// don't have to insert `\/` escapes (which MRI's parsetree records as
-	// part of the literal content -- diverging from the original).
+	// RegexLiteral's body builds its own buffer with several layers of
+	// delimiter / interpolation logic. Keeping the body intact and stubbing
+	// WriteTo as a delegation; the perf gain from sharing the parent's
+	// builder isn't material here -- regex bodies don't deeply recurse.
 	openDelim, closeDelim := "/", "/"
 	if regexContentHasSlash(rl) {
 		openDelim, closeDelim = pickRegexDelim(rl)
@@ -1730,10 +1760,16 @@ func (s *SymbolLiteral) TokenLiteral() string {
 	return s.Token.Type.Literal()
 }
 func (s *SymbolLiteral) String() string {
-	if s.Value == nil {
-		return ":"
+	var b strings.Builder
+	s.WriteTo(&b)
+	return b.String()
+}
+
+func (s *SymbolLiteral) WriteTo(b *strings.Builder) {
+	b.WriteByte(':')
+	if s.Value != nil {
+		writeTo(s.Value, b)
 	}
-	return ":" + s.Value.String()
 }
 
 // LabelString returns the symbol in label form (without leading colon).
@@ -1774,44 +1810,46 @@ func (ce *ConditionalExpression) End() int {
 // TokenLiteral returns the literal from token token.IF or token.UNLESS
 func (ce *ConditionalExpression) TokenLiteral() string { return ce.Token.Type.Literal() }
 func (ce *ConditionalExpression) String() string {
-	var out bytes.Buffer
+	var b strings.Builder
+	ce.WriteTo(&b)
+	return b.String()
+}
+
+func (ce *ConditionalExpression) WriteTo(b *strings.Builder) {
 	if ce.Token.Type == token.QMARK {
-		// Ternary: emit without outer parens. Callers that need disambiguation
-		// (e.g. ParenExpression for user-written grouping) wrap explicitly.
-		out.WriteString(ce.Condition.String())
-		out.WriteString(" ? ")
-		out.WriteString(ce.Consequence.String())
-		out.WriteString(" : ")
+		writeTo(ce.Condition, b)
+		b.WriteString(" ? ")
+		writeTo(ce.Consequence, b)
+		b.WriteString(" : ")
 		if ce.Alternative != nil {
-			out.WriteString(ce.Alternative.String())
+			writeTo(ce.Alternative, b)
 		}
-		return out.String()
+		return
 	}
 	if ce.EndPos == 0 && ce.Token.Type != token.KW_ELSIF && ce.Alternative == nil {
-		out.WriteString(ce.Consequence.String())
-		out.WriteString(" ")
-		out.WriteString(ce.Token.Type.Literal())
-		out.WriteString(" ")
-		out.WriteString(ce.Condition.String())
-		return out.String()
+		writeTo(ce.Consequence, b)
+		b.WriteByte(' ')
+		b.WriteString(ce.Token.Type.Literal())
+		b.WriteByte(' ')
+		writeTo(ce.Condition, b)
+		return
 	}
-	out.WriteString(ce.Token.Type.Literal())
-	out.WriteString(" ")
-	out.WriteString(ce.Condition.String())
-	out.WriteString("\n")
-	out.WriteString(ce.Consequence.String())
-	out.WriteString("\n")
+	b.WriteString(ce.Token.Type.Literal())
+	b.WriteByte(' ')
+	writeTo(ce.Condition, b)
+	b.WriteByte('\n')
+	writeTo(ce.Consequence, b)
+	b.WriteByte('\n')
 	if ce.Alternative != nil {
 		if nested := extractElsif(ce.Alternative); nested != nil {
-			out.WriteString(nested.String())
-			return out.String()
+			writeTo(nested, b)
+			return
 		}
-		out.WriteString("else\n")
-		out.WriteString(ce.Alternative.String())
-		out.WriteString("\n")
+		b.WriteString("else\n")
+		writeTo(ce.Alternative, b)
+		b.WriteByte('\n')
 	}
-	out.WriteString("end")
-	return out.String()
+	b.WriteString("end")
 }
 
 func extractElsif(alt *BlockStatement) *ConditionalExpression {
@@ -1856,29 +1894,33 @@ func (ce *LoopExpression) End() int {
 // TokenLiteral returns the literal from token token.WHILE
 func (ce *LoopExpression) TokenLiteral() string { return ce.Token.Type.Literal() }
 func (ce *LoopExpression) String() string {
-	var out bytes.Buffer
+	var b strings.Builder
+	ce.WriteTo(&b)
+	return b.String()
+}
+
+func (ce *LoopExpression) WriteTo(b *strings.Builder) {
 	if ce.PostTest && ce.Block != nil && len(ce.Block.Statements) == 1 {
 		if es, ok := ce.Block.Statements[0].(*ExpressionStatement); ok {
 			if bb, ok := es.Expression.(*ExceptionHandlingBlock); ok {
-				out.WriteString(bb.String())
-				out.WriteString(" ")
-				out.WriteString(ce.Token.Type.Literal())
-				out.WriteString(" ")
-				out.WriteString(ce.Condition.String())
-				return out.String()
+				writeTo(bb, b)
+				b.WriteByte(' ')
+				b.WriteString(ce.Token.Type.Literal())
+				b.WriteByte(' ')
+				writeTo(ce.Condition, b)
+				return
 			}
 		}
 	}
-	out.WriteString(ce.Token.Type.Literal())
-	out.WriteString(" ")
-	out.WriteString(ce.Condition.String())
+	b.WriteString(ce.Token.Type.Literal())
+	b.WriteByte(' ')
+	writeTo(ce.Condition, b)
 	if ce.Block != nil {
-		out.WriteString("\n")
-		out.WriteString(ce.Block.String())
-		out.WriteString("\n")
+		b.WriteByte('\n')
+		writeTo(ce.Block, b)
+		b.WriteByte('\n')
 	}
-	out.WriteString("end")
-	return out.String()
+	b.WriteString("end")
 }
 
 // ImplicitRest is a sentinel for the trailing comma on multi-assign LHS
@@ -1926,21 +1968,28 @@ func (el ExpressionList) TokenLiteral() string {
 	return el[0].TokenLiteral()
 }
 func (el ExpressionList) String() string {
-	var out bytes.Buffer
-	elements := []string{}
+	var b strings.Builder
+	el.WriteTo(&b)
+	return b.String()
+}
+
+func (el ExpressionList) WriteTo(b *strings.Builder) {
 	trailingRest := false
+	count := 0
 	for _, e := range el {
 		if _, ok := e.(*ImplicitRest); ok {
 			trailingRest = true
 			continue
 		}
-		elements = append(elements, e.String())
+		if count > 0 {
+			b.WriteString(", ")
+		}
+		writeTo(e, b)
+		count++
 	}
-	out.WriteString(strings.Join(elements, ", "))
-	if trailingRest || len(elements) == 1 {
-		out.WriteString(",")
+	if trailingRest || count == 1 {
+		b.WriteByte(',')
 	}
-	return out.String()
 }
 
 // ArrayLiteral represents an Array literal within the AST
@@ -1987,25 +2036,26 @@ func (al *ArrayLiteral) TokenLiteral() string {
 	return al.Token.Type.Literal()
 }
 func (al *ArrayLiteral) String() string {
-	// Preserve percent-literal arrays (`%w[a b]` / `%i[foo bar]` / `%W[...]`
-	// / `%I[...]`) on roundtrip. MRI assigns these symbols/strings a
-	// `forced_us_ascii_encoding` SymbolFlag when the literal source bytes
-	// are ASCII -- a flag that diverges if we re-emit as a bracketed array
-	// of explicit `:foo` / `"a"` elements.
+	var b strings.Builder
+	al.WriteTo(&b)
+	return b.String()
+}
+
+func (al *ArrayLiteral) WriteTo(b *strings.Builder) {
 	if al.Token.Type == token.STRING_BEG {
 		if s, ok := al.percentArrayString(); ok {
-			return s
+			b.WriteString(s)
+			return
 		}
 	}
-	var out bytes.Buffer
-	elements := []string{}
-	for _, el := range al.Elements {
-		elements = append(elements, el.String())
+	b.WriteByte('[')
+	for i, el := range al.Elements {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		writeTo(el, b)
 	}
-	out.WriteString("[")
-	out.WriteString(strings.Join(elements, ", "))
-	out.WriteString("]")
-	return out.String()
+	b.WriteByte(']')
 }
 
 // percentArrayString re-emits a `%w` / `%W` / `%i` / `%I` array. Returns
@@ -2163,10 +2213,24 @@ func doubleSplatPatternKey(pe *PrefixExpression) string {
 }
 
 func (hl *HashLiteral) String() string {
-	if hl.Implicit {
-		return strings.Join(hl.hashElements(), ", ")
+	var b strings.Builder
+	hl.WriteTo(&b)
+	return b.String()
+}
+
+func (hl *HashLiteral) WriteTo(b *strings.Builder) {
+	if !hl.Implicit {
+		b.WriteByte('{')
 	}
-	return "{" + strings.Join(hl.hashElements(), ", ") + "}"
+	for i, e := range hl.hashElements() {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(e)
+	}
+	if !hl.Implicit {
+		b.WriteByte('}')
+	}
 }
 
 // StringNoBraces returns the hash content without surrounding braces,
@@ -2238,13 +2302,20 @@ func (b *BlockCapture) End() int {
 	return b.Token.Pos + 1
 }
 func (b *BlockCapture) String() string {
+	var sb strings.Builder
+	b.WriteTo(&sb)
+	return sb.String()
+}
+
+func (b *BlockCapture) WriteTo(sb *strings.Builder) {
+	sb.WriteByte('&')
 	if b.Expr != nil {
-		return "&" + b.Expr.String()
+		writeTo(b.Expr, sb)
+		return
 	}
 	if b.Name != nil {
-		return "&" + b.Name.Value
+		sb.WriteString(b.Name.Value)
 	}
-	return "&"
 }
 
 // TokenLiteral returns the literal of the token
@@ -2290,79 +2361,92 @@ func (fl *FunctionLiteral) End() int {
 // TokenLiteral returns the literal from token.DEF
 func (fl *FunctionLiteral) TokenLiteral() string { return fl.Token.Type.Literal() }
 func (fl *FunctionLiteral) String() string {
-	var out bytes.Buffer
-	params := []string{}
-	for _, p := range fl.Parameters {
-		params = append(params, p.String())
+	var b strings.Builder
+	fl.WriteTo(&b)
+	return b.String()
+}
+
+func (fl *FunctionLiteral) WriteTo(b *strings.Builder) {
+	writeParams := func() {
+		paramCount := len(fl.Parameters)
+		hasCap := fl.CapturedBlock != nil
+		if paramCount == 0 && !hasCap {
+			return
+		}
+		for i, p := range fl.Parameters {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			writeTo(p, b)
+		}
+		if hasCap {
+			if paramCount > 0 {
+				b.WriteString(", ")
+			}
+			writeTo(fl.CapturedBlock, b)
+		}
 	}
-	if fl.CapturedBlock != nil {
-		params = append(params, fl.CapturedBlock.String())
-	}
+	hasAnyParam := len(fl.Parameters) > 0 || fl.CapturedBlock != nil
 	if fl.IsLambda {
-		out.WriteString("->")
+		b.WriteString("->")
 	} else {
-		out.WriteString("def ")
+		b.WriteString("def ")
 		if fl.Receiver != nil {
 			needsParens := fl.Receiver.Token.Type == token.RPAREN
 			if needsParens {
-				out.WriteString("(")
+				b.WriteByte('(')
 			}
-			out.WriteString(fl.Receiver.String())
+			writeTo(fl.Receiver, b)
 			if needsParens {
-				out.WriteString(")")
+				b.WriteByte(')')
 			}
-			out.WriteString(".")
+			b.WriteByte('.')
 		}
-		out.WriteString(fl.Name.String())
+		writeTo(fl.Name, b)
 	}
 	if !fl.IsLambda && fl.IsEndless {
-		if len(params) > 0 || fl.ExplicitParens {
-			out.WriteString("(")
-			out.WriteString(strings.Join(params, ", "))
-			out.WriteString(")")
+		if hasAnyParam || fl.ExplicitParens {
+			b.WriteByte('(')
+			writeParams()
+			b.WriteByte(')')
 		}
-		out.WriteString(" = ")
+		b.WriteString(" = ")
 		if fl.Body != nil {
-			out.WriteString(fl.Body.String())
+			writeTo(fl.Body, b)
 		}
-		return out.String()
+		return
 	}
-	if !fl.IsLambda || len(params) > 0 || fl.ExplicitParens {
-		out.WriteString("(")
-		out.WriteString(strings.Join(params, ", "))
-		out.WriteString(")")
+	if !fl.IsLambda || hasAnyParam || fl.ExplicitParens {
+		b.WriteByte('(')
+		writeParams()
+		b.WriteByte(')')
 	}
 	if fl.IsLambda {
-		out.WriteString(" {")
+		b.WriteString(" {")
 	}
-	body := ""
-	if fl.Body != nil {
-		body = fl.Body.String()
+	if fl.Body != nil && len(fl.Body.Statements) > 0 {
+		b.WriteByte('\n')
+		writeTo(fl.Body, b)
 	}
-	if body != "" {
-		out.WriteString("\n")
-		out.WriteString(body)
-	}
-	out.WriteString("\n")
+	b.WriteByte('\n')
 	for _, r := range fl.Rescues {
-		out.WriteString(r.String())
+		writeTo(r, b)
 	}
 	if fl.ElseBody != nil {
-		out.WriteString("else\n")
-		out.WriteString(fl.ElseBody.String())
-		out.WriteString("\n")
+		b.WriteString("else\n")
+		writeTo(fl.ElseBody, b)
+		b.WriteByte('\n')
 	}
 	if fl.EnsureBody != nil {
-		out.WriteString("ensure\n")
-		out.WriteString(fl.EnsureBody.String())
-		out.WriteString("\n")
+		b.WriteString("ensure\n")
+		writeTo(fl.EnsureBody, b)
+		b.WriteByte('\n')
 	}
 	if fl.IsLambda {
-		out.WriteString("}")
+		b.WriteByte('}')
 	} else {
-		out.WriteString("end")
+		b.WriteString("end")
 	}
-	return out.String()
 }
 
 // A FunctionParameter represents a parameter in a function literal
@@ -2406,39 +2490,41 @@ func (f *FunctionParameter) TokenLiteral() string {
 	return ""
 }
 func (f *FunctionParameter) String() string {
-	var out bytes.Buffer
+	var b strings.Builder
+	f.WriteTo(&b)
+	return b.String()
+}
+
+func (f *FunctionParameter) WriteTo(b *strings.Builder) {
 	if f.IsImplicitRest {
-		// Trailing-comma sentinel: caller's join with ", " renders this
-		// as the bare comma after the last real param.
-		return ""
+		return
 	}
 	if f.IsForwarding {
-		out.WriteString("...")
-		return out.String()
+		b.WriteString("...")
+		return
 	}
 	if f.IsSplat {
-		out.WriteString("*")
+		b.WriteByte('*')
 	}
 	if f.IsNoKeywords {
-		out.WriteString("**nil")
-		return out.String()
+		b.WriteString("**nil")
+		return
 	}
 	if f.IsKeywordRest {
-		out.WriteString("**")
+		b.WriteString("**")
 	}
 	if f.Name != nil && !(f.IsKeywordRest && f.Name.Value == "**") && !(f.IsSplat && f.Name.Value == "*") {
-		out.WriteString(f.Name.String())
+		writeTo(f.Name, b)
 	}
 	if f.IsKeyword {
-		out.WriteString(": ")
+		b.WriteString(": ")
 		if f.Default != nil {
-			out.WriteString(encloseInParensIfNeeded(f.Default))
+			b.WriteString(encloseInParensIfNeeded(f.Default))
 		}
 	} else if f.Default != nil {
-		out.WriteString(" = ")
-		out.WriteString(encloseInParensIfNeeded(f.Default))
+		b.WriteString(" = ")
+		b.WriteString(encloseInParensIfNeeded(f.Default))
 	}
-	return out.String()
 }
 
 // An IndexExpression represents an array or hash access in the AST
@@ -2464,17 +2550,21 @@ func (ie *IndexExpression) End() int {
 // TokenLiteral returns the literal from token.LBRACKET
 func (ie *IndexExpression) TokenLiteral() string { return ie.Token.Type.Literal() }
 func (ie *IndexExpression) String() string {
-	var out bytes.Buffer
-	out.WriteString(ie.Left.String())
-	out.WriteString("[")
+	var b strings.Builder
+	ie.WriteTo(&b)
+	return b.String()
+}
+
+func (ie *IndexExpression) WriteTo(b *strings.Builder) {
+	writeTo(ie.Left, b)
+	b.WriteByte('[')
 	for i, a := range ie.Arguments {
 		if i > 0 {
-			out.WriteString(", ")
+			b.WriteString(", ")
 		}
-		out.WriteString(a.String())
+		writeTo(a, b)
 	}
-	out.WriteString("]")
-	return out.String()
+	b.WriteByte(']')
 }
 
 // A ContextCallExpression represents a method call on a given Context.
@@ -2533,60 +2623,77 @@ func (ce *ContextCallExpression) TokenLiteral() string {
 	return ""
 }
 func (ce *ContextCallExpression) String() string {
-	var out bytes.Buffer
+	var b strings.Builder
+	ce.WriteTo(&b)
+	return b.String()
+}
+
+func (ce *ContextCallExpression) WriteTo(b *strings.Builder) {
 	if ce.Context != nil {
-		out.WriteString(ce.Context.String())
+		writeTo(ce.Context, b)
 		switch ce.OpType {
 		case token.LONELY:
-			out.WriteString("&.")
+			b.WriteString("&.")
 		case token.SCOPE:
-			out.WriteString("::")
+			b.WriteString("::")
 		default:
-			out.WriteString(".")
+			b.WriteByte('.')
 		}
 	}
 	if ce.Function != nil {
-		// Setter call obj.x = 5 -- output as assignment, not obj.x=(5)
 		name := ce.Function.Value
 		if isSetterName(name) && len(ce.Arguments) == 1 {
-			out.WriteString(strings.TrimSuffix(name, "="))
-			out.WriteString(" = ")
-			out.WriteString(ce.Arguments[0].String())
-			return out.String()
+			b.WriteString(strings.TrimSuffix(name, "="))
+			b.WriteString(" = ")
+			writeTo(ce.Arguments[0], b)
+			return
 		}
-		out.WriteString(ce.Function.String())
+		writeTo(ce.Function, b)
 	}
-	args := []string{}
-	for _, a := range ce.Arguments {
-		if a != nil {
-			args = append(args, a.String())
+	writeArgs := func(open, close string) {
+		if open != "" {
+			b.WriteString(open)
+		}
+		first := true
+		for _, a := range ce.Arguments {
+			if a == nil {
+				continue
+			}
+			if !first {
+				b.WriteString(", ")
+			}
+			writeTo(a, b)
+			first = false
+		}
+		if close != "" {
+			b.WriteString(close)
 		}
 	}
 	if ce.ExplicitParens {
-		out.WriteString("(")
-		out.WriteString(strings.Join(args, ", "))
-		out.WriteString(")")
-	} else if len(args) > 0 {
-		// Paren-less source: preserve paren-less on re-emit when any arg is
-		// a heredoc. Older MRI (1.9-2.1) lacks `<<~` and rejects
-		// `foo(<<~TAG)` as a parse error, but lexes `foo <<~TAG` as
-		// `foo << ~TAG` (binary `<<` of unary `~TAG`) which parses fine.
+		writeArgs("(", ")")
+	} else if hasArg(ce.Arguments) {
 		if containsHeredocArg(ce.Arguments) {
-			out.WriteString(" ")
-			out.WriteString(strings.Join(args, ", "))
+			b.WriteByte(' ')
+			writeArgs("", "")
 		} else {
-			out.WriteString("(")
-			out.WriteString(strings.Join(args, ", "))
-			out.WriteString(")")
+			writeArgs("(", ")")
 		}
 	}
 	if ce.Block != nil {
 		if ce.Block.Token.Type == token.LBRACE {
-			out.WriteString(" ")
+			b.WriteByte(' ')
 		}
-		out.WriteString(ce.Block.String())
+		writeTo(ce.Block, b)
 	}
-	return out.String()
+}
+
+func hasArg(args []Expression) bool {
+	for _, a := range args {
+		if a != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // bareSplatPattern reports whether p is a top-level bare splat
@@ -2642,53 +2749,64 @@ func (b *BlockExpression) TokenLiteral() string { return b.Token.Type.Literal() 
 
 // String returns a string representation of the block statement
 func (b *BlockExpression) String() string {
-	var out bytes.Buffer
+	var sb strings.Builder
+	b.WriteTo(&sb)
+	return sb.String()
+}
+
+func (b *BlockExpression) WriteTo(sb *strings.Builder) {
 	if b.Token.Type == token.LBRACE {
-		out.WriteString("{")
+		sb.WriteByte('{')
 	} else {
-		out.WriteString(" do")
+		sb.WriteString(" do")
 	}
 	if b.HasParameterBars || len(b.Parameters) != 0 || len(b.BlockLocals) != 0 || b.CapturedBlock != nil {
-		args := []string{}
+		sb.WriteString(" |")
+		first := true
 		for _, a := range b.Parameters {
-			args = append(args, a.String())
+			if !first {
+				sb.WriteString(", ")
+			}
+			writeTo(a, sb)
+			first = false
 		}
 		if b.CapturedBlock != nil {
-			args = append(args, b.CapturedBlock.String())
-		}
-		out.WriteString(" |")
-		out.WriteString(strings.Join(args, ", "))
-		if len(b.BlockLocals) != 0 {
-			out.WriteString("; ")
-			locals := []string{}
-			for _, l := range b.BlockLocals {
-				locals = append(locals, l.String())
+			if !first {
+				sb.WriteString(", ")
 			}
-			out.WriteString(strings.Join(locals, ", "))
+			writeTo(b.CapturedBlock, sb)
 		}
-		out.WriteString("|")
+		if len(b.BlockLocals) != 0 {
+			sb.WriteString("; ")
+			for i, l := range b.BlockLocals {
+				if i > 0 {
+					sb.WriteString(", ")
+				}
+				writeTo(l, sb)
+			}
+		}
+		sb.WriteByte('|')
 	}
-	out.WriteString("\n")
-	out.WriteString(b.Body.String())
+	sb.WriteByte('\n')
+	writeTo(b.Body, sb)
 	for _, r := range b.Rescues {
-		out.WriteString("\n")
-		out.WriteString(r.String())
+		sb.WriteByte('\n')
+		writeTo(r, sb)
 	}
 	if b.ElseBody != nil {
-		out.WriteString("\nelse\n")
-		out.WriteString(b.ElseBody.String())
+		sb.WriteString("\nelse\n")
+		writeTo(b.ElseBody, sb)
 	}
 	if b.EnsureBody != nil {
-		out.WriteString("\nensure\n")
-		out.WriteString(b.EnsureBody.String())
+		sb.WriteString("\nensure\n")
+		writeTo(b.EnsureBody, sb)
 	}
-	out.WriteString("\n")
+	sb.WriteByte('\n')
 	if b.Token.Type == token.LBRACE {
-		out.WriteString("}")
+		sb.WriteByte('}')
 	} else {
-		out.WriteString("end")
+		sb.WriteString("end")
 	}
-	return out.String()
 }
 
 // ModuleExpression represents a module definition
@@ -2711,19 +2829,22 @@ func (m *ModuleExpression) End() int { return m.EndPos }
 // TokenLiteral returns the literal from token.MODULE
 func (m *ModuleExpression) TokenLiteral() string { return m.Token.Type.Literal() }
 func (m *ModuleExpression) String() string {
-	var out bytes.Buffer
-	out.WriteString(m.TokenLiteral())
-	out.WriteString(" ")
-	out.WriteString(m.Name.String())
-	out.WriteString("\n")
-	out.WriteString(m.Body.String())
+	var b strings.Builder
+	m.WriteTo(&b)
+	return b.String()
+}
+
+func (m *ModuleExpression) WriteTo(b *strings.Builder) {
+	b.WriteString(m.TokenLiteral())
+	b.WriteByte(' ')
+	writeTo(m.Name, b)
+	b.WriteByte('\n')
+	writeTo(m.Body, b)
 	for _, r := range m.Rescues {
-		out.WriteString("\n")
-		out.WriteString(r.String())
+		b.WriteByte('\n')
+		writeTo(r, b)
 	}
-	out.WriteString("\n")
-	out.WriteString("end")
-	return out.String()
+	b.WriteString("\nend")
 }
 
 // ClassExpression represents a module definition
@@ -2747,24 +2868,26 @@ func (m *ClassExpression) End() int { return m.EndPos }
 // TokenLiteral returns the literal from token.CLASS
 func (m *ClassExpression) TokenLiteral() string { return m.Token.Type.Literal() }
 func (m *ClassExpression) String() string {
-	var out bytes.Buffer
-	out.WriteString(m.TokenLiteral())
-	out.WriteString(" ")
-	out.WriteString(m.Name.String())
+	var b strings.Builder
+	m.WriteTo(&b)
+	return b.String()
+}
+
+func (m *ClassExpression) WriteTo(b *strings.Builder) {
+	b.WriteString(m.TokenLiteral())
+	b.WriteByte(' ')
+	writeTo(m.Name, b)
 	if m.SuperClass != nil {
-		out.WriteString(" ")
-		out.WriteString("<")
-		out.WriteString(" ")
-		out.WriteString(m.SuperClass.String())
+		b.WriteString(" < ")
+		writeTo(m.SuperClass, b)
 	}
-	out.WriteString("\n")
-	out.WriteString(m.Body.String())
+	b.WriteByte('\n')
+	writeTo(m.Body, b)
 	for _, r := range m.Rescues {
-		out.WriteString("\n")
-		out.WriteString(r.String())
+		b.WriteByte('\n')
+		writeTo(r, b)
 	}
-	out.WriteString("\nend")
-	return out.String()
+	b.WriteString("\nend")
 }
 
 // SingletonClassExpression represents a singleton class definition: class << self; ...; end
@@ -2787,18 +2910,22 @@ func (s *SingletonClassExpression) End() int { return s.EndPos }
 // TokenLiteral returns the literal from token.CLASS
 func (s *SingletonClassExpression) TokenLiteral() string { return s.Token.Type.Literal() }
 func (s *SingletonClassExpression) String() string {
-	var out bytes.Buffer
-	out.WriteString(s.TokenLiteral())
-	out.WriteString(" << ")
-	out.WriteString(s.Expr.String())
-	out.WriteString("\n")
-	out.WriteString(s.Body.String())
+	var b strings.Builder
+	s.WriteTo(&b)
+	return b.String()
+}
+
+func (s *SingletonClassExpression) WriteTo(b *strings.Builder) {
+	b.WriteString(s.TokenLiteral())
+	b.WriteString(" << ")
+	writeTo(s.Expr, b)
+	b.WriteByte('\n')
+	writeTo(s.Body, b)
 	for _, r := range s.Rescues {
-		out.WriteString("\n")
-		out.WriteString(r.String())
+		b.WriteByte('\n')
+		writeTo(r, b)
 	}
-	out.WriteString("\nend")
-	return out.String()
+	b.WriteString("\nend")
 }
 
 // A SplatExpression represents a splat expression (*expr, **expr)
@@ -2809,15 +2936,16 @@ type SplatExpression struct {
 }
 
 func (s *SplatExpression) String() string {
-	var out bytes.Buffer
-	out.WriteString(s.Operator)
+	var b strings.Builder
+	s.WriteTo(&b)
+	return b.String()
+}
+
+func (s *SplatExpression) WriteTo(b *strings.Builder) {
+	b.WriteString(s.Operator)
 	if s.Right != nil {
-		// Splat absorbs the whole arg expression (parser uses precAssignment
-		// for the operand), so no defensive wrap needed -- adding parens
-		// would just produce a ParenthesesNode on re-parse.
-		out.WriteString(s.Right.String())
+		writeTo(s.Right, b)
 	}
-	return out.String()
 }
 func (s *SplatExpression) expressionNode() {}
 
@@ -2844,7 +2972,8 @@ func (af *ArgumentForwarding) expressionNode()      {}
 func (af *ArgumentForwarding) Pos() int             { return af.PosOff }
 func (af *ArgumentForwarding) End() int             { return af.PosOff + 3 }
 func (af *ArgumentForwarding) TokenLiteral() string { return "..." }
-func (af *ArgumentForwarding) String() string       { return "..." }
+func (af *ArgumentForwarding) String() string               { return "..." }
+func (af *ArgumentForwarding) WriteTo(b *strings.Builder)   { b.WriteString("...") }
 
 // A CaseExpression represents a case/when or case/in expression
 type CaseExpression struct {
@@ -2857,26 +2986,30 @@ type CaseExpression struct {
 }
 
 func (c *CaseExpression) String() string {
-	var out bytes.Buffer
-	out.WriteString("case")
+	var b strings.Builder
+	c.WriteTo(&b)
+	return b.String()
+}
+
+func (c *CaseExpression) WriteTo(b *strings.Builder) {
+	b.WriteString("case")
 	if c.Condition != nil {
-		out.WriteString(" ")
-		out.WriteString(c.Condition.String())
+		b.WriteByte(' ')
+		writeTo(c.Condition, b)
 	}
-	out.WriteString("\n")
+	b.WriteByte('\n')
 	for _, w := range c.WhenClauses {
-		out.WriteString(w.String())
+		writeTo(w, b)
 	}
 	for _, in := range c.InClauses {
-		out.WriteString(in.String())
+		writeTo(in, b)
 	}
 	if c.ElseBody != nil {
-		out.WriteString("else\n")
-		out.WriteString(c.ElseBody.String())
-		out.WriteString("\n")
+		b.WriteString("else\n")
+		writeTo(c.ElseBody, b)
+		b.WriteByte('\n')
 	}
-	out.WriteString("end")
-	return out.String()
+	b.WriteString("end")
 }
 func (c *CaseExpression) expressionNode() {}
 
@@ -2892,36 +3025,32 @@ type WhenClause struct {
 }
 
 func (w *WhenClause) String() string {
-	var out bytes.Buffer
+	var b strings.Builder
+	w.WriteTo(&b)
+	return b.String()
+}
+
+func (w *WhenClause) WriteTo(b *strings.Builder) {
 	keyword := "when"
 	if lit := w.Token.Type.Literal(); lit != "" {
 		keyword = lit
 	}
-	out.WriteString(keyword)
-	out.WriteString(" ")
+	b.WriteString(keyword)
+	b.WriteByte(' ')
 	for i, cond := range w.Conditions {
 		if i > 0 {
-			out.WriteString(", ")
+			b.WriteString(", ")
 		}
-		out.WriteString(cond.String())
+		writeTo(cond, b)
 	}
-	// Pattern-matching `in` clauses need `then` only when the pattern is a
-	// bare splat at top level (`in *` / `in **`) -- MRI reports "expected
-	// a delimiter after the patterns of an `in` clause" otherwise. Other
-	// patterns (idents, arrays containing bare splats, hash shorthand, etc.)
-	// accept a plain newline as the separator, which keeps re-parse stable
-	// across forms our parser handles (e.g. `in a: then` would fail to
-	// re-parse as the omitted-value shorthand).
 	if keyword == "in" && len(w.Conditions) == 1 && bareSplatPattern(w.Conditions[0]) {
-		out.WriteString(" then")
+		b.WriteString(" then")
 	}
-	out.WriteString("\n")
-	body := w.Body.String()
-	if body != "" {
-		out.WriteString(body)
-		out.WriteString("\n")
+	b.WriteByte('\n')
+	if w.Body != nil && len(w.Body.Statements) > 0 {
+		writeTo(w.Body, b)
+		b.WriteByte('\n')
 	}
-	return out.String()
 }
 func (w *WhenClause) expressionNode() {}
 
@@ -2936,12 +3065,20 @@ type DefinedExpression struct {
 }
 
 func (d *DefinedExpression) String() string {
-	// Space form for InfixExpression so defined? x + y (no paren node)
-	// rather than defined?((x + y)) (paren node, changes parse tree).
+	var b strings.Builder
+	d.WriteTo(&b)
+	return b.String()
+}
+
+func (d *DefinedExpression) WriteTo(b *strings.Builder) {
 	if _, isInfix := d.Expr.(*InfixExpression); isInfix {
-		return "defined? " + d.Expr.String()
+		b.WriteString("defined? ")
+		writeTo(d.Expr, b)
+		return
 	}
-	return "defined?(" + d.Expr.String() + ")"
+	b.WriteString("defined?(")
+	writeTo(d.Expr, b)
+	b.WriteByte(')')
 }
 func (d *DefinedExpression) expressionNode() {}
 
@@ -2956,17 +3093,27 @@ type JumpExpression struct {
 }
 
 func (j *JumpExpression) String() string {
-	if j.Value != nil {
-		if al, ok := j.Value.(*ArrayLiteral); ok && al.Token.Type != token.LBRACKET {
-			elems := make([]string, len(al.Elements))
-			for i, e := range al.Elements {
-				elems[i] = e.String()
-			}
-			return j.Token.Type.Literal() + " " + strings.Join(elems, ", ")
-		}
-		return j.Token.Type.Literal() + " " + j.Value.String()
+	var b strings.Builder
+	j.WriteTo(&b)
+	return b.String()
+}
+
+func (j *JumpExpression) WriteTo(b *strings.Builder) {
+	b.WriteString(j.Token.Type.Literal())
+	if j.Value == nil {
+		return
 	}
-	return j.Token.Type.Literal()
+	b.WriteByte(' ')
+	if al, ok := j.Value.(*ArrayLiteral); ok && al.Token.Type != token.LBRACKET {
+		for i, e := range al.Elements {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			writeTo(e, b)
+		}
+		return
+	}
+	writeTo(j.Value, b)
 }
 func (j *JumpExpression) expressionNode() {}
 
@@ -2992,7 +3139,16 @@ type AliasExpression struct {
 }
 
 func (a *AliasExpression) String() string {
-	return "alias " + a.NewName.Value + " " + a.OldName.Value
+	var b strings.Builder
+	a.WriteTo(&b)
+	return b.String()
+}
+
+func (a *AliasExpression) WriteTo(b *strings.Builder) {
+	b.WriteString("alias ")
+	b.WriteString(a.NewName.Value)
+	b.WriteByte(' ')
+	b.WriteString(a.OldName.Value)
 }
 func (a *AliasExpression) expressionNode() {}
 
@@ -3007,14 +3163,19 @@ type UndefExpression struct {
 }
 
 func (u *UndefExpression) String() string {
-	var out bytes.Buffer
-	out.WriteString("undef ")
-	names := []string{}
-	for _, n := range u.Names {
-		names = append(names, n.Value)
+	var b strings.Builder
+	u.WriteTo(&b)
+	return b.String()
+}
+
+func (u *UndefExpression) WriteTo(b *strings.Builder) {
+	b.WriteString("undef ")
+	for i, n := range u.Names {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(n.Value)
 	}
-	out.WriteString(strings.Join(names, ", "))
-	return out.String()
 }
 func (u *UndefExpression) expressionNode() {}
 
@@ -3368,11 +3529,15 @@ func (ra *RightwardAssignment) Pos() int             { return ra.Left.Pos() }
 func (ra *RightwardAssignment) End() int             { return ra.Right.End() }
 func (ra *RightwardAssignment) TokenLiteral() string { return ra.Token.Type.Literal() }
 func (ra *RightwardAssignment) String() string {
-	var out bytes.Buffer
-	out.WriteString(ra.Left.String())
-	out.WriteString(" => ")
-	out.WriteString(ra.Right.String())
-	return out.String()
+	var b strings.Builder
+	ra.WriteTo(&b)
+	return b.String()
+}
+
+func (ra *RightwardAssignment) WriteTo(b *strings.Builder) {
+	writeTo(ra.Left, b)
+	b.WriteString(" => ")
+	writeTo(ra.Right, b)
 }
 
 // ParenExpression wraps a parenthesised expression, preserving the parens
@@ -3487,18 +3652,23 @@ func (ff *FlipFlop) End() int {
 func (ff *FlipFlop) TokenLiteral() string { return ff.Token.Type.Literal() }
 
 func (ff *FlipFlop) String() string {
-	op := ".."
-	if ff.Exclusive {
-		op = "..."
-	}
-	left, right := "", ""
+	var b strings.Builder
+	ff.WriteTo(&b)
+	return b.String()
+}
+
+func (ff *FlipFlop) WriteTo(b *strings.Builder) {
 	if ff.Left != nil {
-		left = ff.Left.String()
+		writeTo(ff.Left, b)
+	}
+	if ff.Exclusive {
+		b.WriteString(" ... ")
+	} else {
+		b.WriteString(" .. ")
 	}
 	if ff.Right != nil {
-		right = ff.Right.String()
+		writeTo(ff.Right, b)
 	}
-	return left + " " + op + " " + right
 }
 
 func escapeRegexSlash(s string) string {
