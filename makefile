@@ -54,7 +54,14 @@ bench:  ## Run benchmarks (override scope/duration: PKG=... BENCH=... BENCHTIME=
 fuzz:  ## Fuzz all targets sequentially (override: PKG=... FUZZ=<single> FUZZTIME=...)
 	@FUZZTIME='$(or $(FUZZTIME),30s)'; \
 	if [ -n "$(FUZZ)" ]; then \
-		go test -run='^$$' -fuzz='$(FUZZ)' -fuzztime="$$FUZZTIME" $(or $(PKG),./parser/); \
+		for pkg in $$(go list $(or $(PKG),./...)); do \
+			if go test -list='^Fuzz' "$$pkg" 2>/dev/null | grep -qx '$(FUZZ)'; then \
+				echo "==> $$pkg $(FUZZ) ($$FUZZTIME)"; \
+				exec go test -run='^$$' -fuzz='^$(FUZZ)$$' -fuzztime="$$FUZZTIME" "$$pkg"; \
+			fi; \
+		done; \
+		echo "no fuzz target named '$(FUZZ)' in $(or $(PKG),./...). run 'make fuzz-list'." >&2; \
+		exit 1; \
 	else \
 		for pkg in $$(go list $(or $(PKG),./...)); do \
 			for t in $$(go test -list='^Fuzz' "$$pkg" 2>/dev/null | grep '^Fuzz' || true); do \
