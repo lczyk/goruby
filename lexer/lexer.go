@@ -2095,20 +2095,36 @@ foundEnd:
 		l.start = l.pos
 		cursorMode = true
 	} else if inInterp && nlPos < len(l.input) && l.input[nlPos] == '}' {
-		// Inside interpolation: rest-of-line stops at the unmatched }. Keep
-		// splice path here too. Phase 5 will untangle.
+		// Inside interpolation: rest-of-line stops at the unmatched }. Scan
+		// past } to find the real \n that ends the source line containing
+		// `<<EOS`. Cursor mode captures [restStart, realNl+1] as heredocRest
+		// (includes the }, the rest of outer-string content, and the \n);
+		// body source starts at realNl+1 in original input -- unless that
+		// position is at the boundary of the current cursor segment, in
+		// which case body lives in the next pending segment (nested-heredoc
+		// case mirroring the non-interp path).
 		realNl := nlPos
 		for realNl < len(l.input) && l.input[realNl] != '\n' {
 			realNl++
 		}
-		l.heredocPostBody = l.input[restStart:realNl]
 		if realNl < len(l.input) {
-			l.heredocPostBody += string(l.input[realNl])
-			l.input = l.input[:restStart] + "\n" + l.input[realNl+1:]
+			l.heredocRest = segment{restStart, realNl + 1}
+			if realNl+1 >= l.segEnd && len(l.pending) > 0 {
+				body := l.pending[0]
+				l.pending = l.pending[1:]
+				l.pos = body.start
+				l.segEnd = body.end
+			} else {
+				l.pos = realNl + 1
+			}
+			l.start = l.pos
+			cursorMode = true
 		} else {
+			// Unterminated heredoc (no \n before eof). Splice fallback.
+			l.heredocPostBody = l.input[restStart:nlPos]
 			l.input = l.input[:restStart]
+			l.syncSegEnd()
 		}
-		l.syncSegEnd()
 	} else {
 		// No \n and no } -- unterminated heredoc (eof). Use splice fallback.
 		l.heredocPostBody = l.input[restStart:nlPos]
