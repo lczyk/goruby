@@ -340,7 +340,7 @@ func init() {
 	}
 	variable := map[Type]bool{
 		ILLEGAL: true, EOF: true,
-		IDENT: true, CONST: true, GLOBAL: true, CLASS_VAR: true,
+		IDENT: true, CONST: true, GLOBAL: true,
 		INT: true, FLOAT: true, STRING: true, REGEX: true, XSTR: true,
 		STRING_BEG: true, STRING_CONTENT: true, STRING_END: true,
 		XSTR_BEG: true, XSTR_CONTENT: true, XSTR_END: true,
@@ -357,6 +357,13 @@ func init() {
 			typeFixedLits[i] = tokens[i]
 		}
 	}
+	// Hand-fix entries where tokens[i] holds the type name rather than
+	// the source spelling. Right now only CLASS_VAR: its tokens[] entry
+	// reads "CLASS_VAR" for debug printing via Type.String(), but the
+	// source text of every CLASS_VAR token is the fixed "@@" sigil
+	// (the lexer emits CLASS_VAR alone for `@@`; the identifier after
+	// it comes as a separate IDENT token).
+	typeFixedLits[CLASS_VAR] = "@@"
 }
 
 // LookupIdent returns a keyword Type if ident is a keyword. If ident starts
