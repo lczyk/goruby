@@ -1008,10 +1008,20 @@ func (i *ScopedIdentifier) expressionNode() {}
 func (i *ScopedIdentifier) literalNode()    {}
 
 // Pos returns the position of first character belonging to the node
-func (i *ScopedIdentifier) Pos() int { return i.Outer.Pos() }
+func (i *ScopedIdentifier) Pos() int {
+	if i.Outer != nil {
+		return i.Outer.Pos()
+	}
+	return i.Token.Pos
+}
 
 // End returns the position of first character immediately after the node
-func (i *ScopedIdentifier) End() int { return i.Inner.End() }
+func (i *ScopedIdentifier) End() int {
+	if i.Inner != nil {
+		return i.Inner.End()
+	}
+	return i.Token.Pos + len(i.Token.Type.Literal())
+}
 
 // TokenLiteral returns the literal of the token.SCOPE token
 func (i *ScopedIdentifier) TokenLiteral() string { return i.Token.Type.Literal() }
