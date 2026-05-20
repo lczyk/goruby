@@ -4,11 +4,11 @@ package object
 // invokes the first matching RubyMethod, or falls through to a
 // method_missing definition if one exists somewhere in the chain.
 //
-// found=false means no method (and no method_missing) was found --
-// callers in the legacy dispatcher use that signal to fall back to the
-// hand-rolled type switch during the in-progress migration. Once all
-// builtin methods live on their class, the legacy path goes away and
-// found=false simply propagates as NoMethodError.
+// found=false means no method (and no method_missing) was found.
+// Callers translate that into NoMethodError -- the block-aware
+// dispatch path still type-switches on some receivers for block-only
+// methods, so a few sites keep their type-switch fallbacks while
+// that migration lands.
 func Send(env *Environment, recv RubyObject, name string, args []RubyObject, block any) (result RubyObject, found bool, err error) {
 	cls := recv.Class()
 	if cls == nil {
