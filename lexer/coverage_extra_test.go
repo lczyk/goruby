@@ -1614,10 +1614,10 @@ func TestLexerHeredocMatchIndentedTabs(t *testing.T) {
 	}
 }
 
-// --- stripSquigInterpBody: delim not found (no closing delim) ---
+// --- setupSquigBodyBuffer: delim not found (no closing delim) ---
 
 func TestLexerStripSquigInterpBodyNoDelim(t *testing.T) {
-	// stripSquigInterpBody with no matching delim returns early.
+	// setupSquigBodyBuffer with no matching delim returns early.
 	// Since no delim is found, content is never emitted - just errors.
 	l := New("<<~EOS\n  line\n  NOMATCH\n")
 	tok := l.NextToken() // STRING_BEG
@@ -1631,7 +1631,7 @@ func TestLexerStripSquigInterpBodyNoDelim(t *testing.T) {
 	}
 }
 
-// --- stripSquigInterpBody: min indent from blank lines ---
+// --- setupSquigBodyBuffer: min indent from blank lines ---
 
 func TestLexerStripSquigAllBlank(t *testing.T) {
 	// All lines blank except last - min indent comes from non-blank
@@ -2035,11 +2035,11 @@ func TestLexerEscapeUnterminatedOctal(t *testing.T) {
 	}
 }
 
-// --- stripSquigInterpBody: eol at end of input (last line no \n) ---
+// --- setupSquigBodyBuffer: eol at end of input (last line no \n) ---
 
 func TestLexerSquigBodyLastLineNoNL(t *testing.T) {
 	// Body has a line without trailing \n and no closing delim.
-	// stripSquigInterpBody hits eol >= len(l.input) and returns early.
+	// setupSquigBodyBuffer hits eol >= len(l.input) and returns early.
 	l := New("<<~EOS\n  line")
 	tok := l.NextToken() // STRING_BEG
 	if tok.Type != token.STRING_BEG {
@@ -2053,7 +2053,7 @@ func TestLexerSquigBodyLastLineNoNL(t *testing.T) {
 	}
 }
 
-// --- stripSquigInterpBody: all-blank lines before delim (minIndent < 0) ---
+// --- setupSquigBodyBuffer: all-blank lines before delim (minIndent < 0) ---
 
 // --- direct call to lexCharacterLiteral to hit whitespace error path ---
 
@@ -2075,7 +2075,7 @@ func TestLexerCharLiteralWhitespaceErrorDirect(t *testing.T) {
 
 func TestLexerSquigBodyAllBlankBeforeDelim(t *testing.T) {
 	// All lines before the delimiter are blank, so minIndent stays at -1.
-	// stripSquigInterpBody sets minIndent = 0.
+	// setupSquigBodyBuffer sets minIndent = 0.
 	l := New("<<~EOS\n\n\nEOS\n")
 	tok := l.NextToken() // STRING_BEG
 	if tok.Type != token.STRING_BEG {
@@ -2186,7 +2186,7 @@ func TestLexerRegressions(t *testing.T) {
 // TestLexerHeredocNestedSquigInSquigInterp exercises a latent code path
 // flagged in HEREDOC_PLAN.md: an outer squig heredoc whose body contains
 // `#{}` interpolation that itself starts another squig heredoc.
-// stripSquigInterpBody writes heredocSavedInput/SavedSegEnd/SquigRestorePos
+// setupSquigBodyBuffer writes heredocSavedInput/SavedSegEnd/SquigRestorePos
 // without stacking, so an inner squig strip would overwrite the outer's
 // saved state. Test currently passes because the inner squig heredoc body
 // region lives inside the outer's already-stripped buffer; if the layout

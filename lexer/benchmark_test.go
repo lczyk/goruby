@@ -248,7 +248,7 @@ func BenchmarkLexPercentLiteral(b *testing.B) {
 }
 
 func BenchmarkLexSquigHeredoc(b *testing.B) {
-	// Squiggy heredoc -- exercises stripSquigInterpBody indent stripping
+	// Squiggy heredoc -- exercises setupSquigBodyBuffer indent stripping
 	// and the squig heredoc content path.
 	const src = "<<~EOS\n" +
 		"    hello #{name}\n" +

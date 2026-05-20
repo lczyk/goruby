@@ -220,9 +220,10 @@ type Lexer struct {
 	// swap it in as l.input for the duration of body lex. At STRING_END,
 	// finishHeredoc restores the original l.input and resumes at
 	// heredocSquigRestorePos (= position past delim line in the original).
-	heredocSavedInput     string
-	heredocSavedSegEnd    int
-	heredocSquigRestorePos int
+	heredocSwapped         bool   // true while l.input points at the stripped buffer
+	heredocSavedInput      string // original l.input, restored on body end
+	heredocSavedSegEnd     int    // original l.segEnd, restored on body end
+	heredocSquigRestorePos int    // position in original l.input to resume at
 
 	// Interpolation state.
 	braceDepth  int
@@ -353,11 +354,12 @@ func (l *Lexer) finishHeredoc() {
 	// the original l.input first and reposition past the delim line in the
 	// original source. Then the cursor / splice transitions below run on the
 	// real input as if no swap had happened.
-	if l.heredocSavedInput != "" {
+	if l.heredocSwapped {
 		l.input = l.heredocSavedInput
 		l.segEnd = l.heredocSavedSegEnd
 		l.pos = l.heredocSquigRestorePos
 		l.start = l.pos
+		l.heredocSwapped = false
 		l.heredocSavedInput = ""
 		l.heredocSavedSegEnd = 0
 		l.heredocSquigRestorePos = 0
@@ -2092,7 +2094,7 @@ foundEnd:
 	// All heredocs (including single-quoted) emit STRING_BEG + STRING_CONTENT + STRING_END.
 	if l.heredocQuote == '\'' {
 		if l.heredocSquig {
-			stripSquigInterpBody(l)
+			setupSquigBodyBuffer(l)
 		}
 		tag := buildHeredocTag(l.heredocIndent, l.heredocSquig, '\'', l.heredocDelim)
 		l.emitLiteral(token.STRING_BEG, tag)
@@ -2100,7 +2102,7 @@ foundEnd:
 	}
 	if l.heredocSquig {
 		// Pre-strip indentation so the interp lexer sees normalised content.
-		stripSquigInterpBody(l)
+		setupSquigBodyBuffer(l)
 	}
 	tag := buildHeredocTag(l.heredocIndent, l.heredocSquig, l.heredocQuote, l.heredocDelim)
 	if l.heredocQuote == '`' {
@@ -2111,7 +2113,7 @@ foundEnd:
 	return lexHeredocContent
 }
 
-// stripSquigInterpBody builds a stripped-body buffer for a squig heredoc
+// setupSquigBodyBuffer builds a stripped-body buffer for a squig heredoc
 // (<<~) and temporarily swaps l.input to it for the duration of body lex.
 // Body runs from l.pos to the line whose content equals heredocDelim.
 //
@@ -2121,7 +2123,7 @@ foundEnd:
 // swap variant allocates only the stripped body plus delim+\n (a small
 // constant overhead per heredoc) and routes body lex through that buffer.
 // finishHeredoc restores l.input to the saved original when body ends.
-func stripSquigInterpBody(l *Lexer) {
+func setupSquigBodyBuffer(l *Lexer) {
 	delim := l.heredocDelim
 	bodyStart := l.pos
 	pos := bodyStart
@@ -2209,6 +2211,7 @@ func stripSquigInterpBody(l *Lexer) {
 
 	// Save original lexer state, swap l.input to the stripped buffer for
 	// body lex. finishHeredoc restores when STRING_END is emitted.
+	l.heredocSwapped = true
 	l.heredocSavedInput = l.input
 	l.heredocSavedSegEnd = l.segEnd
 	l.heredocSquigRestorePos = restorePos
