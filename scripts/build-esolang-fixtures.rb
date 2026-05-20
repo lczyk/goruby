@@ -39,6 +39,12 @@ BF_MAPS = {
   "babylang"   => {">"=>"gaga ", "<"=>"gugu ", "+"=>"aaag ", "-"=>"uuug ", "."=>"guuu ", ","=>"gaaa ", "["=>"gagu ", "]"=>"guga "},
   # nope tokens self-terminate with `!`; no spaces needed.
   "nope"       => {">"=>"...!", "<"=>"..!", "+"=>"!", "-"=>".!", "."=>".....!", ","=>"....!", "["=>"......!", "]"=>".......!"},
+  # spoon: binary-coded brainfuck. Variable-length tokens; the interp's
+  # longest-first regex tokenises them unambiguously.
+  "spoon"      => {">"=>"010", "<"=>"011", "+"=>"1", "-"=>"000", "."=>"001010", ","=>"0010110", "["=>"00100", "]"=>"0011"},
+  # la_wea: space-separated word tokens. `weón` is the +1 op; we keep
+  # it utf-8 so the source matches the interp's hash keys verbatim.
+  "la_wea"     => {">"=>"puta ", "<"=>"chucha ", "+"=>"weón ", "-"=>"maricón ", "."=>"ctm ", ","=>"quéweá ", "["=>"pichula ", "]"=>"tula "},
 }
 
 def translate_bf(map, src)
