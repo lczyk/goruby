@@ -397,33 +397,41 @@ func init() {
 			return object.NewArray(out...), nil
 		})
 
-	addBlockMethod(c, "sort_by", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
-		arr, err := asArray(recv, "sort_by")
-		if err != nil {
-			return nil, err
-		}
-		keys := make([]object.RubyObject, len(arr.Elements))
-		vals := make([]object.RubyObject, len(arr.Elements))
-		copy(vals, arr.Elements)
-		for i, e := range arr.Elements {
-			v, stop, err := yieldOne(invoke, e)
+	addBlockOrPlainMethod(c, "sort_by",
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
+			// No-block sort_by returns an Enumerator. The chain pattern
+			// `arr.sort_by.with_index { |e, i| ... }` (used by alice's
+			// stable_sort) then dispatches to Enumerator#with_index,
+			// which knows to use the block result as the sort key.
+			return &object.Enumerator{Receiver: recv, Method: "sort_by"}, nil
+		},
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+			arr, err := asArray(recv, "sort_by")
 			if err != nil {
 				return nil, err
 			}
-			if stop {
-				return v, nil
+			keys := make([]object.RubyObject, len(arr.Elements))
+			vals := make([]object.RubyObject, len(arr.Elements))
+			copy(vals, arr.Elements)
+			for i, e := range arr.Elements {
+				v, stop, err := yieldOne(invoke, e)
+				if err != nil {
+					return nil, err
+				}
+				if stop {
+					return v, nil
+				}
+				keys[i] = v
 			}
-			keys[i] = v
-		}
-		sortStable(len(vals), func(i, j int) bool {
-			c, _ := compareObjects(keys[i], keys[j])
-			return c < 0
-		}, func(i, j int) {
-			vals[i], vals[j] = vals[j], vals[i]
-			keys[i], keys[j] = keys[j], keys[i]
+			sortStable(len(vals), func(i, j int) bool {
+				c, _ := compareObjects(keys[i], keys[j])
+				return c < 0
+			}, func(i, j int) {
+				vals[i], vals[j] = vals[j], vals[i]
+				keys[i], keys[j] = keys[j], keys[i]
+			})
+			return object.NewArray(vals...), nil
 		})
-		return object.NewArray(vals...), nil
-	})
 
 	addBlockMethod(c, "find", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
 		arr, err := asArray(recv, "find")

@@ -177,6 +177,33 @@ func compareObjects(a, b object.RubyObject) (int, bool) {
 			return 0, false
 		}
 		return strCompare(string(x.Buf), string(y.Buf)), true
+	case *object.Array:
+		y, ok := b.(*object.Array)
+		if !ok {
+			return 0, false
+		}
+		// Lexicographic comparison: walk element-by-element, return on
+		// first non-equal pair; shorter array wins ties on prefix.
+		n := len(x.Elements)
+		if len(y.Elements) < n {
+			n = len(y.Elements)
+		}
+		for i := 0; i < n; i++ {
+			c, ok := compareObjects(x.Elements[i], y.Elements[i])
+			if !ok {
+				return 0, false
+			}
+			if c != 0 {
+				return c, true
+			}
+		}
+		switch {
+		case len(x.Elements) < len(y.Elements):
+			return -1, true
+		case len(x.Elements) > len(y.Elements):
+			return 1, true
+		}
+		return 0, true
 	}
 	return 0, false
 }

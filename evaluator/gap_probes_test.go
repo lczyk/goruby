@@ -48,16 +48,21 @@ func TestGapDateRequire(t *testing.T) {
 	}
 }
 
-// TestGapSortByEnumerator pins Enumerator chaining: `sort_by` without a
-// block should return an Enumerator that further methods (with_index,
-// each, lazy, ...) can chain on. We don't implement Enumerator yet, so
-// sort_by w/out a block raises. Used by alice's stable_sort reopening.
-func TestGapSortByEnumerator(t *testing.T) {
-	_, err := runErr(t, "[3,1,2].sort_by.with_index { |x, i| [x, i] }")
-	if err == "" {
-		t.Errorf("expected error -- sort_by w/out block should return Enumerator (not implemented)")
-	}
-	t.Logf("current behaviour: %s", err)
+// TestSortByEnumerator: sort_by without a block returns an
+// Enumerator; the chained .with_index { |elem, idx| ... } applies the
+// block to each (elem, idx) pair, uses the result as the sort key,
+// and returns the sorted array. Stable on ties because tuple
+// comparison includes the index. Underpins alice's stable_sort and
+// stable_sort_by reopenings of Enumerable.
+func TestSortByEnumerator(t *testing.T) {
+	out, err := runErr(t, "p [3,1,2].sort_by.with_index { |x, i| [x, i] }")
+	assert.Equal(t, "", err)
+	assert.Equal(t, "[1, 2, 3]\n", out)
+
+	// Stability check: tie-broken by the index produced by with_index.
+	out, err = runErr(t, "p [[5,2],[5,1],[3,9]].sort_by.with_index { |x, i| [x, i] }")
+	assert.Equal(t, "", err)
+	assert.Equal(t, "[[3, 9], [5, 1], [5, 2]]\n", out)
 }
 
 // TestGapStringScrub pins the current scrub behaviour: with a
