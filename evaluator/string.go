@@ -610,6 +610,17 @@ func callStringMethod(env *object.Environment, recv object.RubyObject, name stri
 	case "succ", "next":
 		return object.NewString(stringSucc(s)), true, nil
 	case "to_i":
+		base := 10
+		if len(args) >= 1 {
+			b, ok := args[0].(*object.Integer)
+			if !ok {
+				return nil, true, errorf("evaluator: String#to_i: base must be Integer, got %T", args[0])
+			}
+			base = int(b.Value)
+			if base != 0 && (base < 2 || base > 36) {
+				return nil, true, errorf("evaluator: ArgumentError: invalid radix %d", base)
+			}
+		}
 		v := int64(0)
 		neg := false
 		i := 0
@@ -620,8 +631,51 @@ func callStringMethod(env *object.Environment, recv object.RubyObject, name stri
 			neg = s[i] == '-'
 			i++
 		}
-		for i < len(s) && s[i] >= '0' && s[i] <= '9' {
-			v = v*10 + int64(s[i]-'0')
+		// Auto-detect / strip the standard 0x / 0o / 0b / 0d prefix when
+		// the base allows it. base == 0 means "infer from prefix"; the
+		// specific bases peel their own prefix if present (mri behaviour).
+		if i+1 < len(s) && s[i] == '0' {
+			c := s[i+1]
+			switch {
+			case (c == 'x' || c == 'X') && (base == 0 || base == 16):
+				base = 16
+				i += 2
+			case (c == 'b' || c == 'B') && (base == 0 || base == 2):
+				base = 2
+				i += 2
+			case (c == 'o' || c == 'O') && (base == 0 || base == 8):
+				base = 8
+				i += 2
+			case (c == 'd' || c == 'D') && (base == 0 || base == 10):
+				base = 10
+				i += 2
+			}
+		}
+		if base == 0 {
+			base = 10
+		}
+		digitVal := func(c byte) (int64, bool) {
+			switch {
+			case c >= '0' && c <= '9':
+				return int64(c - '0'), true
+			case c >= 'a' && c <= 'z':
+				return int64(c-'a') + 10, true
+			case c >= 'A' && c <= 'Z':
+				return int64(c-'A') + 10, true
+			}
+			return 0, false
+		}
+		for i < len(s) {
+			c := s[i]
+			if c == '_' {
+				i++
+				continue
+			}
+			d, ok := digitVal(c)
+			if !ok || d >= int64(base) {
+				break
+			}
+			v = v*int64(base) + d
 			i++
 		}
 		if neg {

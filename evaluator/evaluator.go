@@ -138,6 +138,18 @@ func Eval(node ast.Node, env *object.Environment) (object.RubyObject, error) {
 
 	case *ast.Keyword__FILE__:
 		return object.NewString(n.Filename), nil
+
+	case *ast.SplatExpression:
+		// Bare `*expr` used as a value (e.g. `a, b = *foo`) -- evaluate
+		// the operand and let downstream unpacking (unpackMultiRHS,
+		// call-arg splat handling, etc.) treat the result as an array
+		// to spread. SplatExpression in positions that need explicit
+		// splat handling (Array literal, call args, multi-assign LHS)
+		// are intercepted before reaching this case.
+		if n.Operator != "*" {
+			return nil, errorf("evaluator: unsupported splat operator %q", n.Operator)
+		}
+		return Eval(n.Right, env)
 	}
 
 	return nil, errorf("evaluator: unhandled AST node type %T", node)
@@ -161,6 +173,12 @@ func evalParen(env *object.Environment, n *ast.ParenExpression) (object.RubyObje
 
 func evalProgram(env *object.Environment, p *ast.Program) (object.RubyObject, error) {
 	bootstrapBuiltins(env)
+	// Ruby introduces a local variable at parser-time as soon as it sees
+	// an assignment to it, even on branches that never execute -- the
+	// variable then reads as nil after that point. Mirror by pre-binding
+	// every plain identifier assigned anywhere in the top-level scope
+	// (skipping def/class/module/block scopes) to nil before evaluating.
+	predeclareTopLevelLocals(env, p.Statements)
 	// Stamp the active source-file path so Kernel#require_relative can
 	// resolve siblings via dirname(currentFile). Only set when the
 	// Program carries one (parser-built); restore prior on exit so
@@ -484,6 +502,18 @@ func evalInfix(env *object.Environment, n *ast.InfixExpression) (object.RubyObje
 				return s, nil
 			}
 		}
+		// IO classes (STDOUT / STDERR) treat `<<` as write-and-return-self.
+		// Dispatch through the class's write method when present.
+		if c, ok := left.(*object.Class); ok {
+			if m, found := c.LookupClassMethod("write"); found {
+				if um, ok := m.(*object.UserMethod); ok {
+					if _, err := callUserMethod(env, um, []object.RubyObject{right}); err != nil {
+						return nil, err
+					}
+					return c, nil
+				}
+			}
+		}
 	case "+":
 		if larr, ok := left.(*object.Array); ok {
 			if rarr, ok := right.(*object.Array); ok {
@@ -682,6 +712,21 @@ func stringIndex(s string, args []object.RubyObject) (object.RubyObject, error) 
 				return object.NIL, nil
 			}
 			return object.NewString(string(runes[lo:hi])), nil
+		case *object.Regex:
+			// String#[regex] -- returns the matched substring or nil. Used
+			// by code like `ARGV[0][/^-d=(.)/]` to test+extract in one shot.
+			// Note: MRI returns the full match (group 0). To pick a group,
+			// MRI takes two args (regex + group index) -- handled in the
+			// 2-arg branch below.
+			if m := k.RE.FindString(s); m != "" {
+				return object.NewString(m), nil
+			}
+			// FindString returns "" both for "no match" and "matched the
+			// empty string". Disambiguate via Find:
+			if loc := k.RE.FindStringIndex(s); loc != nil {
+				return object.NewString(""), nil
+			}
+			return object.NIL, nil
 		case *object.String, *object.FrozenString:
 			// `"hello"["ll"]` returns the matched substring or nil.
 			t := ""

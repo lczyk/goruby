@@ -24,6 +24,11 @@ func (r *raiseSignal) Error() string {
 	if r.Exception == nil {
 		return "raised: nil"
 	}
+	if msg, ok := r.Exception.Ivars["@message"]; ok {
+		if s, ok := msg.(*object.String); ok {
+			return "raised: " + r.Exception.C.Name + ": " + string(s.Buf)
+		}
+	}
 	return "raised: " + r.Exception.C.Name
 }
 
@@ -71,6 +76,10 @@ var builtinExceptionTree = []struct {
 	{"StopIteration", "IndexError"},
 	{"LocalJumpError", "StandardError"},
 	{"NotImplementedError", "StandardError"},
+	{"RangeError", "StandardError"},
+	{"FloatDomainError", "RangeError"},
+	{"LoadError", "StandardError"},
+	{"FrozenError", "RuntimeError"},
 }
 
 // kernelRaise implements `raise`, in its three argument shapes.
