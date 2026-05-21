@@ -40,9 +40,30 @@ func callArrayMethod(env *object.Environment, r *object.Array, name string, args
 			// fill all
 		case 2:
 			if rng, ok := args[1].(*object.Range); ok {
-				lo, hi, ok := rangeBounds(rng, len(r.Elements))
-				if !ok {
-					return r, nil
+				// Compute bounds without rangeBounds' "clamp hi to n" --
+				// fill is allowed to extend past the current end and the
+				// loop below grows the slice.
+				b, bOK := rng.Begin.(*object.Integer)
+				e, eOK := rng.End.(*object.Integer)
+				if !bOK || !eOK {
+					return nil, errorf("evaluator: Array#fill: Range endpoints must be Integer")
+				}
+				lo := int(b.Value)
+				hi := int(e.Value)
+				if lo < 0 {
+					lo += len(r.Elements)
+				}
+				if hi < 0 {
+					hi += len(r.Elements)
+				}
+				if !rng.Exclusive {
+					hi++
+				}
+				if lo < 0 {
+					lo = 0
+				}
+				if hi < lo {
+					hi = lo
 				}
 				start = lo
 				length = hi - lo
