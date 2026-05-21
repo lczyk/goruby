@@ -39,6 +39,7 @@ function _process_lang() {
     if [ ! -f "$interp" ]; then
         case "$lang" in
             pyramid-scheme) interp="${ROOT}/testdata/gems/pyramid-scheme/pyra.rb" ;;
+            stackcats)      interp="${ROOT}/testdata/gems/stackcats/ruby/interpreter.rb" ;;
             *)              interp="${ROOT}/testdata/gems/${lang}/${lang}.rb" ;;
         esac
     fi

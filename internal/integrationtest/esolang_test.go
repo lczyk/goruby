@@ -37,6 +37,11 @@ func resolveEsolangInterp(lang string) string {
 	switch lang {
 	case "pyramid-scheme":
 		cands = append(cands, "testdata/gems/pyramid-scheme/pyra.rb")
+	case "stackcats":
+		// Multi-file gem: entry point is interpreter.rb under
+		// gems/stackcats/ruby/, which require_relative's stackcats,
+		// stack and tape from the same dir.
+		cands = append(cands, "testdata/gems/stackcats/ruby/interpreter.rb")
 	}
 	for _, p := range cands {
 		if _, err := os.Stat(p); err == nil {
@@ -87,6 +92,7 @@ func TestEsolangPrograms(t *testing.T) {
 					var stdout bytes.Buffer
 					env := object.NewMainEnvironment(
 						object.WithStdout(&stdout),
+						object.WithStdin(bytes.NewReader(nil)),
 						object.WithARGV([]string{in}),
 					)
 
