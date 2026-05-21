@@ -231,7 +231,7 @@ func callArrayMethod(env *object.Environment, r *object.Array, name string, args
 		return cur, nil
 	case "each_with_index":
 		// No-block form: return an Array of [elem, index] pairs.
-		// Block form is in callMethodWithBlockImpl.
+		// Block form registered on ArrayClass via z_block_array.go.
 		out := make([]object.RubyObject, len(r.Elements))
 		for i, e := range r.Elements {
 			out[i] = object.NewArray(e, object.NewInteger(int64(i)))

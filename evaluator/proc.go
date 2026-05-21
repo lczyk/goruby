@@ -112,8 +112,12 @@ func procArity(p *object.Proc) object.RubyObject {
 // method's CurrentBlock slot the same way an *ast.BlockExpression is.
 // `yield` dispatches through it when the surrounding method was called
 // from Go with a synthesised block (used by Enumerable derivations).
+// blk holds the AST-level BlockExpression when the marker originates
+// from a literal `{ ... }` -- some builtins (Proc.new, Hash.new,
+// user-class .new) need to forward the block AST to a user method.
 type goBlockMarker struct {
-	fn func([]object.RubyObject) (object.RubyObject, error)
+	fn  func([]object.RubyObject) (object.RubyObject, error)
+	blk *ast.BlockExpression
 }
 
 // bootstrapBuiltins installs the standing built-in classes (Object,

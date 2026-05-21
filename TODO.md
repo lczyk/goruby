@@ -28,13 +28,16 @@ ObjectClass, gated on `<=>`. Enumerable derivations live on
 ObjectClass, gated on `include Enumerable` + `each`. `callMethod`
 shrunk to: user class-method check, Send, NoMethodError.
 
-The block-aware path (`callMethodWithBlockImpl`,
-`callEnumerableBlock`) still type-switches on receivers for
-block-only methods. Migration when block dispatch moves onto class
-chains too -- needs BuiltinMethod.Fn's `block any` param exercised
-on the registration side, which is mechanical but touches every
-existing per-class registration. Defer until eigenclass lands so we
-don't redo it.
+Block-aware dispatch also lives on class chains now.
+`callMethodWithBlockImpl` and `callEnumerableBlock` are gone.
+`callMethodWithBlock` builds a `goBlockMarker` (carries the invoke
+callback + the AST BlockExpression) and routes through `object.Send`
+just like the no-block path. Per-class block methods are registered
+in `z_block_*.go` files (named with a `z_` prefix to ensure their
+init runs after the non-block per-class files, since several names
+overlap and the last registration wins). Enumerable block-form
+derivations live on ObjectClass alongside the no-block ones, with
+the Fn inspecting the block payload to pick a path.
 
 ## perf -- harvested
 

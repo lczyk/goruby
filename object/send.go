@@ -5,10 +5,9 @@ package object
 // method_missing definition if one exists somewhere in the chain.
 //
 // found=false means no method (and no method_missing) was found.
-// Callers translate that into NoMethodError -- the block-aware
-// dispatch path still type-switches on some receivers for block-only
-// methods, so a few sites keep their type-switch fallbacks while
-// that migration lands.
+// Callers translate that into NoMethodError. The block-aware path
+// (dispatchWithBlock in evaluator/block.go) routes through Send too;
+// the block payload travels in the `block` arg as a *goBlockMarker.
 func Send(env *Environment, recv RubyObject, name string, args []RubyObject, block any) (result RubyObject, found bool, err error) {
 	cls := recv.Class()
 	if cls == nil {
