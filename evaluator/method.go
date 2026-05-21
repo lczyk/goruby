@@ -511,7 +511,15 @@ func blockCaptureToProc(env *object.Environment, bc *ast.BlockCapture) (*object.
 	if bc.Name != nil {
 		v, ok := env.Get(bc.Name.Value)
 		if !ok {
-			return nil, errorf("evaluator: NameError: undefined local variable `%s' for &-capture", bc.Name.Value)
+			// Not a local -- try calling it as a method. Covers the
+			// idiom `&class_method` where the named method returns a
+			// Proc (e.g. `Command.new('$', &noop)` calling self.noop
+			// which `proc {}`s and returns the Proc to capture).
+			if cv, cerr := evalIdentifier(env, &ast.Identifier{Value: bc.Name.Value}); cerr == nil {
+				v = cv
+			} else {
+				return nil, errorf("evaluator: NameError: undefined local variable or method `%s' for &-capture", bc.Name.Value)
+			}
 		}
 		// `&nil` is the legal "no block" form -- forwarded as "no
 		// block" rather than erroring.

@@ -62,6 +62,32 @@ func evalFunctionLiteral(env *object.Environment, n *ast.FunctionLiteral) (objec
 	return env.Symbols().Intern(n.Name.Value), nil
 }
 
+// evalAlias implements `alias new_name old_name`: registers the
+// method old_name's implementation under new_name on the enclosing
+// class (or as a top-level method when there is no enclosing class).
+// Mirrors mri's alias: a snapshot of the current resolution -- later
+// redefinition of old_name doesn't affect the alias.
+func evalAlias(env *object.Environment, n *ast.AliasExpression) (object.RubyObject, error) {
+	if n.NewName == nil || n.OldName == nil {
+		return nil, errorf("evaluator: alias: missing name")
+	}
+	newN, oldN := n.NewName.Value, n.OldName.Value
+	if cls := env.EnclosingClass(); cls != nil {
+		m, ok := cls.LookupMethod(oldN)
+		if !ok {
+			return nil, errorf("evaluator: NameError: undefined method `%s' for class `%s'", oldN, cls.Name)
+		}
+		cls.Methods[newN] = m
+		return object.NIL, nil
+	}
+	m, ok := env.GetMethod(oldN)
+	if !ok {
+		return nil, errorf("evaluator: NameError: undefined method `%s' for main:Object", oldN)
+	}
+	env.SetMethod(newN, m)
+	return object.NIL, nil
+}
+
 // callUserMethod binds args to params in a fresh enclosed env (so
 // globals stay reachable but locals don't leak), then evaluates the
 // body. Catches returnSignal raised by `return`.
@@ -156,9 +182,13 @@ func runMethodBody(callEnv *object.Environment, m *object.UserMethod, args []obj
 		if blkAny := callEnv.CurrentBlock; blkAny != nil {
 			switch blk := blkAny.(type) {
 			case *ast.BlockExpression:
-				bound = procFromBlock(callEnv.Outer(), blk)
+				if blk != nil {
+					bound = procFromBlock(callEnv.Outer(), blk)
+				}
 			case *goBlockMarker:
-				bound = procFromGoBlock(blk)
+				if blk != nil {
+					bound = procFromGoBlock(blk)
+				}
 			}
 		}
 		callEnv.Set(cap.Name.Value, bound)

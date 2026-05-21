@@ -19,39 +19,65 @@ func init() {
 		return s, nil
 	}
 
-	addBlockMethod(c, "each_char", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
-		s, err := stringRecv(env, recv, "each_char")
-		if err != nil {
-			return nil, err
-		}
-		for _, ch := range []rune(s) {
-			_, stop, err := iterStep(invoke, []object.RubyObject{object.NewString(string(ch))})
+	addBlockOrPlainMethod(c, "each_char",
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
+			// No-block each_char returns an Enumerator over the chars.
+			s, err := stringRecv(env, recv, "each_char")
 			if err != nil {
 				return nil, err
 			}
-			if stop {
-				return recv, nil
+			chars := []rune(s)
+			out := make([]object.RubyObject, len(chars))
+			for i, r := range chars {
+				out[i] = object.NewString(string(r))
 			}
-		}
-		return recv, nil
-	})
+			return &object.Enumerator{Receiver: object.NewArray(out...), Method: "each"}, nil
+		},
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+			s, err := stringRecv(env, recv, "each_char")
+			if err != nil {
+				return nil, err
+			}
+			for _, ch := range []rune(s) {
+				_, stop, err := iterStep(invoke, []object.RubyObject{object.NewString(string(ch))})
+				if err != nil {
+					return nil, err
+				}
+				if stop {
+					return recv, nil
+				}
+			}
+			return recv, nil
+		})
 
-	addBlockMethod(c, "each_byte", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
-		s, err := stringRecv(env, recv, "each_byte")
-		if err != nil {
-			return nil, err
-		}
-		for i := 0; i < len(s); i++ {
-			_, stop, err := iterStep(invoke, []object.RubyObject{object.NewInteger(int64(s[i]))})
+	addBlockOrPlainMethod(c, "each_byte",
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
+			s, err := stringRecv(env, recv, "each_byte")
 			if err != nil {
 				return nil, err
 			}
-			if stop {
-				return recv, nil
+			out := make([]object.RubyObject, len(s))
+			for i := range s {
+				out[i] = object.NewInteger(int64(s[i]))
 			}
-		}
-		return recv, nil
-	})
+			return &object.Enumerator{Receiver: object.NewArray(out...), Method: "each"}, nil
+		},
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+			s, err := stringRecv(env, recv, "each_byte")
+			if err != nil {
+				return nil, err
+			}
+			for i := 0; i < len(s); i++ {
+				_, stop, err := iterStep(invoke, []object.RubyObject{object.NewInteger(int64(s[i]))})
+				if err != nil {
+					return nil, err
+				}
+				if stop {
+					return recv, nil
+				}
+			}
+			return recv, nil
+		})
 
 	addBlockMethod(c, "each_line", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
 		s, err := stringRecv(env, recv, "each_line")

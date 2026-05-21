@@ -140,6 +140,9 @@ func Eval(node ast.Node, env *object.Environment) (object.RubyObject, error) {
 	case *ast.Keyword__FILE__:
 		return object.NewString(n.Filename), nil
 
+	case *ast.AliasExpression:
+		return evalAlias(env, n)
+
 	case *ast.SplatExpression:
 		// Bare `*expr` used as a value (e.g. `a, b = *foo`) -- evaluate
 		// the operand and let downstream unpacking (unpackMultiRHS,
@@ -684,7 +687,7 @@ func evalIndex(env *object.Environment, n *ast.IndexExpression) (object.RubyObje
 			return nil, errorf("evaluator: Hash#[] needs 1 arg, got %d", len(args))
 		}
 		for _, e := range r.Entries {
-			if rubyEqual(e.Key, args[0]) {
+			if rubyEqualDispatch(env, e.Key, args[0]) {
 				return e.Value, nil
 			}
 		}
@@ -711,6 +714,12 @@ func evalIndex(env *object.Environment, n *ast.IndexExpression) (object.RubyObje
 		}
 		return nil, errorf("evaluator: NoMethodError: undefined method `[]' for instance of %s", r.C.Name)
 	case *object.Class:
+		// User-defined class-level [] (def self.[](...) ... end).
+		// Dispatch through ClassMethods first so a user definition
+		// can replace the builtin shortcuts below.
+		if _, ok := r.LookupClassMethod("[]"); ok {
+			return callMethod(env, r, "[]", args)
+		}
 		// `Hash[...]` / `Array[...]` constructor shorthand.
 		switch r.Name {
 		case "Hash":

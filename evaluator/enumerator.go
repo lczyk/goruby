@@ -35,6 +35,9 @@ func bootstrapEnumeratorClass(env *object.Environment) *object.Class {
 		enumeratorEach,
 	)
 	addBlockMethod(c, "map", enumeratorMap)
+	// Note: Enumerator.new { |y| ... } is handled in the generic
+	// Class#new builtin (class_dispatch.go) where the block payload
+	// is delivered correctly w/ the caller's self preserved.
 	addBlockMethod(c, "select", enumeratorSelect)
 	c.Methods["filter"] = c.Methods["select"]
 	addBlockMethod(c, "reject", enumeratorReject)
@@ -53,6 +56,47 @@ func bootstrapEnumeratorClass(env *object.Environment) *object.Class {
 	})
 	env.SetGlobal("Enumerator", c)
 	return c
+}
+
+// enumeratorClassNew implements `Enumerator.new { |yielder| ... }`.
+// The real mri Enumerator is lazy -- block runs only when the
+// resulting Enumerator is iterated, and the yielder buffers one
+// value at a time. We fake the API with eager evaluation: run the
+// block immediately, give it a yielder that appends to a buffer,
+// then wrap the collected values as an Enumerator over an Array.
+// Good enough for the common shape `Enumerator.new { |y| something.each { |v| y.yield v } }`.
+func enumeratorClassNew(c *object.Class) func(*object.Environment, []object.RubyObject) (object.RubyObject, error) {
+	return func(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+		blkAny := env.CurrentBlock
+		if blkAny == nil {
+			return &object.Enumerator{Receiver: object.NewArray(), Method: "each"}, nil
+		}
+		collected := []object.RubyObject{}
+		// Yielder is a Proc that appends each call's first arg to
+		// the collected slice. mri's Yielder responds to both <<
+		// and yield -- but the bouncy idiom passes the yielder as
+		// a block (&yielder) so it gets invoked by .call. our
+		// goBlockMarker captures the closure.
+		yielder := procFromGoBlock(&goBlockMarker{fn: func(a []object.RubyObject) (object.RubyObject, error) {
+			if len(a) == 1 {
+				collected = append(collected, a[0])
+			} else if len(a) > 1 {
+				collected = append(collected, object.NewArray(a...))
+			}
+			return object.NIL, nil
+		}})
+		// Run the user's block with yielder as its single argument.
+		if be, ok := blkAny.(*ast.BlockExpression); ok && be != nil {
+			if _, err := invokeBlock(env, be, []object.RubyObject{yielder}); err != nil {
+				return nil, err
+			}
+		} else if bm, ok := blkAny.(*goBlockMarker); ok && bm != nil {
+			if _, err := bm.fn([]object.RubyObject{yielder}); err != nil {
+				return nil, err
+			}
+		}
+		return &object.Enumerator{Receiver: object.NewArray(collected...), Method: "each"}, nil
+	}
 }
 
 // enumeratorWithIndex implements `enum.with_index(start=0) { |elem, idx| ... }`.

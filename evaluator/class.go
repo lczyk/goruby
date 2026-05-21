@@ -23,7 +23,7 @@ func evalClassExpression(env *object.Environment, n *ast.ClassExpression) (objec
 		super = c
 	}
 
-	cls := lookupOrCreateClass(env, name, super)
+	cls := lookupOrCreateNestedClass(env, name, super, false)
 
 	bodyEnv := object.NewEnclosedEnvironment(env)
 	bodyEnv.CurrentClass = cls
@@ -37,12 +37,36 @@ func evalClassExpression(env *object.Environment, n *ast.ClassExpression) (objec
 	return cls, nil
 }
 
+// lookupOrCreateNestedClass is lookupOrCreateClass that also honours
+// the enclosing-class scope: when called inside `module Outer ; class
+// Inner ; end ; end`, the new class is also registered as
+// Outer::Inner (in addition to the global namespace, since mri
+// effectively does that too -- the global is the canonical home but
+// nested constants can be looked up via the outer's Constants table).
+func lookupOrCreateNestedClass(env *object.Environment, name string, super *object.Class, isModule bool) *object.Class {
+	enclosing := env.EnclosingClass()
+	if enclosing != nil {
+		if existing, ok := enclosing.Constants[name]; ok {
+			if c, ok := existing.(*object.Class); ok {
+				return c
+			}
+		}
+	}
+	cls := lookupOrCreateClass(env, name, super)
+	if isModule {
+		cls.IsModule = true
+	}
+	if enclosing != nil {
+		enclosing.Constants[name] = cls
+	}
+	return cls
+}
+
 // evalModuleExpression treats a module as a class with IsModule=true
 // and no superclass. Method lookup walks Includes so module methods
 // reach instances of including classes.
 func evalModuleExpression(env *object.Environment, n *ast.ModuleExpression) (object.RubyObject, error) {
-	mod := lookupOrCreateClass(env, n.Name.Value, nil)
-	mod.IsModule = true
+	mod := lookupOrCreateNestedClass(env, n.Name.Value, nil, true)
 
 	bodyEnv := object.NewEnclosedEnvironment(env)
 	bodyEnv.CurrentClass = mod
@@ -226,7 +250,27 @@ func evalSuper(env *object.Environment, n *ast.SuperExpression) (object.RubyObje
 		}
 		args = got
 	}
-	return invokeMethodOn(env, inst, um, args, nil)
+	// Forward the block: an explicit `super(args) do ... end` passes a
+	// fresh literal block; a bare `super` (no explicit block / args)
+	// forwards the current method's block transparently. Wrap in a
+	// goBlockMarker that closes over the current env, so the block's
+	// lexical scope (the calling method's locals -- e.g. an outer
+	// `name` parameter) remains reachable when the called method
+	// later invokes the block.
+	var blockArg any
+	if n.Block != nil {
+		blk := n.Block
+		callerEnv := env
+		blockArg = &goBlockMarker{
+			fn:  func(a []object.RubyObject) (object.RubyObject, error) { return invokeBlock(callerEnv, blk, a) },
+			blk: blk,
+		}
+	} else if n.Arguments == nil {
+		if cb := env.EnclosingBlock(); cb != nil {
+			blockArg = cb
+		}
+	}
+	return invokeMethodOn(env, inst, um, args, blockArg)
 }
 
 func findMethodName(env *object.Environment) string {

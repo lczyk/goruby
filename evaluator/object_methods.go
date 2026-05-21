@@ -91,6 +91,11 @@ func init() {
 		}
 		return object.FALSE, nil
 	})
+	// freeze: we don't actually enforce immutability yet. Returning the
+	// receiver matches mri's API and lets `obj.freeze` chain work.
+	add("freeze", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
+		return recv, nil
+	})
 	dup := func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
 		return recv, nil
 	}

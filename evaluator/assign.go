@@ -119,6 +119,25 @@ func evalIdentifier(env *object.Environment, n *ast.Identifier) (object.RubyObje
 				}
 			}
 		}
+		if cls, ok := self.(*object.Class); ok {
+			// Bare-identifier read inside a class / module body where
+			// the name matches a class method on self. Lets idioms
+			// like `&noop` (capturing the result of self.noop) work
+			// without the explicit `self.` prefix.
+			if m, found := cls.LookupClassMethod(n.Value); found {
+				if um, ok := m.(*object.UserMethod); ok {
+					return invokeMethodOn(env, cls, um, nil, nil)
+				}
+			}
+			// Bare-identifier inside a class method where the name
+			// matches a class-level method on the class's class
+			// (typically `new`, inherited from ClassClass/ModuleClass).
+			if rc := cls.Class(); rc != nil {
+				if _, found := rc.LookupMethod(n.Value); found {
+					return callMethod(env, cls, n.Value, nil)
+				}
+			}
+		}
 	}
 	// Final fallback: try Kernel builtins for bare-name identifiers
 	// (`puts` / `print` / `p` etc. used as statements without parens
@@ -358,7 +377,7 @@ func evalIndexAssign(env *object.Environment, n *ast.IndexExpression, value obje
 	switch r := recv.(type) {
 	case *object.Hash:
 		for i, e := range r.Entries {
-			if rubyEqual(e.Key, key) {
+			if rubyEqualDispatch(env, e.Key, key) {
 				r.Entries[i].Value = value
 				return nil
 			}

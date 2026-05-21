@@ -216,22 +216,28 @@ func init() {
 		return object.NewArray(out...), nil
 	})
 
-	addBlockMethod(c, "each", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
-		arr, err := asArray(recv, "each")
-		if err != nil {
-			return nil, err
-		}
-		for _, e := range arr.Elements {
-			_, stop, err := yieldOne(invoke, e)
+	addBlockOrPlainMethod(c, "each",
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
+			// No-block each returns an Enumerator wrapping the receiver,
+			// so callers can chain `.with_index`, `.map`, `.to_h`, etc.
+			return &object.Enumerator{Receiver: recv, Method: "each"}, nil
+		},
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+			arr, err := asArray(recv, "each")
 			if err != nil {
 				return nil, err
 			}
-			if stop {
-				return arr, nil
+			for _, e := range arr.Elements {
+				_, stop, err := yieldOne(invoke, e)
+				if err != nil {
+					return nil, err
+				}
+				if stop {
+					return arr, nil
+				}
 			}
-		}
-		return arr, nil
-	})
+			return arr, nil
+		})
 
 	addBlockOrPlainMethod(c, "each_with_index", plain("each_with_index"),
 		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {

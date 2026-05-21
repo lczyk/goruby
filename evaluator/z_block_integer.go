@@ -19,22 +19,35 @@ func init() {
 		return i, nil
 	}
 
-	addBlockMethod(c, "times", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
-		i, err := asInt(recv, "times")
-		if err != nil {
-			return nil, err
-		}
-		for k := int64(0); k < i.Value; k++ {
-			_, stop, err := yieldOne(invoke, object.NewInteger(k))
+	addBlockOrPlainMethod(c, "times",
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
+			// No-block times returns an Enumerator over [0, n).
+			i, err := asInt(recv, "times")
 			if err != nil {
 				return nil, err
 			}
-			if stop {
-				return i, nil
+			out := make([]object.RubyObject, 0, i.Value)
+			for k := int64(0); k < i.Value; k++ {
+				out = append(out, object.NewInteger(k))
 			}
-		}
-		return i, nil
-	})
+			return &object.Enumerator{Receiver: object.NewArray(out...), Method: "each"}, nil
+		},
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+			i, err := asInt(recv, "times")
+			if err != nil {
+				return nil, err
+			}
+			for k := int64(0); k < i.Value; k++ {
+				_, stop, err := yieldOne(invoke, object.NewInteger(k))
+				if err != nil {
+					return nil, err
+				}
+				if stop {
+					return i, nil
+				}
+			}
+			return i, nil
+		})
 
 	addBlockMethod(c, "upto", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
 		i, err := asInt(recv, "upto")

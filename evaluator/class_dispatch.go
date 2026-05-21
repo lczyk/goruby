@@ -57,6 +57,29 @@ func init() {
 						h.DefaultBlock = procFromBlock(env, blk)
 					}
 					return h, nil
+				case "Enumerator":
+					// Eager-evaluation Enumerator.new { |y| ... }: run the
+					// block now with a collecting yielder; the resulting
+					// Enumerator wraps the buffered values. The yielder is
+					// a Proc -- the bouncy idiom `each_point(&yielder)`
+					// then forwards it as the block to each_point, which
+					// invokes it via block.call(point), appending to the
+					// buffer.
+					collected := []object.RubyObject{}
+					yielder := procFromGoBlock(&goBlockMarker{fn: func(a []object.RubyObject) (object.RubyObject, error) {
+						switch len(a) {
+						case 0:
+						case 1:
+							collected = append(collected, a[0])
+						default:
+							collected = append(collected, object.NewArray(a...))
+						}
+						return object.NIL, nil
+					}})
+					if _, err := invoke([]object.RubyObject{yielder}); err != nil {
+						return nil, err
+					}
+					return &object.Enumerator{Receiver: object.NewArray(collected...), Method: "each"}, nil
 				case "Array":
 					if len(args) != 1 {
 						return nil, errorf("evaluator: Array.new { ... } expects 1 size arg")
@@ -83,11 +106,19 @@ func init() {
 				}
 				// User-class .new { ... }: instantiate, then forward to
 				// initialize when defined so the block is visible via
-				// `block_given?` / `yield` / `&blk` capture.
+				// `block_given?` / `yield` / `&blk` capture. Pass the
+				// goBlockMarker itself when there's no literal block
+				// shape (e.g. `Cls.new(&proc)` from a Proc capture) --
+				// invokeMethodOn handles either flavour and that's
+				// what initialize's &block parameter needs to see.
 				inst := object.NewInstance(cls)
 				if m, found := cls.LookupMethod("initialize"); found {
 					if um, ok := m.(*object.UserMethod); ok {
-						if _, err := invokeMethodOnWithBlock(env, inst, um, args, blk); err != nil {
+						var blockArg any = blk
+						if blk == nil {
+							blockArg = blockAny
+						}
+						if _, err := invokeMethodOn(env, inst, um, args, blockArg); err != nil {
 							return nil, err
 						}
 					}

@@ -69,7 +69,7 @@ func callHashMethod(env *object.Environment, r *object.Hash, name string, args [
 			for _, e := range other.Entries {
 				replaced := false
 				for i := range out {
-					if rubyEqual(out[i].Key, e.Key) {
+					if rubyEqualDispatch(env, out[i].Key, e.Key) {
 						out[i].Value = e.Value
 						replaced = true
 						break
@@ -93,7 +93,7 @@ func callHashMethod(env *object.Environment, r *object.Hash, name string, args [
 			return nil, errorf("evaluator: Hash#delete expects 1 arg, got %d", len(args))
 		}
 		for i, e := range r.Entries {
-			if rubyEqual(e.Key, args[0]) {
+			if rubyEqualDispatch(env, e.Key, args[0]) {
 				r.Entries = append(r.Entries[:i], r.Entries[i+1:]...)
 				return e.Value, nil
 			}
@@ -104,7 +104,7 @@ func callHashMethod(env *object.Environment, r *object.Hash, name string, args [
 			return nil, errorf("evaluator: Hash#store expects 2 args, got %d", len(args))
 		}
 		for i := range r.Entries {
-			if rubyEqual(r.Entries[i].Key, args[0]) {
+			if rubyEqualDispatch(env, r.Entries[i].Key, args[0]) {
 				r.Entries[i].Value = args[1]
 				return args[1], nil
 			}
@@ -126,7 +126,7 @@ func callHashMethod(env *object.Environment, r *object.Hash, name string, args [
 			return nil, errorf("evaluator: Hash#fetch expects 1..2 args, got %d", len(args))
 		}
 		for _, e := range r.Entries {
-			if rubyEqual(e.Key, args[0]) {
+			if rubyEqualDispatch(env, e.Key, args[0]) {
 				return e.Value, nil
 			}
 		}
@@ -141,7 +141,7 @@ func callHashMethod(env *object.Environment, r *object.Hash, name string, args [
 			case *object.Hash:
 				var found object.RubyObject = object.NIL
 				for _, e := range x.Entries {
-					if rubyEqual(e.Key, k) {
+					if rubyEqualDispatch(env, e.Key, k) {
 						found = e.Value
 						break
 					}
@@ -210,7 +210,7 @@ func callHashMethod(env *object.Environment, r *object.Hash, name string, args [
 	nextEntry:
 		for _, e := range r.Entries {
 			for _, k := range args {
-				if rubyEqual(e.Key, k) {
+				if rubyEqualDispatch(env, e.Key, k) {
 					continue nextEntry
 				}
 			}
@@ -222,7 +222,7 @@ func callHashMethod(env *object.Environment, r *object.Hash, name string, args [
 			return nil, errorf("evaluator: wrong number of arguments to Hash#%s (given %d, expected 1)", name, len(args))
 		}
 		for _, e := range r.Entries {
-			if rubyEqual(e.Key, args[0]) {
+			if rubyEqualDispatch(env, e.Key, args[0]) {
 				return object.TRUE, nil
 			}
 		}
