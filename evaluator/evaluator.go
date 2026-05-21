@@ -260,6 +260,24 @@ func toStringValue(env *object.Environment, o object.RubyObject) string {
 // \\, \", \0, \a, \b, \e, \f, \v, \s); single-quoted strings only honour
 // \\ and \'. Unknown escapes in double-quoted strings drop the
 // backslash, matching MRI.
+// hexDigit returns the decimal value of the hex digit at s[i],
+// ok=true if it's a valid hex digit, false otherwise / out-of-bounds.
+func hexDigit(s string, i int) (int, bool) {
+	if i < 0 || i >= len(s) {
+		return 0, false
+	}
+	c := s[i]
+	switch {
+	case c >= '0' && c <= '9':
+		return int(c - '0'), true
+	case c >= 'a' && c <= 'f':
+		return int(c-'a') + 10, true
+	case c >= 'A' && c <= 'F':
+		return int(c-'A') + 10, true
+	}
+	return 0, false
+}
+
 func decodeStringEscapes(s string, singleQuoted bool) string {
 	if !strings.ContainsRune(s, '\\') {
 		return s
@@ -310,6 +328,23 @@ func decodeStringEscapes(s string, singleQuoted bool) string {
 			b.WriteByte(11)
 		case 's':
 			b.WriteByte(' ')
+		case 'x':
+			// \xHH -- hex byte escape. Consume one or two hex digits;
+			// missing digits keep the literal \x in place (matches
+			// mri's "stop on first non-hex" rule).
+			hi, hiOK := hexDigit(s, i+2)
+			if !hiOK {
+				b.WriteByte('x')
+				break
+			}
+			lo, loOK := hexDigit(s, i+3)
+			if loOK {
+				b.WriteByte(byte(hi*16 + lo))
+				i += 2 // consume two more (after the `x`)
+			} else {
+				b.WriteByte(byte(hi))
+				i++
+			}
 		default:
 			b.WriteByte(next)
 		}

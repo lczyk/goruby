@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/lczyk/goruby/object"
 )
@@ -188,6 +189,29 @@ func stringText(env *object.Environment, o object.RubyObject) (string, bool) {
 // Each directive can take a count or `*` for "consume the rest of the
 // buffer". Unsupported directives raise an explicit error so callers
 // get a clear signal rather than silent miscount.
+// stringScrub replaces invalid UTF-8 byte sequences in s with repl.
+// Mirrors MRI String#scrub semantics: each maximal invalid byte run
+// gets one replacement, valid bytes pass through unchanged.
+func stringScrub(s, repl string) string {
+	if utf8.ValidString(s) {
+		return s
+	}
+	var b []byte
+	b = make([]byte, 0, len(s))
+	i := 0
+	for i < len(s) {
+		r, size := utf8.DecodeRuneInString(s[i:])
+		if r == utf8.RuneError && size == 1 {
+			b = append(b, repl...)
+			i++
+			continue
+		}
+		b = append(b, s[i:i+size]...)
+		i += size
+	}
+	return string(b)
+}
+
 func stringUnpack(buf []byte, format string) (object.RubyObject, error) {
 	out := []object.RubyObject{}
 	i := 0
@@ -381,11 +405,21 @@ func callStringMethod(env *object.Environment, recv object.RubyObject, name stri
 		// We don't track per-string encodings; treat as no-op return self.
 		return recv, true, nil
 	case "scrub":
-		// Replace invalid byte sequences with a replacement. Our strings
-		// are raw bytes already; for the corpus we treat scrub as a
-		// no-op (or honour the explicit replacement when nothing to
-		// replace, which is identical to the input).
-		return recv, true, nil
+		// Replace invalid UTF-8 byte sequences with a replacement.
+		// Default replacement is U+FFFD (REPLACEMENT CHARACTER), the
+		// same one MRI uses when not given an explicit replacement.
+		// A nil/missing arg also uses the default; an explicit String
+		// arg overrides. Block form (scrub { |bytes| ... }) is not
+		// covered yet -- raise so callers see the gap clearly.
+		repl := "\uFFFD"
+		if len(args) >= 1 {
+			r, ok := stringText(env, args[0])
+			if !ok {
+				return nil, true, errorf("evaluator: String#scrub: replacement must be String, got %T", args[0])
+			}
+			repl = r
+		}
+		return object.NewString(stringScrub(s, repl)), true, nil
 	case "encoding":
 		// Stub: return Encoding::UTF_8 sentinel. Doesn't reflect real
 		// per-string encoding tracking -- we don't have that yet.

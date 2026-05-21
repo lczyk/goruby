@@ -65,21 +65,26 @@ func TestSortByEnumerator(t *testing.T) {
 	assert.Equal(t, "[[3, 9], [5, 1], [5, 2]]\n", out)
 }
 
-// TestGapStringScrub pins the current scrub behaviour: with a
-// replacement arg, MRI replaces invalid byte sequences with the
-// replacement. Our stub returns the receiver unchanged, regardless of
-// validity.  Pin so a future scrub implementation that actually
-// scrubs invalid bytes can update this fixture to the real check.
-func TestGapStringScrub(t *testing.T) {
+// TestStringScrub: scrub replaces invalid UTF-8 byte sequences with
+// the given replacement (default is the unicode replacement char).
+// Valid input passes through unchanged.
+func TestStringScrub(t *testing.T) {
 	out, err := runErr(t, `puts "abc".scrub('?')`)
 	assert.Equal(t, "", err)
-	// Plain ASCII -- no invalid bytes, scrub is a no-op even under MRI.
 	assert.Equal(t, "abc\n", out)
 
-	// Invalid byte sequence: our stub leaves it as-is. MRI would
-	// replace with the given character.
-	_, err = runErr(t, `s = "\xC3".dup.force_encoding('UTF-8'); puts s.scrub('?').bytes.length`)
-	t.Logf("scrub('?') on invalid bytes: out err=%q -- mri would print 1 (single '?'); we print 1 (untouched, same length by accident) or differ", err)
+	// Bare 0xC3 is the start of a 2-byte UTF-8 sequence but missing the
+	// continuation byte -- invalid. Single '?' replaces it.
+	out, err = runErr(t, `puts "\xC3".scrub('?').bytes.length`)
+	assert.Equal(t, "", err)
+	assert.Equal(t, "1\n", out)
+
+	// Default replacement is the unicode replacement character (U+FFFD,
+	// three bytes 0xEF 0xBF 0xBD in UTF-8). Single invalid byte gets a
+	// single replacement -> length 3.
+	out, err = runErr(t, `puts "\xC3".scrub.bytes.length`)
+	assert.Equal(t, "", err)
+	assert.Equal(t, "3\n", out)
 }
 
 // TestGapEncodingTracking confirms that String#encoding returns the
