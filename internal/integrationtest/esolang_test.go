@@ -46,6 +46,11 @@ func resolveEsolangInterp(lang string) string {
 		cands = append(cands, "testdata/gems/alice/interpreter.rb")
 	case "hexagony":
 		cands = append(cands, "testdata/gems/hexagony/interpreter.rb")
+	case "wumpus":
+		// gems/wumpus/interpreter.rb is just the class body --
+		// wumpus.rb wraps it with the CLI shim that actually
+		// reads ARGV[0] and calls Interpreter#run.
+		cands = append(cands, "testdata/gems/wumpus/wumpus.rb")
 	}
 	cands = append(cands,
 		filepath.Join(esolangInterpDir, lang+".rb"),
