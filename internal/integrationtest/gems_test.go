@@ -233,7 +233,7 @@ func loadSkips(path string) (*skipList, error) {
 		}
 		phase := line[:spaceIdx]
 		switch phase {
-		case "lex", "parse", "walk":
+		case "lex", "parse", "walk", "eval":
 		default:
 			return nil, fmt.Errorf("%s:%d: unknown phase %q", path, lineNo+1, phase)
 		}

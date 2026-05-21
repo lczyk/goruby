@@ -24,26 +24,27 @@ import (
 // against it.
 const evaluatorCorpusRoot = "testdata/evaluator"
 
+// evaluatorSkipFile is the skip-list for TestEvaluatorCorpus. Same
+// format as gems.skip / golden.skip: `<phase> <path>[: reason]`,
+// where <phase> is `eval` and <path> is relative to
+// evaluatorCorpusRoot. See evaluator.skip for the format header.
+const evaluatorSkipFile = "evaluator.skip"
+
 // minVersionRe matches the `# minversion: X.Y` header convention used
 // by the evaluator corpus. Mirrors the regex in
 // scripts/eval-corpus-oracle so harness and shell oracle agree.
 var minVersionRe = regexp.MustCompile(`^\s*#\s*minversion:\s*([0-9]+(?:\.[0-9]+)?)`)
 
-// skipEvaluatorRe matches the `# skip-evaluator: <reason>` header. Used
-// to temporarily exclude fixtures that exercise features the evaluator
-// can't run yet, while keeping the file MRI-runnable for the bash
-// oracle. Remove the header once the gap is closed.
-var skipEvaluatorRe = regexp.MustCompile(`^\s*#\s*skip-evaluator:\s*(.+)`)
-
-// fixtureHeader reads up to 5 leading lines of path and returns the
-// declared minversion (zero if absent) and skip-evaluator reason
-// (empty if absent).
-func fixtureHeader(t *testing.T, path string) (minVer token.RubyVersion, skipReason string) {
+// fixtureMinVersion reads up to 5 leading lines of path and returns the
+// declared `# minversion: X.Y` (zero if absent). Skip decisions live in
+// evaluator.skip; this header is only for version-override.
+func fixtureMinVersion(t *testing.T, path string) token.RubyVersion {
 	t.Helper()
 	f, err := os.Open(path)
 	assert.NoError(t, err, "open %s", path)
 	defer f.Close()
 
+	var minVer token.RubyVersion
 	sc := bufio.NewScanner(f)
 	for i := 0; i < 5 && sc.Scan(); i++ {
 		line := sc.Text()
@@ -52,11 +53,8 @@ func fixtureHeader(t *testing.T, path string) (minVer token.RubyVersion, skipRea
 			assert.NoError(t, perr, "parse minversion %q", m[1])
 			minVer = v
 		}
-		if m := skipEvaluatorRe.FindStringSubmatch(line); m != nil {
-			skipReason = strings.TrimSpace(m[1])
-		}
 	}
-	return
+	return minVer
 }
 
 // runEvaluatorFixture parses src under env.Version() and evaluates it,
@@ -93,6 +91,7 @@ var supportedEvaluatorSubdirs = []string{
 	"self_kw",
 	"exceptions",
 	"version-gates",
+	"gaps",
 }
 
 // TestEvaluatorCorpus runs every .rb file under the supported corpus
@@ -104,6 +103,9 @@ var supportedEvaluatorSubdirs = []string{
 // `# skip-evaluator`.
 func TestEvaluatorCorpus(t *testing.T) {
 	defaultTarget := token.MustParseVersion("2.6")
+
+	skips, err := loadSkips(evaluatorSkipFile)
+	assert.NoError(t, err, "load %s", evaluatorSkipFile)
 
 	for _, sub := range supportedEvaluatorSubdirs {
 		sub := sub
@@ -118,11 +120,17 @@ func TestEvaluatorCorpus(t *testing.T) {
 				rb := rb
 				name := strings.TrimSuffix(filepath.Base(rb), ".rb")
 				t.Run(name, func(t *testing.T) {
-					minVer, skipReason := fixtureHeader(t, rb)
-					if skipReason != "" {
-						t.Skipf("skip-evaluator: %s", skipReason)
+					relPath, err := filepath.Rel(evaluatorCorpusRoot, rb)
+					assert.NoError(t, err, "rel %s", rb)
+					if entry := skips.match("eval", filepath.ToSlash(relPath)); entry != nil {
+						reason := entry.reason
+						if reason == "" {
+							reason = "skip-listed"
+						}
+						t.Skip(reason)
 					}
 
+					minVer := fixtureMinVersion(t, rb)
 					runVer := defaultTarget
 					if minVer.IsSet() && minVer.AtLeast(defaultTarget) {
 						runVer = minVer
