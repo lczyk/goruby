@@ -30,19 +30,23 @@ const (
 // few common shapes under testdata/gems/<lang>/ for gem-distributed
 // interpreters (e.g. pyramid-scheme's pyra.rb).
 func resolveEsolangInterp(lang string) string {
-	cands := []string{
-		filepath.Join(esolangInterpDir, lang+".rb"),
-		filepath.Join("testdata/gems", lang, lang+".rb"),
-	}
+	// Lang-specific overrides come first -- when a multi-file gem ships
+	// a CLI entry point separate from the class file (interpreter.rb
+	// alongside labyrinth.rb / stackcats.rb), we want the entry point
+	// to win over the otherwise-matching default `gems/<lang>/<lang>.rb`.
+	var cands []string
 	switch lang {
 	case "pyramid-scheme":
 		cands = append(cands, "testdata/gems/pyramid-scheme/pyra.rb")
 	case "stackcats":
-		// Multi-file gem: entry point is interpreter.rb under
-		// gems/stackcats/ruby/, which require_relative's stackcats,
-		// stack and tape from the same dir.
 		cands = append(cands, "testdata/gems/stackcats/ruby/interpreter.rb")
+	case "labyrinth":
+		cands = append(cands, "testdata/gems/labyrinth/interpreter.rb")
 	}
+	cands = append(cands,
+		filepath.Join(esolangInterpDir, lang+".rb"),
+		filepath.Join("testdata/gems", lang, lang+".rb"),
+	)
 	for _, p := range cands {
 		if _, err := os.Stat(p); err == nil {
 			return p
