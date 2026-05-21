@@ -2,6 +2,7 @@ package evaluator
 
 import (
 	"bufio"
+	"bytes"
 	"io"
 	"os"
 
@@ -191,8 +192,65 @@ func bootstrapARGF(env *object.Environment) *object.Class {
 	}
 	c := object.NewClass("ARGF", nil)
 	c.ClassMethods["read"] = &object.UserMethod{Name: "read", Body: nativeFn{fn: argfRead}}
+	c.ClassMethods["gets"] = &object.UserMethod{Name: "gets", Body: nativeFn{fn: argfGets}}
+	c.ClassMethods["readline"] = &object.UserMethod{Name: "readline", Body: nativeFn{fn: argfGets}}
+	c.ClassMethods["each_line"] = &object.UserMethod{Name: "each_line", Body: nativeFn{fn: argfEachLine}}
 	env.SetGlobal("ARGF", c)
 	return c
+}
+
+// argfReader returns a *bufio.Reader covering the concatenation of all
+// ARGV files (or stdin if ARGV is empty), cached on the env so successive
+// ARGF.gets calls advance through the same stream. Mirrors MRI's
+// ARGF semantics enough for typical "first line is source" CLI scripts.
+func argfReader(env *object.Environment) (*bufio.Reader, error) {
+	if br, ok := env.ArgfBR().(*bufio.Reader); ok && br != nil {
+		return br, nil
+	}
+	argv, _ := env.Get("ARGV")
+	arr, _ := argv.(*object.Array)
+	if arr == nil || len(arr.Elements) == 0 {
+		br := stdinReader(env)
+		env.SetArgfBR(br)
+		return br, nil
+	}
+	var buf []byte
+	for _, e := range arr.Elements {
+		s, ok := e.(*object.String)
+		if !ok {
+			return nil, errorf("evaluator: ARGF: ARGV element not String: %T", e)
+		}
+		data, err := os.ReadFile(s.Value())
+		if err != nil {
+			return nil, errorf("evaluator: ARGF: %s", err.Error())
+		}
+		buf = append(buf, data...)
+	}
+	br := bufio.NewReader(bytes.NewReader(buf))
+	env.SetArgfBR(br)
+	return br, nil
+}
+
+// argfGets reads one line (incl. terminator) from the ARGF stream;
+// returns nil at EOF. Matches Kernel#gets for the common one-line
+// case CLI scripts use.
+func argfGets(env *object.Environment, _ []object.RubyObject) (object.RubyObject, error) {
+	br, err := argfReader(env)
+	if err != nil {
+		return nil, err
+	}
+	line, err := br.ReadString('\n')
+	if err != nil && err != io.EOF {
+		return nil, errorf("evaluator: ARGF.gets: %s", err.Error())
+	}
+	if len(line) == 0 && err == io.EOF {
+		return object.NIL, nil
+	}
+	return object.NewString(line), nil
+}
+
+func argfEachLine(env *object.Environment, _ []object.RubyObject) (object.RubyObject, error) {
+	return nil, errorf("evaluator: ARGF.each_line without block not supported")
 }
 
 // argfRead reads the concatenation of every file named in ARGV; if

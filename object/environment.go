@@ -44,6 +44,7 @@ type Environment struct {
 	stderr  io.Writer
 	stdin   io.Reader
 	stdinBR any // *bufio.Reader cached so successive gets() share buffer state
+	argfBR  any // *bufio.Reader cached so successive ARGF.gets advance through same stream
 	version token.RubyVersion
 	methods map[string]RubyObject
 
@@ -278,6 +279,8 @@ func (e *Environment) Stdin() io.Reader { return e.root().stdin }
 // holds the value.
 func (e *Environment) StdinBR() any        { return e.root().stdinBR }
 func (e *Environment) SetStdinBR(br any)   { e.root().stdinBR = br }
+func (e *Environment) ArgfBR() any         { return e.root().argfBR }
+func (e *Environment) SetArgfBR(br any)    { e.root().argfBR = br }
 
 // CurrentFile returns the path of the source file currently being
 // evaluated. Empty when no file-backed eval is on the stack.

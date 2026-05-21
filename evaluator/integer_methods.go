@@ -63,7 +63,18 @@ func init() {
 		return r, nil
 	})
 	add("chr", func(env *object.Environment, r *object.Integer, args []object.RubyObject) (object.RubyObject, error) {
-		return object.NewString(string(rune(r.Value))), nil
+		// MRI 2.x: Integer#chr without an encoding arg returns a single
+		// byte for values 0..255 (encoded as ASCII-8BIT), raising
+		// RangeError outside that range. We don't track string encodings
+		// separately yet, but we DO need the raw-byte behaviour: lots of
+		// ruby code (stackcats, anything writing binary) relies on
+		// `(n % 256).chr` producing exactly one byte. The naive
+		// `string(rune(n))` UTF-8-encodes 128..255 as two bytes, breaking
+		// that contract.
+		if r.Value < 0 || r.Value > 255 {
+			return raiseBuiltin(env, "RangeError", strconv.FormatInt(r.Value, 10)+" out of char range")
+		}
+		return object.NewStringFromBytes([]byte{byte(r.Value)}), nil
 	})
 	add("to_s", func(env *object.Environment, r *object.Integer, args []object.RubyObject) (object.RubyObject, error) {
 		base := 10

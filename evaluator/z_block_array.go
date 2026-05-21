@@ -101,6 +101,45 @@ func init() {
 	c.Methods["filter"] = c.Methods["select"]
 	c.Methods["find_all"] = c.Methods["select"]
 
+	// In-place variants: select!/filter!/keep_if rewrite the receiver to
+	// keep only block-truthy elements. select! / filter! return nil when
+	// no element was removed (matches MRI); keep_if always returns self.
+	inplaceFilter := func(keepTruthy, returnNilIfUnchanged bool, name string) func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+		return func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+			arr, err := asArray(recv, name)
+			if err != nil {
+				return nil, err
+			}
+			out := arr.Elements[:0]
+			changed := false
+			for _, e := range arr.Elements {
+				v, stop, err := yieldOne(invoke, e)
+				if err != nil {
+					return nil, err
+				}
+				if stop {
+					return v, nil
+				}
+				keep := truthy(v) == keepTruthy
+				if keep {
+					out = append(out, e)
+				} else {
+					changed = true
+				}
+			}
+			arr.Elements = out
+			if returnNilIfUnchanged && !changed {
+				return object.NIL, nil
+			}
+			return arr, nil
+		}
+	}
+	addBlockOrPlainMethod(c, "select!", nil, inplaceFilter(true, true, "select!"))
+	c.Methods["filter!"] = c.Methods["select!"]
+	addBlockOrPlainMethod(c, "keep_if", nil, inplaceFilter(true, false, "keep_if"))
+	addBlockOrPlainMethod(c, "reject!", nil, inplaceFilter(false, true, "reject!"))
+	addBlockOrPlainMethod(c, "delete_if", nil, inplaceFilter(false, false, "delete_if"))
+
 	addBlockOrPlainMethod(c, "reject", nil, func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
 		arr, err := asArray(recv, "reject")
 		if err != nil {
