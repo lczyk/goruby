@@ -53,6 +53,61 @@ func init() {
 	})
 	c.Methods["collect"] = c.Methods["map"]
 
+	// In-place map: replace each element with block result. select! /
+	// reject! pattern but for transformation rather than filtering.
+	addBlockMethod(c, "map!", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+		arr, err := asArray(recv, "map!")
+		if err != nil {
+			return nil, err
+		}
+		for i, e := range arr.Elements {
+			v, stop, err := yieldOne(invoke, e)
+			if err != nil {
+				return nil, err
+			}
+			if stop {
+				return v, nil
+			}
+			arr.Elements[i] = v
+		}
+		return arr, nil
+	})
+	c.Methods["collect!"] = c.Methods["map!"]
+
+	addBlockOrPlainMethod(c, "each_index",
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
+			// No-block form returns an Enumerator over the index list,
+			// so callers can chain `.select { |i| ... }` etc. The
+			// Enumerator's receiver is an Array of [0, 1, ..., n-1]
+			// so each_index.select { |i| ... } works as
+			// "indices for which the predicate holds".
+			arr, err := asArray(recv, "each_index")
+			if err != nil {
+				return nil, err
+			}
+			idxs := make([]object.RubyObject, len(arr.Elements))
+			for i := range arr.Elements {
+				idxs[i] = object.NewInteger(int64(i))
+			}
+			return &object.Enumerator{Receiver: object.NewArray(idxs...), Method: "each"}, nil
+		},
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+			arr, err := asArray(recv, "each_index")
+			if err != nil {
+				return nil, err
+			}
+			for i := range arr.Elements {
+				_, stop, err := yieldOne(invoke, object.NewInteger(int64(i)))
+				if err != nil {
+					return nil, err
+				}
+				if stop {
+					break
+				}
+			}
+			return arr, nil
+		})
+
 	addBlockMethod(c, "flat_map", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
 		arr, err := asArray(recv, "flat_map")
 		if err != nil {

@@ -426,7 +426,7 @@ func bindPositionalParams(env *object.Environment, params []*ast.FunctionParamet
 			}
 		}
 		if len(args) < required || len(args) > len(params) {
-			return errorf("evaluator: ArgumentError: wrong number of arguments (given %d, expected %d)", len(args), len(params))
+			return errorf("evaluator: ArgumentError: wrong number of arguments (given %d, expected %d) for %s", len(args), len(params), env.CurrentMethodName)
 		}
 		ai := 0
 		for _, p := range params {

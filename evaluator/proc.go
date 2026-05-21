@@ -49,10 +49,39 @@ func invokeProc(env *object.Environment, p *object.Proc, args []object.RubyObjec
 		defEnv = env
 	}
 	inner := object.NewEnclosedEnvironment(defEnv)
+	// Procs (non-lambda) tolerate arity mismatch: extras are dropped,
+	// missing params bind to nil. Lambdas + methods are strict.
+	if !p.IsLambda {
+		args = adjustProcArgs(params, args)
+	}
 	if err := bindParams(inner, params, args); err != nil {
 		return nil, err
 	}
 	return evalBlockStatement(inner, body)
+}
+
+// adjustProcArgs trims / pads args to match a non-lambda proc's
+// parameter list. Mirrors ruby block-arity tolerance:
+//   - extra args (beyond the last positional, when no splat) -> dropped
+//   - missing positionals -> nil
+//
+// Splats and keyword params are pass-through; the caller's bindParams
+// still does the real binding work, just on a length-aligned slice.
+func adjustProcArgs(params []*ast.FunctionParameter, args []object.RubyObject) []object.RubyObject {
+	// Find the splat position (if any). With a splat, extras are
+	// already absorbed; nothing to do.
+	for _, p := range params {
+		if p.IsSplat || p.IsKeyword || p.IsKeywordRest {
+			return args
+		}
+	}
+	if len(args) > len(params) {
+		args = args[:len(params)]
+	}
+	for len(args) < len(params) {
+		args = append(args, object.NIL)
+	}
+	return args
 }
 
 // procFromGoBlock wraps a goBlockMarker as a Proc so user code can

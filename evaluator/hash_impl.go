@@ -18,6 +18,32 @@ func callHashMethod(env *object.Environment, r *object.Hash, name string, args [
 		r.Default = args[0]
 		r.DefaultBlock = nil
 		return args[0], nil
+	case "default_proc=":
+		// MRI: takes a Proc / lambda (or nil to clear) invoked as
+		// block.call(hash, missing_key) when a lookup misses. We
+		// reuse DefaultBlock for both Hash.new { } and the explicit
+		// default_proc= path; setting it via this method also clears
+		// the value-default Default field so the proc takes precedence.
+		if len(args) != 1 {
+			return nil, errorf("evaluator: Hash#default_proc= expects 1 arg, got %d", len(args))
+		}
+		if _, ok := args[0].(*object.Nil); ok {
+			r.DefaultBlock = nil
+			return args[0], nil
+		}
+		if _, ok := args[0].(*object.Proc); !ok {
+			return nil, errorf("evaluator: Hash#default_proc= expects Proc, got %T", args[0])
+		}
+		r.DefaultBlock = args[0]
+		r.Default = nil
+		return args[0], nil
+	case "default_proc":
+		if r.DefaultBlock != nil {
+			if p, ok := r.DefaultBlock.(*object.Proc); ok {
+				return p, nil
+			}
+		}
+		return object.NIL, nil
 	case "length", "size":
 		return object.NewInteger(int64(len(r.Entries))), nil
 	case "keys":

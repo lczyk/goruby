@@ -35,6 +35,9 @@ func bootstrapEnumeratorClass(env *object.Environment) *object.Class {
 		enumeratorEach,
 	)
 	addBlockMethod(c, "map", enumeratorMap)
+	addBlockMethod(c, "select", enumeratorSelect)
+	c.Methods["filter"] = c.Methods["select"]
+	addBlockMethod(c, "reject", enumeratorReject)
 	c.AddMethod("to_a", &object.BuiltinMethod{
 		Name: "to_a",
 		Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
@@ -184,6 +187,42 @@ func enumeratorEach(env *object.Environment, recv object.RubyObject, args []obje
 		}
 	}
 	return enum.Receiver, nil
+}
+
+// enumeratorSelect implements Enumerator#select { block } -- keep
+// elements where block returns truthy.
+func enumeratorSelect(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+	return enumFilter(env, recv, invoke, true)
+}
+
+// enumeratorReject is the inverse of select.
+func enumeratorReject(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+	return enumFilter(env, recv, invoke, false)
+}
+
+func enumFilter(env *object.Environment, recv object.RubyObject, invoke blockCallback, keepTruthy bool) (object.RubyObject, error) {
+	enum, ok := recv.(*object.Enumerator)
+	if !ok {
+		return nil, errorf("evaluator: Enumerator filter on non-Enumerator receiver %T", recv)
+	}
+	arr, ok := enum.Receiver.(*object.Array)
+	if !ok {
+		return nil, errorf("evaluator: Enumerator filter: receiver %T not iterable", enum.Receiver)
+	}
+	out := make([]object.RubyObject, 0, len(arr.Elements))
+	for _, e := range arr.Elements {
+		v, stop, err := iterStep(invoke, []object.RubyObject{e})
+		if err != nil {
+			return nil, err
+		}
+		if stop {
+			return v, nil
+		}
+		if truthy(v) == keepTruthy {
+			out = append(out, e)
+		}
+	}
+	return object.NewArray(out...), nil
 }
 
 // enumeratorMap implements Enumerator#map { block }.

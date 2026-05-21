@@ -280,7 +280,20 @@ func evalContextCall(env *object.Environment, n *ast.ContextCallExpression) (obj
 				// the receiver's Class table (covers `new` inside
 				// `def self.foo`).
 				if cls, ok := self.(*object.Class); ok {
+					// Kernel-builtin block forms (proc / lambda / loop)
+					// must short-circuit before the class-receiver
+					// dispatch -- they're not Class instance methods,
+					// they're Kernel module methods callable from any
+					// scope. without this, `proc do ... end` inside a
+					// class body would error with NoMethodError on the
+					// class.
 					if n.Block != nil {
+						switch n.Function.Value {
+						case "proc", "lambda":
+							return procFromBlock(env, n.Block), nil
+						case "loop":
+							return kernelLoop(env, n.Block)
+						}
 						return callMethodWithBlock(env, cls, n.Function.Value, args, n.Block)
 					}
 					if blockProc != nil {
@@ -377,6 +390,14 @@ func evalContextCall(env *object.Environment, n *ast.ContextCallExpression) (obj
 			}
 			if n.Function.Value == "loop" {
 				return kernelLoop(env, n.Block)
+			}
+			if n.Function.Value == "proc" || n.Function.Value == "lambda" {
+				// Kernel#proc { ... } / Kernel#lambda { ... } -- both
+				// wrap the literal block into a Proc. We treat the two
+				// identically for now; mri distinguishes proc vs
+				// lambda on return + arity behaviour, which the corpus
+				// doesn't currently hinge on.
+				return procFromBlock(env, n.Block), nil
 			}
 			return nil, errorf("evaluator: blocks on kernel calls not yet supported")
 		}
