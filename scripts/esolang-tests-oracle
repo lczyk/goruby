@@ -20,8 +20,14 @@
 set -e
 
 ROOT="internal/integrationtest"
-INTERPS="${ROOT}/testdata/esolangs"
-TESTS="${ROOT}/testdata/esolang_tests"
+# chdir into ROOT so .in-file paths in the oracle invocation match the
+# cwd of the goruby test harness (TestEsolangPrograms runs from
+# internal/integrationtest/). Interpreters like ropy that echo ARGV[0]
+# verbatim then produce stable .expected files across both runners.
+cd "$ROOT"
+ROOT="."
+INTERPS="testdata/esolangs"
+TESTS="testdata/esolang_tests"
 RUBY="${RUBY:-ruby}"
 
 if ! command -v "$RUBY" >/dev/null 2>&1; then
@@ -50,6 +56,9 @@ function _process_lang() {
             hq9plus)        interp="${ROOT}/testdata/gems/esolang-book-sources/hq9plus/hq9plus.rb" ;;
             starry)         interp="${ROOT}/testdata/gems/esolang-book-sources/starry/starry.rb" ;;
             whitespace)     interp="${ROOT}/testdata/gems/esolang-book-sources/whitespace/lib/whitespace.rb" ;;
+            mariolang)      interp="testdata/gems/mariolang-rb/mariolang.rb" ;;
+            rasel)          interp="testdata/gems/rasel/bin/rasel" ;;
+            ropy)           interp="testdata/gems/ropy/ruby/ropy.rb" ;;
             *)              interp="${ROOT}/testdata/gems/${lang}/${lang}.rb" ;;
         esac
     fi

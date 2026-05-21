@@ -1,0 +1,27 @@
+# Skip-list for esolang integration tests (TestEsolangPrograms). Format:
+#
+#   <phase> <lang>/<fixture>[: reason]
+#
+# - <phase>:
+#     esolang        -- skip the fixture entirely (no assertion either way)
+#     esolang-xfail  -- run the fixture; treat eval-error or stdout mismatch
+#                       as expected. If the fixture actually passes, the
+#                       harness emits t.Errorf so closed gaps surface as
+#                       failures and the entry can be dropped.
+# - path is "<lang>/<fixture-name-without-.in>"
+# - lines starting with # and blank lines ignored
+#
+# When a goruby gap closes for an xfail entry: drop the line; the fixture
+# then becomes plain regression coverage. When a gap regresses for a plain
+# entry: add an xfail line w/ the failing reason rather than deleting the
+# fixture.
+
+# --- newly vendored interpreters (5/2026) -----------------------------
+# These were added alongside the wiki's "16 langs with ruby refs" survey.
+# Marked xfail until we know whether the current evaluator handles them
+# end-to-end; first test run will flip the ones already passing into
+# unexpected-pass failures and we can drop those entries.
+
+esolang-xfail mariolang/output4: newly vendored; goruby support unverified
+esolang-xfail rasel/helloworld: newly vendored; goruby support unverified
+esolang-xfail ropy/hello_world: newly vendored; goruby support unverified

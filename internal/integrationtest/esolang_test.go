@@ -4,6 +4,7 @@ package integrationtest
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -23,6 +24,7 @@ import (
 const (
 	esolangInterpDir = "testdata/esolangs"
 	esolangTestsDir  = "testdata/esolang_tests"
+	esolangSkipFile  = "esolang.skip"
 )
 
 // resolveEsolangInterp looks for the interpreter source under
@@ -63,7 +65,15 @@ func resolveEsolangInterp(lang string) string {
 		cands = append(cands, "testdata/gems/esolang-book-sources/starry/starry.rb")
 	case "whitespace":
 		cands = append(cands, "testdata/gems/esolang-book-sources/whitespace/lib/whitespace.rb")
+	case "mariolang":
+		cands = append(cands, "testdata/gems/mariolang-rb/mariolang.rb")
+	case "rasel":
+		cands = append(cands, "testdata/gems/rasel/bin/rasel")
+	case "ropy":
+		cands = append(cands, "testdata/gems/ropy/ruby/ropy.rb")
 	}
+	// walp and yaball live under testdata/esolangs/<lang>.rb so the default
+	// fallback below picks them up; no switch entry needed.
 	cands = append(cands,
 		filepath.Join(esolangInterpDir, lang+".rb"),
 		filepath.Join("testdata/gems", lang, lang+".rb"),
@@ -88,6 +98,9 @@ func TestEsolangPrograms(t *testing.T) {
 	subdirs, err := os.ReadDir(esolangTestsDir)
 	assert.NoError(t, err, "read %s", esolangTestsDir)
 
+	skips, err := loadSkips(esolangSkipFile)
+	assert.NoError(t, err, "load %s", esolangSkipFile)
+
 	for _, sub := range subdirs {
 		if !sub.IsDir() {
 			continue
@@ -110,27 +123,64 @@ func TestEsolangPrograms(t *testing.T) {
 			}
 			for _, in := range ins {
 				name := strings.TrimSuffix(filepath.Base(in), ".in")
+				relpath := lang + "/" + name
 				t.Run(name, func(t *testing.T) {
-					want, err := os.ReadFile(strings.TrimSuffix(in, ".in") + ".expected")
-					assert.NoError(t, err, "read .expected for %s", in)
+					if entry := skips.match("esolang", relpath); entry != nil {
+						reason := entry.reason
+						if reason == "" {
+							reason = "skip-listed"
+						}
+						t.Skip(reason)
+					}
+					xfail := skips.match("esolang-xfail", relpath)
 
-					var stdout bytes.Buffer
-					env := object.NewMainEnvironment(
-						object.WithStdout(&stdout),
-						object.WithStdin(bytes.NewReader(nil)),
-						object.WithARGV([]string{in}),
-					)
-
-					prog, err := parser.ParseFile(interp, interpSrc, 0)
-					assert.NoError(t, err, "parse %s", interp)
-
-					_, err = evaluator.Eval(prog, env)
-					assert.NoError(t, err, "eval %s on %s", interp, in)
-
-					assert.Equal(t, string(want), stdout.String(),
-						"%s/%s: stdout mismatch", lang, name)
+					runErr := runEsolangFixture(interp, interpSrc, in)
+					if xfail != nil {
+						if runErr == nil {
+							t.Errorf("unexpected pass: skip-list marks %s as xfail (%s); drop the entry and promote to plain pass",
+								relpath, xfail.reason)
+						} else {
+							t.Logf("xfail (%s): %v", xfail.reason, runErr)
+						}
+						return
+					}
+					if runErr != nil {
+						t.Errorf("%s: %v", relpath, runErr)
+					}
 				})
 			}
 		})
 	}
+}
+
+// runEsolangFixture parses interp under goruby, evaluates it with the
+// given .in path as ARGV[0], and compares captured stdout against the
+// sibling .expected. Returns nil on full match, an error otherwise.
+// Errors bubble up so the caller can decide pass/fail vs xfail.
+func runEsolangFixture(interp string, interpSrc []byte, in string) error {
+	want, err := os.ReadFile(strings.TrimSuffix(in, ".in") + ".expected")
+	if err != nil {
+		return fmt.Errorf("read .expected: %w", err)
+	}
+
+	var stdout bytes.Buffer
+	env := object.NewMainEnvironment(
+		object.WithStdout(&stdout),
+		object.WithStdin(bytes.NewReader(nil)),
+		object.WithARGV([]string{in}),
+	)
+
+	prog, err := parser.ParseFile(interp, interpSrc, 0)
+	if err != nil {
+		return fmt.Errorf("parse %s: %w", interp, err)
+	}
+
+	if _, err := evaluator.Eval(prog, env); err != nil {
+		return fmt.Errorf("eval: %w", err)
+	}
+
+	if got := stdout.String(); got != string(want) {
+		return fmt.Errorf("stdout mismatch:\nwant: %q\ngot:  %q", string(want), got)
+	}
+	return nil
 }

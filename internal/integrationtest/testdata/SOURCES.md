@@ -47,6 +47,8 @@ copied from their esolangs.org wiki pages.
 | `subskin.rb` | Subskin | https://esolangs.org/wiki/Subskin |
 | `tick.rb` | Tick | https://esolangs.org/wiki/Tick |
 | `tomagotcha.rb` | Tomagotcha! | https://esolangs.org/wiki/Tomagotcha! |
+| `walp.rb` | WALP | https://esolangs.org/wiki/User:JayCampbell/walp.rb (extracted from wiki `<pre>` block) |
+| `yaball.rb` | YABALL | https://web.archive.org/web/20060915202728/http://www.harderweb.de/jix/langs/yaball/yaball.rb (web.archive snapshot; upstream offline) |
 
 ## `gems.lock` -- fetched esolang repos
 
@@ -77,3 +79,13 @@ cloned by `fetch_gems.sh` into `gems/<name>/`.
 | `pan-unicode-lang` | Pancode | https://github.com/Mercerenies/pan-unicode-lang |
 | `brainfint` | Brainfuck | https://github.com/quocl/brainfint |
 | `pyramid-scheme` | Pyramid Scheme | https://github.com/ConorOBrien-Foxx/Pyramid-Scheme |
+| `rasel` | RASEL | https://github.com/Nakilon/rasel |
+
+## ruby interpreters surveyed but not vendored
+
+esolangs.org wiki names a ruby interpreter for these langs, but the source
+is not currently reachable. revisit if upstreams come back online.
+
+- Hanabi -- https://github.com/elyatai/hanabi (404; user account also deleted). Wayback captured the repo landing page on 2020-11-09 but not `hanabi.rb` itself; no source archived anywhere reachable. `gh search` finds no forks or copies. Effectively lost.
+- Rotary -- wiki only mentions "InputUsername is currently writing an interpreter in Ruby"; no source link. Node.js implementation exists at https://github.com/PythonshellDebugwindow/esolangs/tree/master/rotary
+- RubE On Conveyor Belts -- only a C++ interpreter is linked, no ruby implementation
