@@ -13,6 +13,7 @@ var arrayMethodNames = []string{
 	"minmax", "max", "sum", "grep", "uniq", "compact", "flatten",
 	"reduce", "inject", "tally", "clear",
 	"fill", "rotate", "rotate!", "transpose", "sample",
+	"reverse!", "sort!", "uniq!", "compact!", "flatten!",
 }
 
 func init() {

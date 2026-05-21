@@ -15,6 +15,7 @@ var stringMethodNames = []string{
 	"bytes", "bytesize", "ljust", "rjust", "center", "succ", "next",
 	"to_i", "to_f", "unpack",
 	"dup", "clone", "force_encoding", "scrub", "encoding",
+	"gsub!",
 }
 
 func init() {

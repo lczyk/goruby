@@ -626,29 +626,52 @@ func callStringMethod(env *object.Environment, recv object.RubyObject, name stri
 			return object.NewString(s), true, nil
 		}
 		return object.NewString(s[:idx] + repl + s[idx+len(pat):]), true, nil
-	case "gsub":
+	case "gsub", "gsub!":
 		if len(args) != 2 {
-			return nil, true, errorf("evaluator: String#gsub expects 2 args, got %d", len(args))
+			return nil, true, errorf("evaluator: String#%s expects 2 args, got %d", name, len(args))
 		}
+		var newStr string
 		if h, ok := args[1].(*object.Hash); ok {
 			out, err := stringGsubHash(env, s, args[0], h)
-			return out, true, err
+			if err != nil {
+				return nil, true, err
+			}
+			if os, ok := out.(*object.String); ok {
+				newStr = string(os.Buf)
+			} else {
+				newStr = s
+			}
+		} else {
+			repl, ok := stringText(env, args[1])
+			if !ok {
+				return nil, true, errorf("evaluator: String#%s replacement must be String or Hash", name)
+			}
+			if re, ok := args[0].(*object.Regex); ok {
+				newStr = re.RE.ReplaceAllString(s, repl)
+			} else {
+				pat, ok := stringText(env, args[0])
+				if !ok {
+					return nil, true, errorf("evaluator: String#%s pattern must be String/Regexp", name)
+				}
+				if pat == "" {
+					newStr = s
+				} else {
+					newStr = strings.ReplaceAll(s, pat, repl)
+				}
+			}
 		}
-		repl, ok := stringText(env, args[1])
-		if !ok {
-			return nil, true, errorf("evaluator: String#gsub replacement must be String or Hash")
+		if name == "gsub!" {
+			ms, ok := recv.(*object.String)
+			if !ok {
+				return nil, true, errorf("evaluator: String#gsub! receiver must be mutable String, got %T", recv)
+			}
+			if newStr == s {
+				return object.NIL, true, nil
+			}
+			ms.Buf = []byte(newStr)
+			return ms, true, nil
 		}
-		if re, ok := args[0].(*object.Regex); ok {
-			return object.NewString(re.RE.ReplaceAllString(s, repl)), true, nil
-		}
-		pat, ok := stringText(env, args[0])
-		if !ok {
-			return nil, true, errorf("evaluator: String#gsub pattern must be String/Regexp")
-		}
-		if pat == "" {
-			return object.NewString(s), true, nil
-		}
-		return object.NewString(strings.ReplaceAll(s, pat, repl)), true, nil
+		return object.NewString(newStr), true, nil
 	case "ord":
 		if s == "" {
 			return nil, true, errorf("evaluator: ArgumentError: empty string for String#ord")

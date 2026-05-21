@@ -312,6 +312,68 @@ func callArrayMethod(env *object.Environment, r *object.Array, name string, args
 			out[len(r.Elements)-1-i] = v
 		}
 		return object.NewArray(out...), nil
+	case "reverse!":
+		// In-place reverse. Returns the (now-reversed) receiver.
+		for i, j := 0, len(r.Elements)-1; i < j; i, j = i+1, j-1 {
+			r.Elements[i], r.Elements[j] = r.Elements[j], r.Elements[i]
+		}
+		return r, nil
+	case "sort!":
+		if err := sortArray(env, r.Elements); err != nil {
+			return nil, err
+		}
+		return r, nil
+	case "uniq!":
+		// In-place dedup keeping first occurrence. Returns nil when no
+		// duplicates were removed (matches mri).
+		seen := make([]object.RubyObject, 0, len(r.Elements))
+		for _, e := range r.Elements {
+			dup := false
+			for _, s := range seen {
+				if rubyEqual(s, e) {
+					dup = true
+					break
+				}
+			}
+			if !dup {
+				seen = append(seen, e)
+			}
+		}
+		if len(seen) == len(r.Elements) {
+			return object.NIL, nil
+		}
+		r.Elements = seen
+		return r, nil
+	case "compact!":
+		out := r.Elements[:0]
+		for _, e := range r.Elements {
+			if _, ok := e.(*object.Nil); !ok {
+				out = append(out, e)
+			}
+		}
+		if len(out) == len(r.Elements) {
+			return object.NIL, nil
+		}
+		r.Elements = out
+		return r, nil
+	case "flatten!":
+		// Single-level flatten in-place. Recursive shapes (Array of
+		// Array of Array) need extra arg + recursion -- punt for now.
+		changed := false
+		out := make([]object.RubyObject, 0, len(r.Elements))
+		for _, e := range r.Elements {
+			if arr, ok := e.(*object.Array); ok {
+				out = append(out, arr.Elements...)
+				changed = true
+			} else {
+				out = append(out, e)
+			}
+		}
+		if !changed {
+			return object.NIL, nil
+		}
+		r.Elements = out
+		return r, nil
 	case "sort":
 		out := make([]object.RubyObject, len(r.Elements))
 		copy(out, r.Elements)

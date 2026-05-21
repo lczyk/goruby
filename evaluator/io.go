@@ -51,6 +51,19 @@ func bootstrapIO(env *object.Environment) {
 	if _, ok := env.Get("$stdout"); !ok {
 		env.SetGlobal("$stdout", stdout)
 	}
+	// `$>` is an alias for $stdout (the default-output target used by
+	// Kernel#print / Kernel#puts when no explicit IO is named). bind
+	// to the same STDOUT class instance.
+	if _, ok := env.Get("$>"); !ok {
+		env.SetGlobal("$>", stdout)
+	}
+	// `$<` is an alias for ARGF (the default-input source). bind to
+	// the same class object the ARGF bootstrap installs.
+	if argf, ok := env.Get("ARGF"); ok {
+		if _, ok := env.Get("$<"); !ok {
+			env.SetGlobal("$<", argf)
+		}
+	}
 	if _, ok := env.Get("$stderr"); !ok {
 		env.SetGlobal("$stderr", stderr)
 	}
