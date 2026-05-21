@@ -59,6 +59,10 @@ func resolveEsolangInterp(lang string) string {
 		cands = append(cands, "testdata/gems/esolang-book-sources/brainf_ck/brainf_ck.rb")
 	case "hq9plus":
 		cands = append(cands, "testdata/gems/esolang-book-sources/hq9plus/hq9plus.rb")
+	case "starry":
+		cands = append(cands, "testdata/gems/esolang-book-sources/starry/starry.rb")
+	case "whitespace":
+		cands = append(cands, "testdata/gems/esolang-book-sources/whitespace/lib/whitespace.rb")
 	}
 	cands = append(cands,
 		filepath.Join(esolangInterpDir, lang+".rb"),

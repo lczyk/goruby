@@ -1,0 +1,14 @@
+whitespace programs vendored for integration testing
+====================================================
+
+.in files are programs from the upstream esolang-book-sources repo:
+
+  https://github.com/yhara/esolang-book-sources
+  copy is at internal/integrationtest/testdata/gems/esolang-book-sources/
+
+each .in is from the whitespace/ subdir. .expected generated against
+MRI 2.6.10.
+
+esolang-book-sources is a book companion repo without a top-level
+LICENSE file but the README treats the code as MIT-equivalent
+example material.

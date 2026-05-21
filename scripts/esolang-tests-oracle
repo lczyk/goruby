@@ -48,6 +48,8 @@ function _process_lang() {
             bolic)          interp="${ROOT}/testdata/gems/esolang-book-sources/bolic/bolic.rb" ;;
             brainf_ck)      interp="${ROOT}/testdata/gems/esolang-book-sources/brainf_ck/brainf_ck.rb" ;;
             hq9plus)        interp="${ROOT}/testdata/gems/esolang-book-sources/hq9plus/hq9plus.rb" ;;
+            starry)         interp="${ROOT}/testdata/gems/esolang-book-sources/starry/starry.rb" ;;
+            whitespace)     interp="${ROOT}/testdata/gems/esolang-book-sources/whitespace/lib/whitespace.rb" ;;
             *)              interp="${ROOT}/testdata/gems/${lang}/${lang}.rb" ;;
         esac
     fi
