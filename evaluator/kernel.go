@@ -56,6 +56,10 @@ func callKernel(env *object.Environment, name string, args []object.RubyObject) 
 		return kernelRequireRelative(env, args)
 	case "require":
 		return kernelRequire(env, args)
+	case "rand":
+		return kernelRand(env, args)
+	case "srand":
+		return kernelSrand(env, args)
 	case "lambda":
 		return nil, errorf("evaluator: Kernel#lambda without block not supported; use ->( ){ ... }")
 	}
@@ -117,6 +121,63 @@ func kernelAbort(env *object.Environment, args []object.RubyObject) (object.Ruby
 		}
 	}
 	return nil, &exitSignal{Code: 1}
+}
+
+// kernelRand implements Kernel#rand. Forms:
+//
+//	rand       -> Float in [0, 1)
+//	rand(n)    -> Integer in [0, n) when n is Integer, or Float when n is Float
+//	rand(a..b) -> Integer in [a, b]
+//
+// Routes through math/rand for the PRNG. Not seeded against MRI -- if
+// fixture parity matters under a specific seed, Kernel#srand can be
+// invoked first to align.
+func kernelRand(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) == 0 {
+		return object.NewFloat(randFloat()), nil
+	}
+	switch a := args[0].(type) {
+	case *object.Integer:
+		if a.Value <= 0 {
+			return object.NewFloat(randFloat()), nil
+		}
+		return object.NewInteger(int64(randomIntn(int(a.Value)))), nil
+	case *object.Float:
+		if a.Value <= 0 {
+			return object.NewFloat(randFloat()), nil
+		}
+		return object.NewFloat(randFloat() * a.Value), nil
+	case *object.Range:
+		b, bOK := a.Begin.(*object.Integer)
+		e, eOK := a.End.(*object.Integer)
+		if !bOK || !eOK {
+			return nil, errorf("evaluator: rand(Range): only Integer endpoints supported")
+		}
+		lo := b.Value
+		hi := e.Value
+		if a.Exclusive {
+			hi--
+		}
+		if hi < lo {
+			return nil, errorf("evaluator: rand(Range): empty range")
+		}
+		span := hi - lo + 1
+		return object.NewInteger(lo + int64(randomIntn(int(span)))), nil
+	}
+	return nil, errorf("evaluator: rand: unsupported argument type %T", args[0])
+}
+
+// kernelSrand seeds the global PRNG used by Kernel#rand and Array#sample.
+// Returns the previous seed (we don't track it; report 0).
+func kernelSrand(_ *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) >= 1 {
+		if s, ok := args[0].(*object.Integer); ok {
+			randSeed(s.Value)
+			return object.NewInteger(0), nil
+		}
+	}
+	randSeed(0)
+	return object.NewInteger(0), nil
 }
 
 // kernelRequire implements Kernel#require(name): the stdlib loader.

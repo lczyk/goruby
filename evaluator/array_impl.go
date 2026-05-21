@@ -17,6 +17,18 @@ func randomIntn(n int) int {
 	return rand.Intn(n)
 }
 
+// randFloat returns a pseudo-random float in [0, 1). Hook for
+// Kernel#rand's no-arg form.
+func randFloat() float64 { return rand.Float64() }
+
+// randSeed reseeds the global PRNG. Exposed for Kernel#srand.
+func randSeed(seed int64) {
+	// math/rand's global source is deterministic when seeded.
+	// Use seed=0 as "reset to default" so a bare srand restores
+	// well-known output for tests.
+	rand.Seed(seed)
+}
+
 func callArrayMethod(env *object.Environment, r *object.Array, name string, args []object.RubyObject) (object.RubyObject, error) {
 	switch name {
 	case "clear":
