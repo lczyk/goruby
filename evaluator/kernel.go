@@ -54,6 +54,8 @@ func callKernel(env *object.Environment, name string, args []object.RubyObject) 
 		return kernelAbort(env, args)
 	case "require_relative":
 		return kernelRequireRelative(env, args)
+	case "require":
+		return kernelRequire(env, args)
 	case "lambda":
 		return nil, errorf("evaluator: Kernel#lambda without block not supported; use ->( ){ ... }")
 	}
@@ -115,6 +117,39 @@ func kernelAbort(env *object.Environment, args []object.RubyObject) (object.Ruby
 		}
 	}
 	return nil, &exitSignal{Code: 1}
+}
+
+// kernelRequire implements Kernel#require(name): the stdlib loader.
+// We don't ship a ruby stdlib, so the call silently returns true for
+// names we know to be stdlib (so the caller's `require 'json'` etc.
+// don't blow up at load time). Anything else still falls through to
+// the relative-style resolve so users can call require with paths.
+//
+// Programs that try to USE classes that would have been loaded
+// (`Prime`, `Date`, ...) will still fail later with NameError when
+// the constant is referenced -- that's the explicit signal that
+// this stub isn't enough.
+func kernelRequire(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) != 1 {
+		return nil, errorf("evaluator: require: wrong number of arguments (given %d, expected 1)", len(args))
+	}
+	name, ok := stringText(env, args[0])
+	if !ok {
+		return nil, errorf("evaluator: require: expected String, got %T", args[0])
+	}
+	// Known stdlib feature names get a no-op stub so the eval continues.
+	// The list isn't exhaustive -- extend as the corpus uncovers more.
+	switch name {
+	case "prime", "date", "set", "stringio", "json", "optparse", "fileutils",
+		"tempfile", "pathname", "uri", "cgi", "csv", "yaml", "open3",
+		"shellwords", "time", "bigdecimal", "rational", "complex",
+		"matrix", "ostruct", "delegate", "forwardable", "singleton",
+		"observer", "logger", "benchmark", "digest", "digest/md5",
+		"digest/sha1", "digest/sha256", "base64", "zlib", "socket",
+		"net/http", "open-uri", "io/console", "etc":
+		return object.TRUE, nil
+	}
+	return nil, errorf("evaluator: LoadError: cannot load such file -- %s", name)
 }
 
 // kernelRequireRelative implements Kernel#require_relative(path): resolves

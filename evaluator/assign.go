@@ -224,6 +224,25 @@ func evalAssignment(env *object.Environment, n *ast.Assignment) (object.RubyObje
 		}
 		owner.ClassVars[key] = expandSingle(right)
 		return right, nil
+	case *ast.ContextCallExpression:
+		// `obj.attr = val` -- attribute setter. Dispatches `attr=` on
+		// obj with val as the sole argument. Parser keeps the dot-call
+		// shape on the LHS; we resolve the receiver, then route through
+		// callMethod with the synthesised setter name. Returns the
+		// assigned value (matches MRI: the RHS, not the setter's
+		// return).
+		if lhs.Context == nil {
+			return nil, errorf("evaluator: unsupported assignment lhs *ast.ContextCallExpression w/ no receiver")
+		}
+		recv, err := Eval(lhs.Context, env)
+		if err != nil {
+			return nil, err
+		}
+		v := expandSingle(right)
+		if _, err := callMethod(env, recv, lhs.Function.Value+"=", []object.RubyObject{v}); err != nil {
+			return nil, err
+		}
+		return v, nil
 	}
 	return nil, errorf("evaluator: unsupported assignment lhs %T", n.Left)
 }

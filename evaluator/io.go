@@ -80,6 +80,8 @@ func bootstrapSTDOUT(env *object.Environment) *object.Class {
 	c.ClassMethods["sync"] = &object.UserMethod{Name: "sync", Body: nativeFn{fn: ioReturnTrue}}
 	c.ClassMethods["sync="] = &object.UserMethod{Name: "sync=", Body: nativeFn{fn: ioReturnArg}}
 	c.ClassMethods["tty?"] = &object.UserMethod{Name: "tty?", Body: nativeFn{fn: stdoutTTY}}
+	c.ClassMethods["binmode"] = &object.UserMethod{Name: "binmode", Body: nativeFn{fn: ioReturnSelf(c)}}
+	c.ClassMethods["set_encoding"] = &object.UserMethod{Name: "set_encoding", Body: nativeFn{fn: ioReturnSelf(c)}}
 	env.SetGlobal("STDOUT", c)
 	return c
 }
@@ -98,6 +100,8 @@ func bootstrapSTDERR(env *object.Environment) *object.Class {
 	c.ClassMethods["flush"] = &object.UserMethod{Name: "flush", Body: nativeFn{fn: ioNoopSelf}}
 	c.ClassMethods["sync"] = &object.UserMethod{Name: "sync", Body: nativeFn{fn: ioReturnTrue}}
 	c.ClassMethods["sync="] = &object.UserMethod{Name: "sync=", Body: nativeFn{fn: ioReturnArg}}
+	c.ClassMethods["binmode"] = &object.UserMethod{Name: "binmode", Body: nativeFn{fn: ioReturnSelf(c)}}
+	c.ClassMethods["set_encoding"] = &object.UserMethod{Name: "set_encoding", Body: nativeFn{fn: ioReturnSelf(c)}}
 	env.SetGlobal("STDERR", c)
 	return c
 }
@@ -175,6 +179,16 @@ func ioNoopSelf(_ *object.Environment, _ []object.RubyObject) (object.RubyObject
 
 func ioReturnTrue(_ *object.Environment, _ []object.RubyObject) (object.RubyObject, error) {
 	return object.TRUE, nil
+}
+
+// ioReturnSelf builds a no-op method that returns the bound class.
+// Used for ruby IO methods we don't actually implement (binmode,
+// set_encoding, etc.) but that callers chain off of -- the receiver
+// must come back so subsequent calls in the chain still work.
+func ioReturnSelf(c *object.Class) func(*object.Environment, []object.RubyObject) (object.RubyObject, error) {
+	return func(_ *object.Environment, _ []object.RubyObject) (object.RubyObject, error) {
+		return c, nil
+	}
 }
 
 func ioReturnArg(_ *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
