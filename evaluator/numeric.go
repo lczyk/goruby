@@ -12,13 +12,20 @@ import (
 // numeric operands. Returns (nil, false, nil) if op is not a numeric
 // operator or the operands aren't both numeric; callers fall through
 // to other infix paths.
-func numericInfix(op string, left, right object.RubyObject) (object.RubyObject, bool, error) {
+func numericInfix(env *object.Environment, op string, left, right object.RubyObject) (object.RubyObject, bool, error) {
 	lInt, lIsInt := left.(*object.Integer)
 	rInt, rIsInt := right.(*object.Integer)
 	lFlt, lIsFlt := left.(*object.Float)
 	rFlt, rIsFlt := right.(*object.Float)
 
 	if lIsInt && rIsInt {
+		// Integer ** negative Integer yields a Rational. Handle before
+		// falling through to intInfix/bigInfix, which both treat exp<0
+		// as a domain error.
+		if op == "**" && !lInt.IsBig() && !rInt.IsBig() && rInt.Value < 0 {
+			v, err := integerPowToRational(env, lInt.Value, rInt.Value)
+			return v, true, err
+		}
 		// Bignum path: any operand spilled to *big.Int routes through
 		// bigInfix. Same for the small-times-small overflow promotions
 		// below (intInfix returns nil-but-no-error when an arithmetic op
@@ -164,6 +171,8 @@ func intInfix(op string, l, r int64) (object.RubyObject, bool, error) {
 		return object.NewInteger(m), false, nil
 	case "**":
 		if r < 0 {
+			// numericInfix has already intercepted Integer**neg above;
+			// reach this branch only via the bignum overflow retry path.
 			return nil, false, errorf("evaluator: negative Integer exponent yields Rational; not yet supported")
 		}
 		// Detect potential overflow conservatively: any large base /

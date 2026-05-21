@@ -163,6 +163,8 @@ func bootstrapBuiltins(env *object.Environment) {
 	bootstrapIO(env)
 	bootstrapRegexpClass(env)
 	bootstrapEncodingClass(env)
+	bootstrapComplexClass(env)
+	bootstrapRationalClass(env)
 	bootstrapPrimeModule(env)
 	bootstrapEnumeratorClass(env)
 	bootstrapOptionParser(env)

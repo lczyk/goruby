@@ -282,7 +282,21 @@ func argfGets(env *object.Environment, _ []object.RubyObject) (object.RubyObject
 }
 
 func argfEachLine(env *object.Environment, _ []object.RubyObject) (object.RubyObject, error) {
-	return nil, errorf("evaluator: ARGF.each_line without block not supported")
+	// Eagerly slurp the ARGF stream into lines and wrap in an Enumerator.
+	// We don't have a lazy Enumerator yet; the slurp is fine for the
+	// CLI patterns the corpus uses (file/stdin -> line iteration).
+	var lines []object.RubyObject
+	for {
+		v, err := argfGets(env, nil)
+		if err != nil {
+			return nil, err
+		}
+		if _, isNil := v.(*object.Nil); isNil {
+			break
+		}
+		lines = append(lines, v)
+	}
+	return &object.Enumerator{Receiver: object.NewArray(lines...), Method: "each"}, nil
 }
 
 // argfRead reads the concatenation of every file named in ARGV; if

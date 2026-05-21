@@ -61,6 +61,19 @@ func bootstrapEnumeratorClass(env *object.Environment) *object.Class {
 	addBlockMethod(c, "select", enumeratorSelect)
 	c.Methods["filter"] = c.Methods["select"]
 	addBlockMethod(c, "reject", enumeratorReject)
+	addBlockMethod(c, "reduce", enumeratorReduce)
+	c.Methods["inject"] = c.Methods["reduce"]
+	c.AddMethod("count", &object.BuiltinMethod{
+		Name: "count",
+		Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+			if e, ok := recv.(*object.Enumerator); ok {
+				if arr, ok := e.Receiver.(*object.Array); ok {
+					return object.NewInteger(int64(len(arr.Elements))), nil
+				}
+			}
+			return object.NewInteger(0), nil
+		},
+	})
 	c.AddMethod("to_a", &object.BuiltinMethod{
 		Name: "to_a",
 		Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
@@ -287,6 +300,42 @@ func enumFilter(env *object.Environment, recv object.RubyObject, invoke blockCal
 		}
 	}
 	return object.NewArray(out...), nil
+}
+
+// enumeratorReduce implements Enumerator#reduce(init=nil) { |acc, x| ... }.
+// The block receives the running accumulator and each element of the
+// underlying Receiver array. With no init arg, the first element seeds.
+func enumeratorReduce(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+	enum, ok := recv.(*object.Enumerator)
+	if !ok {
+		return nil, errorf("evaluator: Enumerator#reduce on non-Enumerator %T", recv)
+	}
+	arr, ok := enum.Receiver.(*object.Array)
+	if !ok {
+		return nil, errorf("evaluator: Enumerator#reduce: receiver %T not iterable", enum.Receiver)
+	}
+	var acc object.RubyObject
+	start := 0
+	if len(args) >= 1 {
+		acc = args[0]
+	} else {
+		if len(arr.Elements) == 0 {
+			return object.NIL, nil
+		}
+		acc = arr.Elements[0]
+		start = 1
+	}
+	for i := start; i < len(arr.Elements); i++ {
+		v, stop, err := iterStep(invoke, []object.RubyObject{acc, arr.Elements[i]})
+		if err != nil {
+			return nil, err
+		}
+		if stop {
+			return v, nil
+		}
+		acc = v
+	}
+	return acc, nil
 }
 
 // enumeratorMap implements Enumerator#map { block }.

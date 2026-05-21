@@ -419,10 +419,7 @@ func evalArrayLiteral(env *object.Environment, n *ast.ArrayLiteral) (object.Ruby
 }
 
 func evalHashLiteral(env *object.Environment, n *ast.HashLiteral) (object.RubyObject, error) {
-	if len(n.Splats) > 0 {
-		return nil, errorf("evaluator: hash splat (**) not yet supported")
-	}
-	entries := make([]object.HashEntry, 0, n.Map.Len())
+	entries := make([]object.HashEntry, 0, n.Map.Len()+len(n.Splats))
 	for _, kv := range n.Map.Entries() {
 		k, err := Eval(kv.Key, env)
 		if err != nil {
@@ -433,6 +430,31 @@ func evalHashLiteral(env *object.Environment, n *ast.HashLiteral) (object.RubyOb
 			return nil, err
 		}
 		entries = append(entries, object.HashEntry{Key: k, Value: v})
+	}
+	for _, sp := range n.Splats {
+		v, err := Eval(sp, env)
+		if err != nil {
+			return nil, err
+		}
+		h, ok := v.(*object.Hash)
+		if !ok {
+			return nil, errorf("evaluator: hash splat (**) requires Hash, got %T", v)
+		}
+		for _, e := range h.Entries {
+			// Merge semantics: a later occurrence of the same key
+			// overwrites the earlier one.
+			replaced := false
+			for i := range entries {
+				if rubyEqualDispatch(env, entries[i].Key, e.Key) {
+					entries[i].Value = e.Value
+					replaced = true
+					break
+				}
+			}
+			if !replaced {
+				entries = append(entries, object.HashEntry{Key: e.Key, Value: e.Value})
+			}
+		}
 	}
 	return object.NewHash(entries...), nil
 }
@@ -666,7 +688,7 @@ func evalInfix(env *object.Environment, n *ast.InfixExpression) (object.RubyObje
 		}
 	}
 
-	if v, handled, err := numericInfix(n.Operator, left, right); handled {
+	if v, handled, err := numericInfix(env, n.Operator, left, right); handled {
 		if _, isZD := err.(zeroDivErr); isZD {
 			return raiseBuiltin(env, "ZeroDivisionError", "divided by 0")
 		}

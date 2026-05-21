@@ -62,6 +62,8 @@ func callKernel(env *object.Environment, name string, args []object.RubyObject) 
 		return kernelSrand(env, args)
 	case "lambda":
 		return nil, errorf("evaluator: Kernel#lambda without block not supported; use ->( ){ ... }")
+	case "Complex":
+		return kernelComplex(env, args)
 	}
 	return nil, errorf("evaluator: NoMethodError: undefined method `%s' for main:Object", name)
 }
@@ -493,12 +495,10 @@ func putsString(env *object.Environment, o object.RubyObject) string {
 		return env.Symbols().Name(v.ID)
 	case *object.Instance:
 		if m, found := dispatchClass(env, v).LookupMethod("to_s"); found {
-			if um, ok := m.(*object.UserMethod); ok {
-				res, err := invokeMethodOn(env, v, um, nil, nil)
-				if err == nil {
-					if s, ok := stringText(env, res); ok {
-						return s
-					}
+			res, err := m.Call(env, v, nil, nil)
+			if err == nil {
+				if s, ok := stringText(env, res); ok {
+					return s
 				}
 			}
 		}

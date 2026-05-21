@@ -43,10 +43,11 @@ func bootstrapExceptionHierarchy(env *object.Environment) {
 	root.Methods["to_s"] = &object.UserMethod{Name: "to_s", Body: exceptionMessageMarker{}}
 	root.Methods["initialize"] = &object.UserMethod{Name: "initialize", Body: exceptionInitMarker{}}
 	root.Methods["backtrace"] = &object.BuiltinMethod{Name: "backtrace", Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
-		// Stub: we don't track raise sites yet. Return an empty Array
-		// so callers iterating / printing the backtrace get a benign
-		// result rather than NoMethodError. Fill in once frame tracking
-		// lands.
+		if inst, ok := recv.(*object.Instance); ok {
+			if v, ok := inst.Ivars["@__backtrace__"]; ok {
+				return v, nil
+			}
+		}
 		return object.NewArray(), nil
 	}}
 	root.Methods["full_message"] = root.Methods["message"]
@@ -100,7 +101,34 @@ func kernelRaise(env *object.Environment, args []object.RubyObject) (object.Ruby
 	if err != nil {
 		return nil, err
 	}
+	attachBacktrace(env, exc)
 	return nil, &raiseSignal{Exception: exc}
+}
+
+// attachBacktrace walks env's method-frame chain and stores a synthetic
+// backtrace as @__backtrace__ on the exception instance. Each frame
+// contributes one entry shaped like MRI's "<file>:in `<method>'". We
+// don't track call-site line numbers yet, so the line is omitted; the
+// shape is enough for callers that test inclusion of the method name.
+func attachBacktrace(env *object.Environment, exc *object.Instance) {
+	if exc == nil {
+		return
+	}
+	if _, already := exc.Ivars["@__backtrace__"]; already {
+		return
+	}
+	var frames []object.RubyObject
+	for cur := env; cur != nil; cur = cur.Outer() {
+		if !cur.MethodFrame || cur.CurrentMethodName == "" {
+			continue
+		}
+		file := cur.CurrentFile()
+		if file == "" {
+			file = "(unknown)"
+		}
+		frames = append(frames, object.NewString(file+":in `"+cur.CurrentMethodName+"'"))
+	}
+	exc.Ivars["@__backtrace__"] = object.NewArray(frames...)
 }
 
 func buildRaisedException(env *object.Environment, args []object.RubyObject) (*object.Instance, error) {
@@ -203,7 +231,9 @@ func raiseBuiltin(env *object.Environment, className, msg string) (object.RubyOb
 	if !ok {
 		return nil, errorf("evaluator: %s is not a class", className)
 	}
-	return nil, &raiseSignal{Exception: newExceptionInstance(c, msg)}
+	exc := newExceptionInstance(c, msg)
+	attachBacktrace(env, exc)
+	return nil, &raiseSignal{Exception: exc}
 }
 
 func rescueMatches(env *object.Environment, r *ast.RescueBlock, exc *object.Instance) (bool, error) {

@@ -33,7 +33,14 @@ func init() {
 		}
 	}
 
-	addBlockOrPlainMethod(c, "map", nil, func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+	addBlockOrPlainMethod(c, "map", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
+		// No-block form returns an Enumerator{Method:"map"}; chained
+		// .with_index { ... } dispatches on the Method name.
+		if arr, ok := recv.(*object.Array); ok {
+			return &object.Enumerator{Receiver: arr, Method: "map"}, nil
+		}
+		return nil, errorf("evaluator: map: non-Array receiver %T", recv)
+	}, func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
 		arr, err := asArray(recv, "map")
 		if err != nil {
 			return nil, err

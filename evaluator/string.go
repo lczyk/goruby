@@ -266,6 +266,88 @@ func stringUnpack(buf []byte, format string) (object.RubyObject, error) {
 			}
 			out = append(out, object.NewString(s))
 			pos += n
+		case 'N':
+			// 32-bit big-endian unsigned. count*4 bytes consumed.
+			n := count
+			if star {
+				n = (len(buf) - pos) / 4
+			}
+			for k := 0; k < n && pos+4 <= len(buf); k++ {
+				v := uint32(buf[pos])<<24 | uint32(buf[pos+1])<<16 | uint32(buf[pos+2])<<8 | uint32(buf[pos+3])
+				out = append(out, object.NewInteger(int64(v)))
+				pos += 4
+			}
+		case 'n':
+			n := count
+			if star {
+				n = (len(buf) - pos) / 2
+			}
+			for k := 0; k < n && pos+2 <= len(buf); k++ {
+				v := uint16(buf[pos])<<8 | uint16(buf[pos+1])
+				out = append(out, object.NewInteger(int64(v)))
+				pos += 2
+			}
+		case 'V':
+			n := count
+			if star {
+				n = (len(buf) - pos) / 4
+			}
+			for k := 0; k < n && pos+4 <= len(buf); k++ {
+				v := uint32(buf[pos]) | uint32(buf[pos+1])<<8 | uint32(buf[pos+2])<<16 | uint32(buf[pos+3])<<24
+				out = append(out, object.NewInteger(int64(v)))
+				pos += 4
+			}
+		case 'v':
+			n := count
+			if star {
+				n = (len(buf) - pos) / 2
+			}
+			for k := 0; k < n && pos+2 <= len(buf); k++ {
+				v := uint16(buf[pos]) | uint16(buf[pos+1])<<8
+				out = append(out, object.NewInteger(int64(v)))
+				pos += 2
+			}
+		case 'H', 'h':
+			// Hex string. H = high nibble first within each byte,
+			// h = low nibble first. count = number of nibbles to
+			// extract; * = all remaining bytes.
+			n := count
+			if star {
+				n = (len(buf) - pos) * 2
+			}
+			hi := dir == 'H'
+			var hb strings.Builder
+			for k := 0; k < n; k++ {
+				bi := pos + k/2
+				if bi >= len(buf) {
+					break
+				}
+				b := buf[bi]
+				var nib byte
+				if k%2 == 0 {
+					if hi {
+						nib = b >> 4
+					} else {
+						nib = b & 0x0f
+					}
+				} else {
+					if hi {
+						nib = b & 0x0f
+					} else {
+						nib = b >> 4
+					}
+				}
+				if nib < 10 {
+					hb.WriteByte('0' + nib)
+				} else {
+					hb.WriteByte('a' + nib - 10)
+				}
+			}
+			pos += (n + 1) / 2
+			if pos > len(buf) {
+				pos = len(buf)
+			}
+			out = append(out, object.NewString(hb.String()))
 		case ' ', '\t', '\n':
 			// whitespace allowed between directives; ignore.
 		default:

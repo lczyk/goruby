@@ -72,7 +72,7 @@ func roundFloat(v float64) float64 {
 // fast-paths first, then falls back to method-style dispatch so user
 // classes that define the operator participate.
 func evalBinaryOp(env *object.Environment, op string, left, right object.RubyObject) (object.RubyObject, error) {
-	if v, handled, err := numericInfix(op, left, right); handled {
+	if v, handled, err := numericInfix(env, op, left, right); handled {
 		if _, isZD := err.(zeroDivErr); isZD {
 			return raiseBuiltin(env, "ZeroDivisionError", "divided by 0")
 		}
