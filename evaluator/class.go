@@ -442,5 +442,12 @@ func invokeMethodOn(env *object.Environment, recv object.RubyObject, m *object.U
 	if cls, ok := recv.(*object.Class); ok {
 		callEnv.CurrentClass = cls
 	}
+	// Switch CurrentFile to the method's defining source so errors
+	// raised inside the body report against the def's file, not
+	// whichever require_relative chain happened to land there.
+	if m.SourceFile != "" {
+		prev := env.SetCurrentFile(m.SourceFile)
+		defer env.SetCurrentFile(prev)
+	}
 	return runMethodBody(callEnv, m, args)
 }

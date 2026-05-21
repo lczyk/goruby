@@ -28,6 +28,13 @@ type UserMethod struct {
 	ElseBody      any // *ast.BlockStatement
 	EnsureBody    any // *ast.BlockStatement
 	Endless       bool
+	// SourceFile records the absolute path of the source file the def
+	// was lexed from. Used to populate env.CurrentFile when the method
+	// body runs, so errors raised inside the body report against the
+	// definition's source -- not whichever file happened to be active
+	// when the method was *called* (after a chain of require_relative
+	// + cross-file dispatches).
+	SourceFile string
 }
 
 func (m *UserMethod) Type() Type       { return OBJECT_OBJ }

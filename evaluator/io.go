@@ -82,8 +82,13 @@ func bootstrapSTDOUT(env *object.Environment) *object.Class {
 	c.ClassMethods["tty?"] = &object.UserMethod{Name: "tty?", Body: nativeFn{fn: stdoutTTY}}
 	c.ClassMethods["binmode"] = &object.UserMethod{Name: "binmode", Body: nativeFn{fn: ioReturnSelf(c)}}
 	c.ClassMethods["set_encoding"] = &object.UserMethod{Name: "set_encoding", Body: nativeFn{fn: ioReturnSelf(c)}}
+	c.ClassMethods["putc"] = &object.UserMethod{Name: "putc", Body: nativeFn{fn: stdoutPutc}}
 	env.SetGlobal("STDOUT", c)
 	return c
+}
+
+func stdoutPutc(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	return kernelPutc(env, args)
 }
 
 // bootstrapSTDERR mirrors bootstrapSTDOUT but targets env.Stderr().

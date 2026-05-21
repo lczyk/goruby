@@ -177,6 +177,80 @@ func stringText(env *object.Environment, o object.RubyObject) (string, bool) {
 	return "", false
 }
 
+// stringUnpack implements a small subset of String#unpack directives:
+// the ones the corpus actually uses today. Supported formats:
+//
+//	C  -- unsigned 8-bit byte
+//	c  -- signed 8-bit byte
+//	a  -- ASCII string (consume given count of bytes)
+//	A  -- ASCII string, trim trailing nulls + spaces
+//
+// Each directive can take a count or `*` for "consume the rest of the
+// buffer". Unsupported directives raise an explicit error so callers
+// get a clear signal rather than silent miscount.
+func stringUnpack(buf []byte, format string) (object.RubyObject, error) {
+	out := []object.RubyObject{}
+	i := 0
+	pos := 0
+	for i < len(format) {
+		dir := format[i]
+		i++
+		count := 1
+		star := false
+		if i < len(format) {
+			if format[i] == '*' {
+				star = true
+				i++
+			} else if format[i] >= '0' && format[i] <= '9' {
+				count = 0
+				for i < len(format) && format[i] >= '0' && format[i] <= '9' {
+					count = count*10 + int(format[i]-'0')
+					i++
+				}
+			}
+		}
+		switch dir {
+		case 'C':
+			n := count
+			if star {
+				n = len(buf) - pos
+			}
+			for k := 0; k < n && pos < len(buf); k++ {
+				out = append(out, object.NewInteger(int64(buf[pos])))
+				pos++
+			}
+		case 'c':
+			n := count
+			if star {
+				n = len(buf) - pos
+			}
+			for k := 0; k < n && pos < len(buf); k++ {
+				out = append(out, object.NewInteger(int64(int8(buf[pos]))))
+				pos++
+			}
+		case 'a', 'A':
+			n := count
+			if star {
+				n = len(buf) - pos
+			}
+			if pos+n > len(buf) {
+				n = len(buf) - pos
+			}
+			s := string(buf[pos : pos+n])
+			if dir == 'A' {
+				s = strings.TrimRight(s, " \x00")
+			}
+			out = append(out, object.NewString(s))
+			pos += n
+		case ' ', '\t', '\n':
+			// whitespace allowed between directives; ignore.
+		default:
+			return nil, errorf("evaluator: String#unpack: directive %q not supported", string(dir))
+		}
+	}
+	return object.NewArray(out...), nil
+}
+
 // stringInfix dispatches `+` / `*` / comparison ops where the left
 // operand is a string. Returns handled=false to fall through.
 func stringInfix(env *object.Environment, op string, left, right object.RubyObject) (object.RubyObject, bool, error) {
@@ -296,6 +370,47 @@ func callStringMethod(env *object.Environment, recv object.RubyObject, name stri
 			out[i] = object.NewString(string(r))
 		}
 		return object.NewArray(out...), true, nil
+	case "dup", "clone":
+		// Shallow copy. Ruby distinguishes dup vs clone (clone copies
+		// frozen state too); we don't track frozen state, so both
+		// produce a fresh mutable String with the same buffer.
+		cp := make([]byte, len(s))
+		copy(cp, s)
+		return object.NewStringFromBytes(cp), true, nil
+	case "force_encoding":
+		// We don't track per-string encodings; treat as no-op return self.
+		return recv, true, nil
+	case "scrub":
+		// Replace invalid byte sequences with a replacement. Our strings
+		// are raw bytes already; for the corpus we treat scrub as a
+		// no-op (or honour the explicit replacement when nothing to
+		// replace, which is identical to the input).
+		return recv, true, nil
+	case "encoding":
+		// Stub: return Encoding::UTF_8 sentinel. Doesn't reflect real
+		// per-string encoding tracking -- we don't have that yet.
+		if enc, ok := env.Get("Encoding"); ok {
+			if c, ok := enc.(*object.Class); ok {
+				if v, ok := c.Constants["UTF_8"]; ok {
+					return v, true, nil
+				}
+			}
+		}
+		return object.NewString("UTF-8"), true, nil
+	case "unpack":
+		// String#unpack: directives describe how to slice the buffer.
+		// MRI supports a long table; we cover the formats the corpus
+		// hits today -- mostly `C*` (every byte as unsigned-8-bit
+		// integer) used to push bytes through putc.
+		if len(args) != 1 {
+			return nil, true, errorf("evaluator: String#unpack: wrong number of arguments (given %d, expected 1)", len(args))
+		}
+		fmt, ok := stringText(env, args[0])
+		if !ok {
+			return nil, true, errorf("evaluator: String#unpack: format must be String, got %T", args[0])
+		}
+		v, err := stringUnpack([]byte(s), fmt)
+		return v, true, err
 	case "lines":
 		parts := strings.SplitAfter(s, "\n")
 		// SplitAfter leaves a trailing "" when s ends with "\n"; drop it.

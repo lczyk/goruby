@@ -13,7 +13,8 @@ var stringMethodNames = []string{
 	"split", "chomp", "start_with?", "end_with?", "replace", "match?",
 	"match", "scan", "sub", "gsub", "ord", "to_sym", "tr", "count",
 	"bytes", "bytesize", "ljust", "rjust", "center", "succ", "next",
-	"to_i", "to_f",
+	"to_i", "to_f", "unpack",
+	"dup", "clone", "force_encoding", "scrub", "encoding",
 }
 
 func init() {

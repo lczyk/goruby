@@ -35,6 +35,7 @@ func evalFunctionLiteral(env *object.Environment, n *ast.FunctionLiteral) (objec
 		ElseBody:      n.ElseBody,
 		EnsureBody:    n.EnsureBody,
 		Endless:       n.IsEndless,
+		SourceFile:    env.CurrentFile(),
 	}
 
 	// `def self.foo` (Receiver.Value == "self") -> class method on the
@@ -101,6 +102,10 @@ func callUserMethodWithBlock(env *object.Environment, m *object.UserMethod, args
 	callEnv.CurrentKwargs = env.CurrentKwargs
 	if blk != nil {
 		callEnv.CurrentBlock = blk
+	}
+	if m.SourceFile != "" {
+		prev := env.SetCurrentFile(m.SourceFile)
+		defer env.SetCurrentFile(prev)
 	}
 	return runMethodBody(callEnv, m, args)
 }

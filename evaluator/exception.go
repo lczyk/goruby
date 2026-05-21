@@ -42,6 +42,14 @@ func bootstrapExceptionHierarchy(env *object.Environment) {
 	root.Methods["message"] = &object.UserMethod{Name: "message", Body: exceptionMessageMarker{}}
 	root.Methods["to_s"] = &object.UserMethod{Name: "to_s", Body: exceptionMessageMarker{}}
 	root.Methods["initialize"] = &object.UserMethod{Name: "initialize", Body: exceptionInitMarker{}}
+	root.Methods["backtrace"] = &object.BuiltinMethod{Name: "backtrace", Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+		// Stub: we don't track raise sites yet. Return an empty Array
+		// so callers iterating / printing the backtrace get a benign
+		// result rather than NoMethodError. Fill in once frame tracking
+		// lands.
+		return object.NewArray(), nil
+	}}
+	root.Methods["full_message"] = root.Methods["message"]
 	env.SetGlobal("Exception", root)
 
 	for _, def := range builtinExceptionTree {
@@ -80,6 +88,9 @@ var builtinExceptionTree = []struct {
 	{"FloatDomainError", "RangeError"},
 	{"LoadError", "StandardError"},
 	{"FrozenError", "RuntimeError"},
+	{"RegexpError", "StandardError"},
+	{"IOError", "StandardError"},
+	{"EOFError", "IOError"},
 }
 
 // kernelRaise implements `raise`, in its three argument shapes.

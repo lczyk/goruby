@@ -283,6 +283,24 @@ func evalContextCall(env *object.Environment, n *ast.ContextCallExpression) (obj
 						return callMethod(env, cls, n.Function.Value, args)
 					}
 				}
+				// Implicit-self inside a method on a builtin-typed value
+				// (Integer, String, Array, etc. -- anything whose
+				// .Class() returns a *Class but the receiver itself
+				// isn't an Instance). Dispatch through the receiver's
+				// class to pick up reopened-method definitions
+				// (e.g. `class Integer; def chr_utf_8; chr(...); end`
+				// -- the bare `chr` call must resolve on Integer).
+				if self != nil {
+					if _, isInst := self.(*object.Instance); !isInst {
+						if _, isCls := self.(*object.Class); !isCls {
+							if cls := classOfRaw(env, self); cls != nil {
+								if _, found := cls.LookupMethod(n.Function.Value); found {
+									return callMethod(env, self, n.Function.Value, args)
+								}
+							}
+						}
+					}
+				}
 				if inst, ok := self.(*object.Instance); ok {
 					if m, found := dispatchClass(env, inst).LookupMethod(n.Function.Value); found {
 						if um, ok := m.(*object.UserMethod); ok {
