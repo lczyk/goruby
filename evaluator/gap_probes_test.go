@@ -2,6 +2,8 @@ package evaluator
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -78,6 +80,50 @@ func TestGapStringScrub(t *testing.T) {
 	// replace with the given character.
 	_, err = runErr(t, `s = "\xC3".dup.force_encoding('UTF-8'); puts s.scrub('?').bytes.length`)
 	t.Logf("scrub('?') on invalid bytes: out err=%q -- mri would print 1 (single '?'); we print 1 (untouched, same length by accident) or differ", err)
+}
+
+// TestGapAlicePrime drives the gap_prime.alice probe through the
+// alice interpreter end-to-end. MRI prints a single byte (0x02) by
+// pushing 2, decomposing via Prime.prime_division, and raw-outputting
+// the factor. goruby raises NameError on Prime because we ship a
+// stub Kernel#require that no-ops for `prime` but never installs the
+// Prime constant. When a real Prime arrives, swap the assertion to
+// "\x02" and the assertion-flip will document the gap closing.
+func TestGapAlicePrime(t *testing.T) {
+	repoRoot, err := filepath.Abs("..")
+	assert.NoError(t, err, "repo root")
+	interp := filepath.Join(repoRoot, "internal/integrationtest/testdata/gems/alice/interpreter.rb")
+	interpSrc, err := os.ReadFile(interp)
+	assert.NoError(t, err, "read interpreter.rb")
+	probe := filepath.Join(repoRoot, "internal/integrationtest/testdata/gems/alice/extra_examples/gap_prime.alice")
+	assert.NoError(t, mustExist(probe), "probe exists")
+
+	target := token.MustParseVersion("2.6")
+	prog, perr := parser.ParseFile(interp, interpSrc, 0, parser.WithVersion(target))
+	assert.NoError(t, perr, "parse interpreter.rb")
+
+	var stdout, stderr bytes.Buffer
+	env := object.NewMainEnvironment(
+		object.WithVersion(target),
+		object.WithStdout(&stdout),
+		object.WithStderr(&stderr),
+		object.WithStdin(bytes.NewReader(nil)),
+		object.WithARGV([]string{probe}),
+	)
+	_, err = Eval(prog, env)
+	if err == nil {
+		t.Errorf("expected NameError on Prime under goruby; eval returned nil. stdout=%q", stdout.String())
+		return
+	}
+	if !strings.Contains(err.Error(), "uninitialized constant Prime") {
+		t.Errorf("expected uninitialized-constant NameError on Prime, got %q", err.Error())
+	}
+	t.Logf("current behaviour: %v (mri prints byte 0x02)", err)
+}
+
+func mustExist(p string) error {
+	_, err := os.Stat(p)
+	return err
 }
 
 // TestGapEncodingTracking confirms that String#encoding returns the
