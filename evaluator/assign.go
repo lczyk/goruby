@@ -225,14 +225,16 @@ func evalAssignment(env *object.Environment, n *ast.Assignment) (object.RubyObje
 		owner.ClassVars[key] = expandSingle(right)
 		return right, nil
 	case *ast.ContextCallExpression:
-		// `obj.attr = val` -- attribute setter. Dispatches `attr=` on
-		// obj with val as the sole argument. Parser keeps the dot-call
-		// shape on the LHS; we resolve the receiver, then route through
-		// callMethod with the synthesised setter name. Returns the
-		// assigned value (matches MRI: the RHS, not the setter's
-		// return).
+		// Op-assign on a setter target: `obj.attr += val` parses as
+		// Assignment{Left: ContextCallExpression{attr}, Right: Infix{
+		// obj.attr, +, val}}. The plain-assignment form `obj.attr = val`
+		// does NOT reach here -- parser emits a ContextCallExpression
+		// w/ "attr=" function and val as the sole argument, dispatched
+		// via evalContextCall directly. Only op-assign retains the
+		// dot-call shape on the LHS, so this case exists to handle that
+		// path and the parallel multi-assign-setter case in assignTarget.
 		if lhs.Context == nil {
-			return nil, errorf("evaluator: unsupported assignment lhs *ast.ContextCallExpression w/ no receiver")
+			return nil, errorf("evaluator: op-assign setter target has no receiver")
 		}
 		recv, err := Eval(lhs.Context, env)
 		if err != nil {
@@ -420,6 +422,20 @@ func assignTarget(env *object.Environment, target ast.Expression, value object.R
 		return nil
 	case *ast.IndexExpression:
 		return evalIndexAssign(env, t, value)
+	case *ast.ContextCallExpression:
+		// Multi-assignment with setter targets: `a.x, a.y = 1, 2`.
+		// Parser keeps each LHS as a ContextCallExpression w/ no
+		// trailing `=` -- we synthesise the setter name here and
+		// dispatch attr= on the receiver.
+		if t.Context == nil {
+			return errorf("evaluator: multi-assign setter target has no receiver")
+		}
+		recv, err := Eval(t.Context, env)
+		if err != nil {
+			return err
+		}
+		_, err = callMethod(env, recv, t.Function.Value+"=", []object.RubyObject{value})
+		return err
 	}
 	return errorf("evaluator: unsupported multi-assignment target %T", target)
 }
