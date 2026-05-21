@@ -256,8 +256,28 @@ func evalContextCall(env *object.Environment, n *ast.ContextCallExpression) (obj
 					if blockProc != nil {
 						return callMethodWithProc(env, cls, n.Function.Value, args, blockProc)
 					}
-					if v, err := callMethod(env, cls, n.Function.Value, args); err == nil {
-						return v, nil
+					// Try the class-receiver dispatch. If the method exists
+					// on the class (or its ancestry up through
+					// ClassClass / ModuleClass), use that result -- even
+					// when it errors -- so a real error from inside the
+					// method body propagates instead of silently falling
+					// through to the kernel-builtin lookup.
+					// Look the name up via the same chain callMethod will
+					// walk: own ClassMethods first, then recv.Class()'s
+					// instance-method ancestry. If it resolves, route the
+					// call there so any error from the method body
+					// propagates out rather than being swallowed by the
+					// kernel-builtin fallback.
+					_, hasOwn := cls.LookupClassMethod(n.Function.Value)
+					if !hasOwn {
+						if rc := cls.Class(); rc != nil {
+							if _, hasInherited := rc.LookupMethod(n.Function.Value); hasInherited {
+								hasOwn = true
+							}
+						}
+					}
+					if hasOwn {
+						return callMethod(env, cls, n.Function.Value, args)
 					}
 				}
 				if inst, ok := self.(*object.Instance); ok {
@@ -271,6 +291,15 @@ func evalContextCall(env *object.Environment, n *ast.ContextCallExpression) (obj
 							}
 							return invokeMethodOn(env, inst, um, args, nil)
 						}
+					}
+					// Bare-name block builtins (loop, etc.) take
+					// precedence over instance-receiver dispatch when the
+					// instance class doesn't define the name. Without
+					// this, `loop do ... end` inside an instance method
+					// would route to the inst's class and raise
+					// NoMethodError on a name MRI resolves to Kernel.
+					if n.Block != nil && n.Function.Value == "loop" {
+						return kernelLoop(env, n.Block)
 					}
 					// Fall through to receiver-style dispatch so
 					// Comparable / Enumerable derivations (now living

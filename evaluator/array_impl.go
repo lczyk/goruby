@@ -1,16 +1,163 @@
 package evaluator
 
 import (
+	"math/rand"
 	"strings"
 
 	"github.com/lczyk/goruby/object"
 )
+
+// randomIntn returns a non-negative pseudo-random int in [0, n). Used
+// by Array#sample. Centralised so future seeding work (Kernel#srand,
+// Random.new) has a single hook.
+func randomIntn(n int) int {
+	if n <= 0 {
+		return 0
+	}
+	return rand.Intn(n)
+}
 
 func callArrayMethod(env *object.Environment, r *object.Array, name string, args []object.RubyObject) (object.RubyObject, error) {
 	switch name {
 	case "clear":
 		r.Elements = r.Elements[:0]
 		return r, nil
+	case "fill":
+		// MRI Array#fill shapes covered:
+		//   arr.fill(value)                       -> fill the whole array
+		//   arr.fill(value, start)                -> from start to end (extends)
+		//   arr.fill(value, start, length)        -> [start, start+length)
+		//   arr.fill(value, range)                -> indices in the range
+		// Block forms (`arr.fill { |i| ... }`) aren't covered here -- they
+		// route through the block-aware dispatcher when added.
+		if len(args) == 0 {
+			return nil, errorf("evaluator: Array#fill: at least one arg required")
+		}
+		val := args[0]
+		start, length := 0, len(r.Elements)
+		switch len(args) {
+		case 1:
+			// fill all
+		case 2:
+			if rng, ok := args[1].(*object.Range); ok {
+				lo, hi, ok := rangeBounds(rng, len(r.Elements))
+				if !ok {
+					return r, nil
+				}
+				start = lo
+				length = hi - lo
+				break
+			}
+			n, ok := args[1].(*object.Integer)
+			if !ok {
+				return nil, errorf("evaluator: Array#fill: start must be Integer or Range, got %T", args[1])
+			}
+			start = int(n.Value)
+			if start < 0 {
+				start += len(r.Elements)
+			}
+			length = len(r.Elements) - start
+			if length < 0 {
+				length = 0
+			}
+		case 3:
+			s, ok1 := args[1].(*object.Integer)
+			l, ok2 := args[2].(*object.Integer)
+			if !ok1 || !ok2 {
+				return nil, errorf("evaluator: Array#fill: start and length must be Integer")
+			}
+			start = int(s.Value)
+			if start < 0 {
+				start += len(r.Elements)
+			}
+			length = int(l.Value)
+			if length < 0 {
+				length = 0
+			}
+		default:
+			return nil, errorf("evaluator: Array#fill: too many args (%d)", len(args))
+		}
+		if start < 0 {
+			start = 0
+		}
+		end := start + length
+		// Grow the slice if the fill range extends past the current size,
+		// padding the gap (between old size and start) with nil to match
+		// MRI's behaviour.
+		for len(r.Elements) < end {
+			r.Elements = append(r.Elements, object.NIL)
+		}
+		for i := start; i < end; i++ {
+			r.Elements[i] = val
+		}
+		return r, nil
+	case "rotate", "rotate!":
+		// Array#rotate(n=1): rotate left by n (n negative -> rotate right).
+		// rotate!  mutates in place; rotate returns a new array.
+		n := int64(1)
+		if len(args) >= 1 {
+			ni, ok := args[0].(*object.Integer)
+			if !ok {
+				return nil, errorf("evaluator: Array#%s: count must be Integer, got %T", name, args[0])
+			}
+			n = ni.Value
+		}
+		size := int64(len(r.Elements))
+		if size == 0 {
+			if name == "rotate!" {
+				return r, nil
+			}
+			return object.NewArray(), nil
+		}
+		n = ((n % size) + size) % size
+		rotated := make([]object.RubyObject, 0, size)
+		rotated = append(rotated, r.Elements[n:]...)
+		rotated = append(rotated, r.Elements[:n]...)
+		if name == "rotate!" {
+			r.Elements = rotated
+			return r, nil
+		}
+		return object.NewArray(rotated...), nil
+	case "transpose":
+		// Array#transpose: receiver must be an array of equal-length
+		// arrays. Returns the transposed array.
+		if len(r.Elements) == 0 {
+			return object.NewArray(), nil
+		}
+		rows := make([]*object.Array, len(r.Elements))
+		width := -1
+		for i, e := range r.Elements {
+			row, ok := e.(*object.Array)
+			if !ok {
+				return nil, errorf("evaluator: Array#transpose: element %d not Array (%T)", i, e)
+			}
+			if width == -1 {
+				width = len(row.Elements)
+			} else if width != len(row.Elements) {
+				return nil, errorf("evaluator: IndexError: element size differs (%d should be %d)", len(row.Elements), width)
+			}
+			rows[i] = row
+		}
+		out := make([]object.RubyObject, width)
+		for c := 0; c < width; c++ {
+			col := make([]object.RubyObject, len(rows))
+			for ri, row := range rows {
+				col[ri] = row.Elements[c]
+			}
+			out[c] = object.NewArray(col...)
+		}
+		return object.NewArray(out...), nil
+	case "sample":
+		// Array#sample: pick a random element. Without args returns
+		// nil on empty. We don't track an Rng seed; use math/rand's
+		// default source. Stub is OK for fixture parity when programs
+		// either don't hit sample, or accept any element (e.g.
+		// labyrinth's neighbors.sample when two opposing directions
+		// are both legal).
+		if len(r.Elements) == 0 {
+			return object.NIL, nil
+		}
+		return r.Elements[randomIntn(len(r.Elements))], nil
 	case "length", "size", "count":
 		if name == "count" && len(args) == 1 {
 			n := 0
@@ -144,7 +291,7 @@ func callArrayMethod(env *object.Environment, r *object.Array, name string, args
 			return nil, errorf("evaluator: wrong number of arguments to Array#include? (given %d, expected 1)", len(args))
 		}
 		for _, v := range r.Elements {
-			if rubyEqual(v, args[0]) {
+			if rubyEqualDispatch(env, v, args[0]) {
 				return object.TRUE, nil
 			}
 		}

@@ -1002,6 +1002,35 @@ func truthy(o object.RubyObject) bool {
 // rubyEqual implements ruby `==` between common runtime types. Returns
 // false for incomparable type pairs (matching MRI's default Object#==).
 // Numerics cross-equate (3 == 3.0 is true).
+// rubyEqualDispatch is rubyEqual extended with a fallback to the
+// receiver's user-defined `==` method. Use this when the comparison
+// happens *inside* method-dispatch operations (Array#include?,
+// Hash#has_key?, case/when), where MRI consults the receiver class's
+// `==`. Pure rubyEqual stays value-only so it can be called from
+// places that have no env handy.
+func rubyEqualDispatch(env *object.Environment, a, b object.RubyObject) bool {
+	if rubyEqual(a, b) {
+		return true
+	}
+	inst, ok := a.(*object.Instance)
+	if !ok {
+		return false
+	}
+	m, found := dispatchClass(env, inst).LookupMethod("==")
+	if !found {
+		return false
+	}
+	um, ok := m.(*object.UserMethod)
+	if !ok {
+		return false
+	}
+	res, err := invokeMethodOn(env, inst, um, []object.RubyObject{b}, nil)
+	if err != nil {
+		return false
+	}
+	return truthy(res)
+}
+
 func rubyEqual(a, b object.RubyObject) bool {
 	switch x := a.(type) {
 	case *object.Integer:
