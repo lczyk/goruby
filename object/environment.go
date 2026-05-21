@@ -47,6 +47,17 @@ type Environment struct {
 	version token.RubyVersion
 	methods map[string]RubyObject
 
+	// currentFile is the absolute path of the source file presently
+	// being evaluated. Updated on entry/exit by evalProgram (top-level)
+	// and by Kernel#require_relative (nested loads). dirname(currentFile)
+	// is the base for resolving relative loads. Empty for hand-built ASTs
+	// and ad-hoc Eval calls without a backing file.
+	currentFile string
+	// loadedFiles records absolute paths already loaded by
+	// require_relative / require, so re-requiring is a no-op (matches
+	// MRI's $LOADED_FEATURES semantics, scoped to this interpreter).
+	loadedFiles map[string]bool
+
 	// MethodFrame marks an environment that backs a method call. Block
 	// scoping stops walking outward at the nearest method frame so a
 	// block can't reach into the surrounding caller's locals through a
@@ -267,6 +278,45 @@ func (e *Environment) Stdin() io.Reader { return e.root().stdin }
 // holds the value.
 func (e *Environment) StdinBR() any        { return e.root().stdinBR }
 func (e *Environment) SetStdinBR(br any)   { e.root().stdinBR = br }
+
+// CurrentFile returns the path of the source file currently being
+// evaluated. Empty when no file-backed eval is on the stack.
+func (e *Environment) CurrentFile() string { return e.root().currentFile }
+
+// SetCurrentFile overwrites the active source-file path on the root
+// env, returning the previous value so callers can restore it on
+// frame exit (caller-managed stack discipline).
+func (e *Environment) SetCurrentFile(path string) string {
+	r := e.root()
+	prev := r.currentFile
+	r.currentFile = path
+	return prev
+}
+
+// MarkLoaded records absPath in the loaded-files set and returns
+// whether it was newly added. Used by require_relative to make
+// repeated loads of the same file idempotent.
+func (e *Environment) MarkLoaded(absPath string) bool {
+	r := e.root()
+	if r.loadedFiles == nil {
+		r.loadedFiles = make(map[string]bool)
+	}
+	if r.loadedFiles[absPath] {
+		return false
+	}
+	r.loadedFiles[absPath] = true
+	return true
+}
+
+// IsLoaded reports whether absPath has already been require_relative'd
+// (or require'd) in this interpreter.
+func (e *Environment) IsLoaded(absPath string) bool {
+	r := e.root()
+	if r.loadedFiles == nil {
+		return false
+	}
+	return r.loadedFiles[absPath]
+}
 
 // Symbols returns the env's symbol pool.
 func (e *Environment) Symbols() *SymbolPool { return e.root().syms }

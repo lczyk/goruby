@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/lczyk/goruby/ast"
@@ -160,6 +161,20 @@ func evalParen(env *object.Environment, n *ast.ParenExpression) (object.RubyObje
 
 func evalProgram(env *object.Environment, p *ast.Program) (object.RubyObject, error) {
 	bootstrapBuiltins(env)
+	// Stamp the active source-file path so Kernel#require_relative can
+	// resolve siblings via dirname(currentFile). Only set when the
+	// Program carries one (parser-built); restore prior on exit so
+	// nested loads pop cleanly.
+	if p.Filename != "" {
+		abs := p.Filename
+		if !filepath.IsAbs(abs) {
+			if a, err := filepath.Abs(abs); err == nil {
+				abs = a
+			}
+		}
+		prev := env.SetCurrentFile(abs)
+		defer func() { env.SetCurrentFile(prev) }()
+	}
 	var result object.RubyObject = object.NIL
 	for _, stmt := range p.Statements {
 		v, err := Eval(stmt, env)

@@ -596,7 +596,7 @@ func (p *parser) spacedOperator(op, next token.Token) bool {
 // more input by checking with e.g. IsEOFError.
 func (p *parser) ParseProgram() (*ast.Program, error) {
 	defer p.traceEnter()()
-	program := &ast.Program{}
+	program := &ast.Program{Filename: p.file.Name()}
 	program.Statements = []ast.Statement{}
 	for !p.currentTokenIs(token.EOF) {
 		if p.currentTokenIs(token.NEWLINE) {

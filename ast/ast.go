@@ -98,6 +98,11 @@ type Program struct {
 	// source bytes. Nil for hand-built ASTs (tests, fixtures) whose
 	// tokens carry their text via dedicated AST fields (.Value etc).
 	LitPool []string
+	// Filename is the source path the parser was invoked with (the
+	// `filename` arg to ParseFile). Used by the evaluator to resolve
+	// `require_relative` paths and to stamp `__FILE__` literals. Empty
+	// for hand-built ASTs.
+	Filename string
 }
 
 // Arena returns the bump allocator used to construct this Program's AST

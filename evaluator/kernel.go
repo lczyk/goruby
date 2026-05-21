@@ -1,6 +1,8 @@
 package evaluator
 
 import (
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -50,6 +52,8 @@ func callKernel(env *object.Environment, name string, args []object.RubyObject) 
 		return kernelExit(env, args)
 	case "abort":
 		return kernelAbort(env, args)
+	case "require_relative":
+		return kernelRequireRelative(env, args)
 	case "lambda":
 		return nil, errorf("evaluator: Kernel#lambda without block not supported; use ->( ){ ... }")
 	}
@@ -111,6 +115,55 @@ func kernelAbort(env *object.Environment, args []object.RubyObject) (object.Ruby
 		}
 	}
 	return nil, &exitSignal{Code: 1}
+}
+
+// kernelRequireRelative implements Kernel#require_relative(path): resolves
+// path against the directory of the currently-executing source file,
+// appending ".rb" if absent, parses and evaluates that file in the
+// current root environment. Returns true on first load, false if
+// already loaded (matches MRI's $LOADED_FEATURES semantics). Loaded
+// classes / methods / constants persist in the root env so the caller
+// sees them after the require returns.
+func kernelRequireRelative(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) != 1 {
+		return nil, errorf("evaluator: require_relative: wrong number of arguments (given %d, expected 1)", len(args))
+	}
+	rel, ok := stringText(env, args[0])
+	if !ok {
+		return nil, errorf("evaluator: require_relative: expected String, got %T", args[0])
+	}
+	cur := env.CurrentFile()
+	if cur == "" {
+		return raiseBuiltin(env, "LoadError", "cannot infer basepath for require_relative")
+	}
+	base := filepath.Dir(cur)
+	target := rel
+	if !filepath.IsAbs(target) {
+		target = filepath.Join(base, target)
+	}
+	if filepath.Ext(target) == "" {
+		target += ".rb"
+	}
+	abs, err := filepath.Abs(target)
+	if err != nil {
+		return raiseBuiltin(env, "LoadError", "cannot resolve "+target+": "+err.Error())
+	}
+	if env.IsLoaded(abs) {
+		return object.FALSE, nil
+	}
+	src, err := os.ReadFile(abs)
+	if err != nil {
+		return raiseBuiltin(env, "LoadError", "cannot load such file -- "+rel)
+	}
+	env.MarkLoaded(abs)
+	prog, err := parser.ParseFile(abs, src, 0, parser.WithVersion(env.Version()))
+	if err != nil {
+		return nil, errorf("evaluator: require_relative: parse %s: %s", abs, err.Error())
+	}
+	if _, err := Eval(prog, env); err != nil {
+		return nil, err
+	}
+	return object.TRUE, nil
 }
 
 // kernelEval implements Kernel#eval(str): parses str under the
