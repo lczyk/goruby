@@ -45,6 +45,9 @@ function _process_lang() {
             hexagony)       interp="${ROOT}/testdata/gems/hexagony/interpreter.rb" ;;
             wumpus)         interp="${ROOT}/testdata/gems/wumpus/wumpus.rb" ;;
             bouncy-lang)    interp="${ROOT}/testdata/gems/bouncy-lang/bouncy.rb" ;;
+            bolic)          interp="${ROOT}/testdata/gems/esolang-book-sources/bolic/bolic.rb" ;;
+            brainf_ck)      interp="${ROOT}/testdata/gems/esolang-book-sources/brainf_ck/brainf_ck.rb" ;;
+            hq9plus)        interp="${ROOT}/testdata/gems/esolang-book-sources/hq9plus/hq9plus.rb" ;;
             *)              interp="${ROOT}/testdata/gems/${lang}/${lang}.rb" ;;
         esac
     fi

@@ -1,0 +1,16 @@
+hq9plus programs vendored for integration testing
+====================================================
+
+.in files are programs from the upstream esolang-book-sources repo:
+
+  https://github.com/yhara/esolang-book-sources
+  copy is at internal/integrationtest/testdata/gems/esolang-book-sources/
+
+each .in is a program from hq9plus/. .expected files generated against
+MRI 2.6.10 by running:
+
+  ruby gems/esolang-book-sources/hq9plus/hq9plus.rb <fixture>.in </dev/null > <fixture>.expected
+
+esolang-book-sources is a book companion repo without a top-level
+LICENSE file but the README treats the code as MIT-equivalent
+example material.
