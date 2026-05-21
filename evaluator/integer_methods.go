@@ -71,6 +71,9 @@ func init() {
 		// `(n % 256).chr` producing exactly one byte. The naive
 		// `string(rune(n))` UTF-8-encodes 128..255 as two bytes, breaking
 		// that contract.
+		if r.IsBig() {
+			return raiseBuiltin(env, "RangeError", r.Bn.String()+" out of char range")
+		}
 		if r.Value < 0 || r.Value > 255 {
 			return raiseBuiltin(env, "RangeError", strconv.FormatInt(r.Value, 10)+" out of char range")
 		}
@@ -87,6 +90,9 @@ func init() {
 			if base < 2 || base > 36 {
 				return nil, errorf("evaluator: ArgumentError: invalid radix %d", base)
 			}
+		}
+		if r.IsBig() {
+			return object.NewString(r.Bn.Text(base)), nil
 		}
 		return object.NewString(strconv.FormatInt(r.Value, base)), nil
 	})

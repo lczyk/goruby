@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"math/big"
 	"path/filepath"
 	"strings"
 
@@ -1035,9 +1036,16 @@ func rubyEqual(a, b object.RubyObject) bool {
 	switch x := a.(type) {
 	case *object.Integer:
 		if y, ok := b.(*object.Integer); ok {
+			if x.IsBig() || y.IsBig() {
+				return x.ToBig().Cmp(y.ToBig()) == 0
+			}
 			return x.Value == y.Value
 		}
 		if y, ok := b.(*object.Float); ok {
+			if x.IsBig() {
+				lf, _ := new(big.Float).SetInt(x.Bn).Float64()
+				return lf == y.Value
+			}
 			return float64(x.Value) == y.Value
 		}
 		return false

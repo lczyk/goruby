@@ -149,6 +149,9 @@ func compareObjects(a, b object.RubyObject) (int, bool) {
 		if !ok {
 			return 0, false
 		}
+		if x.IsBig() || y.IsBig() {
+			return x.ToBig().Cmp(y.ToBig()), true
+		}
 		switch {
 		case x.Value < y.Value:
 			return -1, true
