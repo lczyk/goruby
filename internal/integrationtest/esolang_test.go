@@ -44,6 +44,8 @@ func resolveEsolangInterp(lang string) string {
 		cands = append(cands, "testdata/gems/labyrinth/interpreter.rb")
 	case "alice":
 		cands = append(cands, "testdata/gems/alice/interpreter.rb")
+	case "hexagony":
+		cands = append(cands, "testdata/gems/hexagony/interpreter.rb")
 	}
 	cands = append(cands,
 		filepath.Join(esolangInterpDir, lang+".rb"),

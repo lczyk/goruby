@@ -42,6 +42,7 @@ function _process_lang() {
             stackcats)      interp="${ROOT}/testdata/gems/stackcats/ruby/interpreter.rb" ;;
             labyrinth)      interp="${ROOT}/testdata/gems/labyrinth/interpreter.rb" ;;
             alice)          interp="${ROOT}/testdata/gems/alice/interpreter.rb" ;;
+            hexagony)       interp="${ROOT}/testdata/gems/hexagony/interpreter.rb" ;;
             *)              interp="${ROOT}/testdata/gems/${lang}/${lang}.rb" ;;
         esac
     fi
