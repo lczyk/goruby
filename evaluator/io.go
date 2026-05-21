@@ -35,8 +35,152 @@ func stdinReader(env *object.Environment) *bufio.Reader {
 // bootstrapIO installs the File class and STDIN constant. Idempotent.
 func bootstrapIO(env *object.Environment) {
 	bootstrapFileClass(env)
-	bootstrapSTDIN(env)
+	stdin := bootstrapSTDIN(env)
+	stdout := bootstrapSTDOUT(env)
+	stderr := bootstrapSTDERR(env)
 	bootstrapARGF(env)
+	// MRI exposes the three standard streams as `$stdin` / `$stdout` /
+	// `$stderr` globals aliased to the STDIN / STDOUT / STDERR constants.
+	// Stackcats (and most ruby code) routes IO through the globals so it
+	// can be redirected; we mirror by binding the globals to the same
+	// class objects on first bootstrap.
+	if _, ok := env.Get("$stdin"); !ok {
+		env.SetGlobal("$stdin", stdin)
+	}
+	if _, ok := env.Get("$stdout"); !ok {
+		env.SetGlobal("$stdout", stdout)
+	}
+	if _, ok := env.Get("$stderr"); !ok {
+		env.SetGlobal("$stderr", stderr)
+	}
+	// `$/` is ruby's input record separator. Defaults to "\n"; very few
+	// programs change it but several (stackcats among them) read it as
+	// part of formatting. Bind once on bootstrap so a bare `$/` lookup
+	// returns the newline rather than nil.
+	if _, ok := env.Get("$/"); !ok {
+		env.SetGlobal("$/", object.NewString("\n"))
+	}
+}
+
+// bootstrapSTDOUT installs the STDOUT constant: a class object with
+// `puts`/`print`/`write` class methods that delegate to env.Stdout().
+// Idempotent.
+func bootstrapSTDOUT(env *object.Environment) *object.Class {
+	if existing, ok := env.Get("STDOUT"); ok {
+		if c, ok := existing.(*object.Class); ok {
+			return c
+		}
+	}
+	c := object.NewClass("STDOUT", nil)
+	c.ClassMethods["puts"] = &object.UserMethod{Name: "puts", Body: nativeFn{fn: stdoutPuts}}
+	c.ClassMethods["print"] = &object.UserMethod{Name: "print", Body: nativeFn{fn: stdoutPrint}}
+	c.ClassMethods["write"] = &object.UserMethod{Name: "write", Body: nativeFn{fn: stdoutWrite}}
+	c.ClassMethods["flush"] = &object.UserMethod{Name: "flush", Body: nativeFn{fn: ioNoopSelf}}
+	c.ClassMethods["sync"] = &object.UserMethod{Name: "sync", Body: nativeFn{fn: ioReturnTrue}}
+	c.ClassMethods["sync="] = &object.UserMethod{Name: "sync=", Body: nativeFn{fn: ioReturnArg}}
+	c.ClassMethods["tty?"] = &object.UserMethod{Name: "tty?", Body: nativeFn{fn: stdoutTTY}}
+	env.SetGlobal("STDOUT", c)
+	return c
+}
+
+// bootstrapSTDERR mirrors bootstrapSTDOUT but targets env.Stderr().
+func bootstrapSTDERR(env *object.Environment) *object.Class {
+	if existing, ok := env.Get("STDERR"); ok {
+		if c, ok := existing.(*object.Class); ok {
+			return c
+		}
+	}
+	c := object.NewClass("STDERR", nil)
+	c.ClassMethods["puts"] = &object.UserMethod{Name: "puts", Body: nativeFn{fn: stderrPuts}}
+	c.ClassMethods["print"] = &object.UserMethod{Name: "print", Body: nativeFn{fn: stderrPrint}}
+	c.ClassMethods["write"] = &object.UserMethod{Name: "write", Body: nativeFn{fn: stderrWrite}}
+	c.ClassMethods["flush"] = &object.UserMethod{Name: "flush", Body: nativeFn{fn: ioNoopSelf}}
+	c.ClassMethods["sync"] = &object.UserMethod{Name: "sync", Body: nativeFn{fn: ioReturnTrue}}
+	c.ClassMethods["sync="] = &object.UserMethod{Name: "sync=", Body: nativeFn{fn: ioReturnArg}}
+	env.SetGlobal("STDERR", c)
+	return c
+}
+
+func stdoutPuts(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	return kernelPuts(env, args)
+}
+
+func stdoutPrint(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	return kernelPrint(env, args)
+}
+
+func stdoutWrite(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	return ioWrite(env.Stdout(), env, args)
+}
+
+func stderrPuts(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	w := env.Stderr()
+	if len(args) == 0 {
+		_, _ = w.Write([]byte{'\n'})
+		return object.NIL, nil
+	}
+	for _, a := range args {
+		s := putsString(env, a)
+		_, _ = w.Write([]byte(s))
+		if len(s) == 0 || s[len(s)-1] != '\n' {
+			_, _ = w.Write([]byte{'\n'})
+		}
+	}
+	return object.NIL, nil
+}
+
+func stderrPrint(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	w := env.Stderr()
+	for _, a := range args {
+		_, _ = w.Write([]byte(putsString(env, a)))
+	}
+	return object.NIL, nil
+}
+
+func stderrWrite(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	return ioWrite(env.Stderr(), env, args)
+}
+
+// ioWrite implements IO#write: writes each arg's to_s, returns the
+// total byte count written.
+func ioWrite(w io.Writer, env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	total := 0
+	for _, a := range args {
+		s := putsString(env, a)
+		n, _ := w.Write([]byte(s))
+		total += n
+	}
+	return object.NewInteger(int64(total)), nil
+}
+
+func stdoutTTY(env *object.Environment, _ []object.RubyObject) (object.RubyObject, error) {
+	f, ok := env.Stdout().(*os.File)
+	if !ok {
+		return object.FALSE, nil
+	}
+	info, err := f.Stat()
+	if err != nil {
+		return object.FALSE, nil
+	}
+	if info.Mode()&os.ModeCharDevice != 0 {
+		return object.TRUE, nil
+	}
+	return object.FALSE, nil
+}
+
+func ioNoopSelf(_ *object.Environment, _ []object.RubyObject) (object.RubyObject, error) {
+	return object.NIL, nil
+}
+
+func ioReturnTrue(_ *object.Environment, _ []object.RubyObject) (object.RubyObject, error) {
+	return object.TRUE, nil
+}
+
+func ioReturnArg(_ *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) >= 1 {
+		return args[0], nil
+	}
+	return object.NIL, nil
 }
 
 func bootstrapARGF(env *object.Environment) *object.Class {
@@ -104,6 +248,8 @@ func bootstrapSTDIN(env *object.Environment) *object.Class {
 	c.ClassMethods["eof"] = &object.UserMethod{Name: "eof", Body: nativeFn{fn: stdinEOF}}
 	c.ClassMethods["getbyte"] = &object.UserMethod{Name: "getbyte", Body: nativeFn{fn: stdinGetbyte}}
 	c.ClassMethods["getc"] = &object.UserMethod{Name: "getc", Body: nativeFn{fn: stdinGetc}}
+	c.ClassMethods["tty?"] = &object.UserMethod{Name: "tty?", Body: nativeFn{fn: stdinTTY}}
+	c.ClassMethods["isatty"] = &object.UserMethod{Name: "isatty", Body: nativeFn{fn: stdinTTY}}
 	env.SetGlobal("STDIN", c)
 	return c
 }
@@ -168,8 +314,33 @@ func stdinGets(env *object.Environment, _ []object.RubyObject) (object.RubyObjec
 	return object.NewString(line), nil
 }
 
-func stdinReadAll(env *object.Environment, _ []object.RubyObject) (object.RubyObject, error) {
+func stdinReadAll(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
 	br := stdinReader(env)
+	// IO#read(n) returns up to n bytes, or nil at EOF when n>0. Without
+	// n it slurps the rest of the stream and returns "" at EOF.
+	if len(args) >= 1 {
+		n, ok := args[0].(*object.Integer)
+		if !ok {
+			return nil, errorf("evaluator: STDIN.read: expected Integer length, got %T", args[0])
+		}
+		if n.Value < 0 {
+			return nil, errorf("evaluator: STDIN.read: negative length %d", n.Value)
+		}
+		if n.Value == 0 {
+			return object.NewString(""), nil
+		}
+		buf := make([]byte, n.Value)
+		got, err := io.ReadFull(br, buf)
+		if got == 0 {
+			if err == io.EOF || err == io.ErrUnexpectedEOF {
+				return object.NIL, nil
+			}
+			if err != nil {
+				return nil, errorf("evaluator: STDIN.read: %s", err.Error())
+			}
+		}
+		return object.NewStringFromBytes(buf[:got]), nil
+	}
 	data, err := io.ReadAll(br)
 	if err != nil {
 		return nil, errorf("evaluator: STDIN.read: %s", err.Error())
@@ -199,6 +370,25 @@ func stdinGetc(env *object.Environment, _ []object.RubyObject) (object.RubyObjec
 		return nil, errorf("evaluator: STDIN.getc: %s", err.Error())
 	}
 	return object.NewString(string(r)), nil
+}
+
+// stdinTTY implements STDIN.tty? / STDIN.isatty: reports whether the
+// active stdin is a character device. Only true when env.Stdin() is
+// the real os.Stdin AND that file's stat indicates a tty. Test harnesses
+// that pipe via WithStdin always see false.
+func stdinTTY(env *object.Environment, _ []object.RubyObject) (object.RubyObject, error) {
+	f, ok := env.Stdin().(*os.File)
+	if !ok {
+		return object.FALSE, nil
+	}
+	info, err := f.Stat()
+	if err != nil {
+		return object.FALSE, nil
+	}
+	if info.Mode()&os.ModeCharDevice != 0 {
+		return object.TRUE, nil
+	}
+	return object.FALSE, nil
 }
 
 func stdinEOF(env *object.Environment, _ []object.RubyObject) (object.RubyObject, error) {

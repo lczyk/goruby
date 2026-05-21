@@ -399,6 +399,8 @@ func assignTarget(env *object.Environment, target ast.Expression, value object.R
 		}
 		cls.ClassVars["@@"+t.Name.Value] = value
 		return nil
+	case *ast.IndexExpression:
+		return evalIndexAssign(env, t, value)
 	}
 	return errorf("evaluator: unsupported multi-assignment target %T", target)
 }
