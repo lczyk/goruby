@@ -381,6 +381,30 @@ func callArrayMethod(env *object.Environment, r *object.Array, name string, args
 			return nil, err
 		}
 		return object.NewArray(out...), nil
+	case "index", "find_index":
+		// Array#index(val) returns the position of the first matching
+		// element, nil if absent. Block form (no arg, with block) is
+		// not handled here -- callers that pass a block will hit the
+		// block-aware dispatcher.
+		if len(args) != 1 {
+			return nil, errorf("evaluator: wrong number of arguments to Array#%s (given %d, expected 1)", name, len(args))
+		}
+		for i, e := range r.Elements {
+			if rubyEqualDispatch(env, e, args[0]) {
+				return object.NewInteger(int64(i)), nil
+			}
+		}
+		return object.NIL, nil
+	case "rindex":
+		if len(args) != 1 {
+			return nil, errorf("evaluator: wrong number of arguments to Array#rindex (given %d, expected 1)", len(args))
+		}
+		for i := len(r.Elements) - 1; i >= 0; i-- {
+			if rubyEqualDispatch(env, r.Elements[i], args[0]) {
+				return object.NewInteger(int64(i)), nil
+			}
+		}
+		return object.NIL, nil
 	case "include?":
 		if len(args) != 1 {
 			return nil, errorf("evaluator: wrong number of arguments to Array#include? (given %d, expected 1)", len(args))

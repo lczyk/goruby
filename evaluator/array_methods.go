@@ -14,6 +14,7 @@ var arrayMethodNames = []string{
 	"reduce", "inject", "tally", "clear",
 	"fill", "rotate", "rotate!", "transpose", "sample",
 	"reverse!", "sort!", "uniq!", "compact!", "flatten!",
+	"index", "find_index", "rindex",
 }
 
 func init() {
