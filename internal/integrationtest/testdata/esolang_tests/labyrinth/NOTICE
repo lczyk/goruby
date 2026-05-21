@@ -26,10 +26,6 @@ these examples ship in upstream but aren't vendored as fixtures:
 - mod.lab, prime.lab, yes.lab -- never terminate under MRI / no
   clean stdout to anchor against (yes is infinite by design,
   prime loops past any reasonable timeout, mod errors on MRI).
-- quine.lab -- prints a 33-digit decimal prefix, beyond int64
-  range. goruby has no bignum yet, so the integer arithmetic
-  wraps and the output diverges from MRI. revisit once bignum
-  arithmetic lands.
 - rng.lab -- by design uses Array#sample (math/rand under goruby,
   not seeded against mri's PRNG). the .expected baseline would
   pin one specific random sequence; skip until we share a seed
