@@ -85,7 +85,14 @@ func evalModuleExpression(env *object.Environment, n *ast.ModuleExpression) (obj
 // levels).
 func evalScopedIdentifier(env *object.Environment, n *ast.ScopedIdentifier) (object.RubyObject, error) {
 	if n.Outer == nil {
-		return nil, errorf("evaluator: top-level ::Const lookup not yet supported")
+		innerID, ok := n.Inner.(*ast.Identifier)
+		if !ok {
+			return nil, errorf("evaluator: unsupported ::Inner %T", n.Inner)
+		}
+		if v, ok := env.GetGlobal(innerID.Value); ok {
+			return v, nil
+		}
+		return nil, errorf("evaluator: NameError: uninitialized constant ::%s", innerID.Value)
 	}
 	outerVal, err := Eval(n.Outer, env)
 	if err != nil {
@@ -223,13 +230,37 @@ func evalSuper(env *object.Environment, n *ast.SuperExpression) (object.RubyObje
 		return nil, errorf("evaluator: super called outside of method")
 	}
 	self := env.EnclosingSelf()
-	inst, ok := self.(*object.Instance)
-	if !ok {
-		return nil, errorf("evaluator: super outside instance context not yet supported")
-	}
 	cls := findCallClass(env)
 	if cls == nil || cls.Super == nil {
 		return nil, errorf("evaluator: NoMethodError: super: no superclass method `%s'", name)
+	}
+	// Class-method super: self is the Class itself. Walk the Super chain
+	// for a matching ClassMethod and invoke it with self bound to the
+	// current class so further `super` calls keep climbing.
+	if cls, ok := self.(*object.Class); ok {
+		m, found := cls.Super.LookupClassMethod(name)
+		if !found {
+			return nil, errorf("evaluator: NoMethodError: super: no superclass method `%s'", name)
+		}
+		um, ok := m.(*object.UserMethod)
+		if !ok {
+			return nil, errorf("evaluator: super on non-user method %T", m)
+		}
+		var args []object.RubyObject
+		if n.Arguments == nil {
+			args = findMethodArgs(env)
+		} else {
+			got, err := evalExpressions(env, n.Arguments)
+			if err != nil {
+				return nil, err
+			}
+			args = got
+		}
+		return invokeMethodOn(env, cls, um, args, nil)
+	}
+	inst, ok := self.(*object.Instance)
+	if !ok {
+		return nil, errorf("evaluator: super outside instance context not yet supported")
 	}
 	m, found := cls.Super.LookupMethod(name)
 	if !found {

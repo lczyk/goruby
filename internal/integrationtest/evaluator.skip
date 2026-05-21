@@ -18,31 +18,15 @@
 eval gaps/rational_neg_exp.rb: numeric.go: negative Integer exponent yields Rational; not implemented
 eval gaps/pattern_matching.rb: control.go:189: case/in pattern matching not yet supported
 eval gaps/hash_splat.rb: evaluator.go:415: hash splat (**) not yet supported
-eval gaps/interpolated_regex.rb: regex.go:17: interpolated regex not yet supported
-eval gaps/interpolated_symbol.rb: evaluator.go:376: interpolated symbol not yet supported
-eval gaps/toplevel_const.rb: class.go:88: top-level ::Const lookup not yet supported
-eval gaps/super_class_method.rb: class.go:228: super outside instance context not yet supported
 eval gaps/singleton_method.rb: def.go:46: def receiver.method on non-self receiver not yet supported
 eval gaps/for_in_hash.rb: control.go:182: for-in only handles Array/Range; not Hash / Enumerator / custom each
 eval gaps/string_encoding_tracking.rb: string.go:405: per-string encoding not tracked; always reports UTF-8
 eval gaps/complex_class.rb: Complex class not implemented
-eval gaps/array_sum_strings.rb: array_impl.go:680: Array#sum rejects non-numeric; should dispatch + on elements
-eval gaps/array_flatten_recursive.rb: array_impl.go:361: flatten! single-level only; needs full recursion
 eval gaps/string_unpack_directives.rb: string.go:272: String#unpack only supports C/c/a/A; missing N/n/V/v/l/L/H etc.
-eval gaps/kernel_lambda_noblock.rb: kernel.go: Kernel#lambda without block not supported
 eval gaps/argf_each_line_noblock.rb: io.go:285: ARGF.each_line without block returns Enumerator; not yet supported
 eval gaps/enumerator_with_index_more.rb: enumerator.go:208: with_index only wired for each/map/select/reject/sort_by; missing count/reduce/inject etc
-eval gaps/enumerator_with_index_noblock.rb: enumerator.go:21: Enumerator#with_index without block returns sub-Enumerator; not yet supported
-eval gaps/aset_multi_arg.rb: assign.go:371: []= with >1 key args not supported
-eval gaps/string_slice_3arg.rb: evaluator.go:810: String#[] with >2 args not supported
-eval gaps/array_slice_negative_len.rb: evaluator.go:859: Array#[] / slice with negative offset + length not supported
-eval gaps/class_index_method.rb: evaluator.go:730: bare Foo[] on Class direct-dispatch only; inherited def self.[] not picked up
-eval gaps/block_on_kernel.rb: method.go:402: blocks on Kernel calls (beyond loop/proc/lambda) not yet supported
-eval gaps/encoding_class.rb: encoding.go: Encoding is a sentinel stub; list/name_list/aliases/compatible? missing
 eval gaps/object_freeze.rb: Object#freeze returns self but doesn't enforce immutability
 eval gaps/require_date.rb: kernel.go: require 'date' returns true but Date constant never installed
 eval gaps/option_parser_handlers.rb: option_parser.go: OptionParser stub; .on registers nothing; .parse! strips -tokens w/out invoking handlers
 eval gaps/exception_backtrace.rb: Exception#backtrace returns []; no frame tracking
 eval gaps/visibility_private.rb: assign.go:87: private/public/protected/module_function are no-ops; not enforced
-eval gaps/object_dup_real_copy.rb: Object#dup / Object#clone return receiver unchanged; should produce shallow copy
-eval gaps/srand_deterministic.rb: kernel rand uses deprecated rand.Seed; not MRI-deterministic

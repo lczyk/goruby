@@ -23,4 +23,8 @@ func (e *Enumerator) Inspect() string  { return "#<Enumerator>" }
 
 // EnumeratorClass is the dispatch target for Enumerator instances.
 // Populated in the evaluator package's bootstrap.
-var EnumeratorClass = NewClass("Enumerator", nil)
+var EnumeratorClass *Class
+
+func init() {
+	EnumeratorClass = NewClass("Enumerator", ObjectClass)
+}

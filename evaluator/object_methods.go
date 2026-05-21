@@ -97,11 +97,13 @@ func init() {
 		return recv, nil
 	})
 	dup := func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
-		return recv, nil
+		return shallowCopy(env, recv), nil
 	}
 	add("dup", dup)
 	add("clone", dup)
-	add("tap", dup)
+	add("tap", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
+		return recv, nil
+	})
 	add("equal?", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
 		if len(args) != 1 {
 			return nil, errorf("evaluator: equal? expects 1 arg")
@@ -177,4 +179,43 @@ func init() {
 		}
 		return object.BooleanOf(cl == target), nil
 	})
+}
+
+// shallowCopy returns a fresh object whose mutable contents are a
+// shallow copy of recv. Element / value identity is preserved (no deep
+// recursion). For immutable primitives (Integer, Float, Symbol,
+// Boolean, Nil, Range) recv is returned as-is -- MRI's `dup` on
+// Integer/Symbol/etc raises in older versions and returns self in 3.0+;
+// returning self matches the corpus we care about. Ruby distinguishes
+// dup vs clone w/ respect to frozen state, which we don't track yet.
+func shallowCopy(env *object.Environment, recv object.RubyObject) object.RubyObject {
+	switch v := recv.(type) {
+	case *object.Array:
+		elems := make([]object.RubyObject, len(v.Elements))
+		copy(elems, v.Elements)
+		return object.NewArray(elems...)
+	case *object.Hash:
+		entries := make([]object.HashEntry, len(v.Entries))
+		copy(entries, v.Entries)
+		out := object.NewHash(entries...)
+		out.Default = v.Default
+		out.DefaultBlock = v.DefaultBlock
+		return out
+	case *object.String:
+		cp := make([]byte, len(v.Buf))
+		copy(cp, v.Buf)
+		return object.NewStringFromBytes(cp)
+	case *object.FrozenString:
+		s := env.Strings().Get(v.ID)
+		cp := make([]byte, len(s))
+		copy(cp, s)
+		return object.NewStringFromBytes(cp)
+	case *object.Instance:
+		ivs := make(map[string]object.RubyObject, len(v.Ivars))
+		for k, val := range v.Ivars {
+			ivs[k] = val
+		}
+		return &object.Instance{C: v.C, Ivars: ivs}
+	}
+	return recv
 }

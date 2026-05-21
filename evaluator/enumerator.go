@@ -18,7 +18,27 @@ func bootstrapEnumeratorClass(env *object.Environment) *object.Class {
 	}
 	addBlockOrPlainMethod(c, "with_index",
 		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
-			return nil, errorf("evaluator: Enumerator#with_index without a block not supported")
+			// Without a block, return a fresh Enumerator over [elem, idx]
+			// pairs. Callers chain .to_a / .map etc on the result.
+			enum, ok := recv.(*object.Enumerator)
+			if !ok {
+				return nil, errorf("evaluator: Enumerator#with_index on non-Enumerator %T", recv)
+			}
+			arr, ok := enum.Receiver.(*object.Array)
+			if !ok {
+				return nil, errorf("evaluator: Enumerator#with_index: receiver %T not iterable", enum.Receiver)
+			}
+			start := int64(0)
+			if len(args) >= 1 {
+				if s, ok := args[0].(*object.Integer); ok {
+					start = s.Value
+				}
+			}
+			pairs := make([]object.RubyObject, len(arr.Elements))
+			for i, e := range arr.Elements {
+				pairs[i] = object.NewArray(e, object.NewInteger(int64(i)+start))
+			}
+			return &object.Enumerator{Receiver: object.NewArray(pairs...), Method: "each"}, nil
 		},
 		enumeratorWithIndex,
 	)

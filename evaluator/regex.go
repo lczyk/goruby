@@ -13,10 +13,10 @@ import (
 // (dotall in ruby vs single-line in Go: handled), `x` (extended:
 // approximated by stripping whitespace + comments).
 func evalRegexLiteral(env *object.Environment, n *ast.RegexLiteral) (object.RubyObject, error) {
-	if len(n.Parts) > 0 {
-		return nil, errorf("evaluator: interpolated regex not yet supported")
+	src, err := composeRegexSource(env, n)
+	if err != nil {
+		return nil, err
 	}
-	src := n.Value
 	flags := ""
 	if strings.Contains(n.Options, "i") {
 		flags += "i"
@@ -39,6 +39,33 @@ func evalRegexLiteral(env *object.Environment, n *ast.RegexLiteral) (object.Ruby
 		return raiseBuiltin(env, "RegexpError", err.Error())
 	}
 	return object.NewRegex(re, src, n.Options), nil
+}
+
+// composeRegexSource returns the regex source string for n. For
+// non-interpolated regexes this is just n.Value. For interpolated
+// regexes (n.Parts non-empty), evaluates each interpolation part and
+// concatenates: literal StringContent chunks pass through verbatim
+// (the regex engine handles backslash escapes); embedded expressions
+// stringify via Kernel#to_s. MRI does not auto-quote interpolated
+// values -- callers wanting that use Regexp.quote.
+func composeRegexSource(env *object.Environment, n *ast.RegexLiteral) (string, error) {
+	if len(n.Parts) == 0 {
+		return n.Value, nil
+	}
+	var b strings.Builder
+	for _, p := range n.Parts {
+		switch part := p.(type) {
+		case *ast.StringContent:
+			b.WriteString(part.Value)
+		default:
+			v, err := Eval(p, env)
+			if err != nil {
+				return "", err
+			}
+			b.WriteString(toStringValue(env, v))
+		}
+	}
+	return b.String(), nil
 }
 
 // regexMatch implements the `=~` operator: returns the byte index of
@@ -73,17 +100,110 @@ func regexMatch(env *object.Environment, left, right object.RubyObject) object.R
 // bootstrapRegexpClass installs the Regexp class so source code can
 // reference it via `Regexp.union(...)` / `Regexp.escape(...)`. Idempotent.
 func bootstrapRegexpClass(env *object.Environment) *object.Class {
-	if existing, ok := env.Get("Regexp"); ok {
-		if c, ok := existing.(*object.Class); ok {
-			return c
-		}
+	c := object.RegexpClass
+	// ClassMethods + instance Methods land on the package-level singleton.
+	// Idempotent across envs: a second bootstrap sees them present and
+	// is a no-op.
+	if _, ok := c.ClassMethods["union"]; !ok {
+		c.ClassMethods["union"] = &object.UserMethod{Name: "union", Body: nativeFn{fn: regexpUnion}}
+		c.ClassMethods["escape"] = &object.UserMethod{Name: "escape", Body: nativeFn{fn: regexpEscape}}
+		c.ClassMethods["quote"] = &object.UserMethod{Name: "quote", Body: nativeFn{fn: regexpEscape}}
 	}
-	c := object.NewClass("Regexp", nil)
-	c.ClassMethods["union"] = &object.UserMethod{Name: "union", Body: nativeFn{fn: regexpUnion}}
-	c.ClassMethods["escape"] = &object.UserMethod{Name: "escape", Body: nativeFn{fn: regexpEscape}}
-	c.ClassMethods["quote"] = &object.UserMethod{Name: "quote", Body: nativeFn{fn: regexpEscape}}
+	if _, ok := c.Methods["match?"]; !ok {
+		c.Methods["match?"] = &object.BuiltinMethod{Name: "match?", Fn: regexMatchQ}
+		c.Methods["match"] = &object.BuiltinMethod{Name: "match", Fn: regexMatchCall}
+		c.Methods["=~"] = &object.BuiltinMethod{Name: "=~", Fn: regexTildeMatch}
+		c.Methods["source"] = &object.BuiltinMethod{Name: "source", Fn: regexSource}
+		c.Methods["options"] = &object.BuiltinMethod{Name: "options", Fn: regexOptions}
+		c.Methods["to_s"] = &object.BuiltinMethod{Name: "to_s", Fn: regexToS}
+		c.Methods["inspect"] = &object.BuiltinMethod{Name: "inspect", Fn: regexToS}
+	}
 	env.SetGlobal("Regexp", c)
 	return c
+}
+
+// regexMatchQ implements Regexp#match? -- true iff the regex matches s.
+func regexMatchQ(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+	r, ok := recv.(*object.Regex)
+	if !ok {
+		return nil, errorf("evaluator: Regexp#match? on non-Regex %T", recv)
+	}
+	if len(args) < 1 {
+		return nil, errorf("evaluator: Regexp#match? wrong number of arguments (given %d, expected 1..2)", len(args))
+	}
+	s, ok := stringText(env, args[0])
+	if !ok {
+		return nil, errorf("evaluator: Regexp#match? expects String, got %T", args[0])
+	}
+	return object.BooleanOf(r.RE.MatchString(s)), nil
+}
+
+// regexMatchCall implements Regexp#match -- returns the matched substring
+// (group 0) or nil. MRI returns a MatchData; we approximate with the
+// matched string, which is what most corpus uses inspect on.
+func regexMatchCall(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+	r, ok := recv.(*object.Regex)
+	if !ok {
+		return nil, errorf("evaluator: Regexp#match on non-Regex %T", recv)
+	}
+	if len(args) < 1 {
+		return nil, errorf("evaluator: Regexp#match wrong number of arguments (given %d, expected 1..2)", len(args))
+	}
+	s, ok := stringText(env, args[0])
+	if !ok {
+		return nil, errorf("evaluator: Regexp#match expects String, got %T", args[0])
+	}
+	if m := r.RE.FindString(s); m != "" {
+		return object.NewString(m), nil
+	}
+	if loc := r.RE.FindStringIndex(s); loc != nil {
+		return object.NewString(""), nil
+	}
+	return object.NIL, nil
+}
+
+// regexTildeMatch implements Regexp#=~ -- byte index of first match or nil.
+func regexTildeMatch(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+	if len(args) != 1 {
+		return nil, errorf("evaluator: Regexp#=~ wrong number of arguments (given %d, expected 1)", len(args))
+	}
+	return regexMatch(env, recv, args[0]), nil
+}
+
+func regexSource(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+	r, ok := recv.(*object.Regex)
+	if !ok {
+		return nil, errorf("evaluator: Regexp#source on non-Regex %T", recv)
+	}
+	return object.NewString(r.Source), nil
+}
+
+// regexOptions returns the bitmask of MRI Regexp option flags:
+// IGNORECASE=1, EXTENDED=2, MULTILINE=4. Mirrors MRI's Regexp#options.
+func regexOptions(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+	r, ok := recv.(*object.Regex)
+	if !ok {
+		return nil, errorf("evaluator: Regexp#options on non-Regex %T", recv)
+	}
+	var bits int64
+	if strings.Contains(r.Options, "i") {
+		bits |= 1
+	}
+	if strings.Contains(r.Options, "x") {
+		bits |= 2
+	}
+	if strings.Contains(r.Options, "m") {
+		bits |= 4
+	}
+	return object.NewInteger(bits), nil
+}
+
+func regexToS(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+	r, ok := recv.(*object.Regex)
+	if !ok {
+		return nil, errorf("evaluator: Regexp#to_s on non-Regex %T", recv)
+	}
+	return object.NewString(r.Inspect()), nil
 }
 
 // regexpUnion builds a single regex matching any of args. Strings get

@@ -358,8 +358,16 @@ func decodeStringEscapes(s string, singleQuoted bool) string {
 
 func evalSymbolLiteral(env *object.Environment, n *ast.SymbolLiteral) (object.RubyObject, error) {
 	// Parser stores the symbol's name as either *ast.Identifier (`:foo`)
-	// or *ast.StringLiteral (`a:` hash label). Both forms carry the
-	// bare name; intern it.
+	// or *ast.StringLiteral (`a:` hash label or `:"...#{}..."` form).
+	// Interpolated string form evaluates each part and concatenates.
+	if sl, ok := n.Value.(*ast.StringLiteral); ok && len(sl.Parts) > 0 {
+		v, err := evalStringLiteral(env, sl)
+		if err != nil {
+			return nil, err
+		}
+		s, _ := stringText(env, v)
+		return env.Symbols().Intern(s), nil
+	}
 	name, err := symbolName(n.Value)
 	if err != nil {
 		return nil, err
@@ -789,6 +797,25 @@ func stringIndex(s string, args []object.RubyObject) (object.RubyObject, error) 
 		}
 		return nil, errorf("evaluator: String#[] unsupported index type %T", args[0])
 	case 2:
+		// (regex, group_index) -- pick capture group from match.
+		if re, ok := args[0].(*object.Regex); ok {
+			g, ok := args[1].(*object.Integer)
+			if !ok {
+				return nil, errorf("evaluator: String#[regex, group] group must be Integer")
+			}
+			loc := re.RE.FindStringSubmatchIndex(s)
+			if loc == nil {
+				return object.NIL, nil
+			}
+			idx := int(g.Value)
+			if idx < 0 || idx*2+1 >= len(loc) {
+				return object.NIL, nil
+			}
+			if loc[idx*2] < 0 {
+				return object.NIL, nil
+			}
+			return object.NewString(s[loc[idx*2]:loc[idx*2+1]]), nil
+		}
 		start, ok1 := args[0].(*object.Integer)
 		count, ok2 := args[1].(*object.Integer)
 		if !ok1 || !ok2 {

@@ -15,7 +15,7 @@ func NewRegex(re *regexp.Regexp, source, options string) *Regex {
 }
 
 func (r *Regex) Type() Type       { return OBJECT_OBJ }
-func (r *Regex) Class() RubyClass { return nil }
+func (r *Regex) Class() RubyClass { return RegexpClass }
 func (r *Regex) Inspect() string {
 	return "/" + r.Source + "/" + r.Options
 }

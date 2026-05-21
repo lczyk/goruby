@@ -402,6 +402,15 @@ func evalContextCall(env *object.Environment, n *ast.ContextCallExpression) (obj
 			return nil, errorf("evaluator: blocks on kernel calls not yet supported")
 		}
 		if blockProc != nil {
+			if n.Function.Value == "lambda" || n.Function.Value == "proc" {
+				// Kernel#lambda(&blk) / Kernel#proc(&blk) -- return a
+				// fresh Proc wrapping the captured block. `lambda` flips
+				// the IsLambda flag so Proc#lambda? reflects MRI's
+				// strict-arity / return-semantics distinction.
+				cp := *blockProc
+				cp.IsLambda = n.Function.Value == "lambda"
+				return &cp, nil
+			}
 			if m, ok := env.GetMethod(n.Function.Value); ok {
 				if um, ok := m.(*object.UserMethod); ok {
 					// User method called with &block-capture: wrap the

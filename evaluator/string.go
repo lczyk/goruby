@@ -340,6 +340,10 @@ func callStringMethod(env *object.Environment, recv object.RubyObject, name stri
 		return nil, false, nil
 	}
 	switch name {
+	case "slice", "[]":
+		// MRI: String#slice is String#[] with identical arg shapes.
+		v, err := stringIndex(s, args)
+		return v, true, err
 	case "length", "size":
 		return object.NewInteger(int64(len(s))), true, nil
 	case "upcase":

@@ -37,6 +37,7 @@ var (
 	FalseClassClass  *Class
 	ModuleClass      *Class
 	ClassClass       *Class
+	RegexpClass      *Class
 )
 
 func init() {
@@ -56,4 +57,5 @@ func init() {
 	FalseClassClass = NewClass("FalseClass", ObjectClass)
 	ModuleClass = NewClass("Module", ObjectClass)
 	ClassClass = NewClass("Class", ModuleClass)
+	RegexpClass = NewClass("Regexp", ObjectClass)
 }

@@ -15,6 +15,7 @@ var arrayMethodNames = []string{
 	"fill", "rotate", "rotate!", "transpose", "sample",
 	"reverse!", "sort!", "uniq!", "compact!", "flatten!",
 	"index", "find_index", "rindex",
+	"slice", "[]",
 }
 
 func init() {

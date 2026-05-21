@@ -228,6 +228,14 @@ func (e *Environment) SetGlobal(name string, value RubyObject) RubyObject {
 	return value
 }
 
+// GetGlobal looks up name only on the root environment, bypassing the
+// outer-chain walk. Used by `::Const` resolution: the leading `::`
+// forces top-level lookup even when an enclosing module/class shadows
+// the name in its own constant table.
+func (e *Environment) GetGlobal(name string) (RubyObject, bool) {
+	return e.root().getLocal(name)
+}
+
 // AssignVisible binds name in whichever enclosing scope already holds
 // it; if none does, binds locally. Mirrors ruby block-scoping where a
 // block writes through to an outer local var that's already defined.

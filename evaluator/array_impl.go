@@ -3,34 +3,48 @@ package evaluator
 import (
 	"math/rand"
 	"strings"
+	"time"
 
 	"github.com/lczyk/goruby/object"
 )
 
+// rng is the evaluator's private PRNG. Backs Kernel#rand, Kernel#srand,
+// Array#sample. A package-private *rand.Rand instance keeps seeding
+// deterministic without interfering with Go's default source -- and
+// avoids the deprecated rand.Seed on the global source.
+var rng = rand.New(rand.NewSource(1))
+
 // randomIntn returns a non-negative pseudo-random int in [0, n). Used
-// by Array#sample. Centralised so future seeding work (Kernel#srand,
-// Random.new) has a single hook.
+// by Array#sample.
 func randomIntn(n int) int {
 	if n <= 0 {
 		return 0
 	}
-	return rand.Intn(n)
+	return rng.Intn(n)
 }
 
 // randFloat returns a pseudo-random float in [0, 1). Hook for
 // Kernel#rand's no-arg form.
-func randFloat() float64 { return rand.Float64() }
+func randFloat() float64 { return rng.Float64() }
 
-// randSeed reseeds the global PRNG. Exposed for Kernel#srand.
+// randSeed reseeds the evaluator's PRNG. Exposed for Kernel#srand.
+// seed=0 resets to MRI's "use time" default; we approximate with
+// time.Now().UnixNano() so reseeding is non-deterministic but not
+// identical to the prior state.
 func randSeed(seed int64) {
-	// math/rand's global source is deterministic when seeded.
-	// Use seed=0 as "reset to default" so a bare srand restores
-	// well-known output for tests.
-	rand.Seed(seed)
+	if seed == 0 {
+		seed = time.Now().UnixNano()
+	}
+	rng = rand.New(rand.NewSource(seed))
 }
 
 func callArrayMethod(env *object.Environment, r *object.Array, name string, args []object.RubyObject) (object.RubyObject, error) {
 	switch name {
+	case "slice", "[]":
+		// MRI: Array#slice is identical to Array#[]; both accept
+		// (index), (start, length), or (range). Delegate to the shared
+		// arrayIndex used by subscript notation.
+		return arrayIndex(r, args)
 	case "clear":
 		r.Elements = r.Elements[:0]
 		return r, nil
@@ -357,20 +371,29 @@ func callArrayMethod(env *object.Environment, r *object.Array, name string, args
 		r.Elements = out
 		return r, nil
 	case "flatten!":
-		// Single-level flatten in-place. Recursive shapes (Array of
-		// Array of Array) need extra arg + recursion -- punt for now.
-		changed := false
-		out := make([]object.RubyObject, 0, len(r.Elements))
-		for _, e := range r.Elements {
-			if arr, ok := e.(*object.Array); ok {
-				out = append(out, arr.Elements...)
-				changed = true
-			} else {
-				out = append(out, e)
+		// In-place recursive flatten. Optional depth arg matches MRI's
+		// Array#flatten!(depth): default -1 means flatten all levels.
+		depth := -1
+		if len(args) == 1 {
+			d, ok := args[0].(*object.Integer)
+			if !ok {
+				return nil, errorf("evaluator: Array#flatten! depth must be Integer")
 			}
+			depth = int(d.Value)
 		}
-		if !changed {
-			return object.NIL, nil
+		out := flattenArrayDepth(r, depth)
+		// MRI returns nil when no change was needed.
+		if len(out) == len(r.Elements) {
+			same := true
+			for i := range out {
+				if out[i] != r.Elements[i] {
+					same = false
+					break
+				}
+			}
+			if same {
+				return object.NIL, nil
+			}
 		}
 		r.Elements = out
 		return r, nil
@@ -659,31 +682,78 @@ func callArrayMethod(env *object.Environment, r *object.Array, name string, args
 		}
 		return best, nil
 	case "sum":
-		var intSum int64
-		var floatSum float64
-		anyFloat := false
-		for _, e := range r.Elements {
-			switch v := e.(type) {
-			case *object.Integer:
+		// Fast path: numeric-only with no init or init==0 -> direct
+		// int/float accumulation. Anything else (init given, or any
+		// non-numeric element) falls through to generic + dispatch so
+		// `["a","b"].sum("")` and `[[1],[2]].sum([])` work.
+		if len(args) == 0 {
+			fast := true
+			for _, e := range r.Elements {
+				switch e.(type) {
+				case *object.Integer, *object.Float:
+				default:
+					fast = false
+				}
+				if !fast {
+					break
+				}
+			}
+			if fast {
+				var intSum int64
+				var floatSum float64
+				anyFloat := false
+				for _, e := range r.Elements {
+					switch v := e.(type) {
+					case *object.Integer:
+						if anyFloat {
+							floatSum += float64(v.Value)
+						} else {
+							intSum += v.Value
+						}
+					case *object.Float:
+						if !anyFloat {
+							floatSum = float64(intSum)
+							anyFloat = true
+						}
+						floatSum += v.Value
+					}
+				}
 				if anyFloat {
-					floatSum += float64(v.Value)
-				} else {
-					intSum += v.Value
+					return object.NewFloat(floatSum), nil
 				}
-			case *object.Float:
-				if !anyFloat {
-					floatSum = float64(intSum)
-					anyFloat = true
-				}
-				floatSum += v.Value
-			default:
-				return nil, errorf("evaluator: Array#sum: non-numeric element %T not supported", e)
+				return object.NewInteger(intSum), nil
 			}
 		}
-		if anyFloat {
-			return object.NewFloat(floatSum), nil
+		var acc object.RubyObject
+		if len(args) == 1 {
+			acc = args[0]
+		} else {
+			acc = object.NewInteger(0)
 		}
-		return object.NewInteger(intSum), nil
+		for _, e := range r.Elements {
+			// String/Array concat fast paths -- mirrors evalInfix's `+`.
+			if l, ok := acc.(*object.String); ok {
+				if t, ok := stringText(env, e); ok {
+					acc = object.NewString(string(l.Buf) + t)
+					continue
+				}
+			}
+			if la, ok := acc.(*object.Array); ok {
+				if ra, ok := e.(*object.Array); ok {
+					elems := make([]object.RubyObject, 0, len(la.Elements)+len(ra.Elements))
+					elems = append(elems, la.Elements...)
+					elems = append(elems, ra.Elements...)
+					acc = object.NewArray(elems...)
+					continue
+				}
+			}
+			v, err := callMethod(env, acc, "+", []object.RubyObject{e})
+			if err != nil {
+				return nil, err
+			}
+			acc = v
+		}
+		return acc, nil
 	case "grep":
 		if len(args) != 1 {
 			return nil, errorf("evaluator: Array#grep expects 1 arg, got %d", len(args))

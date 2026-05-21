@@ -367,13 +367,30 @@ func evalIndexAssign(env *object.Environment, n *ast.IndexExpression, value obje
 	if err != nil {
 		return err
 	}
-	if len(n.Arguments) != 1 {
-		return errorf("evaluator: []= with %d args not yet supported", len(n.Arguments))
+	keys := make([]object.RubyObject, 0, len(n.Arguments))
+	for _, a := range n.Arguments {
+		v, err := Eval(a, env)
+		if err != nil {
+			return err
+		}
+		keys = append(keys, v)
 	}
-	key, err := Eval(n.Arguments[0], env)
-	if err != nil {
-		return err
+	// Multi-arg []= on user-defined classes: forward all keys + value
+	// to the class's []= method. Hash/Array keep single-arg semantics
+	// (the only forms MRI defines for them).
+	if len(keys) != 1 {
+		if inst, ok := recv.(*object.Instance); ok {
+			if m, found := dispatchClass(env, inst).LookupMethod("[]="); found {
+				if um, ok := m.(*object.UserMethod); ok {
+					_, err := invokeMethodOn(env, inst, um, append(append([]object.RubyObject{}, keys...), value), nil)
+					return err
+				}
+			}
+			return errorf("evaluator: NoMethodError: undefined method `[]=' for instance of %s", inst.C.Name)
+		}
+		return errorf("evaluator: []= with %d args not yet supported on %T", len(keys), recv)
 	}
+	key := keys[0]
 	switch r := recv.(type) {
 	case *object.Hash:
 		for i, e := range r.Entries {
