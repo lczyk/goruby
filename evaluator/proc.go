@@ -134,6 +134,7 @@ func bootstrapBuiltins(env *object.Environment) {
 	bootstrapIO(env)
 	bootstrapRegexpClass(env)
 	bootstrapEncodingClass(env)
+	bootstrapPrimeModule(env)
 }
 
 // bootstrapComparableModule registers Comparable so `include Comparable`
