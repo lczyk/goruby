@@ -3473,7 +3473,10 @@ func TestReadSourceIORreader(t *testing.T) {
 }
 
 func TestContextCallScopeOperator(t *testing.T) {
-	input := "Foo::bar"
+	// `Foo::Bar` -- uppercase right-hand side is a scoped constant
+	// lookup. `Foo::bar` (lowercase) is a method call, exercised by
+	// the "scope as context call" subtest of TestContextCallExpression.
+	input := "Foo::Bar"
 	program, err := parseSource(input)
 	checkParserErrors(t, err)
 	assert.That(t, !(len(program.Statements) != 1), "expected 1 statement, got %d", len(program.Statements))
@@ -3481,7 +3484,8 @@ func TestContextCallScopeOperator(t *testing.T) {
 	require.That(t, ok, "expected *ast.ExpressionStatement, got %T", program.Statements[0])
 	sid, ok := stmt.Expression.(*ast.ScopedIdentifier)
 	require.That(t, ok, "expected *ast.ScopedIdentifier, got %T", stmt.Expression)
-	if sid.Outer == nil || sid.Outer.Value != "Foo" {
+	outerIdent, ok := sid.Outer.(*ast.Identifier)
+	if !ok || outerIdent.Value != "Foo" {
 		t.Errorf("expected Outer 'Foo', got %v", sid.Outer)
 	}
 }

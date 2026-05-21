@@ -1215,6 +1215,25 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 		if right == nil {
 			return nil
 		}
+		// Modifier if/unless: `obj.attr = val if cond` should restructure
+		// to `if cond then obj.attr=(val) end` -- modifier binds outside
+		// the setter, not inside its arg list. Mirrors the same shape
+		// the plain-Identifier branch builds below for `a = val if cond`.
+		// Detect: right is a ConditionalExpression with EndPos==0 (the
+		// modifier form, no `end` token) and not a ternary.
+		if ce, ok := right.(*ast.ConditionalExpression); ok && ce.Token.Type != token.QMARK && ce.EndPos == 0 {
+			if len(ce.Consequence.Statements) == 1 {
+				if es, ok := ce.Consequence.Statements[0].(*ast.ExpressionStatement); ok {
+					leftNode.Arguments = []ast.Expression{es.Expression}
+					ce.Consequence = ast.Init(p.arena.NewBlockStatement(), ast.BlockStatement{
+						Statements: []ast.Statement{
+							ast.Init(p.arena.NewExpressionStatement(), ast.ExpressionStatement{Expression: leftNode}),
+						},
+					})
+					return ce
+				}
+			}
+		}
 		leftNode.Arguments = []ast.Expression{right}
 		return leftNode
 	default:
@@ -1993,19 +2012,25 @@ func (p *parser) parseGlobal() ast.Expression {
 
 func (p *parser) parseScopedIdentifierExpression(outer ast.Expression) ast.Expression {
 	defer p.traceEnter()()
-	ident, ok := outer.(*ast.Identifier)
-	if !ok {
-		return p.parseMethodCall(outer)
-	}
-
-	scopeToken := p.curToken
-	scopedIdent := p.arena.NewScopedIdentifier()
-	scopedIdent.Token = scopeToken
-	scopedIdent.Outer = ident
+	// MRI rule: `X::Foo` is a constant lookup (Foo uppercase), `X::foo`
+	// is a method call (foo lowercase). The previous version of this
+	// parser required outer to be an *Identifier and routed everything
+	// else to method-call parsing -- which made `self.class::OPERATORS`
+	// resolve as a method call. Fix by allowing any expression as Outer
+	// and switching on the inner token's case to pick the right node
+	// shape.
 	if !p.peekTokenOneOf(token.CONST, token.IDENT) {
 		p.peekError(token.CONST)
 		return nil
 	}
+	// `outer::ident` -> method-call form (same as `outer.ident`).
+	if p.peekTokenIs(token.IDENT) {
+		return p.parseMethodCall(outer)
+	}
+	scopeToken := p.curToken
+	scopedIdent := p.arena.NewScopedIdentifier()
+	scopedIdent.Token = scopeToken
+	scopedIdent.Outer = outer
 	p.nextToken()
 	scopedIdent.Inner = p.parseIdentifier()
 	for p.peekTokenIs(token.SCOPE) {
@@ -2016,13 +2041,9 @@ func (p *parser) parseScopedIdentifierExpression(outer ast.Expression) ast.Expre
 			return nil
 		}
 		p.nextToken()
-		outerIdent := ast.Init(p.arena.NewIdentifier(), ast.Identifier{
-			Token: scopedIdent.Outer.Token,
-			Value: scopedIdent.String(),
-		})
 		scopedIdent = ast.Init(p.arena.NewScopedIdentifier(), ast.ScopedIdentifier{
 			Token: scopeToken,
-			Outer: outerIdent,
+			Outer: scopedIdent,
 			Inner: p.parseIdentifier(),
 		})
 	}

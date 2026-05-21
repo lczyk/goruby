@@ -1011,7 +1011,12 @@ func (g *Global) TokenLiteral() string { return g.Value }
 // ScopedIdentifier represents a scoped Constant declaration
 type ScopedIdentifier struct {
 	Token token.Token // the token.SCOPE
-	Outer *Identifier
+	// Outer is the LHS of the `::` operator. Usually an *Identifier
+	// (`Foo::Bar`) or a nested *ScopedIdentifier (`Foo::Bar::Baz`), but
+	// any expression that resolves to a Class / Module value at runtime
+	// is permitted -- e.g. `self.class::OPERATORS`, where Outer is a
+	// *ContextCallExpression.
+	Outer Expression
 	Inner Expression
 }
 
