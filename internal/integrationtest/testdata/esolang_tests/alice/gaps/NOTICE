@@ -3,10 +3,13 @@ alice gap probes
 
 programs in this directory exercise alice opcodes that hit
 evaluator-level gaps in goruby. they're NOT vendored as fixtures
-under esolang_tests/alice/ because they fail under goruby today --
-they exist as concrete reproducers so the gap_probes_test suite
-can confirm the current failure mode and flip to success when
-the underlying support lands.
+directly under esolang_tests/alice/ because they fail under goruby
+today -- they'd break the TestEsolangPrograms suite. they live in
+this subdirectory (which the suite's `*.in` glob doesn't pick up)
+as concrete reproducers so gap_probes_test.go can drive them
+through the real alice interpreter and assert the current failure
+mode. when the underlying support lands, flip each pin to the
+real expected output.
 
 programs
 --------

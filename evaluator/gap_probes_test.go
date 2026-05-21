@@ -95,7 +95,7 @@ func TestGapAlicePrime(t *testing.T) {
 	interp := filepath.Join(repoRoot, "internal/integrationtest/testdata/gems/alice/interpreter.rb")
 	interpSrc, err := os.ReadFile(interp)
 	assert.NoError(t, err, "read interpreter.rb")
-	probe := filepath.Join(repoRoot, "internal/integrationtest/testdata/gems/alice/extra_examples/gap_prime.alice")
+	probe := filepath.Join(repoRoot, "internal/integrationtest/testdata/esolang_tests/alice/gaps/gap_prime.alice")
 	assert.NoError(t, mustExist(probe), "probe exists")
 
 	target := token.MustParseVersion("2.6")
