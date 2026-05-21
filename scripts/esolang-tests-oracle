@@ -44,6 +44,7 @@ function _process_lang() {
             alice)          interp="${ROOT}/testdata/gems/alice/interpreter.rb" ;;
             hexagony)       interp="${ROOT}/testdata/gems/hexagony/interpreter.rb" ;;
             wumpus)         interp="${ROOT}/testdata/gems/wumpus/wumpus.rb" ;;
+            bouncy-lang)    interp="${ROOT}/testdata/gems/bouncy-lang/bouncy.rb" ;;
             *)              interp="${ROOT}/testdata/gems/${lang}/${lang}.rb" ;;
         esac
     fi

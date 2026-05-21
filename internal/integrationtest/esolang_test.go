@@ -51,6 +51,8 @@ func resolveEsolangInterp(lang string) string {
 		// wumpus.rb wraps it with the CLI shim that actually
 		// reads ARGV[0] and calls Interpreter#run.
 		cands = append(cands, "testdata/gems/wumpus/wumpus.rb")
+	case "bouncy-lang":
+		cands = append(cands, "testdata/gems/bouncy-lang/bouncy.rb")
 	}
 	cands = append(cands,
 		filepath.Join(esolangInterpDir, lang+".rb"),
