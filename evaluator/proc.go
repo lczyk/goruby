@@ -166,6 +166,7 @@ func bootstrapBuiltins(env *object.Environment) {
 	bootstrapPrimeModule(env)
 	bootstrapEnumeratorClass(env)
 	bootstrapOptionParser(env)
+	bootstrapStringScanner(env)
 }
 
 // bootstrapComparableModule registers Comparable so `include Comparable`

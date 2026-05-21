@@ -207,8 +207,16 @@ func kernelRequire(env *object.Environment, args []object.RubyObject) (object.Ru
 		"matrix", "ostruct", "delegate", "forwardable", "singleton",
 		"observer", "logger", "benchmark", "digest", "digest/md5",
 		"digest/sha1", "digest/sha256", "base64", "zlib", "socket",
-		"net/http", "open-uri", "io/console", "etc":
+		"net/http", "open-uri", "io/console", "etc", "strscan":
 		return object.TRUE, nil
+	}
+	// Non-stdlib name: fall back to require_relative-style resolution
+	// from the current source file's directory. mri searches $LOAD_PATH,
+	// which we don't model; this fallback covers the common shape where
+	// a lib/<gem>.rb does `require 'gem/sub'` and the gem's lib dir was
+	// added to $LOAD_PATH so the relative path finds the sibling file.
+	if env.CurrentFile() != "" {
+		return kernelRequireRelative(env, args)
 	}
 	return nil, errorf("evaluator: LoadError: cannot load such file -- %s", name)
 }

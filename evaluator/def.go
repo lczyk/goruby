@@ -461,7 +461,9 @@ func bindPositionalParams(env *object.Environment, params []*ast.FunctionParamet
 		ai := 0
 		for _, p := range params {
 			if ai < len(args) {
-				env.Set(p.Name.Value, args[ai])
+				if err := bindOneParam(env, p, args[ai]); err != nil {
+					return err
+				}
 				ai++
 				continue
 			}
@@ -469,7 +471,9 @@ func bindPositionalParams(env *object.Environment, params []*ast.FunctionParamet
 			if err != nil {
 				return err
 			}
-			env.Set(p.Name.Value, v)
+			if err := bindOneParam(env, p, v); err != nil {
+				return err
+			}
 		}
 		return nil
 	}
@@ -480,14 +484,47 @@ func bindPositionalParams(env *object.Environment, params []*ast.FunctionParamet
 		return errorf("evaluator: ArgumentError: wrong number of arguments (given %d, expected %d+)", len(args), preCount+postCount)
 	}
 	for i := 0; i < preCount; i++ {
-		env.Set(params[i].Name.Value, args[i])
+		if err := bindOneParam(env, params[i], args[i]); err != nil {
+			return err
+		}
 	}
 	splatLen := len(args) - preCount - postCount
 	splatArgs := make([]object.RubyObject, splatLen)
 	copy(splatArgs, args[preCount:preCount+splatLen])
 	env.Set(params[splatIdx].Name.Value, object.NewArray(splatArgs...))
 	for i := 0; i < postCount; i++ {
-		env.Set(params[splatIdx+1+i].Name.Value, args[preCount+splatLen+i])
+		if err := bindOneParam(env, params[splatIdx+1+i], args[preCount+splatLen+i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// bindOneParam binds value to param's name, recursing into nested
+// destructuring (|(a, b), c| ...) when param.Destructure is non-nil.
+// Destructuring requires the value to be an Array (or convertible);
+// short arrays pad with nil, extras drop -- matches ruby's block-
+// arity tolerance for tuple destructuring.
+func bindOneParam(env *object.Environment, param *ast.FunctionParameter, value object.RubyObject) error {
+	if len(param.Destructure) == 0 {
+		env.Set(param.Name.Value, value)
+		return nil
+	}
+	arr, ok := value.(*object.Array)
+	var elems []object.RubyObject
+	if ok {
+		elems = arr.Elements
+	} else {
+		elems = []object.RubyObject{value}
+	}
+	for i, inner := range param.Destructure {
+		var v object.RubyObject = object.NIL
+		if i < len(elems) {
+			v = elems[i]
+		}
+		if err := bindOneParam(env, inner, v); err != nil {
+			return err
+		}
 	}
 	return nil
 }

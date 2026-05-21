@@ -4160,7 +4160,8 @@ func (p *parser) parseOneParameter(endToken token.Type) []*ast.FunctionParameter
 		}
 		destructName := "(" + strings.Join(names, ", ") + ")"
 		return []*ast.FunctionParameter{{
-			Name: ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: destructName}),
+			Name:        ast.Init(p.arena.NewIdentifier(), ast.Identifier{Token: p.curToken, Value: destructName}),
+			Destructure: inner,
 		}}
 	}
 	if p.peekTokenIs(token.LABEL) {

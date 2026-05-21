@@ -2502,6 +2502,12 @@ type FunctionParameter struct {
 	IsNoKeywords   bool // **nil (ruby 2.7+)
 	IsForwarding   bool // ... argument forwarding
 	IsImplicitRest bool // sentinel for `{|a,|}` trailing comma (MRI's ImplicitRestNode)
+	// Destructure carries the nested parameter list for a parenthesised
+	// block-param tuple like `|(a, b), c|`. Non-nil iff the param
+	// destructures its bound value into multiple names; the Name field
+	// in that case holds the synthesised display string "(a, b)" purely
+	// for inspect / WriteTo. Binders read Destructure to recurse.
+	Destructure []*FunctionParameter
 }
 
 func (f *FunctionParameter) expressionNode() {}
