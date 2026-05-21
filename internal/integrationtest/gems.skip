@@ -19,3 +19,9 @@ parse esolang-book-sources/1-4/07.rb: parser gaps
 
 walk esolang-book-sources/1-2/03.rb: parse failed; walk skipped
 walk esolang-book-sources/1-4/07.rb: parse failed; walk skipped
+
+# rasel uses `class X < DelegateClass Rational` (paren-less call as superclass)
+# and define_singleton_method blocks with multi-line expressions parser doesn't
+# yet handle. Tracked as separate parser gaps; revisit if either lands.
+parse rasel/lib/rasel.rb: paren-less DelegateClass superclass + define_singleton_method body
+walk rasel/lib/rasel.rb: parse failed; walk skipped
