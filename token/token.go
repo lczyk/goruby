@@ -345,9 +345,7 @@ func init() {
 		STRING_BEG: true, STRING_CONTENT: true, STRING_END: true,
 		XSTR_BEG: true, XSTR_CONTENT: true, XSTR_END: true,
 		REGEX_BEG: true, REGEX_END: true,
-		NEWLINE: true, HASH: true,
-		EMBEXPR_BEG: true, EMBEXPR_END: true,
-		LABEL: true, SYMBEG: true,
+		LABEL: true,
 	}
 	for i := Type(0); i <= TypeMax; i++ {
 		if variable[i] {
@@ -358,12 +356,15 @@ func init() {
 		}
 	}
 	// Hand-fix entries where tokens[i] holds the type name rather than
-	// the source spelling. Right now only CLASS_VAR: its tokens[] entry
-	// reads "CLASS_VAR" for debug printing via Type.String(), but the
-	// source text of every CLASS_VAR token is the fixed "@@" sigil
-	// (the lexer emits CLASS_VAR alone for `@@`; the identifier after
-	// it comes as a separate IDENT token).
-	typeFixedLits[CLASS_VAR] = "@@"
+	// the source spelling. tokens[] is shared with Type.String() debug
+	// printing, so for a handful of types the name and the source text
+	// diverge -- patch the source text here.
+	typeFixedLits[CLASS_VAR] = "@@"   // lexer emits CLASS_VAR alone for `@@`; the trailing identifier is a separate IDENT
+	typeFixedLits[NEWLINE] = "\n"     // every NEWLINE token covers a single `\n` byte
+	typeFixedLits[HASH] = "#"         // line-comment leader; the body follows as separate tokens
+	typeFixedLits[EMBEXPR_BEG] = "#{" // `#{` interp opener
+	typeFixedLits[EMBEXPR_END] = "}"  // matching `}`
+	typeFixedLits[SYMBEG] = ":"       // bare `:` introducing a symbol literal (distinct from COLON)
 }
 
 // LookupIdent returns a keyword Type if ident is a keyword. If ident starts
