@@ -15,4 +15,3 @@
 # One fixture per known evaluator gap. Reasons reference the offending
 # evaluator/object source location where the gap currently lives.
 
-eval gaps/pattern_matching.rb: control.go:189: case/in pattern matching not yet supported

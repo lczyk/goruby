@@ -243,7 +243,7 @@ func evalForIn(env *object.Environment, infix *ast.InfixExpression, body *ast.Bl
 
 func evalCase(env *object.Environment, n *ast.CaseExpression) (object.RubyObject, error) {
 	if len(n.InClauses) > 0 {
-		return nil, errorf("evaluator: case/in pattern matching not yet supported")
+		return evalCaseIn(env, n)
 	}
 
 	var subject object.RubyObject
@@ -293,6 +293,237 @@ func evalCase(env *object.Environment, n *ast.CaseExpression) (object.RubyObject
 		return evalBlockStatement(env, n.ElseBody)
 	}
 	return object.NIL, nil
+}
+
+// evalCaseIn implements case/in pattern matching (ruby 3.0+). Each
+// `in <pattern>` clause is tried in order; on a successful match the
+// pattern's named bindings are installed in env and the body runs.
+// No matching clause + no else body returns nil.
+func evalCaseIn(env *object.Environment, n *ast.CaseExpression) (object.RubyObject, error) {
+	if n.Condition == nil {
+		return nil, errorf("evaluator: case/in requires a subject expression")
+	}
+	subject, err := Eval(n.Condition, env)
+	if err != nil {
+		return nil, err
+	}
+	for _, in := range n.InClauses {
+		if len(in.Conditions) == 0 {
+			continue
+		}
+		// in clauses always carry exactly one pattern; the slice shape
+		// is shared w/ WhenClause.
+		ok, err := matchPattern(env, in.Conditions[0], subject)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			return evalBlockStatement(env, in.Body)
+		}
+	}
+	if n.ElseBody != nil {
+		return evalBlockStatement(env, n.ElseBody)
+	}
+	return object.NIL, nil
+}
+
+// matchPattern checks subject against an ast pattern node. On success
+// any named bindings are installed in env via AssignVisible and the
+// function returns true. Supported pattern shapes (the subset the
+// corpus exercises today):
+//
+//   - literal patterns: IntegerLiteral, StringLiteral (no interp),
+//     SymbolLiteral, true/false/nil. Match by rubyEqual.
+//   - class pattern: an Identifier resolving to a Class. Match by
+//     subject.is_a?(class).
+//   - identifier binding: lowercase Identifier. Always matches; binds
+//     subject to the name.
+//   - capture: `<pat> => name` (InfixExpression Operator "=>").
+//     Match pat, then bind subject to name.
+//   - array pattern: ArrayLiteral. Subject must be Array; element
+//     count matches (with a single `*name` splat allowed, consuming
+//     the unmatched middle / tail).
+//   - hash pattern: HashLiteral. Subject must be Hash; every pattern
+//     key must be present and its value match the sub-pattern.
+//
+// Anything else is rejected as unsupported so callers see the gap.
+func matchPattern(env *object.Environment, pat ast.Expression, subject object.RubyObject) (bool, error) {
+	switch p := pat.(type) {
+	case *ast.IntegerLiteral:
+		v, err := Eval(p, env)
+		if err != nil {
+			return false, err
+		}
+		return rubyEqual(v, subject), nil
+	case *ast.SymbolLiteral:
+		v, err := Eval(p, env)
+		if err != nil {
+			return false, err
+		}
+		return rubyEqual(v, subject), nil
+	case *ast.StringLiteral:
+		if len(p.Parts) > 0 {
+			return false, errorf("evaluator: case/in: interpolated string pattern not supported")
+		}
+		v, err := Eval(p, env)
+		if err != nil {
+			return false, err
+		}
+		return rubyEqual(v, subject), nil
+	case *ast.Nil:
+		_, isNil := subject.(*object.Nil)
+		return isNil, nil
+	case *ast.Boolean:
+		v, err := Eval(p, env)
+		if err != nil {
+			return false, err
+		}
+		return rubyEqual(v, subject), nil
+	case *ast.Identifier:
+		if isConstantName(p.Value) {
+			// Class / constant pattern: subject.is_a?(constant).
+			v, err := Eval(p, env)
+			if err != nil {
+				return false, err
+			}
+			if cls, ok := v.(*object.Class); ok {
+				c := classOfRaw(env, subject)
+				return c != nil && c.IsAncestor(cls), nil
+			}
+			return rubyEqual(v, subject), nil
+		}
+		// Lowercase identifier: always matches, binds subject.
+		env.AssignVisible(p.Value, subject)
+		return true, nil
+	case *ast.InfixExpression:
+		if p.Operator == "=>" {
+			ok, err := matchPattern(env, p.Left, subject)
+			if err != nil || !ok {
+				return false, err
+			}
+			id, ok := p.Right.(*ast.Identifier)
+			if !ok {
+				return false, errorf("evaluator: case/in: capture RHS must be an identifier, got %T", p.Right)
+			}
+			env.AssignVisible(id.Value, subject)
+			return true, nil
+		}
+		return false, errorf("evaluator: case/in: unsupported infix pattern %q", p.Operator)
+	case *ast.ArrayLiteral:
+		return matchArrayPattern(env, p, subject)
+	case *ast.HashLiteral:
+		return matchHashPattern(env, p, subject)
+	}
+	return false, errorf("evaluator: case/in: unsupported pattern %T", pat)
+}
+
+// matchArrayPattern handles [p1, p2, *rest, pn] forms. At most one
+// splat is permitted; it absorbs the middle / tail. Element count must
+// match exactly when there's no splat.
+func matchArrayPattern(env *object.Environment, p *ast.ArrayLiteral, subject object.RubyObject) (bool, error) {
+	arr, ok := subject.(*object.Array)
+	if !ok {
+		return false, nil
+	}
+	// Find splat position, if any.
+	splatIdx := -1
+	for i, e := range p.Elements {
+		if pe, ok := e.(*ast.PrefixExpression); ok && pe.Operator == "*" {
+			if splatIdx >= 0 {
+				return false, errorf("evaluator: case/in: at most one splat per array pattern")
+			}
+			splatIdx = i
+		}
+	}
+	if splatIdx < 0 {
+		if len(p.Elements) != len(arr.Elements) {
+			return false, nil
+		}
+		for i, e := range p.Elements {
+			ok, err := matchPattern(env, e, arr.Elements[i])
+			if err != nil || !ok {
+				return ok, err
+			}
+		}
+		return true, nil
+	}
+	// With splat: head elements 0..splatIdx-1 match first N of subject;
+	// tail elements splatIdx+1..end match last M of subject; splat
+	// consumes the middle.
+	head := p.Elements[:splatIdx]
+	tail := p.Elements[splatIdx+1:]
+	if len(arr.Elements) < len(head)+len(tail) {
+		return false, nil
+	}
+	for i, e := range head {
+		ok, err := matchPattern(env, e, arr.Elements[i])
+		if err != nil || !ok {
+			return ok, err
+		}
+	}
+	for i, e := range tail {
+		ok, err := matchPattern(env, e, arr.Elements[len(arr.Elements)-len(tail)+i])
+		if err != nil || !ok {
+			return ok, err
+		}
+	}
+	// Bind splat name (if any) to the middle slice.
+	splat := p.Elements[splatIdx].(*ast.PrefixExpression)
+	if id, ok := splat.Right.(*ast.Identifier); ok {
+		mid := arr.Elements[len(head) : len(arr.Elements)-len(tail)]
+		copied := make([]object.RubyObject, len(mid))
+		copy(copied, mid)
+		env.AssignVisible(id.Value, object.NewArray(copied...))
+	}
+	return true, nil
+}
+
+// matchHashPattern handles {key: pat, ...} subset matching. Every
+// pattern key must exist in the subject hash and its value must match
+// the sub-pattern. Pattern keys are symbol literals (the Map already
+// canonicalises `name:` shorthand to a SymbolLiteral).
+func matchHashPattern(env *object.Environment, p *ast.HashLiteral, subject object.RubyObject) (bool, error) {
+	h, ok := subject.(*object.Hash)
+	if !ok {
+		return false, nil
+	}
+	for _, kv := range p.Map.Entries() {
+		k, err := Eval(kv.Key, env)
+		if err != nil {
+			return false, err
+		}
+		// Find matching entry in subject. Hash entries are linear; the
+		// corpus uses small hashes so a scan is fine.
+		var found object.RubyObject
+		hit := false
+		for _, e := range h.Entries {
+			if rubyEqual(k, e.Key) {
+				found = e.Value
+				hit = true
+				break
+			}
+		}
+		if !hit {
+			return false, nil
+		}
+		// Shorthand `{name:}` binds the value to a local of the same
+		// name; the parser leaves Value nil in that case. Treat as if
+		// the pattern were `name: name`.
+		if kv.Value == nil {
+			if sym, ok := kv.Key.(*ast.SymbolLiteral); ok {
+				if id, ok := sym.Value.(*ast.Identifier); ok {
+					env.AssignVisible(id.Value, found)
+					continue
+				}
+			}
+			return false, errorf("evaluator: case/in: malformed hash-pattern shorthand")
+		}
+		ok, err := matchPattern(env, kv.Value, found)
+		if err != nil || !ok {
+			return ok, err
+		}
+	}
+	return true, nil
 }
 
 // caseEqual implements the `===` operator. For Class patterns it

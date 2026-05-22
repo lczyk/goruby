@@ -378,7 +378,15 @@ func evalSymbolLiteral(env *object.Environment, n *ast.SymbolLiteral) (object.Ru
 func symbolName(expr ast.Expression) (string, error) {
 	switch v := expr.(type) {
 	case *ast.Identifier:
-		return v.Value, nil
+		// Pattern-match hash keys ({name: pat}) are parsed as
+		// SymbolLiteral wrapping an Identifier whose Value retains
+		// the trailing colon. Strip it so the resulting symbol matches
+		// the one produced by the corresponding label literal.
+		s := v.Value
+		if len(s) > 0 && s[len(s)-1] == ':' {
+			s = s[:len(s)-1]
+		}
+		return s, nil
 	case *ast.StringLiteral:
 		if len(v.Parts) > 0 {
 			return "", errorf("evaluator: interpolated symbol not yet supported")
