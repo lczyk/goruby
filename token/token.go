@@ -430,32 +430,40 @@ type Token struct {
 	Kind   uint8 // StringKind discriminator for string tokens
 }
 
-// flagX bits packed into Token.Flags.
+// flagX bits packed into Token.Flags. SingleQuoted / IsCharLit are NOT
+// flags -- they're derived from Kind by the accessors below.
 const (
 	flagHadWhitespace   uint8 = 1 << 0
-	flagSingleQuoted    uint8 = 1 << 1
-	flagIsCharLit       uint8 = 1 << 2
-	flagHeredocStripped uint8 = 1 << 3
+	flagHeredocStripped uint8 = 1 << 1
 )
 
 // HadWhitespace reports whether whitespace was skipped before this token.
 func (tok Token) HadWhitespace() bool { return tok.Flags&flagHadWhitespace != 0 }
 
-// SingleQuoted reports STRING tokens emitted from a single-quoted source literal.
-func (tok Token) SingleQuoted() bool { return tok.Flags&flagSingleQuoted != 0 }
+// SingleQuoted reports STRING tokens whose source carries single-quoted
+// escape semantics (only \\ and \' are escapes; everything else is
+// literal). Derived from Kind -- '...', %q[...], %w[...], %i[...],
+// %s[...] all qualify.
+func (tok Token) SingleQuoted() bool {
+	switch tok.StringKind() {
+	case StrSQuote, StrPctQ, StrPctW, StrPctI, StrPctS:
+		return true
+	}
+	return false
+}
 
 // IsCharLit reports STRING tokens emitted from a `?X` character literal.
-func (tok Token) IsCharLit() bool { return tok.Flags&flagIsCharLit != 0 }
+// Derived from Kind.
+func (tok Token) IsCharLit() bool { return tok.StringKind() == StrCharLit }
 
 // HeredocStripped reports STRING_BEG of `<<~` heredocs whose source had a
 // positive common indent (vs squig heredocs whose source did not).
 func (tok Token) HeredocStripped() bool { return tok.Flags&flagHeredocStripped != 0 }
 
-// SetHadWhitespace / SetSingleQuoted / SetIsCharLit / SetHeredocStripped
-// flip the corresponding bit. Pointer receiver -- modifies the caller.
+// SetHadWhitespace / SetHeredocStripped flip the corresponding bit.
+// Pointer receiver -- modifies the caller. (SingleQuoted / IsCharLit
+// have no setters; set Kind instead.)
 func (tok *Token) SetHadWhitespace(v bool)   { tok.setFlag(flagHadWhitespace, v) }
-func (tok *Token) SetSingleQuoted(v bool)    { tok.setFlag(flagSingleQuoted, v) }
-func (tok *Token) SetIsCharLit(v bool)       { tok.setFlag(flagIsCharLit, v) }
 func (tok *Token) SetHeredocStripped(v bool) { tok.setFlag(flagHeredocStripped, v) }
 
 func (tok *Token) setFlag(mask uint8, v bool) {

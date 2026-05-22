@@ -453,12 +453,13 @@ func (l *Lexer) emitLiteral(t token.Type, literal string) {
 	l.start = l.pos
 }
 
-// emitLiteralSQ is emitLiteral but marks the token as SingleQuoted so the
-// printer renders it with single quotes.
+// emitLiteralSQ is emitLiteral but stamps the token's Kind to StrSQuote
+// so SingleQuoted() returns true and the printer renders with single
+// quotes.
 func (l *Lexer) emitLiteralSQ(t token.Type, literal string) {
 	tok := l.newTokenLit(t, literal)
 	tok.SetHadWhitespace(l.tokenHadWhitespace)
-	tok.SetSingleQuoted(true)
+	tok.Kind = uint8(token.StrSQuote)
 	l.tokenHadWhitespace = false
 	l.lastToken = tok
 	l.tokens = append(l.tokens, tok)
@@ -1441,7 +1442,7 @@ func lexSingleQuoteString(l *Lexer) StateFn {
 	l.backup()
 	tok := l.newToken(token.STRING)
 	tok.SetHadWhitespace(l.tokenHadWhitespace)
-	tok.SetSingleQuoted(true)
+	tok.Kind = uint8(token.StrSQuote)
 	l.tokenHadWhitespace = false
 	l.lastToken = tok
 	l.tokens = append(l.tokens, tok)
@@ -1548,7 +1549,7 @@ func lexCharacterLiteral(l *Lexer) StateFn {
 	// StringFlags shape -- char literals always inherit source encoding).
 	tok := l.newToken(token.STRING)
 	tok.SetHadWhitespace(l.tokenHadWhitespace)
-	tok.SetIsCharLit(true)
+	tok.Kind = uint8(token.StrCharLit)
 	l.tokenHadWhitespace = false
 	l.lastToken = tok
 	l.tokens = append(l.tokens, tok)
@@ -1792,14 +1793,11 @@ func lexPercentLiteral(l *Lexer) StateFn {
 	}
 }
 
-// emitKindSQ is emitKind but also marks the token as SingleQuoted so the
-// printer / evaluator treats embedded escapes as raw (matches %q / %w /
-// %i / %s semantics). No pool entry; literal is implicit from Kind.
+// emitKindSQ is an alias for emitKind kept for caller-site clarity at
+// percent literal emit points -- the Kind itself (StrPctW / StrPctI /
+// StrPctS) already implies single-quoted semantics via SingleQuoted().
 func (l *Lexer) emitKindSQ(t token.Type, k token.StringKind) {
 	l.emitKind(t, k)
-	last := &l.tokens[len(l.tokens)-1]
-	last.SetSingleQuoted(true)
-	l.lastToken = *last
 }
 
 // lexPercentLiteralBodySQ is lexPercentLiteralBody but marks the emitted
@@ -1829,7 +1827,7 @@ func lexPercentLiteralBodySQ(l *Lexer, opener, closer rune, paired bool, tok tok
 					l.backup()
 					sq := l.newToken(tok)
 					sq.SetHadWhitespace(l.tokenHadWhitespace)
-					sq.SetSingleQuoted(true)
+					sq.Kind = uint8(token.StrSQuote)
 					l.tokenHadWhitespace = false
 					l.lastToken = sq
 					l.tokens = append(l.tokens, sq)
@@ -1845,7 +1843,7 @@ func lexPercentLiteralBodySQ(l *Lexer, opener, closer rune, paired bool, tok tok
 				l.backup()
 				sq := l.newToken(tok)
 				sq.SetHadWhitespace(l.tokenHadWhitespace)
-				sq.SetSingleQuoted(true)
+				sq.Kind = uint8(token.StrSQuote)
 				l.tokenHadWhitespace = false
 				l.lastToken = sq
 				l.tokens = append(l.tokens, sq)
