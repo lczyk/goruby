@@ -80,12 +80,12 @@ cloned by `fetch_gems.sh` into `gems/<name>/`.
 | `brainfint` | Brainfuck | https://github.com/quocl/brainfint |
 | `pyramid-scheme` | Pyramid Scheme | https://github.com/ConorOBrien-Foxx/Pyramid-Scheme |
 | `rasel` | RASEL | https://github.com/Nakilon/rasel |
+| `hanabi` | Hanabi | https://github.com/lczyk/hanabi (clean-room reimpl after original was lost) |
 
 ## ruby interpreters surveyed but not vendored
 
 esolangs.org wiki names a ruby interpreter for these langs, but the source
 is not currently reachable. revisit if upstreams come back online.
 
-- Hanabi -- https://github.com/elyatai/hanabi (404; user account also deleted). Wayback captured the repo landing page on 2020-11-09 but not `hanabi.rb` itself; no source archived anywhere reachable. `gh search` finds no forks or copies. Effectively lost.
 - Rotary -- wiki only mentions "InputUsername is currently writing an interpreter in Ruby"; no source link. Node.js implementation exists at https://github.com/PythonshellDebugwindow/esolangs/tree/master/rotary
 - RubE On Conveyor Belts -- only a C++ interpreter is linked, no ruby implementation
