@@ -327,8 +327,15 @@ func (l *Lexer) Input() string { return l.input }
 func (l *Lexer) Pool() []string { return l.litPool }
 
 // Lit returns the literal text for tok via pool[LitOff]. Zero-alloc.
+// For fixed-glyph tokens (operators, punctuation, keywords) whose text
+// is fully determined by Type, the pool entry is skipped at emit time
+// (LitOff = -1) and the canonical text is recovered from
+// token.Type.Literal() instead.
 func (l *Lexer) Lit(tok token.Token) string {
-	if tok.LitOff < 0 || int(tok.LitOff) >= len(l.litPool) {
+	if tok.LitOff < 0 {
+		return tok.Type.Literal()
+	}
+	if int(tok.LitOff) >= len(l.litPool) {
 		return ""
 	}
 	return l.litPool[tok.LitOff]
@@ -365,11 +372,22 @@ func (l *Lexer) newTokenLit(t token.Type, literal string) token.Token {
 // pooled, replacing the older swap-l.input-to-stripped-buffer scheme.
 func (l *Lexer) emit(t token.Type) {
 	var tok token.Token
-	if l.heredocMinIndent > 0 && (t == token.STRING_CONTENT || t == token.XSTR_CONTENT) {
+	switch {
+	case l.heredocMinIndent > 0 && (t == token.STRING_CONTENT || t == token.XSTR_CONTENT):
 		seg := l.input[l.start:l.pos]
 		atLineStart := l.start == 0 || l.input[l.start-1] == '\n'
 		tok = l.newTokenLit(t, stripSquigSegment(seg, l.heredocMinIndent, atLineStart))
-	} else {
+	case t.Literal() != "":
+		// Fixed-glyph token (operator, punctuation, keyword): text is
+		// fully determined by Type, so skip the pool append. Lit /
+		// LitOfPool recover the canonical text from Type.Literal().
+		tok = token.Token{
+			Type:   t,
+			Pos:    l.start,
+			End:    int32(l.pos - l.start),
+			LitOff: -1,
+		}
+	default:
 		tok = l.newToken(t)
 	}
 	tok.SetHadWhitespace(l.tokenHadWhitespace)

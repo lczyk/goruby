@@ -547,8 +547,13 @@ func (tok Token) LitOf(source string) string {
 // LitOfPool returns the token's literal text from the parse-scoped pool.
 // Returns "" for synthetic / position-less tokens. Used by AST.String()
 // methods after src has been dropped -- pool is owned by ast.Program.
+// For fixed-glyph tokens whose pool entry was skipped at emit time
+// (LitOff = -1), recovers the canonical text from Type.Literal().
 func (tok Token) LitOfPool(pool []string) string {
-	if tok.LitOff < 0 || int(tok.LitOff) >= len(pool) {
+	if tok.LitOff < 0 {
+		return tok.Type.Literal()
+	}
+	if int(tok.LitOff) >= len(pool) {
 		return ""
 	}
 	return pool[tok.LitOff]
