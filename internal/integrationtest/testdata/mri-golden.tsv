@@ -84,6 +84,9 @@ internal/integrationtest/testdata/gems/esolang-book-sources/whitespace/lib/white
 internal/integrationtest/testdata/gems/esolang-book-sources/whitespace/lib/whitespace/compiler.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/gems/esolang-book-sources/whitespace/lib/whitespace/vm.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/gems/forter/lib/forter.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
+internal/integrationtest/testdata/gems/hanabi/dump.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
+internal/integrationtest/testdata/gems/hanabi/hanabi.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
+internal/integrationtest/testdata/gems/hanabi/optim.rb	fail	fail	fail	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/gems/hexagony/brute-forcer.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/gems/hexagony/coords.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/gems/hexagony/direction.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
@@ -261,6 +264,7 @@ internal/integrationtest/testdata/gems/rake/test/test_rake_win32.rb	pass	pass	pa
 internal/integrationtest/testdata/gems/rake/test/test_rake.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/gems/rake/test/test_thread_history_display.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/gems/rake/test/test_trace_output.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
+internal/integrationtest/testdata/gems/rasel/lib/rasel.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/gems/replace-esolang/replace.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/gems/ropy/ruby/ropy_spec.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/gems/ropy/ruby/ropy.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
@@ -504,6 +508,8 @@ internal/integrationtest/testdata/esolangs/spoon.rb	pass	pass	pass	pass	pass	pas
 internal/integrationtest/testdata/esolangs/subskin.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/esolangs/tick.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/esolangs/tomagotcha.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
+internal/integrationtest/testdata/esolangs/walp.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
+internal/integrationtest/testdata/esolangs/yaball.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/ruby-extra/parser/adversarial/assign_in_comparison.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/ruby-extra/parser/adversarial/begin_block_semicolons.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
 internal/integrationtest/testdata/ruby-extra/parser/adversarial/class_paren_less_super.rb	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass	pass
