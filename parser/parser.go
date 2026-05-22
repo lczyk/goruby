@@ -1207,6 +1207,35 @@ func (p *parser) parseAssignment(left ast.Expression) ast.Expression {
 			Msg:  "Can't assign to __FILE__",
 		})
 		return nil
+	case *ast.InfixExpression:
+		// `a == b = c` parses as `a == (b = c)`. MRI's grammar lets a
+		// comparison's right operand itself be an assignment via the
+		// `arg = arg` rule; in Pratt terms we restructure here once the
+		// `=` shows up after a finished comparison.
+		switch leftNode.Operator {
+		case "==", "!=", "<=>", "===":
+		default:
+			p.expectError(token.EOF)
+			return nil
+		}
+		switch leftNode.Right.(type) {
+		case *ast.Identifier, *ast.Global, *ast.ClassVariable, *ast.IndexExpression, *ast.InstanceVariable, *ast.ScopedIdentifier:
+		default:
+			p.expectError(token.EOF)
+			return nil
+		}
+		innerAssign := ast.Init(p.arena.NewAssignment(), ast.Assignment{
+			Token: p.curToken,
+			Left:  leftNode.Right,
+		})
+		p.nextToken()
+		right := p.parseExpression(precLowest)
+		if right == nil {
+			return nil
+		}
+		innerAssign.Right = right
+		leftNode.Right = innerAssign
+		return leftNode
 	case *ast.ContextCallExpression:
 		// obj.method = value => obj.method=(value)
 		leftNode.Function.Value += "="
@@ -3719,10 +3748,27 @@ func (p *parser) parseClass() ast.Expression {
 	if p.peekTokenIs(token.LT) {
 		p.consume(token.LT)
 		expr.SuperClass = p.parseExpression(precLowest)
+		// Paren-less call as superclass: `class Foo < DelegateClass Bar`.
+		// parseExpression stops at the second identifier because IDENT
+		// isn't an infix operator; promote the ident-prefix into a
+		// command call so the trailing tokens become args. The
+		// parseCallArguments call below consumes the terminating
+		// NEWLINE/SEMICOLON itself, so the outer acceptOneOf becomes a
+		// no-op in that branch.
+		if ident, ok := expr.SuperClass.(*ast.Identifier); ok && p.peekTokenOneOf(bareCallArgTokens...) {
+			exp := p.arena.NewContextCallExpression()
+			exp.OpType = ident.Token.Type
+			exp.Function = ident
+			p.nextToken()
+			exp.Arguments = p.parseCallArguments(token.SEMICOLON, token.NEWLINE, token.LBRACE, token.DO)
+			expr.SuperClass = exp
+		}
 	}
 
-	if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
-		return nil
+	if !p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+		if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
+			return nil
+		}
 	}
 
 	expr.Body = p.parseBlockStatement(token.END, token.RESCUE)
