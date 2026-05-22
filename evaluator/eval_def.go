@@ -42,19 +42,45 @@ func evalFunctionLiteral(env *object.Environment, n *ast.FunctionLiteral) (objec
 	// enclosing class. `def foo` inside a class body -> instance
 	// method. `def foo` at top level -> kernel-style method on root env.
 	if n.Receiver != nil {
-		if n.Receiver.Value != "self" {
-			return nil, errorf("evaluator: singleton-method def on receiver %q not yet supported", n.Receiver.Value)
+		if n.Receiver.Value == "self" {
+			cls := env.EnclosingClass()
+			if cls == nil {
+				return nil, errorf("evaluator: def self.%s used outside a class body", n.Name.Value)
+			}
+			cls.AddClassMethod(n.Name.Value, m)
+			return env.Symbols().Intern(n.Name.Value), nil
 		}
-		cls := env.EnclosingClass()
-		if cls == nil {
-			return nil, errorf("evaluator: def self.%s used outside a class body", n.Name.Value)
+		// Singleton-method def: `def obj.foo` attaches the method to
+		// the receiver value's per-object SingletonMethods table.
+		// Receiver must already be bound in scope. Class receivers
+		// install as class methods; Instance receivers get per-object
+		// methods that win over the class chain in Send.
+		recv, ok := env.Get(n.Receiver.Value)
+		if !ok {
+			return nil, errorf("evaluator: singleton def: undefined receiver %q", n.Receiver.Value)
 		}
-		cls.AddClassMethod(n.Name.Value, m)
+		switch r := recv.(type) {
+		case *object.Class:
+			r.AddClassMethod(n.Name.Value, m)
+		case *object.Instance:
+			if r.SingletonMethods == nil {
+				r.SingletonMethods = map[string]object.RubyMethod{}
+			}
+			r.SingletonMethods[n.Name.Value] = m
+		default:
+			return nil, errorf("evaluator: singleton def on %T not yet supported", recv)
+		}
 		return env.Symbols().Intern(n.Name.Value), nil
 	}
 
 	if cls := env.EnclosingClass(); cls != nil {
 		cls.AddMethod(n.Name.Value, m)
+		if cls.CurrentVisibility == "private" {
+			if cls.Private == nil {
+				cls.Private = map[string]bool{}
+			}
+			cls.Private[n.Name.Value] = true
+		}
 		return env.Symbols().Intern(n.Name.Value), nil
 	}
 

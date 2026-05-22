@@ -9,6 +9,14 @@ package object
 // (dispatchWithBlock in evaluator/block.go) routes through Send too;
 // the block payload travels in the `block` arg as a *goBlockMarker.
 func Send(env *Environment, recv RubyObject, name string, args []RubyObject, block any) (result RubyObject, found bool, err error) {
+	// Per-instance singleton methods (def obj.foo) win over the class
+	// chain. Check before LookupMethod walks the ancestry.
+	if inst, ok := recv.(*Instance); ok && inst.SingletonMethods != nil {
+		if m, ok := inst.SingletonMethods[name]; ok {
+			v, e := m.Call(env, recv, args, block)
+			return v, true, e
+		}
+	}
 	cls := recv.Class()
 	if cls == nil {
 		return nil, false, nil

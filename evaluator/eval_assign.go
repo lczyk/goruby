@@ -84,11 +84,19 @@ func evalIdentifier(env *object.Environment, n *ast.Identifier) (object.RubyObje
 	if n.Value == "block_given?" {
 		return object.BooleanOf(env.EnclosingBlock() != nil), nil
 	}
-	// Visibility keywords used bare inside a class body are no-ops --
-	// the evaluator doesn't track visibility yet.
-	if env.EnclosingClass() != nil {
+	// Visibility keywords used bare inside a class body flip the
+	// class's CurrentVisibility so subsequent defs are tagged
+	// accordingly. Argument-form ("private :foo, :bar") goes through
+	// the regular method-call path elsewhere.
+	if cls := env.EnclosingClass(); cls != nil {
 		switch n.Value {
-		case "private", "public", "protected", "module_function":
+		case "private":
+			cls.CurrentVisibility = "private"
+			return object.NIL, nil
+		case "public":
+			cls.CurrentVisibility = "public"
+			return object.NIL, nil
+		case "protected", "module_function":
 			return object.NIL, nil
 		}
 	}

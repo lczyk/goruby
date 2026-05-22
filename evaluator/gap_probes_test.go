@@ -39,12 +39,18 @@ func TestPrime(t *testing.T) {
 	assert.Equal(t, "[[2, 2], [3, 1]]\n", out)
 }
 
-// TestGapDateRequire mirrors TestGapPrimeRequire for the Date stdlib.
-func TestGapDateRequire(t *testing.T) {
-	out, err := runErr(t, "require 'date'; puts 'loaded'; Date.today")
-	assert.Equal(t, "loaded\n", out)
-	if !strings.Contains(err, "uninitialized constant Date") {
-		t.Errorf("expected uninitialized-constant NameError on Date, got %q", err)
+// TestDateRequire: require 'date' makes Date usable for the small
+// surface stdlib/date.go covers (constructor, year/month/day, +/-,
+// strftime). Date.today is not yet implemented; this test pins the
+// remaining gap so a future implementation flips it.
+func TestDateRequire(t *testing.T) {
+	out, err := runErr(t, "require 'date'; puts Date.new(2026, 5, 22).year")
+	assert.Equal(t, "", err)
+	assert.Equal(t, "2026\n", out)
+
+	_, err = runErr(t, "Date.today")
+	if !strings.Contains(err, "NoMethodError") || !strings.Contains(err, "today") {
+		t.Errorf("expected NoMethodError on Date.today, got %q", err)
 	}
 }
 

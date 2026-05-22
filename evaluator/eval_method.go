@@ -434,6 +434,14 @@ func evalContextCall(env *object.Environment, n *ast.ContextCallExpression) (obj
 			return object.NIL, nil
 		}
 	}
+	// Explicit-receiver call: enforce visibility. Private methods
+	// reject any explicit receiver (including `self.foo`); MRI raises
+	// NoMethodError with a private-method message.
+	if inst, ok := recv.(*object.Instance); ok {
+		if isPrivateMethod(inst.C, n.Function.Value) {
+			return raiseBuiltin(env, "NoMethodError", "private method `"+n.Function.Value+"' called for instance of "+inst.C.Name)
+		}
+	}
 	if n.Block != nil {
 		return callMethodWithBlock(env, recv, n.Function.Value, args, n.Block)
 	}
@@ -441,6 +449,18 @@ func evalContextCall(env *object.Environment, n *ast.ContextCallExpression) (obj
 		return callMethodWithProc(env, recv, n.Function.Value, args, blockProc)
 	}
 	return callMethod(env, recv, n.Function.Value, args)
+}
+
+// isPrivateMethod walks c and its super chain looking for name in any
+// Private set. Mirrors the LookupMethod walk so an inherited private
+// method stays private in subclasses.
+func isPrivateMethod(c *object.Class, name string) bool {
+	for cur := c; cur != nil; cur = cur.Super {
+		if cur.Private != nil && cur.Private[name] {
+			return true
+		}
+	}
+	return false
 }
 
 // evalCallArguments evaluates a call's argument list, splitting out
@@ -627,8 +647,8 @@ func callMethod(env *object.Environment, recv object.RubyObject, name string, ar
 		return v, err
 	}
 	if inst, ok := recv.(*object.Instance); ok {
-		return nil, errorf("evaluator: NoMethodError: undefined method `%s' for instance of %s", name, inst.C.Name)
+		return raiseBuiltin(env, "NoMethodError", "undefined method `"+name+"' for instance of "+inst.C.Name)
 	}
-	return nil, errorf("evaluator: NoMethodError: undefined method `%s' for %T", name, recv)
+	return raiseBuiltin(env, "NoMethodError", "undefined method `"+name+"'")
 }
 

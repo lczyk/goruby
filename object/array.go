@@ -10,7 +10,14 @@ import (
 // interfaces, each carrying a type+data pointer pair.
 type Array struct {
 	Elements []RubyObject
+	frozen   bool
 }
+
+// Frozen reports whether the Array was frozen via Object#freeze.
+func (a *Array) Frozen() bool { return a.frozen }
+
+// Freeze marks the Array frozen. Idempotent.
+func (a *Array) Freeze() { a.frozen = true }
 
 // NewArray returns an Array containing the given elements (in order).
 // The caller retains no ownership of the slice -- a fresh backing array

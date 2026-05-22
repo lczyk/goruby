@@ -85,15 +85,23 @@ func init() {
 		return object.NewArray(out...), nil
 	})
 	add("frozen?", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
-		switch recv.(type) {
-		case *object.Symbol, *object.Integer, *object.Float, *object.Nil, *object.Boolean:
+		switch v := recv.(type) {
+		case *object.Symbol, *object.Integer, *object.Float, *object.Nil, *object.Boolean, *object.FrozenString:
 			return object.TRUE, nil
+		case *object.String:
+			return object.BooleanOf(v.Frozen()), nil
+		case *object.Array:
+			return object.BooleanOf(v.Frozen()), nil
 		}
 		return object.FALSE, nil
 	})
-	// freeze: we don't actually enforce immutability yet. Returning the
-	// receiver matches mri's API and lets `obj.freeze` chain work.
 	add("freeze", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
+		switch v := recv.(type) {
+		case *object.String:
+			v.Freeze()
+		case *object.Array:
+			v.Freeze()
+		}
 		return recv, nil
 	})
 	dup := func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {

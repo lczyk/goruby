@@ -115,18 +115,47 @@ func evalLoop(env *object.Environment, n *ast.LoopExpression) (object.RubyObject
 // Hash, or Range; the loop var is rebound on each iteration in the
 // surrounding scope (for-loops don't introduce a new scope in ruby).
 func evalForIn(env *object.Environment, infix *ast.InfixExpression, body *ast.BlockStatement) (object.RubyObject, error) {
-	id, ok := infix.Left.(*ast.Identifier)
-	if !ok {
-		return nil, errorf("evaluator: for-loop LHS must be a single identifier (got %T)", infix.Left)
+	// LHS shapes:
+	//   for x in iter     -- single Identifier
+	//   for k, v in iter  -- ExpressionList of Identifiers; destructure
+	//                        each element via auto-splat
+	var names []string
+	switch lhs := infix.Left.(type) {
+	case *ast.Identifier:
+		names = []string{lhs.Value}
+	case ast.ExpressionList:
+		for _, e := range lhs {
+			id, ok := e.(*ast.Identifier)
+			if !ok {
+				return nil, errorf("evaluator: for-loop LHS element must be an identifier, got %T", e)
+			}
+			names = append(names, id.Value)
+		}
+	default:
+		return nil, errorf("evaluator: for-loop LHS must be an identifier or list (got %T)", infix.Left)
 	}
 	iter, err := Eval(infix.Right, env)
 	if err != nil {
 		return nil, err
 	}
-	// step returns (stop, breakValue, err). breakValue is nil unless
-	// the iteration was halted by `break`.
 	step := func(v object.RubyObject) (bool, object.RubyObject, error) {
-		env.AssignVisible(id.Value, v)
+		if len(names) == 1 {
+			env.AssignVisible(names[0], v)
+		} else {
+			// Auto-splat: destructure Array; missing slots bind nil,
+			// extras drop.
+			arr, ok := v.(*object.Array)
+			if !ok {
+				return false, nil, errorf("evaluator: for-loop expected Array for multi-var LHS, got %T", v)
+			}
+			for i, n := range names {
+				if i < len(arr.Elements) {
+					env.AssignVisible(n, arr.Elements[i])
+				} else {
+					env.AssignVisible(n, object.NIL)
+				}
+			}
+		}
 		_, err := evalBlockStatement(env, body)
 		if err == nil {
 			return false, nil, nil
@@ -177,6 +206,34 @@ func evalForIn(env *object.Environment, infix *ast.InfixExpression, body *ast.Bl
 			if stop {
 				return brk, nil
 			}
+		}
+	case *object.Instance:
+		// For-in over a user object: dispatch `each` with a
+		// goBlockMarker that runs step on each yielded value.
+		cb := func(args []object.RubyObject) (object.RubyObject, error) {
+			var v object.RubyObject
+			if len(args) == 1 {
+				v = args[0]
+			} else if len(args) > 1 {
+				v = object.NewArray(args...)
+			} else {
+				v = object.NIL
+			}
+			stop, brk, err := step(v)
+			if err != nil {
+				return nil, err
+			}
+			if stop {
+				return brk, &breakSignal{Value: brk}
+			}
+			return object.NIL, nil
+		}
+		_, err := callMethodWithProc(env, r, "each", nil, procFromGoBlock(&goBlockMarker{fn: cb}))
+		if err != nil {
+			if bs, ok := err.(*breakSignal); ok {
+				return bs.Value, nil
+			}
+			return nil, err
 		}
 	default:
 		return nil, errorf("evaluator: for-in over %T not yet supported", iter)

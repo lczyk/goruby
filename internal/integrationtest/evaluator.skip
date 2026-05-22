@@ -16,10 +16,4 @@
 # evaluator/object source location where the gap currently lives.
 
 eval gaps/pattern_matching.rb: control.go:189: case/in pattern matching not yet supported
-eval gaps/singleton_method.rb: def.go:46: def receiver.method on non-self receiver not yet supported
-eval gaps/for_in_hash.rb: control.go:182: for-in only handles Array/Range; not Hash / Enumerator / custom each
 eval gaps/string_encoding_tracking.rb: string.go:405: per-string encoding not tracked; always reports UTF-8
-eval gaps/object_freeze.rb: Object#freeze returns self but doesn't enforce immutability
-eval gaps/require_date.rb: kernel.go: require 'date' returns true but Date constant never installed
-eval gaps/option_parser_handlers.rb: option_parser.go: OptionParser stub; .on registers nothing; .parse! strips -tokens w/out invoking handlers
-eval gaps/visibility_private.rb: assign.go:87: private/public/protected/module_function are no-ops; not enforced

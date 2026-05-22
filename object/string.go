@@ -8,8 +8,16 @@ package object
 // backing array. Acceptable cost -- mutable strings are inherently
 // pointer-bearing.
 type String struct {
-	Buf []byte
+	Buf    []byte
+	frozen bool
 }
+
+// Frozen reports whether the String was frozen via Object#freeze.
+// Mutation methods test this and raise FrozenError if true.
+func (s *String) Frozen() bool { return s.frozen }
+
+// Freeze marks the String frozen. Idempotent.
+func (s *String) Freeze() { s.frozen = true }
 
 // NewString returns a String wrapping a fresh copy of s. Copying ensures
 // the resulting String can be mutated without aliasing the caller's

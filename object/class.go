@@ -12,6 +12,14 @@ type Class struct {
 	Constants    map[string]RubyObject // class / module constants
 	ClassVars    map[string]RubyObject // class variables (@@x); shared up the inheritance chain
 	IsModule     bool                  // distinguishes module from class (no .new)
+	// Private records instance-method names that may not be called via
+	// an explicit receiver. Populated by `private` inside a class body.
+	Private map[string]bool
+	// CurrentVisibility is the visibility mode the next method def in
+	// this class body will inherit. "public" by default; flipped by
+	// bare `private` / `public` keywords; transient -- meaningful only
+	// while the class body is open.
+	CurrentVisibility string
 	// Version monotonically increments on any method (re)definition on
 	// this class. Inline call-site caches (e.g. spaceshipCache below)
 	// compare against Version to detect invalidation.
@@ -142,6 +150,10 @@ func (c *Class) IsAncestor(other *Class) bool {
 type Instance struct {
 	C     *Class
 	Ivars map[string]RubyObject
+	// SingletonMethods holds per-object method definitions installed by
+	// `def obj.foo; ... end`. Consulted by Send before the class chain
+	// so a singleton method overrides the class definition.
+	SingletonMethods map[string]RubyMethod
 }
 
 func NewInstance(c *Class) *Instance {

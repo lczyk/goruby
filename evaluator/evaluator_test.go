@@ -971,16 +971,19 @@ func TestEvalBareKernelIdent(t *testing.T) {
 	runExpect(t, `puts`, "\n")
 }
 
-func TestEvalBareVisibilityKeywordIsNoOp(t *testing.T) {
-	// Bare `private` / `public` inside a class body must parse and
-	// evaluate cleanly even though we don't track visibility yet.
+func TestEvalBareVisibilityKeyword(t *testing.T) {
+	// Bare `private` inside a class body marks subsequent defs as
+	// private. Explicit-receiver calls to a private method raise
+	// NoMethodError; implicit-self calls from within the class still
+	// work.
 	src := `class C
   def a; "a"; end
+  def call_b; b; end
   private
   def b; "b"; end
 end
 puts C.new.a
-puts C.new.b`
+puts C.new.call_b`
 	runExpect(t, src, "a\nb\n")
 }
 

@@ -558,10 +558,16 @@ func evalInfix(env *object.Environment, n *ast.InfixExpression) (object.RubyObje
 		return object.NewRange(left, right, true), nil
 	case "<<":
 		if arr, ok := left.(*object.Array); ok {
+			if arr.Frozen() {
+				return raiseBuiltin(env, "FrozenError", "can't modify frozen Array")
+			}
 			arr.Elements = append(arr.Elements, right)
 			return arr, nil
 		}
 		if s, ok := left.(*object.String); ok {
+			if s.Frozen() {
+				return raiseBuiltin(env, "FrozenError", "can't modify frozen String")
+			}
 			if t, ok := stringText(env, right); ok {
 				s.Buf = append(s.Buf, t...)
 				return s, nil

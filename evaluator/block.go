@@ -12,20 +12,33 @@ import (
 // builtinapi.
 func init() {
 	builtinapi.InvokeCurrentBlock = func(env *object.Environment, args []object.RubyObject) (object.RubyObject, bool, error) {
-		blk := env.CurrentBlock
-		if blk == nil {
-			return nil, false, nil
+		v, err := invokeBlockValue(env, env.CurrentBlock, args)
+		if env.CurrentBlock == nil {
+			return nil, false, err
 		}
-		if be, ok := blk.(*ast.BlockExpression); ok && be != nil {
-			v, err := invokeBlock(env, be, args)
-			return v, true, err
-		}
-		if bm, ok := blk.(*goBlockMarker); ok && bm != nil {
-			v, err := bm.fn(args)
-			return v, true, err
-		}
-		return nil, false, nil
+		return v, true, err
 	}
+	builtinapi.InvokeBlockValue = invokeBlockValue
+}
+
+// invokeBlockValue invokes a stored block value (whatever shape it
+// took when captured: *ast.BlockExpression, *goBlockMarker, *Proc).
+// Returns (nil, nil) when blk is nil so callers can guard on the
+// payload.
+func invokeBlockValue(env *object.Environment, blk any, args []object.RubyObject) (object.RubyObject, error) {
+	if blk == nil {
+		return nil, nil
+	}
+	if be, ok := blk.(*ast.BlockExpression); ok && be != nil {
+		return invokeBlock(env, be, args)
+	}
+	if bm, ok := blk.(*goBlockMarker); ok && bm != nil {
+		return bm.fn(args)
+	}
+	if p, ok := blk.(*object.Proc); ok && p != nil {
+		return invokeProc(env, p, args)
+	}
+	return nil, nil
 }
 
 // invokeBlock evaluates blk with the given positional args bound to its

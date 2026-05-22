@@ -67,6 +67,13 @@ var RaiseBuiltin func(env *object.Environment, className, msg string) (object.Ru
 // evaluator's BlockExpression / goBlockMarker types.
 var InvokeCurrentBlock func(env *object.Environment, args []object.RubyObject) (object.RubyObject, bool, error)
 
+// InvokeBlockValue invokes a previously-captured block value (whatever
+// shape env.CurrentBlock was when the stdlib stored it) with the
+// given args. Used by stubs that capture a block on one call and
+// invoke it later (e.g. OptionParser#on stores handlers that
+// OptionParser#parse! later fires).
+var InvokeBlockValue func(env *object.Environment, blk any, args []object.RubyObject) (object.RubyObject, error)
+
 // SymbolOrString extracts text from a Symbol or String value. Used by
 // builtin methods that accept either form for a method-name or key.
 func SymbolOrString(env *object.Environment, o object.RubyObject) (string, bool) {
