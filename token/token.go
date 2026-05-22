@@ -400,7 +400,7 @@ func NewToken(typ Type, literal string, pos int) Token {
 }
 
 // A Token represents a known token. Pointer-free (noscan): Pos + End +
-// LitOff + Type + four bools all pack into 24B with no string header
+// LitOff + Type + Flags + Kind all pack into 24B with no string header
 // and no other pointer-bearing field. Slabs of Tokens are noscan-
 // eligible, so the GC skips them entirely.
 //
@@ -410,18 +410,118 @@ func NewToken(typ Type, literal string, pos int) Token {
 // parse, transferred to ast.Program post-parse). pool[LitOff] is the
 // token's literal text: a zero-alloc substring view of source for
 // emit-path tokens, an explicitly-allocated decoded string for
-// emitLiteral-path tokens (escape-decoded STRING_CONTENT, percent-prefix
-// STRING_BEG, heredoc tags). The pool survives the source string so
-// AST.String() works after src is dropped.
+// emitLiteral-path tokens (escape-decoded STRING_CONTENT, heredoc tags).
+// The pool survives the source string so AST.String() works after src is
+// dropped. LitOff == -1 means no pool entry: the literal is implicit
+// from Type (for fixed-glyph tokens) or Kind (for plain string
+// delimiters whose form is encoded in StringKind).
+//
+// Flags is a packed bitfield of boolean attributes; see flagX constants
+// and the HadWhitespace / SingleQuoted / IsCharLit / HeredocStripped
+// accessor methods. Kind discriminates string-literal syntactic form
+// (StringKind), letting the printer reconstruct delimiters w/out a pool
+// entry for plain quoted strings.
 type Token struct {
-	Pos             int
-	End             int32
-	LitOff          int32
-	Type            Type
-	HadWhitespace   bool // true if whitespace was skipped before this token
-	SingleQuoted    bool // true for STRING tokens emitted from a single-quoted source literal
-	IsCharLit       bool // true for STRING tokens emitted from a `?X` character literal
-	HeredocStripped bool // true on STRING_BEG for `<<~` heredocs whose source had a positive common indent
+	Pos    int
+	End    int32
+	LitOff int32
+	Type   Type
+	Flags  uint8 // packed boolean attributes (see flagX consts)
+	Kind   uint8 // StringKind discriminator for string tokens
+}
+
+// flagX bits packed into Token.Flags.
+const (
+	flagHadWhitespace   uint8 = 1 << 0
+	flagSingleQuoted    uint8 = 1 << 1
+	flagIsCharLit       uint8 = 1 << 2
+	flagHeredocStripped uint8 = 1 << 3
+)
+
+// HadWhitespace reports whether whitespace was skipped before this token.
+func (tok Token) HadWhitespace() bool { return tok.Flags&flagHadWhitespace != 0 }
+
+// SingleQuoted reports STRING tokens emitted from a single-quoted source literal.
+func (tok Token) SingleQuoted() bool { return tok.Flags&flagSingleQuoted != 0 }
+
+// IsCharLit reports STRING tokens emitted from a `?X` character literal.
+func (tok Token) IsCharLit() bool { return tok.Flags&flagIsCharLit != 0 }
+
+// HeredocStripped reports STRING_BEG of `<<~` heredocs whose source had a
+// positive common indent (vs squig heredocs whose source did not).
+func (tok Token) HeredocStripped() bool { return tok.Flags&flagHeredocStripped != 0 }
+
+// SetHadWhitespace / SetSingleQuoted / SetIsCharLit / SetHeredocStripped
+// flip the corresponding bit. Pointer receiver -- modifies the caller.
+func (tok *Token) SetHadWhitespace(v bool)   { tok.setFlag(flagHadWhitespace, v) }
+func (tok *Token) SetSingleQuoted(v bool)    { tok.setFlag(flagSingleQuoted, v) }
+func (tok *Token) SetIsCharLit(v bool)       { tok.setFlag(flagIsCharLit, v) }
+func (tok *Token) SetHeredocStripped(v bool) { tok.setFlag(flagHeredocStripped, v) }
+
+func (tok *Token) setFlag(mask uint8, v bool) {
+	if v {
+		tok.Flags |= mask
+	} else {
+		tok.Flags &^= mask
+	}
+}
+
+// StringKind classifies the syntactic form of a string literal token
+// (STRING / STRING_BEG / STRING_END / XSTR* / REGEX*). 0 means
+// non-string. Lets the printer reconstruct delimiters w/out a pool entry
+// for plain quoted forms, and lets the parser switch on form w/out
+// scanning the pool literal.
+type StringKind uint8
+
+const (
+	StrNone          StringKind = iota // not a string token
+	StrDQuote                          // "..."
+	StrSQuote                          // '...'
+	StrBacktick                        // `...`
+	StrRegex                           // /.../
+	StrCharLit                         // ?X
+	StrPctQ                            // %q[...]    -- single-quoted semantics
+	StrPctBigQ                         // %Q[...]    -- double-quoted semantics
+	StrPctW                            // %w[...]    -- word array, single-quoted
+	StrPctBigW                         // %W[...]    -- word array, double-quoted
+	StrPctI                            // %i[...]    -- symbol array, single-quoted
+	StrPctBigI                         // %I[...]    -- symbol array, double-quoted
+	StrPctR                            // %r{...}    -- regex
+	StrPctS                            // %s[...]    -- symbol literal
+	StrPctX                            // %x[...]    -- xstr command
+	StrHeredoc                         // <<TAG      -- plain heredoc
+	StrHeredocIndent                   // <<-TAG     -- dash heredoc (closing tag may be indented)
+	StrHeredocSquig                    // <<~TAG     -- squig heredoc (common indent stripped)
+)
+
+// StringKind returns the token's StringKind (StrNone for non-string).
+func (tok Token) StringKind() StringKind { return StringKind(tok.Kind) }
+
+// PercentChar returns the percent-prefix character ('w', 'Q', etc.) for
+// %-literal STRING_BEG tokens, or 0 if Kind is not a percent form. Lets
+// the printer reconstruct `%w[...]` / `%Q{...}` w/out a pool entry.
+func (tok Token) PercentChar() byte {
+	switch tok.StringKind() {
+	case StrPctQ:
+		return 'q'
+	case StrPctBigQ:
+		return 'Q'
+	case StrPctW:
+		return 'w'
+	case StrPctBigW:
+		return 'W'
+	case StrPctI:
+		return 'i'
+	case StrPctBigI:
+		return 'I'
+	case StrPctR:
+		return 'r'
+	case StrPctS:
+		return 's'
+	case StrPctX:
+		return 'x'
+	}
+	return 0
 }
 
 // EndPos returns the exclusive end byte offset of the token in source.

@@ -852,7 +852,7 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 		// where `::Foo` starts a top-level scoped-constant arg, not
 		// `ident::Foo` (scope inside ident). Only applies when ident is
 		// lowercase (constants can legitimately scope: `Foo::Bar`).
-		if p.peekTokenIs(token.SCOPE) && p.peekToken.HadWhitespace {
+		if p.peekTokenIs(token.SCOPE) && p.peekToken.HadWhitespace() {
 			if id, ok := leftExp.(*ast.Identifier); ok && !id.IsConstant() {
 				call := p.arena.NewContextCallExpression()
 				call.OpType = id.Token.Type
@@ -876,7 +876,7 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 		}
 		// `ident [array]` (with leading space on `[`) is a command call with
 		// an array literal as its first arg, not an index expression.
-		if p.peekTokenIs(token.LBRACKET) && p.peekToken.HadWhitespace {
+		if p.peekTokenIs(token.LBRACKET) && p.peekToken.HadWhitespace() {
 			if id, ok := leftExp.(*ast.Identifier); ok && !id.IsConstant() {
 				call := p.arena.NewContextCallExpression()
 				call.OpType = id.Token.Type
@@ -895,7 +895,7 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 		// `ident (expr)` with whitespace before `(` is a command call whose
 		// first arg is a parenthesised expression, not a normal paren call.
 		// MRI keeps the explicit ParenthesesNode on the arg in this case.
-		if p.peekTokenIs(token.LPAREN) && p.peekToken.HadWhitespace {
+		if p.peekTokenIs(token.LPAREN) && p.peekToken.HadWhitespace() {
 			if id, ok := leftExp.(*ast.Identifier); ok && !id.IsConstant() {
 				call := p.arena.NewContextCallExpression()
 				call.OpType = id.Token.Type
@@ -925,8 +925,8 @@ func (p *parser) parseExpression(precedence int) ast.Expression {
 			}
 			return false
 		}
-		if p.peekTokenOneOf(token.MINUS, token.PLUS) && p.peekToken.HadWhitespace &&
-			!p.peek2Token.HadWhitespace && isOperandStart(p.peek2Token.Type) {
+		if p.peekTokenOneOf(token.MINUS, token.PLUS) && p.peekToken.HadWhitespace() &&
+			!p.peek2Token.HadWhitespace() && isOperandStart(p.peek2Token.Type) {
 			if id, ok := leftExp.(*ast.Identifier); ok && !id.IsConstant() {
 				call := p.arena.NewContextCallExpression()
 				call.OpType = id.Token.Type
@@ -1438,7 +1438,7 @@ func (p *parser) parseDefinedExpression() ast.Expression {
 	// defined? can be: defined?(expr) (no space -- call-paren syntax) or
 	// defined? expr (with space, optionally followed by a grouped paren
 	// expr which MRI keeps as a ParenthesesNode).
-	if p.peekTokenIs(token.LPAREN) && !p.peekToken.HadWhitespace {
+	if p.peekTokenIs(token.LPAREN) && !p.peekToken.HadWhitespace() {
 		p.accept(token.LPAREN)
 		p.nextToken()
 		for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
@@ -2139,7 +2139,7 @@ func (p *parser) parseUsing() ast.Expression {
 	// `using(...)` (no whitespace before `(`) is a normal method call --
 	// MRI doesn't treat `using` as a keyword. Route to the call path so
 	// args / block parse the standard way.
-	if p.peekTokenIs(token.LPAREN) && !p.peekToken.HadWhitespace {
+	if p.peekTokenIs(token.LPAREN) && !p.peekToken.HadWhitespace() {
 		ident := p.arena.NewIdentifier()
 		ident.Token = p.curToken
 		ident.Value = p.lit(p.curToken)
@@ -2159,7 +2159,7 @@ func (p *parser) parseRefine() ast.Expression {
 	// the surrounding Module -- handle as a paren-less ident so the call
 	// args / block parse the standard way (matches MRI, which doesn't
 	// treat `refine` as a keyword).
-	if p.peekTokenIs(token.LPAREN) && !p.peekToken.HadWhitespace {
+	if p.peekTokenIs(token.LPAREN) && !p.peekToken.HadWhitespace() {
 		ident := p.arena.NewIdentifier()
 		ident.Token = p.curToken
 		ident.Value = p.lit(p.curToken)
@@ -2298,7 +2298,7 @@ func (p *parser) parseSuper() ast.Expression {
 	// `super + x` (spaced binary operator) is binary infix on bare super,
 	// not a paren-less call with unary +x. Same rule as for bare method
 	// calls (see parseMethodCall's spaced-operator branch).
-	if p.peekToken.HadWhitespace && p.peekToken.Type.IsOperator() &&
+	if p.peekToken.HadWhitespace() && p.peekToken.Type.IsOperator() &&
 		!p.peek2TokenIs(token.NEWLINE) && !p.peek2TokenIs(token.EOF) &&
 		p.spacedOperator(p.peekToken, p.peek2Token) {
 		return sup
@@ -2503,7 +2503,7 @@ func (p *parser) parseLambda() ast.Expression {
 	// Optional parameters: ->(x, y) or bare ->
 	if p.peekTokenIs(token.LPAREN) {
 		// MRI 1.9 rejects whitespace between `->` and `(`. 2.0+ accepts both.
-		if p.peekToken.HadWhitespace && !p.version.AtLeast(ruby20) {
+		if p.peekToken.HadWhitespace() && !p.version.AtLeast(ruby20) {
 			p.versionError(ruby20, "whitespace between `->` and parameter list")
 		}
 		lit.Parameters = p.parseParameters(token.LPAREN, token.RPAREN)
@@ -2566,7 +2566,7 @@ func (p *parser) parseIntegerLiteral() ast.Expression {
 	defer p.traceEnter()()
 	lit := p.arena.NewIntegerLiteral()
 	lit.PosOff = p.curToken.Pos
-	lit.HadWhitespace = p.curToken.HadWhitespace
+	lit.HadWhitespace = p.curToken.HadWhitespace()
 	raw := p.lit(p.curToken)
 	// Detect base prefix BEFORE underscore strip; prefix-case is normalised
 	// out (cosmetic, MRI ignores). `0d` is explicit-decimal -- drop the
@@ -2612,7 +2612,7 @@ func (p *parser) parseFloatLiteral() ast.Expression {
 	defer p.traceEnter()()
 	lit := p.arena.NewFloatLiteral()
 	lit.PosOff = p.curToken.Pos
-	lit.HadWhitespace = p.curToken.HadWhitespace
+	lit.HadWhitespace = p.curToken.HadWhitespace()
 	raw := p.lit(p.curToken)
 	s, rat, im := stripNumericSuffix(raw)
 	lit.Rational = rat
@@ -2781,22 +2781,22 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 		p.nextToken()
 	}
 
-	// Branch based on percent literal type.
-	switch p.lit(begToken) {
-	case "w", "W":
+	// Branch based on percent literal type (Kind-encoded; falls through
+	// for plain "..."/<<HEREDOC/%Q/%q/%x which build StringLiteral below).
+	switch begToken.PercentChar() {
+	case 'w', 'W':
 		return p.buildWordArray(begToken, parts, false)
-	case "i", "I":
+	case 'i', 'I':
 		return p.buildWordArray(begToken, parts, true)
-	case "s":
+	case 's':
 		return p.buildSymbolFromPercent(begToken, parts)
-	default: // "", "Q", "q", "x" -- string/regex/xstr
 	}
 
 	sl := p.arena.NewStringLiteral()
 	sl.Token = begToken
 	if strings.HasPrefix(p.lit(begToken), "<<") {
 		sl.HeredocTagSource = p.lit(begToken)
-		if p.curToken.HeredocStripped || p.embExprDepth > 0 {
+		if p.curToken.HeredocStripped() || p.embExprDepth > 0 {
 			sl.HeredocStripped = true
 		}
 	}
@@ -3262,7 +3262,7 @@ func (p *parser) parsePrefixExpression() ast.Expression {
 	// `not(X)` (no space) is call-style syntax for `not X` in MRI -- the
 	// parens belong to the not-call, not to a grouping ParenExpression
 	// around X. `not (X)` (with space) is real grouping (preserved).
-	if expression.Operator == "not" && p.peekTokenIs(token.LPAREN) && !p.peekToken.HadWhitespace {
+	if expression.Operator == "not" && p.peekTokenIs(token.LPAREN) && !p.peekToken.HadWhitespace() {
 		p.nextToken() // to LPAREN
 		p.nextToken() // past LPAREN
 		expression.Right = p.parseExpression(precLowest)
@@ -4603,7 +4603,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 		return contextCallExpression
 	}
 
-	if p.peekTokenIs(token.LPAREN) && !p.peekToken.HadWhitespace {
+	if p.peekTokenIs(token.LPAREN) && !p.peekToken.HadWhitespace() {
 		p.accept(token.LPAREN)
 		p.nextToken()
 		contextCallExpression.Arguments = p.parseExpressionList(token.RPAREN)
@@ -4630,14 +4630,14 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 
 	// `[` without preceding whitespace is index access, not an array arg
 	// without parens. `a.b[x]` -> index; `a.b [x]` -> arg list.
-	if p.peekTokenIs(token.LBRACKET) && !p.peekToken.HadWhitespace {
+	if p.peekTokenIs(token.LBRACKET) && !p.peekToken.HadWhitespace() {
 		contextCallExpression.Arguments = []ast.Expression{}
 		return contextCallExpression
 	}
 
 	// Spaced binary operator after bare method call on the same line:
 	// a.b + c is infix, a.b +\n c is a call argument.
-	if p.peekToken.HadWhitespace && p.peekToken.Type.IsOperator() &&
+	if p.peekToken.HadWhitespace() && p.peekToken.Type.IsOperator() &&
 		!p.peek2TokenIs(token.NEWLINE) && !p.peek2TokenIs(token.EOF) &&
 		p.spacedOperator(p.peekToken, p.peek2Token) {
 		contextCallExpression.Arguments = []ast.Expression{}
@@ -4649,7 +4649,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 	// arg. MRI's rule: a unary - / + requires whitespace before the
 	// operator; with no leading whitespace it's infix.
 	if (p.peekTokenIs(token.MINUS) || p.peekTokenIs(token.PLUS)) &&
-		!p.peekToken.HadWhitespace {
+		!p.peekToken.HadWhitespace() {
 		contextCallExpression.Arguments = []ast.Expression{}
 		return contextCallExpression
 	}
@@ -4657,7 +4657,7 @@ func (p *parser) parseMethodCall(context ast.Expression) ast.Expression {
 	// Same rule for `a.b*x` / `a.b**x`: with no leading whitespace the
 	// * / ** is infix (multiplication / power), not a (kw)splat arg.
 	if (p.peekTokenIs(token.ASTERISK) || p.peekTokenIs(token.POWER)) &&
-		!p.peekToken.HadWhitespace {
+		!p.peekToken.HadWhitespace() {
 		contextCallExpression.Arguments = []ast.Expression{}
 		return contextCallExpression
 	}
@@ -4738,12 +4738,12 @@ func (p *parser) parseContextCallExpression(context ast.Expression) ast.Expressi
 	// power / multiplication operator, not a paren-less call with a (kw)splat
 	// arg. With no whitespace separating method-name from operator, treat it
 	// as infix and let the outer parseExpression loop pick it up.
-	if !p.peekToken.HadWhitespace && p.peekTokenOneOf(token.POWER, token.ASTERISK) {
+	if !p.peekToken.HadWhitespace() && p.peekTokenOneOf(token.POWER, token.ASTERISK) {
 		contextCallExpression.Arguments = []ast.Expression{}
 		return contextCallExpression
 	}
 
-	if p.peekToken.HadWhitespace && p.peekToken.Type.IsOperator() &&
+	if p.peekToken.HadWhitespace() && p.peekToken.Type.IsOperator() &&
 		!p.peek2TokenIs(token.NEWLINE) && !p.peek2TokenIs(token.EOF) &&
 		p.spacedOperator(p.peekToken, p.peek2Token) {
 		contextCallExpression.Arguments = []ast.Expression{}
@@ -5397,10 +5397,7 @@ func (p *parser) buildWordArray(beg token.Token, parts []ast.Expression, isSymbo
 			break
 		}
 	}
-	var percentChar byte
-	if lit := p.l.Lit(beg); len(lit) > 0 {
-		percentChar = lit[0]
-	}
+	percentChar := beg.PercentChar()
 	return ast.Init(p.arena.NewArrayLiteral(), ast.ArrayLiteral{
 		Token:       beg,
 		EndPos:      p.curToken.Pos, // STRING_END

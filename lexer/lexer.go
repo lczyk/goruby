@@ -372,9 +372,35 @@ func (l *Lexer) emit(t token.Type) {
 	} else {
 		tok = l.newToken(t)
 	}
-	tok.HadWhitespace = l.tokenHadWhitespace
+	tok.SetHadWhitespace(l.tokenHadWhitespace)
 	if t == token.STRING_END || t == token.XSTR_END {
-		tok.HeredocStripped = l.heredocStripped
+		tok.SetHeredocStripped(l.heredocStripped)
+		l.heredocStripped = false
+	}
+	l.tokenHadWhitespace = false
+	l.lastToken = tok
+	l.tokens = append(l.tokens, tok)
+	l.start = l.pos
+}
+
+// emitKind emits a token of the given type with no pool entry
+// (LitOff = -1) and the supplied StringKind. The token's source span
+// remains addressable via Pos/End; consumers reconstruct the literal
+// text from Kind (e.g. plain "..." delimiters whose form is implicit).
+// Used for STRING_BEG/STRING_END/XSTR_BEG/XSTR_END of plain quoted
+// strings where the delimiter character is fixed by Kind. start is
+// advanced to pos.
+func (l *Lexer) emitKind(t token.Type, k token.StringKind) {
+	tok := token.Token{
+		Type:   t,
+		Pos:    l.start,
+		End:    int32(l.pos - l.start),
+		LitOff: -1,
+		Kind:   uint8(k),
+	}
+	tok.SetHadWhitespace(l.tokenHadWhitespace)
+	if t == token.STRING_END || t == token.XSTR_END {
+		tok.SetHeredocStripped(l.heredocStripped)
 		l.heredocStripped = false
 	}
 	l.tokenHadWhitespace = false
@@ -387,9 +413,9 @@ func (l *Lexer) emit(t token.Type) {
 // ignoring the input between l.start and l.pos. start is advanced to pos.
 func (l *Lexer) emitLiteral(t token.Type, literal string) {
 	tok := l.newTokenLit(t, literal)
-	tok.HadWhitespace = l.tokenHadWhitespace
+	tok.SetHadWhitespace(l.tokenHadWhitespace)
 	if t == token.STRING_END || t == token.XSTR_END {
-		tok.HeredocStripped = l.heredocStripped
+		tok.SetHeredocStripped(l.heredocStripped)
 		l.heredocStripped = false
 	}
 	l.tokenHadWhitespace = false
@@ -402,8 +428,8 @@ func (l *Lexer) emitLiteral(t token.Type, literal string) {
 // printer renders it with single quotes.
 func (l *Lexer) emitLiteralSQ(t token.Type, literal string) {
 	tok := l.newTokenLit(t, literal)
-	tok.HadWhitespace = l.tokenHadWhitespace
-	tok.SingleQuoted = true
+	tok.SetHadWhitespace(l.tokenHadWhitespace)
+	tok.SetSingleQuoted(true)
 	l.tokenHadWhitespace = false
 	l.lastToken = tok
 	l.tokens = append(l.tokens, tok)
@@ -1385,8 +1411,8 @@ func lexSingleQuoteString(l *Lexer) StateFn {
 	}
 	l.backup()
 	tok := l.newToken(token.STRING)
-	tok.HadWhitespace = l.tokenHadWhitespace
-	tok.SingleQuoted = true
+	tok.SetHadWhitespace(l.tokenHadWhitespace)
+	tok.SetSingleQuoted(true)
 	l.tokenHadWhitespace = false
 	l.lastToken = tok
 	l.tokens = append(l.tokens, tok)
@@ -1492,8 +1518,8 @@ func lexCharacterLiteral(l *Lexer) StateFn {
 	// IsCharLit so the printer can re-emit as `?X` (preserves MRI's
 	// StringFlags shape -- char literals always inherit source encoding).
 	tok := l.newToken(token.STRING)
-	tok.HadWhitespace = l.tokenHadWhitespace
-	tok.IsCharLit = true
+	tok.SetHadWhitespace(l.tokenHadWhitespace)
+	tok.SetIsCharLit(true)
 	l.tokenHadWhitespace = false
 	l.lastToken = tok
 	l.tokens = append(l.tokens, tok)
@@ -1502,8 +1528,7 @@ func lexCharacterLiteral(l *Lexer) StateFn {
 }
 
 func lexString(l *Lexer) StateFn {
-	l.ignore() // consume opening "
-	l.emit(token.STRING_BEG)
+	l.emitKind(token.STRING_BEG, token.StrDQuote) // opening " -- delimiter implicit from Kind
 	return lexStringContent
 }
 
@@ -1519,7 +1544,7 @@ func lexStringContent(l *Lexer) StateFn {
 				l.emit(token.STRING_CONTENT)
 				l.next() // re-consume the closing "
 			}
-			l.emit(token.STRING_END) // literal is the closing "
+			l.emitKind(token.STRING_END, token.StrDQuote) // closing " -- delimiter implicit from Kind
 			return checkInterpStack
 		case '#':
 			p := l.peek()
@@ -1700,29 +1725,52 @@ func lexPercentLiteral(l *Lexer) StateFn {
 	case 'q':
 		l.ignore() // skip type char and opener
 		return lexPercentLiteralBodySQ(l, opener, closer, paired, token.STRING)
-	case 'w', 'i', 's':
-		l.emitLiteralSQ(token.STRING_BEG, string(typ))
+	case 'w':
+		l.emitKindSQ(token.STRING_BEG, token.StrPctW)
 		l.ignore() // skip type char and opener
 		return lexPercentLiteralBodyEnd(l, opener, closer, paired, token.STRING_CONTENT, token.STRING_END)
+	case 'i':
+		l.emitKindSQ(token.STRING_BEG, token.StrPctI)
+		l.ignore()
+		return lexPercentLiteralBodyEnd(l, opener, closer, paired, token.STRING_CONTENT, token.STRING_END)
+	case 's':
+		l.emitKindSQ(token.STRING_BEG, token.StrPctS)
+		l.ignore()
+		return lexPercentLiteralBodyEnd(l, opener, closer, paired, token.STRING_CONTENT, token.STRING_END)
 	case 'Q', 'W', 'I', 0:
-		lit := string(typ)
-		if typ == 0 {
-			lit = "Q" // bare % treated as %Q
+		var k token.StringKind
+		switch typ {
+		case 'Q', 0:
+			k = token.StrPctBigQ // bare % treated as %Q
+		case 'W':
+			k = token.StrPctBigW
+		case 'I':
+			k = token.StrPctBigI
 		}
-		l.emitLiteral(token.STRING_BEG, lit)
+		l.emitKind(token.STRING_BEG, k)
 		l.ignore()
 		return lexPercentContent(l, opener, closer, paired, token.STRING_CONTENT, token.STRING_END)
 	case 'r':
-		l.emitLiteral(token.REGEX_BEG, "r")
+		l.emitKind(token.REGEX_BEG, token.StrPctR)
 		l.ignore()
 		return lexPercentContent(l, opener, closer, paired, token.STRING_CONTENT, token.REGEX_END)
 	case 'x':
-		l.emitLiteral(token.XSTR_BEG, "x")
+		l.emitKind(token.XSTR_BEG, token.StrPctX)
 		l.ignore()
 		return lexPercentContent(l, opener, closer, paired, token.XSTR_CONTENT, token.XSTR_END)
 	default:
 		return l.errorf("unknown percent literal type: %c", typ)
 	}
+}
+
+// emitKindSQ is emitKind but also marks the token as SingleQuoted so the
+// printer / evaluator treats embedded escapes as raw (matches %q / %w /
+// %i / %s semantics). No pool entry; literal is implicit from Kind.
+func (l *Lexer) emitKindSQ(t token.Type, k token.StringKind) {
+	l.emitKind(t, k)
+	last := &l.tokens[len(l.tokens)-1]
+	last.SetSingleQuoted(true)
+	l.lastToken = *last
 }
 
 // lexPercentLiteralBodySQ is lexPercentLiteralBody but marks the emitted
@@ -1751,8 +1799,8 @@ func lexPercentLiteralBodySQ(l *Lexer, opener, closer rune, paired bool, tok tok
 				if depth == 0 {
 					l.backup()
 					sq := l.newToken(tok)
-					sq.HadWhitespace = l.tokenHadWhitespace
-					sq.SingleQuoted = true
+					sq.SetHadWhitespace(l.tokenHadWhitespace)
+					sq.SetSingleQuoted(true)
 					l.tokenHadWhitespace = false
 					l.lastToken = sq
 					l.tokens = append(l.tokens, sq)
@@ -1767,8 +1815,8 @@ func lexPercentLiteralBodySQ(l *Lexer, opener, closer rune, paired bool, tok tok
 			if r == closer {
 				l.backup()
 				sq := l.newToken(tok)
-				sq.HadWhitespace = l.tokenHadWhitespace
-				sq.SingleQuoted = true
+				sq.SetHadWhitespace(l.tokenHadWhitespace)
+				sq.SetSingleQuoted(true)
 				l.tokenHadWhitespace = false
 				l.lastToken = sq
 				l.tokens = append(l.tokens, sq)
@@ -1986,8 +2034,7 @@ func closingDelim(r rune) rune {
 }
 
 func lexBacktick(l *Lexer) StateFn {
-	l.ignore() // consume opening `
-	l.emit(token.XSTR_BEG)
+	l.emitKind(token.XSTR_BEG, token.StrBacktick) // opening ` -- delimiter implicit from Kind
 	return lexBacktickContent
 }
 
@@ -2003,7 +2050,7 @@ func lexBacktickContent(l *Lexer) StateFn {
 				l.emit(token.XSTR_CONTENT)
 				l.next() // re-consume the closing `
 			}
-			l.emit(token.XSTR_END)
+			l.emitKind(token.XSTR_END, token.StrBacktick) // closing ` -- delimiter implicit from Kind
 			return checkInterpStack
 		case '#':
 			p := l.peek()
@@ -2667,8 +2714,7 @@ func isHeredocBlockedContext(tok token.Type) bool {
 }
 
 func lexRegexBegin(l *Lexer) StateFn {
-	l.ignore() // consume opening /
-	l.emit(token.REGEX_BEG)
+	l.emitKind(token.REGEX_BEG, token.StrRegex) // opening / -- delimiter implicit from Kind
 	return lexRegexContent
 }
 

@@ -1497,12 +1497,12 @@ func (sl *StringLiteral) stringOnce() string {
 		// Respect source quote style. Lexer stores Value as raw source
 		// bytes; round-tripping through the other quote form would
 		// reinterpret \n etc. and change runtime semantics.
-		if sl.Token.IsCharLit {
+		if sl.Token.IsCharLit() {
 			// `?X` character literal -- re-emit as such so MRI's
 			// StringFlags (forced_<source>_encoding) match on re-parse.
 			return "?" + sl.Value
 		}
-		if sl.Token.SingleQuoted {
+		if sl.Token.SingleQuoted() {
 			open, close = "'", "'"
 		} else {
 			open, close = "\"", "\""

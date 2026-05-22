@@ -286,17 +286,17 @@ $a
 		{token.INT, "2"},
 		{token.NEWLINE, "\n"},
 		{token.STRING_BEG, ""},
-		{token.STRING_END, "\""},
+		{token.STRING_END, ""},
 		{token.NEWLINE, "\n"},
 		{token.STRING_BEG, ""},
 		{token.STRING_CONTENT, "foobar"},
-		{token.STRING_END, "\""},
+		{token.STRING_END, ""},
 		{token.NEWLINE, "\n"},
 		{token.STRING, "foobar"},
 		{token.NEWLINE, "\n"},
 		{token.STRING_BEG, ""},
 		{token.STRING_CONTENT, "foo bar"},
-		{token.STRING_END, "\""},
+		{token.STRING_END, ""},
 		{token.NEWLINE, "\n"},
 		{token.STRING, "foo bar"},
 		{token.NEWLINE, "\n"},
@@ -306,7 +306,7 @@ $a
 		{token.SYMBEG, ":"},
 		{token.STRING_BEG, ""},
 		{token.STRING_CONTENT, "sym"},
-		{token.STRING_END, "\""},
+		{token.STRING_END, ""},
 		{token.NEWLINE, "\n"},
 		{token.SYMBEG, ":"},
 		{token.STRING, "sym"},
@@ -609,7 +609,7 @@ func TestLexerStringInterpolation(t *testing.T) {
 				{token.IDENT, "name"},
 				{token.EMBEXPR_END, "}"},
 				{token.STRING_CONTENT, " world"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -623,7 +623,7 @@ func TestLexerStringInterpolation(t *testing.T) {
 				{token.STRING_CONTENT, "hello "},
 				{token.GLOBAL, "$foo"},
 				{token.STRING_CONTENT, " world"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -638,7 +638,7 @@ func TestLexerStringInterpolation(t *testing.T) {
 				{token.AT, "@"},
 				{token.IDENT, "foo"},
 				{token.STRING_CONTENT, " world"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -656,7 +656,7 @@ func TestLexerStringInterpolation(t *testing.T) {
 				{token.INT, "1"},
 				{token.RBRACE, "}"},
 				{token.EMBEXPR_END, "}"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 	}
@@ -816,7 +816,7 @@ func TestLexerHeredocInterpolation(t *testing.T) {
 				{token.STRING_CONTENT, "\"\n"},
 				{token.STRING_END, ""},
 				{token.EMBEXPR_END, "}"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 				{token.NEWLINE, "\n"},
 			},
 		},
@@ -939,7 +939,7 @@ func TestLexerMultilineLiterals(t *testing.T) {
 			}{
 				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "a\nb"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -1298,7 +1298,7 @@ func TestLexerPercentLiteral(t *testing.T) {
 				literal string
 			}{
 				{token.IDENT, "foo"},
-				{token.STRING_BEG, "Q"},
+				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "text"},
 				{token.STRING_END, ""},
 			},
@@ -1313,7 +1313,7 @@ func TestLexerPercentLiteral(t *testing.T) {
 				{token.IDENT, "foo"},
 				{token.LPAREN, "("},
 				{token.RPAREN, ")"},
-				{token.STRING_BEG, "Q"},
+				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "text"},
 				{token.STRING_END, ""},
 			},
@@ -1335,7 +1335,7 @@ func TestLexerPercentLiteral(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING_BEG, "Q"},
+				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "hello "},
 				{token.EMBEXPR_BEG, "#{"},
 				{token.IDENT, "name"},
@@ -1350,7 +1350,7 @@ func TestLexerPercentLiteral(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING_BEG, "Q"},
+				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "hello"},
 				{token.STRING_END, ""},
 			},
@@ -1362,7 +1362,7 @@ func TestLexerPercentLiteral(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.REGEX_BEG, "r"},
+				{token.REGEX_BEG, ""},
 				{token.STRING_CONTENT, "pattern"},
 				{token.REGEX_END, ""},
 			},
@@ -1374,7 +1374,7 @@ func TestLexerPercentLiteral(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.XSTR_BEG, "x"},
+				{token.XSTR_BEG, ""},
 				{token.XSTR_CONTENT, "ls -la"},
 				{token.XSTR_END, ""},
 			},
@@ -1386,7 +1386,7 @@ func TestLexerPercentLiteral(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING_BEG, "w"},
+				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "foo bar baz"},
 				{token.STRING_END, ""},
 			},
@@ -1398,7 +1398,7 @@ func TestLexerPercentLiteral(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING_BEG, "W"},
+				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "foo "},
 				{token.EMBEXPR_BEG, "#{"},
 				{token.IDENT, "bar"},

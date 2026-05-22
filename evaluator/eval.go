@@ -237,7 +237,7 @@ func evalStringLiteral(env *object.Environment, n *ast.StringLiteral) (object.Ru
 	}
 	// Parser keeps escape sequences verbatim in Value (for source-faithful
 	// roundtripping). The evaluator decodes them per the quote style.
-	decoded := decodeStringEscapes(n.Value, n.Token.SingleQuoted)
+	decoded := decodeStringEscapes(n.Value, n.Token.SingleQuoted())
 	return object.NewString(decoded), nil
 }
 

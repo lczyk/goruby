@@ -385,7 +385,7 @@ func TestLexerIdentifierInContexts(t *testing.T) {
 				{token.IDENT, "name"},
 				{token.EMBEXPR_END, "}"},
 				{token.STRING_CONTENT, " world"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -399,7 +399,7 @@ func TestLexerIdentifierInContexts(t *testing.T) {
 				{token.EMBEXPR_BEG, "#{"},
 				{token.CONST, "Foo"},
 				{token.EMBEXPR_END, "}"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{

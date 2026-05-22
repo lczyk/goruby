@@ -61,7 +61,7 @@ func TestLexerPercentContentOctBrace(t *testing.T) {
 			name:  "\\o{...} in %Q",
 			input: "%Q{\\o{101}}",
 			expected: []expTok{
-				{token.STRING_BEG, "Q"},
+				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "\\o{101}"},
 				{token.STRING_END, ""},
 			},
@@ -70,7 +70,7 @@ func TestLexerPercentContentOctBrace(t *testing.T) {
 			name:  "\\o{...} in %r regex",
 			input: "%r{\\o{77}}",
 			expected: []expTok{
-				{token.REGEX_BEG, "r"},
+				{token.REGEX_BEG, ""},
 				{token.STRING_CONTENT, "\\o{77}"},
 				{token.REGEX_END, ""},
 			},
@@ -79,7 +79,7 @@ func TestLexerPercentContentOctBrace(t *testing.T) {
 			name:  "\\o{...} in %x",
 			input: "%x{\\o{101}}",
 			expected: []expTok{
-				{token.XSTR_BEG, "x"},
+				{token.XSTR_BEG, ""},
 				{token.XSTR_CONTENT, "\\o{101}"},
 				{token.XSTR_END, ""},
 			},
@@ -110,7 +110,7 @@ func TestLexerBacktickContentOctBrace(t *testing.T) {
 	expected := []expTok{
 		{token.XSTR_BEG, ""},
 		{token.XSTR_CONTENT, "\\o{101}"},
-		{token.XSTR_END, "`"},
+		{token.XSTR_END, ""},
 	}
 	for i, exp := range expected {
 		require.That(t, l.HasNext(), "pos %d: unexpected EOF (expected %s %q)", i, exp.typ, exp.literal)
@@ -400,7 +400,7 @@ func TestLexerStringContentEdgeCases(t *testing.T) {
 			expected: []expTok{
 				{token.STRING_BEG, ""},
 				{token.GLOBAL, "$1"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -409,7 +409,7 @@ func TestLexerStringContentEdgeCases(t *testing.T) {
 			expected: []expTok{
 				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "foo#bar"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -420,7 +420,7 @@ func TestLexerStringContentEdgeCases(t *testing.T) {
 				{token.EMBEXPR_BEG, "#{"},
 				{token.IDENT, "x"},
 				{token.EMBEXPR_END, "}"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 	}
@@ -453,7 +453,7 @@ func TestLexerPercentLiteralMoreEdgeCases(t *testing.T) {
 			name:  "%i with asterisk delim",
 			input: "%i*foo*",
 			expected: []expTok{
-				{token.STRING_BEG, "i"},
+				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "foo"},
 				{token.STRING_END, ""},
 			},
@@ -463,7 +463,7 @@ func TestLexerPercentLiteralMoreEdgeCases(t *testing.T) {
 			input: "foo %(bar)",
 			expected: []expTok{
 				{token.IDENT, "foo"},
-				{token.STRING_BEG, "Q"},
+				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "bar"},
 				{token.STRING_END, ""},
 			},

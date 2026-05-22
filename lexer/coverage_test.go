@@ -121,7 +121,7 @@ func TestLexerBacktickInterpolation(t *testing.T) {
 				{token.XSTR_CONTENT, "echo "},
 				{token.AT, "@"},
 				{token.IDENT, "name"},
-				{token.XSTR_END, "`"},
+				{token.XSTR_END, ""},
 			},
 		},
 		{
@@ -135,7 +135,7 @@ func TestLexerBacktickInterpolation(t *testing.T) {
 				{token.XSTR_CONTENT, "echo "},
 				{token.CLASS_VAR, "@@"},
 				{token.IDENT, "var"},
-				{token.XSTR_END, "`"},
+				{token.XSTR_END, ""},
 			},
 		},
 		{
@@ -147,7 +147,7 @@ func TestLexerBacktickInterpolation(t *testing.T) {
 			}{
 				{token.XSTR_BEG, ""},
 				{token.XSTR_CONTENT, "\\\\path"},
-				{token.XSTR_END, "`"},
+				{token.XSTR_END, ""},
 			},
 		},
 	}

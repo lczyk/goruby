@@ -26,7 +26,7 @@ func TestLexerEscapes(t *testing.T) {
 			}{
 				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "\\u{1F600}"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -38,7 +38,7 @@ func TestLexerEscapes(t *testing.T) {
 			}{
 				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "\\u{30e1 30bd}"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -50,7 +50,7 @@ func TestLexerEscapes(t *testing.T) {
 			}{
 				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "\\u2665"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -62,7 +62,7 @@ func TestLexerEscapes(t *testing.T) {
 			}{
 				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "\\x41"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -74,7 +74,7 @@ func TestLexerEscapes(t *testing.T) {
 			}{
 				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "\\xA"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -86,7 +86,7 @@ func TestLexerEscapes(t *testing.T) {
 			}{
 				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "\\C-a"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -98,7 +98,7 @@ func TestLexerEscapes(t *testing.T) {
 			}{
 				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "\\C-\\M-a"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -110,7 +110,7 @@ func TestLexerEscapes(t *testing.T) {
 			}{
 				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "\\M-a"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -122,7 +122,7 @@ func TestLexerEscapes(t *testing.T) {
 			}{
 				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "\\M-\\C-a"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -134,7 +134,7 @@ func TestLexerEscapes(t *testing.T) {
 			}{
 				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "\\ca"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -146,7 +146,7 @@ func TestLexerEscapes(t *testing.T) {
 			}{
 				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "\\#{foo}"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -192,7 +192,7 @@ func TestLexerEscapes(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.STRING_BEG, "Q"},
+				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "\\u{41}"},
 				{token.STRING_END, ""},
 			},
@@ -204,7 +204,7 @@ func TestLexerEscapes(t *testing.T) {
 				typ     token.Type
 				literal string
 			}{
-				{token.REGEX_BEG, "r"},
+				{token.REGEX_BEG, ""},
 				{token.STRING_CONTENT, "\\u{41}"},
 				{token.REGEX_END, ""},
 			},
@@ -379,7 +379,7 @@ func TestLexerBacktick(t *testing.T) {
 			}{
 				{token.XSTR_BEG, ""},
 				{token.XSTR_CONTENT, "ls"},
-				{token.XSTR_END, "`"},
+				{token.XSTR_END, ""},
 			},
 		},
 		{
@@ -394,7 +394,7 @@ func TestLexerBacktick(t *testing.T) {
 				{token.EMBEXPR_BEG, "#{"},
 				{token.IDENT, "name"},
 				{token.EMBEXPR_END, "}"},
-				{token.XSTR_END, "`"},
+				{token.XSTR_END, ""},
 			},
 		},
 		{
@@ -407,7 +407,7 @@ func TestLexerBacktick(t *testing.T) {
 				{token.XSTR_BEG, ""},
 				{token.XSTR_CONTENT, "echo "},
 				{token.GLOBAL, "$foo"},
-				{token.XSTR_END, "`"},
+				{token.XSTR_END, ""},
 			},
 		},
 		{
@@ -419,7 +419,7 @@ func TestLexerBacktick(t *testing.T) {
 			}{
 				{token.XSTR_BEG, ""},
 				{token.XSTR_CONTENT, "echo \\u{41}"},
-				{token.XSTR_END, "`"},
+				{token.XSTR_END, ""},
 			},
 		},
 		{
@@ -430,7 +430,7 @@ func TestLexerBacktick(t *testing.T) {
 				literal string
 			}{
 				{token.XSTR_BEG, ""},
-				{token.XSTR_END, "`"},
+				{token.XSTR_END, ""},
 			},
 		},
 	}
@@ -466,7 +466,7 @@ func TestLexerEscapesEdgeCases(t *testing.T) {
 			}{
 				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "\\o101"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -478,7 +478,7 @@ func TestLexerEscapesEdgeCases(t *testing.T) {
 			}{
 				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "\\u2665"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 		{
@@ -500,7 +500,7 @@ func TestLexerEscapesEdgeCases(t *testing.T) {
 			}{
 				{token.STRING_BEG, ""},
 				{token.STRING_CONTENT, "\\n\\t\\r"},
-				{token.STRING_END, "\""},
+				{token.STRING_END, ""},
 			},
 		},
 	}
