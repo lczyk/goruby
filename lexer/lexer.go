@@ -356,8 +356,11 @@ func (l *Lexer) newToken(t token.Type) token.Token {
 // literal is appended to l.litPool and Token.LitOff indexes into it.
 // End remains the source span length.
 func (l *Lexer) newTokenLit(t token.Type, literal string) token.Token {
-	off := int32(len(l.litPool))
-	l.litPool = append(l.litPool, literal)
+	off := int32(-1)
+	if literal != "" {
+		off = int32(len(l.litPool))
+		l.litPool = append(l.litPool, literal)
+	}
 	return token.Token{
 		Type:   t,
 		Pos:    l.start,
@@ -1126,7 +1129,7 @@ func startLexer(l *Lexer) StateFn {
 		return startLexer
 	case eof:
 		l.emit(token.EOF)
-		return startLexer
+		return nil
 	case '#':
 		return commentLexer
 	case '|':

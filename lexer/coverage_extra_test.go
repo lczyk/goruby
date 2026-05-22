@@ -493,9 +493,10 @@ func TestLexerNextTokenAfterExhaust(t *testing.T) {
 		tok := l.NextToken()
 		assert.Equal(t, tok.Type, token.EOF)
 	}
-	// HasNext stays true: startLexer loops on EOF, caller stops on EOF token.
-	if !l.HasNext() {
-		t.Error("HasNext should return true (lexer never self-terminates)")
+	// After the state machine emits EOF it terminates (state = nil); further
+	// NextToken calls return a fresh EOF without re-driving the lexer.
+	if l.HasNext() {
+		t.Error("HasNext should return false after EOF emitted")
 	}
 }
 
