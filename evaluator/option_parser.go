@@ -39,7 +39,7 @@ func bootstrapOptionParser(env *object.Environment) *object.Class {
 
 	c.ClassMethods["new"] = &object.UserMethod{
 		Name: "new",
-		Body: nativeFn{fn: optionParserNew(c)},
+		Body: nativeFn{Fn: optionParserNew(c)},
 	}
 
 	c.Methods["banner="] = &object.BuiltinMethod{Name: "banner=", Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {

@@ -1,23 +1,24 @@
-package evaluator
+package stdlib
 
 import (
 	"strconv"
 
+	"github.com/lczyk/goruby/evaluator/builtinapi"
 	"github.com/lczyk/goruby/object"
 )
 
-// bootstrapRationalClass installs a minimal Rational class. Instances
+// BootstrapRationalClass installs a minimal Rational class. Instances
 // carry @num and @den (both Integer; @den always positive, GCD-reduced).
 // Construction goes through Kernel#Rational(n, d) or, more commonly in
 // the corpus, by raising an Integer to a negative Integer exponent.
-func bootstrapRationalClass(env *object.Environment) *object.Class {
+func BootstrapRationalClass(env *object.Environment) *object.Class {
 	if existing, ok := env.Get("Rational"); ok {
 		if c, ok := existing.(*object.Class); ok {
 			return c
 		}
 	}
 	c := object.NewClass("Rational", object.NumericClass)
-	c.ClassMethods["new"] = &object.UserMethod{Name: "new", Body: nativeFn{fn: rationalNew(c)}}
+	c.ClassMethods["new"] = &object.UserMethod{Name: "new", Body: builtinapi.NativeFn{Fn: rationalNew(c)}}
 	c.Methods["numerator"] = &object.BuiltinMethod{Name: "numerator", Fn: rationalAccessor("@num")}
 	c.Methods["denominator"] = &object.BuiltinMethod{Name: "denominator", Fn: rationalAccessor("@den")}
 	c.Methods["to_s"] = &object.BuiltinMethod{Name: "to_s", Fn: rationalToS}
@@ -32,18 +33,18 @@ func rationalNew(c *object.Class) func(*object.Environment, []object.RubyObject)
 		if len(args) >= 1 {
 			n, ok := args[0].(*object.Integer)
 			if !ok {
-				return nil, errorf("evaluator: Rational.new: numerator must be Integer, got %T", args[0])
+				return nil, builtinapi.Errorf("evaluator: Rational.new: numerator must be Integer, got %T", args[0])
 			}
 			num = n.Value
 		}
 		if len(args) >= 2 {
 			d, ok := args[1].(*object.Integer)
 			if !ok {
-				return nil, errorf("evaluator: Rational.new: denominator must be Integer, got %T", args[1])
+				return nil, builtinapi.Errorf("evaluator: Rational.new: denominator must be Integer, got %T", args[1])
 			}
 			den = d.Value
 			if den == 0 {
-				return nil, errorf("evaluator: ZeroDivisionError: divided by 0")
+				return nil, builtinapi.Errorf("evaluator: ZeroDivisionError: divided by 0")
 			}
 		}
 		return newRational(c, num, den), nil
@@ -105,7 +106,7 @@ func rationalAccessor(ivar string) func(env *object.Environment, recv object.Rub
 	return func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
 		inst, ok := recv.(*object.Instance)
 		if !ok {
-			return nil, errorf("evaluator: Rational accessor on non-Rational %T", recv)
+			return nil, builtinapi.Errorf("evaluator: Rational accessor on non-Rational %T", recv)
 		}
 		if v, ok := inst.Ivars[ivar]; ok {
 			return v, nil
@@ -117,7 +118,7 @@ func rationalAccessor(ivar string) func(env *object.Environment, recv object.Rub
 func rationalToS(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
 	num, den, ok := rationalParts(recv)
 	if !ok {
-		return nil, errorf("evaluator: Rational#to_s on non-Rational %T", recv)
+		return nil, builtinapi.Errorf("evaluator: Rational#to_s on non-Rational %T", recv)
 	}
 	return object.NewString(strconv.FormatInt(num, 10) + "/" + strconv.FormatInt(den, 10)), nil
 }
@@ -125,33 +126,30 @@ func rationalToS(env *object.Environment, recv object.RubyObject, args []object.
 func rationalInspect(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
 	num, den, ok := rationalParts(recv)
 	if !ok {
-		return nil, errorf("evaluator: Rational#inspect on non-Rational %T", recv)
+		return nil, builtinapi.Errorf("evaluator: Rational#inspect on non-Rational %T", recv)
 	}
 	return object.NewString("(" + strconv.FormatInt(num, 10) + "/" + strconv.FormatInt(den, 10) + ")"), nil
 }
 
-// integerPowToRational handles the negative-exponent case for Integer**Integer:
-// base**(-n) becomes Rational(sign, base**n) when base is non-zero.
-// Caller already validated exp < 0 and exp's magnitude fits in int64.
-func integerPowToRational(env *object.Environment, base, exp int64) (object.RubyObject, error) {
+// IntegerPowToRational handles the negative-exponent case for
+// Integer**Integer: base**(-n) becomes Rational(sign, base**n) when
+// base is non-zero. Caller already validated exp < 0 and that exp's
+// magnitude fits in int64.
+func IntegerPowToRational(env *object.Environment, base, exp int64) (object.RubyObject, error) {
 	if base == 0 {
-		return nil, errorf("evaluator: ZeroDivisionError: divided by 0")
+		return nil, builtinapi.Errorf("evaluator: ZeroDivisionError: divided by 0")
 	}
 	rcls, _ := env.Get("Rational")
 	c, _ := rcls.(*object.Class)
 	if c == nil {
-		c = bootstrapRationalClass(env)
+		c = BootstrapRationalClass(env)
 	}
-	// Compute base ** (-exp); -exp is positive.
 	absExp := -exp
 	var denom int64 = 1
 	b := base
 	for i := int64(0); i < absExp; i++ {
 		denom *= b
 	}
-	// (-base)**even = positive; (-base)**odd = negative. The denom
-	// already reflects the sign of base; pull it into the numerator so
-	// the canonical sign convention (denom positive) holds.
 	num := int64(1)
 	if denom < 0 {
 		num = -1

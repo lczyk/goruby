@@ -2,6 +2,7 @@ package evaluator
 
 import (
 	"github.com/lczyk/goruby/ast"
+	"github.com/lczyk/goruby/evaluator/builtinapi"
 	"github.com/lczyk/goruby/object"
 )
 
@@ -411,17 +412,9 @@ func classBodyDSL(env *object.Environment, cls *object.Class, name string, args 
 	return nil, false, nil
 }
 
-func symbolOrString(env *object.Environment, o object.RubyObject) (string, bool) {
-	switch v := o.(type) {
-	case *object.Symbol:
-		return env.Symbols().Name(v.ID), true
-	case *object.String:
-		return string(v.Buf), true
-	case *object.FrozenString:
-		return env.Strings().Get(v.ID), true
-	}
-	return "", false
-}
+// symbolOrString aliases builtinapi.SymbolOrString; see string.go for
+// the stringText sibling helper.
+var symbolOrString = builtinapi.SymbolOrString
 
 // makeAttrReader / makeAttrWriter are stored on a Class's Methods map
 // and recognised by callMethod via a marker type so dispatch can

@@ -7,19 +7,16 @@
 package evaluator
 
 import (
-	"fmt"
+	"github.com/lczyk/goruby/evaluator/builtinapi"
 )
 
-// Error represents an evaluator-internal error. Distinct from ruby
-// exceptions raised by user code -- those are object.Exception values
-// returned via the RubyObject channel.
-type Error struct {
-	Msg string
-}
-
-func (e *Error) Error() string { return e.Msg }
+// Error and errorf are local aliases over the builtinapi exports so
+// existing evaluator code keeps its lowercase names while subpackages
+// (e.g. evaluator/stdlib) can construct the same type via the
+// exported names.
+type Error = builtinapi.Error
 
 func errorf(format string, args ...any) *Error {
-	return &Error{Msg: fmt.Sprintf(format, args...)}
+	return builtinapi.Errorf(format, args...)
 }
 

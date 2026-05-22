@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/lczyk/goruby/ast"
+	"github.com/lczyk/goruby/evaluator/stdlib"
 	"github.com/lczyk/goruby/object"
 	"github.com/lczyk/goruby/parser"
 )
@@ -63,7 +64,7 @@ func callKernel(env *object.Environment, name string, args []object.RubyObject) 
 	case "lambda":
 		return nil, errorf("evaluator: Kernel#lambda without block not supported; use ->( ){ ... }")
 	case "Complex":
-		return kernelComplex(env, args)
+		return stdlib.KernelComplex(env, args)
 	}
 	return nil, errorf("evaluator: NoMethodError: undefined method `%s' for main:Object", name)
 }

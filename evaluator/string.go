@@ -7,6 +7,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/lczyk/goruby/evaluator/builtinapi"
 	"github.com/lczyk/goruby/object"
 )
 
@@ -166,17 +167,10 @@ func toFloatValue(o object.RubyObject) (float64, error) {
 	return 0, errorf("evaluator: TypeError: cannot convert %T to Float for format", o)
 }
 
-// stringText extracts the raw text of a String / FrozenString. Returns
-// "", false for non-string operands.
-func stringText(env *object.Environment, o object.RubyObject) (string, bool) {
-	switch v := o.(type) {
-	case *object.String:
-		return string(v.Buf), true
-	case *object.FrozenString:
-		return env.Strings().Get(v.ID), true
-	}
-	return "", false
-}
+// stringText aliases builtinapi.StringText. Kept as a local name so
+// existing call sites read naturally; the implementation lives in the
+// subpkg so stdlib/ etc can call it directly.
+var stringText = builtinapi.StringText
 
 // stringUnpack implements a small subset of String#unpack directives:
 // the ones the corpus actually uses today. Supported formats:

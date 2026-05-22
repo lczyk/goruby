@@ -105,9 +105,9 @@ func bootstrapRegexpClass(env *object.Environment) *object.Class {
 	// Idempotent across envs: a second bootstrap sees them present and
 	// is a no-op.
 	if _, ok := c.ClassMethods["union"]; !ok {
-		c.ClassMethods["union"] = &object.UserMethod{Name: "union", Body: nativeFn{fn: regexpUnion}}
-		c.ClassMethods["escape"] = &object.UserMethod{Name: "escape", Body: nativeFn{fn: regexpEscape}}
-		c.ClassMethods["quote"] = &object.UserMethod{Name: "quote", Body: nativeFn{fn: regexpEscape}}
+		c.ClassMethods["union"] = &object.UserMethod{Name: "union", Body: nativeFn{Fn: regexpUnion}}
+		c.ClassMethods["escape"] = &object.UserMethod{Name: "escape", Body: nativeFn{Fn: regexpEscape}}
+		c.ClassMethods["quote"] = &object.UserMethod{Name: "quote", Body: nativeFn{Fn: regexpEscape}}
 	}
 	if _, ok := c.Methods["match?"]; !ok {
 		c.Methods["match?"] = &object.BuiltinMethod{Name: "match?", Fn: regexMatchQ}

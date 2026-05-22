@@ -1,10 +1,11 @@
-package evaluator
+package stdlib
 
 import (
+	"github.com/lczyk/goruby/evaluator/builtinapi"
 	"github.com/lczyk/goruby/object"
 )
 
-// bootstrapStringScanner installs a minimal subset of ruby's
+// BootstrapStringScanner installs a minimal subset of ruby's
 // stdlib strscan::StringScanner. Covers the surface the corpus
 // hits today:
 //
@@ -17,7 +18,7 @@ import (
 //
 // StringScanner state lives in instance ivars: @src, @pos, @matches
 // (last scan's capture groups, with index 0 = whole match).
-func bootstrapStringScanner(env *object.Environment) *object.Class {
+func BootstrapStringScanner(env *object.Environment) *object.Class {
 	if existing, ok := env.Get("StringScanner"); ok {
 		if c, ok := existing.(*object.Class); ok {
 			return c
@@ -25,7 +26,7 @@ func bootstrapStringScanner(env *object.Environment) *object.Class {
 	}
 	c := object.NewClass("StringScanner", nil)
 
-	c.ClassMethods["new"] = &object.UserMethod{Name: "new", Body: nativeFn{fn: scannerNew(c)}}
+	c.ClassMethods["new"] = &object.UserMethod{Name: "new", Body: builtinapi.NativeFn{Fn: scannerNew(c)}}
 
 	c.Methods["eos?"] = &object.BuiltinMethod{Name: "eos?", Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
 		s, pos := scannerState(recv)
@@ -46,11 +47,11 @@ func bootstrapStringScanner(env *object.Environment) *object.Class {
 	}}
 	c.Methods["pos="] = &object.BuiltinMethod{Name: "pos=", Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
 		if len(args) != 1 {
-			return nil, errorf("evaluator: StringScanner#pos= expects 1 arg")
+			return nil, builtinapi.Errorf("evaluator: StringScanner#pos= expects 1 arg")
 		}
 		n, ok := args[0].(*object.Integer)
 		if !ok {
-			return nil, errorf("evaluator: StringScanner#pos= expects Integer")
+			return nil, builtinapi.Errorf("evaluator: StringScanner#pos= expects Integer")
 		}
 		if inst, ok := recv.(*object.Instance); ok {
 			inst.Ivars["@pos"] = n
@@ -69,11 +70,11 @@ func bootstrapStringScanner(env *object.Environment) *object.Class {
 func scannerNew(c *object.Class) func(*object.Environment, []object.RubyObject) (object.RubyObject, error) {
 	return func(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
 		if len(args) != 1 {
-			return nil, errorf("evaluator: StringScanner.new expects 1 arg, got %d", len(args))
+			return nil, builtinapi.Errorf("evaluator: StringScanner.new expects 1 arg, got %d", len(args))
 		}
-		s, ok := stringText(env, args[0])
+		s, ok := builtinapi.StringText(env, args[0])
 		if !ok {
-			return nil, errorf("evaluator: StringScanner.new expects String, got %T", args[0])
+			return nil, builtinapi.Errorf("evaluator: StringScanner.new expects String, got %T", args[0])
 		}
 		return &object.Instance{
 			C: c,
@@ -104,31 +105,26 @@ func scannerState(recv object.RubyObject) (string, int) {
 
 func scannerScan(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
 	if len(args) != 1 {
-		return nil, errorf("evaluator: StringScanner#scan expects 1 arg")
+		return nil, builtinapi.Errorf("evaluator: StringScanner#scan expects 1 arg")
 	}
 	re, ok := args[0].(*object.Regex)
 	if !ok {
-		return nil, errorf("evaluator: StringScanner#scan expects Regexp, got %T", args[0])
+		return nil, builtinapi.Errorf("evaluator: StringScanner#scan expects Regexp, got %T", args[0])
 	}
 	inst, ok := recv.(*object.Instance)
 	if !ok {
-		return nil, errorf("evaluator: StringScanner#scan on non-Instance %T", recv)
+		return nil, builtinapi.Errorf("evaluator: StringScanner#scan on non-Instance %T", recv)
 	}
 	s, pos := scannerState(recv)
 	if pos >= len(s) {
 		return object.NIL, nil
 	}
-	// Anchor: scan only matches at the current position. Use
-	// FindStringSubmatchIndex on the remaining slice and reject
-	// any match whose start isn't 0 (i.e., not at pos).
 	rest := s[pos:]
 	loc := re.RE.FindStringSubmatchIndex(rest)
 	if loc == nil || loc[0] != 0 {
 		return object.NIL, nil
 	}
 	matched := rest[loc[0]:loc[1]]
-	// Capture groups: [0] is whole match, [i] is group i. Store as
-	// Array so [] can index.
 	caps := []object.RubyObject{object.NewString(matched)}
 	for g := 1; g*2+1 < len(loc); g++ {
 		if loc[g*2] == -1 {
@@ -144,15 +140,15 @@ func scannerScan(env *object.Environment, recv object.RubyObject, args []object.
 
 func scannerGroup(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
 	if len(args) != 1 {
-		return nil, errorf("evaluator: StringScanner#[] expects 1 arg")
+		return nil, builtinapi.Errorf("evaluator: StringScanner#[] expects 1 arg")
 	}
 	n, ok := args[0].(*object.Integer)
 	if !ok {
-		return nil, errorf("evaluator: StringScanner#[] expects Integer, got %T", args[0])
+		return nil, builtinapi.Errorf("evaluator: StringScanner#[] expects Integer, got %T", args[0])
 	}
 	inst, ok := recv.(*object.Instance)
 	if !ok {
-		return nil, errorf("evaluator: StringScanner#[] on non-Instance %T", recv)
+		return nil, builtinapi.Errorf("evaluator: StringScanner#[] on non-Instance %T", recv)
 	}
 	matches, _ := inst.Ivars["@matches"].(*object.Array)
 	if matches == nil {

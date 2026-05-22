@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/lczyk/goruby/evaluator/builtinapi"
 	"github.com/lczyk/goruby/object"
 )
 
@@ -13,9 +14,10 @@ import (
 // Lets us register builtins (File.read, STDIN.gets, ...) without
 // growing the dispatchAttrMarker switch with a new typed marker per
 // builtin.
-type nativeFn struct {
-	fn func(env *object.Environment, args []object.RubyObject) (object.RubyObject, error)
-}
+// nativeFn aliases builtinapi.NativeFn so existing call sites keep
+// their lowercase identifier; the underlying type lives in builtinapi
+// so subpackages can construct it.
+type nativeFn = builtinapi.NativeFn
 
 // stdinReader returns a *bufio.Reader over env.Stdin(), cached on the
 // root env so successive `gets` calls share buffered state and don't
@@ -86,16 +88,16 @@ func bootstrapSTDOUT(env *object.Environment) *object.Class {
 		}
 	}
 	c := object.NewClass("STDOUT", nil)
-	c.ClassMethods["puts"] = &object.UserMethod{Name: "puts", Body: nativeFn{fn: stdoutPuts}}
-	c.ClassMethods["print"] = &object.UserMethod{Name: "print", Body: nativeFn{fn: stdoutPrint}}
-	c.ClassMethods["write"] = &object.UserMethod{Name: "write", Body: nativeFn{fn: stdoutWrite}}
-	c.ClassMethods["flush"] = &object.UserMethod{Name: "flush", Body: nativeFn{fn: ioNoopSelf}}
-	c.ClassMethods["sync"] = &object.UserMethod{Name: "sync", Body: nativeFn{fn: ioReturnTrue}}
-	c.ClassMethods["sync="] = &object.UserMethod{Name: "sync=", Body: nativeFn{fn: ioReturnArg}}
-	c.ClassMethods["tty?"] = &object.UserMethod{Name: "tty?", Body: nativeFn{fn: stdoutTTY}}
-	c.ClassMethods["binmode"] = &object.UserMethod{Name: "binmode", Body: nativeFn{fn: ioReturnSelf(c)}}
-	c.ClassMethods["set_encoding"] = &object.UserMethod{Name: "set_encoding", Body: nativeFn{fn: ioReturnSelf(c)}}
-	c.ClassMethods["putc"] = &object.UserMethod{Name: "putc", Body: nativeFn{fn: stdoutPutc}}
+	c.ClassMethods["puts"] = &object.UserMethod{Name: "puts", Body: nativeFn{Fn: stdoutPuts}}
+	c.ClassMethods["print"] = &object.UserMethod{Name: "print", Body: nativeFn{Fn: stdoutPrint}}
+	c.ClassMethods["write"] = &object.UserMethod{Name: "write", Body: nativeFn{Fn: stdoutWrite}}
+	c.ClassMethods["flush"] = &object.UserMethod{Name: "flush", Body: nativeFn{Fn: ioNoopSelf}}
+	c.ClassMethods["sync"] = &object.UserMethod{Name: "sync", Body: nativeFn{Fn: ioReturnTrue}}
+	c.ClassMethods["sync="] = &object.UserMethod{Name: "sync=", Body: nativeFn{Fn: ioReturnArg}}
+	c.ClassMethods["tty?"] = &object.UserMethod{Name: "tty?", Body: nativeFn{Fn: stdoutTTY}}
+	c.ClassMethods["binmode"] = &object.UserMethod{Name: "binmode", Body: nativeFn{Fn: ioReturnSelf(c)}}
+	c.ClassMethods["set_encoding"] = &object.UserMethod{Name: "set_encoding", Body: nativeFn{Fn: ioReturnSelf(c)}}
+	c.ClassMethods["putc"] = &object.UserMethod{Name: "putc", Body: nativeFn{Fn: stdoutPutc}}
 	env.SetGlobal("STDOUT", c)
 	return c
 }
@@ -112,14 +114,14 @@ func bootstrapSTDERR(env *object.Environment) *object.Class {
 		}
 	}
 	c := object.NewClass("STDERR", nil)
-	c.ClassMethods["puts"] = &object.UserMethod{Name: "puts", Body: nativeFn{fn: stderrPuts}}
-	c.ClassMethods["print"] = &object.UserMethod{Name: "print", Body: nativeFn{fn: stderrPrint}}
-	c.ClassMethods["write"] = &object.UserMethod{Name: "write", Body: nativeFn{fn: stderrWrite}}
-	c.ClassMethods["flush"] = &object.UserMethod{Name: "flush", Body: nativeFn{fn: ioNoopSelf}}
-	c.ClassMethods["sync"] = &object.UserMethod{Name: "sync", Body: nativeFn{fn: ioReturnTrue}}
-	c.ClassMethods["sync="] = &object.UserMethod{Name: "sync=", Body: nativeFn{fn: ioReturnArg}}
-	c.ClassMethods["binmode"] = &object.UserMethod{Name: "binmode", Body: nativeFn{fn: ioReturnSelf(c)}}
-	c.ClassMethods["set_encoding"] = &object.UserMethod{Name: "set_encoding", Body: nativeFn{fn: ioReturnSelf(c)}}
+	c.ClassMethods["puts"] = &object.UserMethod{Name: "puts", Body: nativeFn{Fn: stderrPuts}}
+	c.ClassMethods["print"] = &object.UserMethod{Name: "print", Body: nativeFn{Fn: stderrPrint}}
+	c.ClassMethods["write"] = &object.UserMethod{Name: "write", Body: nativeFn{Fn: stderrWrite}}
+	c.ClassMethods["flush"] = &object.UserMethod{Name: "flush", Body: nativeFn{Fn: ioNoopSelf}}
+	c.ClassMethods["sync"] = &object.UserMethod{Name: "sync", Body: nativeFn{Fn: ioReturnTrue}}
+	c.ClassMethods["sync="] = &object.UserMethod{Name: "sync=", Body: nativeFn{Fn: ioReturnArg}}
+	c.ClassMethods["binmode"] = &object.UserMethod{Name: "binmode", Body: nativeFn{Fn: ioReturnSelf(c)}}
+	c.ClassMethods["set_encoding"] = &object.UserMethod{Name: "set_encoding", Body: nativeFn{Fn: ioReturnSelf(c)}}
 	env.SetGlobal("STDERR", c)
 	return c
 }
@@ -223,10 +225,10 @@ func bootstrapARGF(env *object.Environment) *object.Class {
 		}
 	}
 	c := object.NewClass("ARGF", nil)
-	c.ClassMethods["read"] = &object.UserMethod{Name: "read", Body: nativeFn{fn: argfRead}}
-	c.ClassMethods["gets"] = &object.UserMethod{Name: "gets", Body: nativeFn{fn: argfGets}}
-	c.ClassMethods["readline"] = &object.UserMethod{Name: "readline", Body: nativeFn{fn: argfGets}}
-	c.ClassMethods["each_line"] = &object.UserMethod{Name: "each_line", Body: nativeFn{fn: argfEachLine}}
+	c.ClassMethods["read"] = &object.UserMethod{Name: "read", Body: nativeFn{Fn: argfRead}}
+	c.ClassMethods["gets"] = &object.UserMethod{Name: "gets", Body: nativeFn{Fn: argfGets}}
+	c.ClassMethods["readline"] = &object.UserMethod{Name: "readline", Body: nativeFn{Fn: argfGets}}
+	c.ClassMethods["each_line"] = &object.UserMethod{Name: "each_line", Body: nativeFn{Fn: argfEachLine}}
 	env.SetGlobal("ARGF", c)
 	return c
 }
@@ -330,10 +332,10 @@ func bootstrapFileClass(env *object.Environment) *object.Class {
 		}
 	}
 	c := object.NewClass("File", nil)
-	c.ClassMethods["read"] = &object.UserMethod{Name: "read", Body: nativeFn{fn: fileRead}}
-	c.ClassMethods["size"] = &object.UserMethod{Name: "size", Body: nativeFn{fn: fileSize}}
-	c.ClassMethods["exist?"] = &object.UserMethod{Name: "exist?", Body: nativeFn{fn: fileExist}}
-	c.ClassMethods["exists?"] = &object.UserMethod{Name: "exists?", Body: nativeFn{fn: fileExist}}
+	c.ClassMethods["read"] = &object.UserMethod{Name: "read", Body: nativeFn{Fn: fileRead}}
+	c.ClassMethods["size"] = &object.UserMethod{Name: "size", Body: nativeFn{Fn: fileSize}}
+	c.ClassMethods["exist?"] = &object.UserMethod{Name: "exist?", Body: nativeFn{Fn: fileExist}}
+	c.ClassMethods["exists?"] = &object.UserMethod{Name: "exists?", Body: nativeFn{Fn: fileExist}}
 	env.SetGlobal("File", c)
 	return c
 }
@@ -345,15 +347,15 @@ func bootstrapSTDIN(env *object.Environment) *object.Class {
 		}
 	}
 	c := object.NewClass("STDIN", nil)
-	c.ClassMethods["gets"] = &object.UserMethod{Name: "gets", Body: nativeFn{fn: stdinGets}}
-	c.ClassMethods["read"] = &object.UserMethod{Name: "read", Body: nativeFn{fn: stdinReadAll}}
-	c.ClassMethods["readline"] = &object.UserMethod{Name: "readline", Body: nativeFn{fn: stdinGets}}
-	c.ClassMethods["eof?"] = &object.UserMethod{Name: "eof?", Body: nativeFn{fn: stdinEOF}}
-	c.ClassMethods["eof"] = &object.UserMethod{Name: "eof", Body: nativeFn{fn: stdinEOF}}
-	c.ClassMethods["getbyte"] = &object.UserMethod{Name: "getbyte", Body: nativeFn{fn: stdinGetbyte}}
-	c.ClassMethods["getc"] = &object.UserMethod{Name: "getc", Body: nativeFn{fn: stdinGetc}}
-	c.ClassMethods["tty?"] = &object.UserMethod{Name: "tty?", Body: nativeFn{fn: stdinTTY}}
-	c.ClassMethods["isatty"] = &object.UserMethod{Name: "isatty", Body: nativeFn{fn: stdinTTY}}
+	c.ClassMethods["gets"] = &object.UserMethod{Name: "gets", Body: nativeFn{Fn: stdinGets}}
+	c.ClassMethods["read"] = &object.UserMethod{Name: "read", Body: nativeFn{Fn: stdinReadAll}}
+	c.ClassMethods["readline"] = &object.UserMethod{Name: "readline", Body: nativeFn{Fn: stdinGets}}
+	c.ClassMethods["eof?"] = &object.UserMethod{Name: "eof?", Body: nativeFn{Fn: stdinEOF}}
+	c.ClassMethods["eof"] = &object.UserMethod{Name: "eof", Body: nativeFn{Fn: stdinEOF}}
+	c.ClassMethods["getbyte"] = &object.UserMethod{Name: "getbyte", Body: nativeFn{Fn: stdinGetbyte}}
+	c.ClassMethods["getc"] = &object.UserMethod{Name: "getc", Body: nativeFn{Fn: stdinGetc}}
+	c.ClassMethods["tty?"] = &object.UserMethod{Name: "tty?", Body: nativeFn{Fn: stdinTTY}}
+	c.ClassMethods["isatty"] = &object.UserMethod{Name: "isatty", Body: nativeFn{Fn: stdinTTY}}
 	env.SetGlobal("STDIN", c)
 	return c
 }

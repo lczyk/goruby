@@ -31,11 +31,11 @@ func bootstrapPrimeModule(env *object.Environment) *object.Class {
 	c.IsModule = true
 	c.ClassMethods["prime_division"] = &object.UserMethod{
 		Name: "prime_division",
-		Body: nativeFn{fn: primeDivision},
+		Body: nativeFn{Fn: primeDivision},
 	}
 	c.ClassMethods["int_from_prime_division"] = &object.UserMethod{
 		Name: "int_from_prime_division",
-		Body: nativeFn{fn: primeIntFromPrimeDivision},
+		Body: nativeFn{Fn: primeIntFromPrimeDivision},
 	}
 	env.SetGlobal("Prime", c)
 	return c

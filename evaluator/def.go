@@ -324,30 +324,8 @@ func dispatchAttrMarker(callEnv *object.Environment, m *object.UserMethod, args 
 		inst.Ivars["@message"] = object.NewString(msg)
 		return object.NIL, true, nil
 	case nativeFn:
-		v, err := marker.fn(callEnv, args)
+		v, err := marker.Fn(callEnv, args)
 		return v, true, err
-	case mathFn1:
-		if len(args) != 1 {
-			return nil, true, errorf("evaluator: wrong number of arguments (given %d, expected 1)", len(args))
-		}
-		f, err := toFloatValue(args[0])
-		if err != nil {
-			return nil, true, err
-		}
-		return object.NewFloat(marker.fn(f)), true, nil
-	case mathFn2:
-		if len(args) != 2 {
-			return nil, true, errorf("evaluator: wrong number of arguments (given %d, expected 2)", len(args))
-		}
-		a, err := toFloatValue(args[0])
-		if err != nil {
-			return nil, true, err
-		}
-		b, err := toFloatValue(args[1])
-		if err != nil {
-			return nil, true, err
-		}
-		return object.NewFloat(marker.fn(a, b)), true, nil
 	case attrReaderMarker:
 		inst, ok := callEnv.Self.(*object.Instance)
 		if !ok {

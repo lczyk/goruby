@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"github.com/lczyk/goruby/ast"
+	"github.com/lczyk/goruby/evaluator/stdlib"
 	"github.com/lczyk/goruby/object"
 )
 
@@ -159,16 +160,16 @@ func bootstrapBuiltins(env *object.Environment) {
 	bootstrapCoreClasses(env)
 	bootstrapEnumerableModule(env)
 	bootstrapComparableModule(env)
-	bootstrapMathModule(env)
+	stdlib.BootstrapMathModule(env)
 	bootstrapIO(env)
 	bootstrapRegexpClass(env)
-	bootstrapEncodingClass(env)
-	bootstrapComplexClass(env)
-	bootstrapRationalClass(env)
+	stdlib.BootstrapEncodingClass(env)
+	stdlib.BootstrapComplexClass(env)
+	stdlib.BootstrapRationalClass(env)
 	bootstrapPrimeModule(env)
 	bootstrapEnumeratorClass(env)
 	bootstrapOptionParser(env)
-	bootstrapStringScanner(env)
+	stdlib.BootstrapStringScanner(env)
 }
 
 // bootstrapComparableModule registers Comparable so `include Comparable`

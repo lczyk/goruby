@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"math/bits"
 
+	"github.com/lczyk/goruby/evaluator/stdlib"
 	"github.com/lczyk/goruby/object"
 )
 
@@ -23,7 +24,7 @@ func numericInfix(env *object.Environment, op string, left, right object.RubyObj
 		// falling through to intInfix/bigInfix, which both treat exp<0
 		// as a domain error.
 		if op == "**" && !lInt.IsBig() && !rInt.IsBig() && rInt.Value < 0 {
-			v, err := integerPowToRational(env, lInt.Value, rInt.Value)
+			v, err := stdlib.IntegerPowToRational(env, lInt.Value, rInt.Value)
 			return v, true, err
 		}
 		// Bignum path: any operand spilled to *big.Int routes through
