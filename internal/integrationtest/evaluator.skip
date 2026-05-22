@@ -16,4 +16,3 @@
 # evaluator/object source location where the gap currently lives.
 
 eval gaps/pattern_matching.rb: control.go:189: case/in pattern matching not yet supported
-eval gaps/string_encoding_tracking.rb: string.go:405: per-string encoding not tracked; always reports UTF-8

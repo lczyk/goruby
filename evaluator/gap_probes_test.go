@@ -97,8 +97,11 @@ func TestStringScrub(t *testing.T) {
 // Encoding::UTF_8 sentinel regardless of any force_encoding call. We
 // don't track per-string encodings, so this is a faithful pin: any
 // code that branches on `str.encoding == Encoding::BINARY` would take
-// the wrong branch under goruby today.
-func TestGapEncodingTracking(t *testing.T) {
+// TestEncodingTracking: String#force_encoding now updates the
+// receiver's per-string encoding tag, and String#encoding reads it.
+// Each String carries its own encoding; force_encoding does not
+// transcode the buffer, only re-labels.
+func TestEncodingTracking(t *testing.T) {
 	out, err := runErr(t, `
 		s = "abc"
 		puts s.encoding.name
@@ -106,7 +109,5 @@ func TestGapEncodingTracking(t *testing.T) {
 		puts s2.encoding.name
 	`)
 	assert.Equal(t, "", err)
-	// Both should be UTF-8 under our stub (we always report UTF-8).
-	assert.Equal(t, "UTF-8\nUTF-8\n", out,
-		"per-string encoding tracking not implemented: both report UTF-8")
+	assert.Equal(t, "UTF-8\nASCII-8BIT\n", out)
 }

@@ -172,6 +172,45 @@ func toFloatValue(o object.RubyObject) (float64, error) {
 // subpkg so stdlib/ etc can call it directly.
 var stringText = builtinapi.StringText
 
+// encodingName extracts the display name (e.g. "UTF-8") from a String
+// or Encoding sentinel arg.
+func encodingName(env *object.Environment, o object.RubyObject) (string, bool) {
+	if s, ok := stringText(env, o); ok {
+		return s, true
+	}
+	if inst, ok := o.(*object.Instance); ok {
+		if n, ok := inst.Ivars["@name"]; ok {
+			if s, ok := stringText(env, n); ok {
+				return s, true
+			}
+		}
+	}
+	return "", false
+}
+
+// lookupEncoding scans Encoding's Constants for a sentinel whose @name
+// matches the given display name. Returns nil on miss.
+func lookupEncoding(env *object.Environment, name string) object.RubyObject {
+	enc, ok := env.Get("Encoding")
+	if !ok {
+		return nil
+	}
+	c, ok := enc.(*object.Class)
+	if !ok {
+		return nil
+	}
+	for _, v := range c.Constants {
+		if inst, ok := v.(*object.Instance); ok {
+			if n, ok := inst.Ivars["@name"]; ok {
+				if s, ok := stringText(env, n); ok && s == name {
+					return inst
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // stringUnpack implements a small subset of String#unpack directives:
 // the ones the corpus actually uses today. Supported formats:
 //
@@ -482,7 +521,18 @@ func callStringMethod(env *object.Environment, recv object.RubyObject, name stri
 		copy(cp, s)
 		return object.NewStringFromBytes(cp), true, nil
 	case "force_encoding":
-		// We don't track per-string encodings; treat as no-op return self.
+		// Tag the receiver with the named encoding. Buffer bytes stay
+		// unchanged (mirrors MRI: force_encoding does not transcode).
+		if len(args) != 1 {
+			return nil, true, errorf("evaluator: String#force_encoding: wrong number of arguments (given %d, expected 1)", len(args))
+		}
+		name, ok := encodingName(env, args[0])
+		if !ok {
+			return nil, true, errorf("evaluator: String#force_encoding: expected String or Encoding, got %T", args[0])
+		}
+		if str, ok := recv.(*object.String); ok {
+			str.SetEncoding(name)
+		}
 		return recv, true, nil
 	case "scrub":
 		// Replace invalid UTF-8 byte sequences with a replacement.
@@ -501,16 +551,18 @@ func callStringMethod(env *object.Environment, recv object.RubyObject, name stri
 		}
 		return object.NewString(stringScrub(s, repl)), true, nil
 	case "encoding":
-		// Stub: return Encoding::UTF_8 sentinel. Doesn't reflect real
-		// per-string encoding tracking -- we don't have that yet.
-		if enc, ok := env.Get("Encoding"); ok {
-			if c, ok := enc.(*object.Class); ok {
-				if v, ok := c.Constants["UTF_8"]; ok {
-					return v, true, nil
-				}
-			}
+		// Look up the matching Encoding sentinel from the registered
+		// constants on the Encoding class. Falls back to a fresh
+		// anonymous Encoding instance when the name doesn't match any
+		// known sentinel (lets unusual force_encoding names round-trip).
+		name := "UTF-8"
+		if str, ok := recv.(*object.String); ok {
+			name = str.Encoding()
 		}
-		return object.NewString("UTF-8"), true, nil
+		if enc := lookupEncoding(env, name); enc != nil {
+			return enc, true, nil
+		}
+		return object.NewString(name), true, nil
 	case "unpack":
 		// String#unpack: directives describe how to slice the buffer.
 		// MRI supports a long table; we cover the formats the corpus

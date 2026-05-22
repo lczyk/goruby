@@ -8,9 +8,23 @@ package object
 // backing array. Acceptable cost -- mutable strings are inherently
 // pointer-bearing.
 type String struct {
-	Buf    []byte
-	frozen bool
+	Buf      []byte
+	frozen   bool
+	encoding string // MRI-style display name, e.g. "UTF-8"; "" = default UTF-8
 }
+
+// Encoding returns the string's encoding name (display form). Empty
+// string means the default UTF-8.
+func (s *String) Encoding() string {
+	if s.encoding == "" {
+		return "UTF-8"
+	}
+	return s.encoding
+}
+
+// SetEncoding tags the string with the given encoding name. Does not
+// transcode the buffer (mirrors MRI's String#force_encoding).
+func (s *String) SetEncoding(name string) { s.encoding = name }
 
 // Frozen reports whether the String was frozen via Object#freeze.
 // Mutation methods test this and raise FrozenError if true.
