@@ -2794,7 +2794,7 @@ func (p *parser) parseInterpolatedString() ast.Expression {
 
 	sl := p.arena.NewStringLiteral()
 	sl.Token = begToken
-	if strings.HasPrefix(p.lit(begToken), "<<") {
+	if k := begToken.StringKind(); k == token.StrHeredoc || k == token.StrHeredocIndent || k == token.StrHeredocSquig {
 		sl.HeredocTagSource = p.lit(begToken)
 		if p.curToken.HeredocStripped() || p.embExprDepth > 0 {
 			sl.HeredocStripped = true

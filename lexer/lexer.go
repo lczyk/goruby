@@ -409,6 +409,17 @@ func (l *Lexer) emitKind(t token.Type, k token.StringKind) {
 	l.start = l.pos
 }
 
+// emitLiteralKind is emitLiteral that also tags the emitted token with a
+// StringKind. Used for heredoc STRING_BEG / XSTR_BEG where the pool
+// entry still carries the variable tag string but Kind lets consumers
+// branch on heredoc form (<<TAG / <<-TAG / <<~TAG) w/out string scan.
+func (l *Lexer) emitLiteralKind(t token.Type, literal string, k token.StringKind) {
+	l.emitLiteral(t, literal)
+	last := &l.tokens[len(l.tokens)-1]
+	last.Kind = uint8(k)
+	l.lastToken = *last
+}
+
 // emitLiteral emits a token of the given type with an explicit literal,
 // ignoring the input between l.start and l.pos. start is advanced to pos.
 func (l *Lexer) emitLiteral(t token.Type, literal string) {
@@ -2236,12 +2247,19 @@ foundEnd:
 		l.segEnd = nlPos
 	}
 	// All heredocs (including single-quoted) emit STRING_BEG + STRING_CONTENT + STRING_END.
+	kind := token.StrHeredoc
+	switch {
+	case l.heredocSquig:
+		kind = token.StrHeredocSquig
+	case l.heredocIndent:
+		kind = token.StrHeredocIndent
+	}
 	if l.heredocQuote == '\'' {
 		if l.heredocSquig {
 			setupSquigBody(l)
 		}
 		tag := buildHeredocTag(l.heredocIndent, l.heredocSquig, '\'', l.heredocDelim)
-		l.emitLiteral(token.STRING_BEG, tag)
+		l.emitLiteralKind(token.STRING_BEG, tag, kind)
 		return lexHeredocBody
 	}
 	if l.heredocSquig {
@@ -2250,9 +2268,9 @@ foundEnd:
 	}
 	tag := buildHeredocTag(l.heredocIndent, l.heredocSquig, l.heredocQuote, l.heredocDelim)
 	if l.heredocQuote == '`' {
-		l.emitLiteral(token.XSTR_BEG, tag)
+		l.emitLiteralKind(token.XSTR_BEG, tag, kind)
 	} else {
-		l.emitLiteral(token.STRING_BEG, tag)
+		l.emitLiteralKind(token.STRING_BEG, tag, kind)
 	}
 	return lexHeredocContent
 }
