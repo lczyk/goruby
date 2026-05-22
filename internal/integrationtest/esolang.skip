@@ -22,6 +22,4 @@
 # end-to-end; first test run will flip the ones already passing into
 # unexpected-pass failures and we can drop those entries.
 
-esolang-xfail mariolang/output4: newly vendored; goruby support unverified
-esolang-xfail rasel/helloworld: newly vendored; goruby support unverified
-esolang-xfail ropy/hello_world: newly vendored; goruby support unverified
+esolang-xfail rasel/helloworld: needs delegate stdlib (DelegateClass)

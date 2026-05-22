@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/lczyk/goruby/evaluator/builtinapi"
 	"github.com/lczyk/goruby/object"
@@ -38,6 +39,7 @@ func stdinReader(env *object.Environment) *bufio.Reader {
 // bootstrapIO installs the File class and STDIN constant. Idempotent.
 func bootstrapIO(env *object.Environment) {
 	bootstrapFileClass(env)
+	bootstrapSignalClass(env)
 	stdin := bootstrapSTDIN(env)
 	stdout := bootstrapSTDOUT(env)
 	stderr := bootstrapSTDERR(env)
@@ -325,6 +327,28 @@ func argfRead(env *object.Environment, _ []object.RubyObject) (object.RubyObject
 	return stdinReadAll(env, nil)
 }
 
+// bootstrapSignalClass installs a minimal Signal stub. Scripts use
+// Signal.trap(:INT) { ... } to install Ctrl-C handlers; under test
+// runs we accept the registration and discard it.
+func bootstrapSignalClass(env *object.Environment) *object.Class {
+	if existing, ok := env.Get("Signal"); ok {
+		if c, ok := existing.(*object.Class); ok {
+			return c
+		}
+	}
+	c := object.NewClass("Signal", nil)
+	c.ClassMethods["trap"] = &object.UserMethod{Name: "trap", Body: nativeFn{Fn: func(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+		// Stub: don't install OS-level handlers. Discard any block via
+		// the dispatcher-stashed CurrentBlock and return nil.
+		return object.NIL, nil
+	}}}
+	c.ClassMethods["list"] = &object.UserMethod{Name: "list", Body: nativeFn{Fn: func(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+		return object.NewHash(), nil
+	}}}
+	env.SetGlobal("Signal", c)
+	return c
+}
+
 func bootstrapFileClass(env *object.Environment) *object.Class {
 	if existing, ok := env.Get("File"); ok {
 		if c, ok := existing.(*object.Class); ok {
@@ -336,8 +360,83 @@ func bootstrapFileClass(env *object.Environment) *object.Class {
 	c.ClassMethods["size"] = &object.UserMethod{Name: "size", Body: nativeFn{Fn: fileSize}}
 	c.ClassMethods["exist?"] = &object.UserMethod{Name: "exist?", Body: nativeFn{Fn: fileExist}}
 	c.ClassMethods["exists?"] = &object.UserMethod{Name: "exists?", Body: nativeFn{Fn: fileExist}}
+	c.ClassMethods["new"] = &object.UserMethod{Name: "new", Body: nativeFn{Fn: fileNew(c)}}
+	c.ClassMethods["open"] = &object.UserMethod{Name: "open", Body: nativeFn{Fn: fileNew(c)}}
+	c.Methods["each"] = &object.BuiltinMethod{Name: "each", Fn: fileEach}
+	c.Methods["each_line"] = c.Methods["each"]
+	c.Methods["read"] = &object.BuiltinMethod{Name: "read", Fn: fileInstanceRead}
+	c.Methods["close"] = &object.BuiltinMethod{Name: "close", Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+		return object.NIL, nil
+	}}
 	env.SetGlobal("File", c)
 	return c
+}
+
+// fileNew eagerly slurps the file into @lines so the resulting Instance
+// supports each / each_line without holding an open OS handle. Mirrors
+// MRI's File.new(path, mode) closely enough for read-mostly corpus use;
+// write modes are accepted but ignored.
+func fileNew(c *object.Class) func(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	return func(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+		if len(args) < 1 {
+			return nil, errorf("evaluator: File.new: missing path")
+		}
+		path, ok := stringText(env, args[0])
+		if !ok {
+			return nil, errorf("evaluator: File.new: expected String path, got %T", args[0])
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return raiseBuiltin(env, "Errno::ENOENT", err.Error())
+		}
+		text := string(data)
+		lines := strings.SplitAfter(text, "\n")
+		// SplitAfter leaves a trailing empty string when the file ends
+		// w/ a newline; drop it so iteration count matches MRI.
+		if len(lines) > 0 && lines[len(lines)-1] == "" {
+			lines = lines[:len(lines)-1]
+		}
+		lineObjs := make([]object.RubyObject, len(lines))
+		for i, l := range lines {
+			lineObjs[i] = object.NewString(l)
+		}
+		return &object.Instance{
+			C: c,
+			Ivars: map[string]object.RubyObject{
+				"@path":  object.NewString(path),
+				"@text":  object.NewString(text),
+				"@lines": object.NewArray(lineObjs...),
+			},
+		}, nil
+	}
+}
+
+func fileEach(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+	inst, ok := recv.(*object.Instance)
+	if !ok {
+		return nil, errorf("evaluator: File#each on non-File %T", recv)
+	}
+	lines, ok := inst.Ivars["@lines"].(*object.Array)
+	if !ok {
+		return recv, nil
+	}
+	for _, line := range lines.Elements {
+		if _, err := builtinapi.InvokeBlockValue(env, block, []object.RubyObject{line}); err != nil {
+			return nil, err
+		}
+	}
+	return recv, nil
+}
+
+func fileInstanceRead(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+	inst, ok := recv.(*object.Instance)
+	if !ok {
+		return nil, errorf("evaluator: File#read on non-File %T", recv)
+	}
+	if s, ok := inst.Ivars["@text"].(*object.String); ok {
+		return s, nil
+	}
+	return object.NewString(""), nil
 }
 
 func bootstrapSTDIN(env *object.Environment) *object.Class {

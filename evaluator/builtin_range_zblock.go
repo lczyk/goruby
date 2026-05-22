@@ -59,6 +59,43 @@ func init() {
 		return r, nil
 	})
 
+	addBlockMethod(c, "reverse_each", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+		r, err := asRange(recv, "reverse_each")
+		if err != nil {
+			return nil, err
+		}
+		if lo, hi, ok := rangeIntegerBounds(r); ok {
+			end := hi
+			if !r.Exclusive {
+				end++
+			}
+			for k := end - 1; k >= lo; k-- {
+				_, stop, err := yieldOne(invoke, object.NewInteger(k))
+				if err != nil {
+					return nil, err
+				}
+				if stop {
+					return r, nil
+				}
+			}
+			return r, nil
+		}
+		elems, err := rangeToSlice(env, r)
+		if err != nil {
+			return nil, err
+		}
+		for i := len(elems) - 1; i >= 0; i-- {
+			_, stop, err := yieldOne(invoke, elems[i])
+			if err != nil {
+				return nil, err
+			}
+			if stop {
+				return r, nil
+			}
+		}
+		return r, nil
+	})
+
 	mapFn := func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
 		r, err := asRange(recv, "map")
 		if err != nil {

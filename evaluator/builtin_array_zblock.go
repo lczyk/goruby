@@ -163,6 +163,30 @@ func init() {
 	c.Methods["filter"] = c.Methods["select"]
 	c.Methods["find_all"] = c.Methods["select"]
 
+	// index / find_index with a block: returns the index of the first
+	// element for which the block is truthy, nil otherwise.
+	indexBlockFn := func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+		arr, err := asArray(recv, "index")
+		if err != nil {
+			return nil, err
+		}
+		for i, e := range arr.Elements {
+			v, stop, err := yieldOne(invoke, e)
+			if err != nil {
+				return nil, err
+			}
+			if stop {
+				return v, nil
+			}
+			if truthy(v) {
+				return object.NewInteger(int64(i)), nil
+			}
+		}
+		return object.NIL, nil
+	}
+	addBlockOrPlainMethod(c, "index", plain("index"), indexBlockFn)
+	addBlockOrPlainMethod(c, "find_index", plain("find_index"), indexBlockFn)
+
 	// In-place variants: select!/filter!/keep_if rewrite the receiver to
 	// keep only block-truthy elements. select! / filter! return nil when
 	// no element was removed (matches MRI); keep_if always returns self.

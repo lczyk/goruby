@@ -169,6 +169,12 @@ func runEsolangFixture(interp string, interpSrc []byte, in string) error {
 		object.WithStdin(bytes.NewReader(nil)),
 		object.WithARGV([]string{in}),
 	)
+	// $PROGRAM_NAME / $0: interpreters often gate their CLI driver with
+	// `if __FILE__ == $PROGRAM_NAME` (so loading the file as a library
+	// doesn't auto-run main). MRI sets $0 to the script path; mirror
+	// that here so the guard fires under integration runs.
+	env.SetGlobal("$PROGRAM_NAME", object.NewString(interp))
+	env.SetGlobal("$0", object.NewString(interp))
 
 	prog, err := parser.ParseFile(interp, interpSrc, 0)
 	if err != nil {
