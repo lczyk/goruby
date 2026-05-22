@@ -166,9 +166,9 @@ func bootstrapBuiltins(env *object.Environment) {
 	stdlib.BootstrapEncodingClass(env)
 	stdlib.BootstrapComplexClass(env)
 	stdlib.BootstrapRationalClass(env)
-	bootstrapPrimeModule(env)
+	stdlib.BootstrapPrimeModule(env)
 	bootstrapEnumeratorClass(env)
-	bootstrapOptionParser(env)
+	stdlib.BootstrapOptionParser(env)
 	stdlib.BootstrapStringScanner(env)
 }
 

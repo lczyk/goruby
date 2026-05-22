@@ -53,6 +53,20 @@ func StringText(env *object.Environment, o object.RubyObject) (string, bool) {
 	return "", false
 }
 
+// RaiseBuiltin is set by the evaluator package at init time. Stdlib
+// builtins call this to raise a ruby exception of the named built-in
+// class with the given message. Function-pointer injection avoids
+// pulling the evaluator's raiseSignal type into builtinapi, which
+// would create an import cycle.
+var RaiseBuiltin func(env *object.Environment, className, msg string) (object.RubyObject, error)
+
+// InvokeCurrentBlock invokes env.CurrentBlock with the given args.
+// Returns (value, ok, err): ok=false means no block was present.
+// Lets stdlib stubs that need to yield (e.g. OptionParser.new { |p| }
+// passing the parser to its block) do so without importing the
+// evaluator's BlockExpression / goBlockMarker types.
+var InvokeCurrentBlock func(env *object.Environment, args []object.RubyObject) (object.RubyObject, bool, error)
+
 // SymbolOrString extracts text from a Symbol or String value. Used by
 // builtin methods that accept either form for a method-name or key.
 func SymbolOrString(env *object.Environment, o object.RubyObject) (string, bool) {

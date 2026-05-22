@@ -1,13 +1,11 @@
-package evaluator
+package stdlib
 
 import (
-	"strings"
-
-	"github.com/lczyk/goruby/ast"
+	"github.com/lczyk/goruby/evaluator/builtinapi"
 	"github.com/lczyk/goruby/object"
 )
 
-// bootstrapOptionParser installs a minimal stub of ruby's stdlib
+// BootstrapOptionParser installs a minimal stub of ruby's stdlib
 // OptionParser. The real OptionParser handles option specifications,
 // type coercion, automatic help, etc. We only need the surface the
 // corpus actually hits today:
@@ -22,7 +20,7 @@ import (
 //
 // OptionParser::InvalidOption is installed as a no-op exception
 // subclass so rescue clauses referencing it resolve.
-func bootstrapOptionParser(env *object.Environment) *object.Class {
+func BootstrapOptionParser(env *object.Environment) *object.Class {
 	if existing, ok := env.Get("OptionParser"); ok {
 		if c, ok := existing.(*object.Class); ok {
 			return c
@@ -30,8 +28,6 @@ func bootstrapOptionParser(env *object.Environment) *object.Class {
 	}
 	c := object.NewClass("OptionParser", nil)
 
-	// Nested exception class so `rescue OptionParser::InvalidOption`
-	// resolves.
 	stdErr, _ := env.Get("StandardError")
 	stdErrCls, _ := stdErr.(*object.Class)
 	invalid := object.NewClass("InvalidOption", stdErrCls)
@@ -39,7 +35,7 @@ func bootstrapOptionParser(env *object.Environment) *object.Class {
 
 	c.ClassMethods["new"] = &object.UserMethod{
 		Name: "new",
-		Body: nativeFn{Fn: optionParserNew(c)},
+		Body: builtinapi.NativeFn{Fn: optionParserNew(c)},
 	}
 
 	c.Methods["banner="] = &object.BuiltinMethod{Name: "banner=", Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
@@ -59,18 +55,11 @@ func bootstrapOptionParser(env *object.Environment) *object.Class {
 		return object.NewString(""), nil
 	}}
 	c.Methods["on"] = &object.BuiltinMethod{Name: "on", Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
-		// Stub -- doesn't actually wire the handler. Returns the
-		// parser for chaining.
 		return recv, nil
 	}}
 	c.Methods["on_tail"] = c.Methods["on"]
 	c.Methods["on_head"] = c.Methods["on"]
 	c.Methods["parse!"] = &object.BuiltinMethod{Name: "parse!", Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
-		// Strip leading "--?"-prefix tokens from argv. Doesn't invoke
-		// the registered handlers, which is wrong for any program that
-		// branches on option values -- but enough for bouncy, whose
-		// only option (-d/--debug) is irrelevant under the test
-		// harness (argv = [filename], no options).
 		if len(args) >= 1 {
 			if arr, ok := args[0].(*object.Array); ok {
 				out := arr.Elements[:0]
@@ -93,26 +82,14 @@ func bootstrapOptionParser(env *object.Environment) *object.Class {
 }
 
 // optionParserNew yields the new parser instance to the block (if any)
-// and returns it. Mirrors mri: OptionParser.new { |p| ... } returns
+// and returns it. Mirrors MRI: OptionParser.new { |p| ... } returns
 // the parser regardless of what the block does.
 func optionParserNew(c *object.Class) func(*object.Environment, []object.RubyObject) (object.RubyObject, error) {
 	return func(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
 		inst := &object.Instance{C: c, Ivars: map[string]object.RubyObject{}}
-		// Yield to the block if one was passed via the dispatcher.
-		// The wrapping callMethod stashes it as env.CurrentBlock.
-		blk := env.CurrentBlock
-		if blk != nil {
-			if be, ok := blk.(*ast.BlockExpression); ok && be != nil {
-				if _, err := invokeBlock(env, be, []object.RubyObject{inst}); err != nil {
-					return nil, err
-				}
-			} else if bm, ok := blk.(*goBlockMarker); ok && bm != nil {
-				if _, err := bm.fn([]object.RubyObject{inst}); err != nil {
-					return nil, err
-				}
-			}
+		if _, _, err := builtinapi.InvokeCurrentBlock(env, []object.RubyObject{inst}); err != nil {
+			return nil, err
 		}
-		_ = strings.HasPrefix // keep import live if future tweaks need it
 		return inst, nil
 	}
 }

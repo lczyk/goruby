@@ -2,8 +2,16 @@ package evaluator
 
 import (
 	"github.com/lczyk/goruby/ast"
+	"github.com/lczyk/goruby/evaluator/builtinapi"
 	"github.com/lczyk/goruby/object"
 )
+
+// init wires the builtinapi.RaiseBuiltin function-pointer so
+// subpackages (evaluator/stdlib) can raise built-in exceptions
+// without importing the evaluator package's raiseSignal type.
+func init() {
+	builtinapi.RaiseBuiltin = raiseBuiltin
+}
 
 // errZeroDivision is the typed sentinel emitted by integer division
 // when the divisor is zero. evalInfix translates it into a raised

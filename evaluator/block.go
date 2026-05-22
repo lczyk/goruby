@@ -2,8 +2,31 @@ package evaluator
 
 import (
 	"github.com/lczyk/goruby/ast"
+	"github.com/lczyk/goruby/evaluator/builtinapi"
 	"github.com/lczyk/goruby/object"
 )
+
+// init wires the builtinapi.InvokeCurrentBlock function-pointer so
+// stdlib stubs (e.g. OptionParser.new) can yield to the block without
+// pulling the evaluator's *ast.BlockExpression / goBlockMarker into
+// builtinapi.
+func init() {
+	builtinapi.InvokeCurrentBlock = func(env *object.Environment, args []object.RubyObject) (object.RubyObject, bool, error) {
+		blk := env.CurrentBlock
+		if blk == nil {
+			return nil, false, nil
+		}
+		if be, ok := blk.(*ast.BlockExpression); ok && be != nil {
+			v, err := invokeBlock(env, be, args)
+			return v, true, err
+		}
+		if bm, ok := blk.(*goBlockMarker); ok && bm != nil {
+			v, err := bm.fn(args)
+			return v, true, err
+		}
+		return nil, false, nil
+	}
+}
 
 // invokeBlock evaluates blk with the given positional args bound to its
 // parameters. Uses an enclosed env so block-local writes don't leak,
