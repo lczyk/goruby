@@ -1,10 +1,12 @@
 goruby
 ======
 
-ruby parser + ast as a go library. forked from
-[goruby/goruby](https://github.com/goruby/goruby); the interpreter,
-evaluator, repl, and `girb` cli have been removed -- only the front-end
-(lexer, parser, ast) remains.
+ruby implementation in go. forked from
+[goruby/goruby](https://github.com/goruby/goruby). front-end (lexer,
+parser, ast) is feature-complete against the syntax checklist in
+`features.md`; the tree-walking evaluator + object model are active
+WIP. the `girb` repl is gone; a `goruby` cli runs program files, `-e`
+oneliners, or stdin.
 
 ## usage
 
@@ -39,6 +41,12 @@ ast.Inspect(program, func(n ast.Node) bool {
 - `parser` -- token stream to `*ast.Program`. `ParseFile`, `ParseExpr`,
   `ParseExprFrom`. modes: `ParseComments`, `Trace`, `AllErrors`
 - `ast` -- node types + `Walk`, `Inspect`
+- `object` -- runtime object model (classes, methods, environment,
+  `Send` dispatch)
+- `evaluator` -- tree-walking evaluator + builtins; stdlib stubs in
+  `evaluator/stdlib`
+- `cmd/goruby` -- cli entry point; `cmd/{lex-dump,parse-dump,
+  parse-roundtrip,normalize-parsetree,gen-arena}` -- dev tools
 
 ## tests
 

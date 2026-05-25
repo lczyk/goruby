@@ -4,13 +4,13 @@ reference checklist of ruby syntax recognised by the lexer + parser. an
 `[x]` means an `*ast.<Node>` is produced for the construct; `[ ]` means
 the parser errors or otherwise fails to round-trip the source.
 
-scope is **front-end only** -- after the interpreter / evaluator removal
-this fork tracks lexing and parsing, not runtime semantics. anything that
-is purely a runtime concern (method dispatch, object-model invariants,
-hash-key equality, etc.) is intentionally absent.
+scope is **front-end only** -- runtime semantics (dispatch, object-model
+invariants, hash-key equality, etc.) live in `evaluator/` + `object/`
+and are tracked separately in the repo todo file. this file is the
+lexer/parser surface checklist.
 
-derived from the original goruby README; trimmed and re-framed for the
-parser-library scope. flip checkboxes as features land in `parser/`.
+derived from the original goruby README. flip checkboxes as features
+land in `parser/`.
 
 ## syntax
 
