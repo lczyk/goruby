@@ -1926,6 +1926,38 @@ func bootstrapFileUtils(env *object.Environment) {
 		return object.NIL, nil
 	}}}
 	c.ClassMethods["chmod_R"] = c.ClassMethods["chmod"]
+	// FileUtils.cd(dir [, opts]) { ... } -- changes cwd, optionally for
+	// the duration of a block (restored on return, even if the block
+	// raises). Mirrors MRI semantics minus the :verbose / :noop opts
+	// (accepted and ignored).
+	c.ClassMethods["cd"] = &object.BuiltinMethod{
+		Name: "cd",
+		Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+			if len(args) < 1 {
+				return nil, errorf("evaluator: FileUtils.cd: expected dir arg")
+			}
+			dir, ok := stringText(env, args[0])
+			if !ok {
+				return nil, errorf("evaluator: FileUtils.cd: expected String, got %T", args[0])
+			}
+			if block == nil {
+				if err := os.Chdir(dir); err != nil {
+					return raiseBuiltin(env, "IOError", err.Error())
+				}
+				return object.NIL, nil
+			}
+			prev, err := os.Getwd()
+			if err != nil {
+				return raiseBuiltin(env, "IOError", err.Error())
+			}
+			if err := os.Chdir(dir); err != nil {
+				return raiseBuiltin(env, "IOError", err.Error())
+			}
+			defer os.Chdir(prev)
+			return invokeBlockValue(env, block, []object.RubyObject{object.NewString(dir)})
+		},
+	}
+	c.ClassMethods["chdir"] = c.ClassMethods["cd"]
 	// FileUtils ships its methods as both module-level (class methods)
 	// AND instance methods on includers (it's a module that uses
 	// module_function). Mirror by also exposing the same impls as
