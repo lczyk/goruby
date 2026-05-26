@@ -383,11 +383,12 @@ end
 }
 
 // TestRakeCLI_RealWorld_EsolangBook_RunWhitespace runs the whitespace
-// interpreter test task. Skipped: the whitespace interpreter script
-// itself raises a ProgramError inside goruby (interpreter logic, not
-// rake plumbing). Tracked separately as a goruby evaluator gap.
+// interpreter test task. Previously skipped because the interpreter's
+// StringScanner-based compiler interpolates a sub-regex into the
+// outer scan regex; goruby was emitting the inspect form (with
+// surrounding slashes) which broke the composite. Fixed by embedding
+// the source as (?:...) during regex interpolation.
 func TestRakeCLI_RealWorld_EsolangBook_RunWhitespace(t *testing.T) {
-	t.Skip("whitespace interpreter raises in goruby -- unrelated evaluator gap")
 	runEsolangSubTask(t, "test_whitespace")
 }
 
