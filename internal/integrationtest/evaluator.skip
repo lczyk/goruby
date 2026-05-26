@@ -15,3 +15,12 @@
 # One fixture per known evaluator gap. Reasons reference the offending
 # evaluator/object source location where the gap currently lives.
 
+
+# --- rake/ ------------------------------------------------------------
+# Per-rung drivers for the rake-on-goruby compat track. See
+# rake_tests_plan.md at repo root. Each line is one gap; remove the line
+# in the same commit that lands the underlying feature (stale-entry
+# detection enforces this).
+
+
+

@@ -33,6 +33,12 @@ each entry is valid Ruby (verified with `ruby -c 2.6`).
 
 ## remaining
 
-### medium
+(empty)
 
-- **case/in pattern matching** -- `case x; in 1; y; end`. full pattern-match syntax, `=>` bind operator in hash patterns (`case.rb`).
+## also resolved this round
+
+- ~~case/in pattern matching~~ `case x; in 1; y; end`. landed via
+  feat(evaluator): case/in pattern matching (commit `58d1247`).
+- ~~3.4 context gate for break/next/redo/retry/yield~~ -- parse-time
+  rejection of bare jump expressions outside their valid lexical
+  context.

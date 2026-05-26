@@ -65,6 +65,9 @@ func runEvaluatorFixture(t *testing.T, env *object.Environment, filename, src st
 	assert.NoError(t, err, "parse %s", filename)
 
 	_, err = evaluator.Eval(prog, env)
+	if err != nil {
+		t.Logf("eval %s: %v", filename, err)
+	}
 	assert.NoError(t, err, "eval %s", filename)
 
 	// stdout was wired to a bytes.Buffer by the caller; pull it via env.
@@ -92,6 +95,7 @@ var supportedEvaluatorSubdirs = []string{
 	"exceptions",
 	"version-gates",
 	"gaps",
+	"rake",
 }
 
 // TestEvaluatorCorpus runs every .rb file under the supported corpus
@@ -143,6 +147,15 @@ func TestEvaluatorCorpus(t *testing.T) {
 					want, err := os.ReadFile(expectedPath)
 					assert.NoError(t, err, "read %s", expectedPath)
 
+					// Save and restore cwd around each fixture so a
+					// Dir.chdir inside the script (rake helper.rb etc.)
+					// doesn't leak into the next fixture.
+					origCwd, _ := os.Getwd()
+					defer func() {
+						if origCwd != "" {
+							_ = os.Chdir(origCwd)
+						}
+					}()
 					var stdout bytes.Buffer
 					env := object.NewMainEnvironment(
 						object.WithVersion(runVer),
