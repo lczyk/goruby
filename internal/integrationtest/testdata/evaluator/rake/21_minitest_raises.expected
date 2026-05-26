@@ -1,0 +1,2 @@
+test_raises_expected: pass
+test_raises_wrong_class: failed as expected

@@ -1,0 +1,3 @@
+via def self
+via class << self
+[:via_self, :via_shovel]

@@ -1,0 +1,5 @@
+caught code=2
+success? false
+Exception=SystemExit
+code=0 success=true
+TestRakeTaskManager: p=15

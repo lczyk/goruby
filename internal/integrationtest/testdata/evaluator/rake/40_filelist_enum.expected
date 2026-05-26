@@ -1,0 +1,10 @@
+3
+false
+true
+foo.rb
+baz.rb
+foo.rb,bar.rb,baz.rb
+FOO.RB,BAR.RB,BAZ.RB
+bar.rb,baz.rb
+foo.rb
+3

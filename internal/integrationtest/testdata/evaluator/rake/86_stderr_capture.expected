@@ -1,0 +1,6 @@
+lines: 2
+first warning
+second warning
+3
+
+assert_output stderr ok

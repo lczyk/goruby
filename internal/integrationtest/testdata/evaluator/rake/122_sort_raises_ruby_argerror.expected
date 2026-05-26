@@ -1,0 +1,3 @@
+caught: comparison of Wack with Wack failed
+caught: comparison of String with Integer failed
+TestRakeTask: p=50

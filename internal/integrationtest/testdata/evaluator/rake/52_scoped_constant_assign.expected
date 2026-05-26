@@ -1,0 +1,6 @@
+30
+Outer::Quux
+[Outer::CustomError, StandardError, Exception]
+1
+2
+60

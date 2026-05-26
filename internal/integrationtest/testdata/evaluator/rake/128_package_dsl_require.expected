@@ -1,0 +1,3 @@
+TestRakeDsl: p=4 f=0 e=0
+TestRakePackageTask: p=6 f=1 e=0
+TestRakeRequire: p=1 f=0 e=2

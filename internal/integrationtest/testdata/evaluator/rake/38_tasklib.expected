@@ -1,0 +1,5 @@
+alpha:setup
+beta:run
+alpha:setup
+setup-beta
+run-beta

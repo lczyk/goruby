@@ -1,0 +1,10 @@
+in_delta ok
+match ok
+kind_of ok
+instance_of ok
+respond_to ok
+operator ok
+operator float ok
+same ok
+refute_match ok
+assertions: 11

@@ -1,0 +1,9 @@
+42
+[1, 2, 3]
+true
+"hi"
+:sym
+nil
+method :add called with [1, 2]
+A
+a

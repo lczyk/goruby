@@ -1,0 +1,3 @@
+prep,compile,link(release),unit,integration,all
+true
+Rake::MultiTask

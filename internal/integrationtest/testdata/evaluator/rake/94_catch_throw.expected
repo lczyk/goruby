@@ -1,0 +1,6 @@
+found 3
+5
+nil
+no throw
+out-from-inner
+["outer-start", "inner-start"]

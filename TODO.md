@@ -1,24 +1,32 @@
 # todo
 
-## class machinery -- deferred
+## class machinery -- remaining
 
-bolt-on items from the dispatch refactor (commits `f7d351e`, `68cd461`).
-each is cheap to add on top of the existing chokepoints; nothing
-preordained forbids them.
-
-- **method visibility** -- add `Visibility()` to `object.RubyMethod` +
-  one check in `object.Send`. mark builtins private where appropriate
-  (`puts`, `raise`, ...). distinguishes `send` from `public_send`
-  properly.
-- **eigenclass / singleton methods** -- introduce per-object singleton
-  class. swap `evaluator.dispatchClass` / `classOfRaw` to consult the
-  singleton when present, falling through to the canonical class
-  otherwise. enables `def obj.foo` and class-level method definitions
-  via the singleton.
 - **inline call-site cache** -- `object.Class.Version` already bumps on
   every (re)def. attach `(classPtr, methodPtr, version)` to ast call
   nodes; check version each call, refill on mismatch. mri-style
   monomorphic cache. biggest single perf win available.
+- **multi-level super chain w/ defined_class tracking** -- current
+  `evalSuper` walks from the receiver's class each time, so two
+  consecutive `super` calls hit the same method and infinite-loop.
+  needs a per-frame "defined class" so each super starts above the
+  class that defined the currently-executing method.
+- **Class object metaclass** -- `Foo.singleton_class` currently returns
+  ClassClass as a coarse stand-in. real per-class singleton would
+  enable `def Foo.foo` via `class << Foo; def foo; end; end`
+  shorthand on raw Class receivers.
+
+## class machinery -- done
+
+- **method visibility** -- `private` / `protected` / `public` (bare +
+  arg form), `send` bypass vs `public_send` enforce, kin-check for
+  protected. lives in `eval_method` + `block_core` +
+  `builtin_object_methods` + `builtin_universal_zblock`.
+- **eigenclass / singleton methods** -- per-Instance `SingletonClass`
+  lazily materialised; `class << obj`, `def obj.foo`, `class << self`,
+  `singleton_class`, `define_method`, `singleton_methods` all routed
+  via `Send` walking the singleton class chain before the canonical
+  class.
 
 ## dispatch cleanup -- done
 

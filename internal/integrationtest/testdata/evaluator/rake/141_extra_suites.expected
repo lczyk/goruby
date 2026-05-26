@@ -1,0 +1,3 @@
+TestRake: p=3 f=0 e=0
+TestTraceOutput: p=4 f=0 e=0
+TestRakeWin32: p=5 f=0 e=1

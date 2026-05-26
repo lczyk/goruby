@@ -1,0 +1,5 @@
+set-at-class-body-time-describe
+set-at-class-body-time-announce
+describe(thing)=alpha|announce(42)=alpha
+describe(other)=beta
+describe(thing)=alpha|announce(42)=alpha

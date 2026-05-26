@@ -1,0 +1,7 @@
+Rake::FileList
+Rake::FileList
+true
+clean
+clobber
+["clean"]
+User-defined task

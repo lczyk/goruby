@@ -1,0 +1,9 @@
+MyErr
+first
+MyErr
+outer-cause
+["inner-saw-myerr", "nested-handled"]
+hello ruby
+true
+true
+abc

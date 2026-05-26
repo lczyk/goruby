@@ -1,0 +1,5 @@
+primitives ok
+[1, "two", :three, [4, 5], nil]
+{a: 1, b: "two", c: [3, 4]}
+true
+false

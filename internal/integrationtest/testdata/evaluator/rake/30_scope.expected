@@ -1,0 +1,9 @@
+true
+
+build
+outer
+outer:compile
+outer:inner
+outer:inner:compile
+outer
+true

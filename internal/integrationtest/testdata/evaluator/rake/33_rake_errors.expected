@@ -1,0 +1,6 @@
+true
+bad arg
+Rake::TaskArgumentError
+boom
+rule cycle: [a.c => a.o]
+init only: []

@@ -1,0 +1,5 @@
+array: NoMethodError
+hash: NoMethodError
+block: NoMethodError
+int: NoMethodError
+kernel: NoMethodError
