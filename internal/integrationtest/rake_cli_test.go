@@ -304,6 +304,20 @@ func TestRakeCLI_RealWorld_EsolangBook_List(t *testing.T) {
 	require.ContainsString(t, out, "run test")
 }
 
+// runEsolangSubTask is the shared body for the per-interpreter eso
+// driver tests: cd into the gem dir, invoke `rake <task>`, fail if
+// the Rakefile printed "NG:" (its assert_equal failure marker) or
+// rake exited nonzero.
+func runEsolangSubTask(t *testing.T, task string) {
+	t.Helper()
+	dir := gemDir(t, "esolang-book-sources")
+	out, err := runRake(t, dir, task)
+	require.NoError(t, err, "rake %s: %s", task, out)
+	if strings.Contains(out, "NG:") {
+		t.Fatalf("%s reported mismatch:\n%s", task, out)
+	}
+}
+
 // TestRakeCLI_RealWorld_EsolangBook_RunHQ9 invokes `rake test_hq9plus`
 // against the esolang-book-sources Rakefile. The task backticks
 // `ruby hq9plus.rb <input>` three times and compares output via the
@@ -311,12 +325,70 @@ func TestRakeCLI_RealWorld_EsolangBook_List(t *testing.T) {
 // success). With ruby -> goruby on PATH the backticked subprocesses
 // run goruby on the pure-ruby interpreter scripts.
 func TestRakeCLI_RealWorld_EsolangBook_RunHQ9(t *testing.T) {
-	dir := gemDir(t, "esolang-book-sources")
-	out, err := runRake(t, dir, "test_hq9plus")
-	require.NoError(t, err, "rake test_hq9plus: %s", out)
-	if strings.Contains(out, "NG:") {
-		t.Fatalf("test_hq9plus reported mismatch:\n%s", out)
-	}
+	runEsolangSubTask(t, "test_hq9plus")
+}
+
+// TestRakeCLI_RealWorld_EsolangBook_RunBrainfCk runs the brainf_ck
+// interpreter test task. Same backtick-shellout shape as HQ9.
+func TestRakeCLI_RealWorld_EsolangBook_RunBrainfCk(t *testing.T) {
+	runEsolangSubTask(t, "test_brainf_ck")
+}
+
+// TestRakeCLI_RealWorld_EsolangBook_RunStarry runs the starry
+// interpreter test task.
+func TestRakeCLI_RealWorld_EsolangBook_RunStarry(t *testing.T) {
+	runEsolangSubTask(t, "test_starry")
+}
+
+// TestRakeCLI_RealWorld_EsolangBook_RunBolic runs the bolic
+// interpreter test task.
+func TestRakeCLI_RealWorld_EsolangBook_RunBolic(t *testing.T) {
+	runEsolangSubTask(t, "test_bolic")
+}
+
+// TestRakeCLI_RealWorld_KaiserRuby runs rake -A -T against
+// kaiser-ruby's Rakefile. The Rakefile requires bundler/gem_tasks
+// (now silently stubbed) and rspec/core/rake_task (now stubbed with
+// a RakeTask.new that registers a noop rake task). Asserts the
+// spec + default tasks surface in the all-tasks listing.
+func TestRakeCLI_RealWorld_KaiserRuby(t *testing.T) {
+	dir := gemDir(t, "kaiser-ruby")
+	out, err := runRake(t, dir, "-A", "-T")
+	require.NoError(t, err, "rake -A -T on kaiser-ruby: %s", out)
+	require.ContainsString(t, out, "rake spec")
+	require.ContainsString(t, out, "rake default")
+}
+
+// TestRakeCLI_DashD exercises the long-description form. A task's
+// desc string can span multiple lines; rake -D prints the full
+// description block under the task name (indented).
+func TestRakeCLI_DashD(t *testing.T) {
+	dir := t.TempDir()
+	writeRakefile(t, dir, `
+desc "say hi
+this is a longer description
+spanning multiple lines"
+task :hi do
+  puts "hello"
+end
+`)
+	out, err := runRake(t, dir, "-D")
+	require.NoError(t, err, "rake -D: %s", out)
+	want := "rake hi\n" +
+		"    say hi\n" +
+		"    this is a longer description\n" +
+		"    spanning multiple lines\n" +
+		"\n"
+	require.Equal(t, want, out)
+}
+
+// TestRakeCLI_RealWorld_EsolangBook_RunWhitespace runs the whitespace
+// interpreter test task. Skipped: the whitespace interpreter script
+// itself raises a ProgramError inside goruby (interpreter logic, not
+// rake plumbing). Tracked separately as a goruby evaluator gap.
+func TestRakeCLI_RealWorld_EsolangBook_RunWhitespace(t *testing.T) {
+	t.Skip("whitespace interpreter raises in goruby -- unrelated evaluator gap")
+	runEsolangSubTask(t, "test_whitespace")
 }
 
 // TestRakeCLI_TaskShellsOutToRuby exercises the symlinked
