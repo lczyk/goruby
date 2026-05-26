@@ -31,14 +31,72 @@ func evalRegexLiteral(env *object.Environment, n *ast.RegexLiteral) (object.Ruby
 		src = stripExtended(src)
 	}
 	pattern := src
+	// Ruby ^/$ are line anchors by default; Go's regexp uses ^/$ for
+	// the start/end of input unless (?m) is set. Always prefix so
+	// Ruby semantics hold. Mri's "multiline" flag (/m) means dot
+	// matches \n, which Go encodes as (?s) -- separate concept.
+	flagsToInject := "m"
 	if flags != "" {
-		pattern = "(?" + flags + ")" + src
+		flagsToInject += flags
 	}
+	pattern = "(?" + flagsToInject + ")" + src
 	re, err := regexp.Compile(pattern)
 	if err != nil {
+		// Go's regexp engine doesn't support look-around (?<=...),
+		// (?<!...), (?=...), (?!...). When a literal regex uses them
+		// (real-world gems hit this; rake/task.rb's first_sentence is
+		// the canary), strip the look-around groups and retry. The
+		// resulting regex matches more loosely than MRI's, but
+		// permits the surrounding code to keep working rather than
+		// erroring out at parse time.
+		if alt := stripLookaround(pattern); alt != pattern {
+			if re2, err2 := regexp.Compile(alt); err2 == nil {
+				return object.NewRegex(re2, src, n.Options), nil
+			}
+		}
 		return raiseBuiltin(env, "RegexpError", err.Error())
 	}
 	return object.NewRegex(re, src, n.Options), nil
+}
+
+// stripLookaround removes (?<=...), (?<!...), (?=...), (?!...) groups
+// from a pattern. Each is replaced by an empty match; the engine
+// then matches without the assertion. Crude but sufficient for the
+// `unsupported Perl syntax` regex parser errors that block real-
+// world Ruby corpus.
+func stripLookaround(p string) string {
+	out := p
+	for _, prefix := range []string{"(?<=", "(?<!", "(?=", "(?!"} {
+		for {
+			idx := strings.Index(out, prefix)
+			if idx < 0 {
+				break
+			}
+			depth := 1
+			end := -1
+			for j := idx + len(prefix); j < len(out); j++ {
+				switch out[j] {
+				case '(':
+					depth++
+				case ')':
+					depth--
+					if depth == 0 {
+						end = j
+					}
+				case '\\':
+					j++
+				}
+				if end >= 0 {
+					break
+				}
+			}
+			if end < 0 {
+				return out
+			}
+			out = out[:idx] + out[end+1:]
+		}
+	}
+	return out
 }
 
 // composeRegexSource returns the regex source string for n. For
@@ -69,7 +127,9 @@ func composeRegexSource(env *object.Environment, n *ast.RegexLiteral) (string, e
 }
 
 // regexMatch implements the `=~` operator: returns the byte index of
-// the first match, or nil. Accepts either side as the regex.
+// the first match, or nil. Accepts either side as the regex. Side
+// effect: populates $~, $1..$9 with captures from the match (or clears
+// them on miss) so subsequent reads see the most recent groups.
 func regexMatch(env *object.Environment, left, right object.RubyObject) object.RubyObject {
 	var re *object.Regex
 	var s string
@@ -78,6 +138,7 @@ func regexMatch(env *object.Environment, left, right object.RubyObject) object.R
 		if t, ok := stringText(env, right); ok {
 			s = t
 		} else {
+			setMatchGlobals(env, nil)
 			return object.NIL
 		}
 	} else if r, ok := right.(*object.Regex); ok {
@@ -85,16 +146,64 @@ func regexMatch(env *object.Environment, left, right object.RubyObject) object.R
 		if t, ok := stringText(env, left); ok {
 			s = t
 		} else {
+			setMatchGlobals(env, nil)
 			return object.NIL
 		}
 	} else {
+		setMatchGlobals(env, nil)
 		return object.NIL
 	}
-	idx := re.RE.FindStringIndex(s)
+	idx := re.RE.FindStringSubmatchIndex(s)
 	if idx == nil {
+		setMatchGlobals(env, nil)
 		return object.NIL
 	}
+	setMatchGlobals(env, submatchesFromIndices(s, idx))
 	return object.NewInteger(int64(idx[0]))
+}
+
+// submatchesFromIndices builds a []string from FindStringSubmatchIndex
+// output. A capture that didn't participate has start == -1; preserve
+// that as an empty string-not-set marker -- callers use nil to mean
+// "absent". The caller setMatchGlobals layered: it treats a nil-typed
+// entry as missing. Encode "missing" as the sentinel "\x00MISS" so we
+// can distinguish from a legitimately-empty captured "".
+func submatchesFromIndices(s string, idx []int) []string {
+	out := make([]string, len(idx)/2)
+	for i := 0; i < len(out); i++ {
+		st := idx[2*i]
+		en := idx[2*i+1]
+		if st < 0 {
+			out[i] = "\x00MISS"
+			continue
+		}
+		out[i] = s[st:en]
+	}
+	return out
+}
+
+// setMatchGlobals writes regex submatches into $~, $1..$9 globals so
+// subsequent reads see the most recent captures. nil clears them.
+// MRI also exposes $&, $`, $' but those aren't yet consumed by the
+// rake/minitest corpus.
+func setMatchGlobals(env *object.Environment, groups []string) {
+	if groups == nil {
+		env.SetGlobal("$~", object.NIL)
+		for i := 1; i <= 9; i++ {
+			env.SetGlobal("$"+string(rune('0'+i)), object.NIL)
+		}
+		return
+	}
+	if len(groups) > 0 {
+		env.SetGlobal("$~", object.NewString(groups[0]))
+	}
+	for i := 1; i <= 9; i++ {
+		var v object.RubyObject = object.NIL
+		if i < len(groups) && groups[i] != "\x00MISS" {
+			v = object.NewString(groups[i])
+		}
+		env.SetGlobal("$"+string(rune('0'+i)), v)
+	}
 }
 
 // bootstrapRegexpClass installs the Regexp class so source code can
@@ -108,6 +217,25 @@ func bootstrapRegexpClass(env *object.Environment) *object.Class {
 		c.ClassMethods["union"] = &object.UserMethod{Name: "union", Body: nativeFn{Fn: regexpUnion}}
 		c.ClassMethods["escape"] = &object.UserMethod{Name: "escape", Body: nativeFn{Fn: regexpEscape}}
 		c.ClassMethods["quote"] = &object.UserMethod{Name: "quote", Body: nativeFn{Fn: regexpEscape}}
+		// Regexp.new(source[, opts]) compiles source into a Regex.
+		// Mirrors MRI's regex constructor; without it,
+		// `Regexp.new(...)` falls through Class.new and builds an
+		// opaque Instance that fails when methods like #match are
+		// dispatched. rake/task_manager.rb's create_rule path needs
+		// the proper Regex shape.
+		c.ClassMethods["new"] = &object.UserMethod{Name: "new", Body: nativeFn{Fn: regexpNew}}
+		c.ClassMethods["compile"] = c.ClassMethods["new"]
+		// Regexp.last_match returns the MatchData from the most recent
+		// =~ in the current thread. Goruby doesn't track per-thread
+		// state for this; return nil. Sufficient for callers that
+		// invoke it for its side-effect-free return (minitest's
+		// assert_match passes it through unchanged).
+		c.ClassMethods["last_match"] = &object.BuiltinMethod{
+			Name: "last_match",
+			Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+				return object.NIL, nil
+			},
+		}
 	}
 	if _, ok := c.Methods["match?"]; !ok {
 		c.Methods["match?"] = &object.BuiltinMethod{Name: "match?", Fn: regexMatchQ}
@@ -209,6 +337,27 @@ func regexToS(env *object.Environment, recv object.RubyObject, args []object.Rub
 // regexpUnion builds a single regex matching any of args. Strings get
 // quoted (literal match), Regex objects contribute their source. A
 // single Array argument is auto-splatted to mirror MRI.
+func regexpNew(_ *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) < 1 {
+		return nil, errorf("evaluator: Regexp.new: expected 1..2 args, got %d", len(args))
+	}
+	var src string
+	switch v := args[0].(type) {
+	case *object.String:
+		src = v.Value()
+	case *object.Regex:
+		// Regexp.new(/foo/) -- copy the source through.
+		return v, nil
+	default:
+		return nil, errorf("evaluator: Regexp.new: expected String/Regexp, got %T", args[0])
+	}
+	re, err := regexp.Compile(src)
+	if err != nil {
+		return nil, errorf("evaluator: Regexp.new: %s", err.Error())
+	}
+	return object.NewRegex(re, src, ""), nil
+}
+
 func regexpUnion(_ *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
 	// MRI: Regexp.union([a, b]) is equivalent to Regexp.union(a, b).
 	if len(args) == 1 {
