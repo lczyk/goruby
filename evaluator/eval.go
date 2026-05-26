@@ -7,6 +7,7 @@ import (
 
 	"github.com/lczyk/goruby/ast"
 	"github.com/lczyk/goruby/object"
+	"github.com/lczyk/goruby/token"
 )
 
 // Eval walks node and returns its runtime value. Errors are evaluator
@@ -308,6 +309,13 @@ func evalStringLiteral(env *object.Environment, n *ast.StringLiteral) (object.Ru
 		}
 		s, _ := v.(*object.String)
 		b.Write(s.Buf)
+	}
+	// Backtick command strings (XSTR_BEG) route through Kernel#` so the
+	// resolved string gets executed via /bin/sh and the stdout is
+	// returned. Without this routing, `cmd` returns the literal source
+	// string instead of running it.
+	if n.Token.Type == token.XSTR_BEG {
+		return kernelBacktick(env, []object.RubyObject{object.NewString(b.String())})
 	}
 	return object.NewString(b.String()), nil
 }
