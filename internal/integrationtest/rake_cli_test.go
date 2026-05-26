@@ -310,14 +310,7 @@ func TestRakeCLI_RealWorld_EsolangBook_List(t *testing.T) {
 // Rakefile's `assert_equal` (prints "NG:" on mismatch, nothing on
 // success). With ruby -> goruby on PATH the backticked subprocesses
 // run goruby on the pure-ruby interpreter scripts.
-//
-// Skipped: blocked on `cd "dir" do ... end` inside task bodies.
-// extend Rake::DSL on main pulls in DSL methods but the transitive
-// `include FileUtils` chain doesn't surface FileUtils.cd / .sh on
-// main as singleton methods in goruby. Separate issue from the rake
-// CLI work; tracked as a follow-up.
 func TestRakeCLI_RealWorld_EsolangBook_RunHQ9(t *testing.T) {
-	t.Skip("cd / sh inside task body: transitive include FileUtils via extend Rake::DSL doesn't surface on main")
 	dir := gemDir(t, "esolang-book-sources")
 	out, err := runRake(t, dir, "test_hq9plus")
 	require.NoError(t, err, "rake test_hq9plus: %s", out)
