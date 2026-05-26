@@ -1972,22 +1972,41 @@ func bootstrapRbConfig(env *object.Environment) {
 		hostOS = goos
 	}
 	put("host_os", hostOS)
-	put("bindir", "/__goruby_sys__/bin")
-	put("ruby_install_name", "ruby")
+	// Derive bindir / install_name / prefix from the actual goruby
+	// executable so subprocess shellouts via RbConfig.ruby /
+	// FileUtils::RUBY reach a real binary. Failure (rare: os.Executable
+	// can fail on weird /proc setups) falls back to literals so tests
+	// that only read the keys as strings keep working.
+	exe, err := os.Executable()
+	bindir, installName, prefix := "/usr/local/bin", "ruby", "/usr/local"
+	if err == nil {
+		bindir = filepath.Dir(exe)
+		installName = filepath.Base(exe)
+		prefix = filepath.Dir(bindir)
+	}
+	put("bindir", bindir)
+	put("ruby_install_name", installName)
 	put("EXEEXT", "")
-	put("prefix", "/__goruby_sys__")
-	put("libdir", "/__goruby_sys__/lib")
-	put("sitelibdir", "/__goruby_sys__/site")
-	put("rubylibdir", "/__goruby_sys__/lib/ruby")
+	put("prefix", prefix)
+	put("libdir", filepath.Join(prefix, "lib"))
+	put("sitelibdir", filepath.Join(prefix, "lib", "ruby", "site_ruby"))
+	put("rubylibdir", filepath.Join(prefix, "lib", "ruby"))
 	// rubylibprefix is used by rake/backtrace.rb to suppress "system"
-	// stdlib frames. A nonexistent sentinel path won't match any real
-	// frame but is distinct enough that backtrace logic that explicitly
-	// builds a path from it (e.g. `path + ":12"`) still produces a
-	// usable string.
-	put("rubylibprefix", "/__goruby_sys__")
-	put("RUBY_INSTALL_NAME", "ruby")
+	// stdlib frames. Using prefix means goruby-shipped library frames
+	// (if any) get collapsed in user backtraces.
+	put("rubylibprefix", prefix)
+	put("RUBY_INSTALL_NAME", installName)
 	put("ruby_version", "3.4.0")
 	c.Constants["CONFIG"] = cfg
+	// RbConfig.ruby returns the full path to the running interpreter.
+	// MRI defines it as File.join(CONFIG["bindir"], CONFIG["ruby_install_name"] + CONFIG["EXEEXT"]).
+	rubyPath := filepath.Join(bindir, installName)
+	c.ClassMethods["ruby"] = &object.BuiltinMethod{
+		Name: "ruby",
+		Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+			return object.NewString(rubyPath), nil
+		},
+	}
 	env.SetGlobal("RbConfig", c)
 }
 
