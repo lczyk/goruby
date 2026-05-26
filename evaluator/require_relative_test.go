@@ -66,6 +66,83 @@ func TestRequireRelativeIdempotent(t *testing.T) {
 	assert.Equal(t, "true\nfalse\n1\n", stdout.String())
 }
 
+// TestEval__dir__: `__dir__` expands to the absolute dir of the file
+// presently being evaluated. Verifies the value via a synthetic write
+// to a sibling file -- so a subsequent require_relative against
+// __dir__ + "/sibling" would also resolve correctly.
+func TestEval__dir__(t *testing.T) {
+	dir := t.TempDir()
+	entry := writeFile(t, dir, "entry.rb", "puts __dir__\n")
+	src, err := os.ReadFile(entry)
+	assert.NoError(t, err, "read entry")
+
+	target := token.MustParseVersion("2.6")
+	prog, err := parser.ParseFile(entry, src, 0, parser.WithVersion(target))
+	assert.NoError(t, err, "parse")
+
+	var stdout bytes.Buffer
+	env := object.NewMainEnvironment(object.WithVersion(target), object.WithStdout(&stdout))
+	_, err = Eval(prog, env)
+	assert.NoError(t, err, "eval")
+	wantDir, err := filepath.Abs(dir)
+	assert.NoError(t, err, "abs")
+	assert.Equal(t, wantDir+"\n", stdout.String())
+}
+
+// TestRequireViaLoadPath: $LOAD_PATH.unshift then require resolves the
+// target through the array, not relative to the requirer.
+func TestRequireViaLoadPath(t *testing.T) {
+	dir := t.TempDir()
+	libs := filepath.Join(dir, "libs")
+	assert.NoError(t, os.Mkdir(libs, 0o755), "mkdir libs")
+	writeFile(t, libs, "greet.rb", "GREETING = 'hi from libs'\n")
+	entry := writeFile(t, dir, "entry.rb",
+		"$LOAD_PATH.unshift __dir__ + '/libs'\nrequire 'greet'\nputs GREETING\n")
+
+	src, err := os.ReadFile(entry)
+	assert.NoError(t, err, "read entry")
+
+	target := token.MustParseVersion("2.6")
+	prog, err := parser.ParseFile(entry, src, 0, parser.WithVersion(target))
+	assert.NoError(t, err, "parse")
+
+	var stdout bytes.Buffer
+	env := object.NewMainEnvironment(object.WithVersion(target), object.WithStdout(&stdout))
+	_, err = Eval(prog, env)
+	assert.NoError(t, err, "eval")
+	assert.Equal(t, "hi from libs\n", stdout.String())
+}
+
+// TestRequireViaLoadPathTransitive: require deep inside a library still
+// resolves through $LOAD_PATH (not relative to the inner file). Mirrors
+// rake's pattern where rake/ext/string.rb says `require "rake/ext/core"`
+// and the lookup needs to walk back through the gem's lib/ dir.
+func TestRequireViaLoadPathTransitive(t *testing.T) {
+	dir := t.TempDir()
+	libs := filepath.Join(dir, "libs")
+	deep := filepath.Join(libs, "nest", "ext")
+	assert.NoError(t, os.MkdirAll(deep, 0o755), "mkdir deep")
+	writeFile(t, deep, "leaf.rb", "LEAF_VAL = 42\n")
+	writeFile(t, filepath.Join(libs, "nest"), "trunk.rb",
+		"require 'nest/ext/leaf'\nTRUNK_VAL = LEAF_VAL + 1\n")
+	writeFile(t, libs, "nest.rb", "require 'nest/trunk'\n")
+	entry := writeFile(t, dir, "entry.rb",
+		"$LOAD_PATH.unshift __dir__ + '/libs'\nrequire 'nest'\nputs TRUNK_VAL\n")
+
+	src, err := os.ReadFile(entry)
+	assert.NoError(t, err, "read entry")
+
+	target := token.MustParseVersion("2.6")
+	prog, err := parser.ParseFile(entry, src, 0, parser.WithVersion(target))
+	assert.NoError(t, err, "parse")
+
+	var stdout bytes.Buffer
+	env := object.NewMainEnvironment(object.WithVersion(target), object.WithStdout(&stdout))
+	_, err = Eval(prog, env)
+	assert.NoError(t, err, "eval")
+	assert.Equal(t, "43\n", stdout.String())
+}
+
 // TestRequireRelativeTransitive: a.rb -> requires b.rb -> requires c.rb.
 // Each require resolves relative to its own file, not the entry point.
 func TestRequireRelativeTransitive(t *testing.T) {

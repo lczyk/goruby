@@ -2,6 +2,7 @@ package evaluator
 
 import (
 	"bytes"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -1473,6 +1474,916 @@ func TestEvalMultiAssignSplatMiddle(t *testing.T) {
 	src := `a, *b, c = [1, 2, 3, 4, 5]
 p a; p b; p c`
 	runExpect(t, src, "1\n[2, 3, 4]\n5\n")
+}
+
+func TestSingletonAttrAccessor(t *testing.T) {
+	// attr_accessor inside `class << self` of a class installs on
+	// the class's ClassMethods table (the per-class singleton). After
+	// the def, Foo.x and Foo.x= dispatch through there; the underlying
+	// storage is the class-instance var @x on Foo itself. rake/
+	// task_manager.rb's record_task_metadata accessor is the
+	// motivating shape.
+	src := `class Foo
+  class << self
+    attr_accessor :record
+  end
+end
+puts Foo.respond_to?(:record)
+puts Foo.respond_to?(:record=)
+Foo.record = "hi"
+puts Foo.record`
+	runExpect(t, src, "true\ntrue\nhi\n")
+}
+
+func TestSingletonAttrAccessorInModule(t *testing.T) {
+	// Same as TestSingletonAttrAccessor but the host is a module.
+	// rake's actual shape: `module Rake::TaskManager; class << self;
+	// attr_accessor :record_task_metadata; end; TaskManager.record_task_metadata = false; end`.
+	src := `module Bar
+  class << self
+    attr_accessor :flag
+  end
+end
+Bar.flag = true
+puts Bar.flag`
+	runExpect(t, src, "true\n")
+}
+
+func TestEnvSnapshot(t *testing.T) {
+	// ENV is bootstrapped as a Hash snapshot of os.Environ(); a read
+	// for a set variable returns the snapshot value, an unset name
+	// reads as nil.
+	t.Setenv("GORUBY_ENV_TEST", "yes")
+	runExpect(t, `puts ENV["GORUBY_ENV_TEST"]
+puts ENV["DEFINITELY_NOT_SET_XYZ"].nil?`, "yes\ntrue\n")
+}
+
+func TestRbConfigBootstrap(t *testing.T) {
+	// RbConfig::CONFIG bootstraps with at least the keys rake reads
+	// at load time. Values are best-effort; just assert they exist
+	// (read as strings, not nil).
+	runExpect(t, `puts RbConfig::CONFIG["host_os"].is_a?(String)
+puts RbConfig::CONFIG["bindir"].is_a?(String)
+puts RbConfig::CONFIG["ruby_install_name"].is_a?(String)
+puts RbConfig::CONFIG["EXEEXT"].is_a?(String)`, "true\ntrue\ntrue\ntrue\n")
+}
+
+func TestFileJoin(t *testing.T) {
+	// File.join produces "/"-separated paths, collapsing extra
+	// separators at the join site. Array args flatten recursively.
+	runExpect(t, `puts File.join("a", "b", "c")`, "a/b/c\n")
+	runExpect(t, `puts File.join("a/", "/b")`, "a/b\n")
+	runExpect(t, `puts File.join(["a", "b"], "c")`, "a/b/c\n")
+}
+
+func TestFileDirnameBasename(t *testing.T) {
+	runExpect(t, `puts File.dirname("/a/b/c.rb")`, "/a/b\n")
+	runExpect(t, `puts File.basename("/a/b/c.rb")`, "c.rb\n")
+	runExpect(t, `puts File.basename("/a/b/c.rb", ".rb")`, "c\n")
+	runExpect(t, `puts File.basename("/a/b/c.rb", ".*")`, "c\n")
+	runExpect(t, `puts File.extname("/a/b/c.rb")`, ".rb\n")
+}
+
+func TestAliasWithSymbolForm(t *testing.T) {
+	// `alias :new :old` (symbol-prefixed) should resolve to method
+	// name "old" -- previously the parser used SymbolLiteral.String()
+	// which leaves the leading colon attached, so the lookup missed.
+	src := `class C
+  def foo; "ok"; end
+  alias :bar :foo
+end
+puts C.new.bar`
+	runExpect(t, src, "ok\n")
+}
+
+func TestIncludeInvokesIncludedHook(t *testing.T) {
+	// MRI calls mod.included(base) after a class includes mod. Verify
+	// the hook fires by having it record a side-effect.
+	src := `module M
+  def self.included(base)
+    @@last_includer = base.name
+  end
+end
+class C
+  include M
+end
+puts M.class_variable_get(:@@last_includer)`
+	// class_variable_get is unimplemented in goruby today, so the
+	// final puts would fail. Instead, route through a top-level var.
+	src = `$last = nil
+module M2
+  def self.included(base)
+    $last = base.name
+  end
+end
+class C2
+  include M2
+end
+puts $last`
+	runExpect(t, src, "C2\n")
+}
+
+func TestExtendCopiesModuleMethods(t *testing.T) {
+	// extend(mod) copies mod's instance methods to the receiver's
+	// singleton table. `extend self` inside a module body installs
+	// the module's own instance methods as module-level methods.
+	src := `module M
+  def hi; "hello"; end
+  extend self
+end
+puts M.hi`
+	runExpect(t, src, "hello\n")
+}
+
+func TestSingletonInstanceCachesPerClass(t *testing.T) {
+	// include Singleton synthesises .instance on the includer; calls
+	// return the same cached instance.
+	src := `class LT
+  include Singleton
+end
+a = LT.instance
+b = LT.instance
+puts a.equal?(b)`
+	runExpect(t, src, "true\n")
+}
+
+func TestInstanceMethodsListsLocalAndInherited(t *testing.T) {
+	// Module#instance_methods walks Super + Includes by default;
+	// passing false limits to own methods only.
+	src := `module Mix
+  def from_mix; end
+end
+class Parent
+  def from_parent; end
+end
+class Child < Parent
+  include Mix
+  def from_child; end
+end
+puts Child.instance_methods(false).sort.join(",")
+all = Child.instance_methods.sort.map(&:to_s)
+puts all.include?("from_child")
+puts all.include?("from_parent")
+puts all.include?("from_mix")`
+	runExpect(t, src, "from_child\ntrue\ntrue\ntrue\n")
+}
+
+func TestBlockBodyLvarPredeclare(t *testing.T) {
+	// Block / proc bodies pre-declare locals introduced anywhere
+	// in the body (matches MRI's parser-time lvar introduction).
+	src := `p = proc {
+  x = 1 unless true
+  x.inspect
+}
+puts p.call`
+	runExpect(t, src, "nil\n")
+}
+
+func TestRescueModifierExpression(t *testing.T) {
+	// `expr rescue fallback` -- inline rescue. Eval left; on
+	// StandardError, return the fallback. Non-StandardError
+	// exceptions still propagate.
+	src := `def boom; raise "x"; end
+x = boom rescue "caught"
+puts x
+y = (1 + 1) rescue "not used"
+puts y`
+	runExpect(t, src, "caught\n2\n")
+}
+
+func TestInterpolationCallsToS(t *testing.T) {
+	// "#{x}" calls x.to_s, not x.inspect. For an Instance with a
+	// user-defined to_s, the user version wins. rake's
+	// InvocationChain depends on this for its TOP => a => b
+	// rendering (each chain element's to_s recursively builds the
+	// prefix via interpolation).
+	src := `class C
+  def to_s; "custom"; end
+end
+puts "<#{C.new}>"`
+	runExpect(t, src, "<custom>\n")
+}
+
+func TestArrayShuffle(t *testing.T) {
+	// Array#shuffle returns a fresh Array w/ same elements. With
+	// srand seeded the result is deterministic; just check length
+	// + element set since the order depends on the PRNG state.
+	src := `srand 42
+a = [1, 2, 3, 4, 5]
+b = a.shuffle
+puts b.length
+puts b.sort == a`
+	runExpect(t, src, "5\ntrue\n")
+}
+
+func TestSymbolGrepByRegex(t *testing.T) {
+	// Array of Symbols grep'd against a Regexp matches by the
+	// symbol's name. minitest's runnable_methods uses this.
+	src := `puts [:test_a, :other, :test_b].grep(/^test_/).inspect`
+	runExpect(t, src, "[:test_a, :test_b]\n")
+}
+
+func TestPublicInstanceMethods(t *testing.T) {
+	// public_instance_methods aliases to instance_methods (no
+	// per-method visibility tracking).
+	src := `class C
+  def foo; end
+  def bar; end
+end
+puts C.public_instance_methods(false).sort.join(",")`
+	runExpect(t, src, "bar,foo\n")
+}
+
+func TestRespondToTwoArg(t *testing.T) {
+	// MRI: respond_to?(name, include_all=false). The 2-arg form
+	// distinguishes private methods; we do not track per-method
+	// visibility uniformly so the flag is ignored. minitest's
+	// assert_respond_to passes include_all positionally.
+	src := `class C
+  def foo; end
+end
+puts C.new.respond_to?(:foo, false)
+puts C.new.respond_to?(:foo, true)
+puts C.new.respond_to?(:missing, true)`
+	runExpect(t, src, "true\ntrue\nfalse\n")
+}
+
+func TestRescueSplat(t *testing.T) {
+	// `rescue *array_of_classes => e` expands the array into the
+	// rescue match list. minitest's assert_raises is the motivating
+	// shape.
+	src := `class A < StandardError; end
+class B < StandardError; end
+errs = [A, B]
+begin
+  raise B, "boom"
+rescue *errs => e
+  puts "caught: " + e.class.to_s + ": " + e.message
+end`
+	runExpect(t, src, "caught: B: boom\n")
+}
+
+func TestRescueScopedClass(t *testing.T) {
+	// rescue M::X matches an exception of class M::X. The parser
+	// stores the rescue class as a single Identifier with the
+	// joined source text; resolveRescueClass navigates via either
+	// the flat-name global or the split-and-walk lexical path.
+	src := `module M
+  class X < Exception; end
+end
+begin
+  raise M::X, "test"
+rescue M::X => e
+  puts "caught: " + e.message
+end`
+	runExpect(t, src, "caught: test\n")
+}
+
+func TestBooleanXor(t *testing.T) {
+	src := `puts true ^ false
+puts true ^ true
+puts nil ^ true
+puts false ^ nil`
+	runExpect(t, src, "true\nfalse\ntrue\nfalse\n")
+}
+
+func TestNestedClassDefDoesntPollute(t *testing.T) {
+	// `module Outer; module Inner; module Test; end; end; end`
+	// must NOT bind Test in the global env. A sibling
+	// `class Test < Runnable` at Outer scope should pick up
+	// the not-yet-defined Outer::Test (NEW), not the unrelated
+	// Outer::Inner::Test. Mirrors the rake/test_files include shape.
+	src := `module Outer
+  module Inner
+    module Test
+    end
+  end
+  class Runnable; end
+  class Test < Runnable
+  end
+end
+puts Outer::Test.superclass.to_s
+puts Outer::Test.equal?(Outer::Inner::Test)`
+	runExpect(t, src, "Outer::Runnable\nfalse\n")
+}
+
+func TestIncludeMRODoesNotReachIncludesSuper(t *testing.T) {
+	// When LookupMethod walks Includes, the include's own Super
+	// chain must NOT be followed -- otherwise Object#initialize
+	// (etc.) routes ahead of the real class hierarchy. Mirrors
+	// the Minitest::Test < Runnable + include Assertions shape:
+	// Assertions.Super defaults to Object, and Object#initialize
+	// was masking Runnable#initialize.
+	src := `class Base
+  def initialize; @from = "base"; end
+  attr_reader :from
+end
+module Mix
+end
+class Sub < Base
+  include Mix
+end
+puts Sub.new.from`
+	runExpect(t, src, "base\n")
+}
+
+func TestSingletonClassObjectForClass(t *testing.T) {
+	// (class << self; self; end) returns the host's singleton class.
+	// Calling attr_accessor on it installs class-level methods on
+	// the host -- the minitest cattr_accessor pattern.
+	src := `module M
+  def self.cattr_accessor name
+    (class << self; self; end).attr_accessor name
+  end
+  cattr_accessor :seed
+end
+M.seed = 42
+puts M.seed`
+	runExpect(t, src, "42\n")
+}
+
+func TestUndefMethod(t *testing.T) {
+	src := `class C
+  def foo; "from foo"; end
+  undef_method :foo
+end
+puts C.new.respond_to?(:foo)`
+	runExpect(t, src, "false\n")
+}
+
+func TestSingletonDefOnConstantInModule(t *testing.T) {
+	// def CONST.foo where CONST is a constant defined on the
+	// enclosing module: receiver is now resolved via the lexical
+	// class chain's Constants. minitest's Minitest::Assertions
+	// uses `def UNDEFINED.inspect`.
+	src := `module M
+  UNDEFINED = Object.new
+  def UNDEFINED.inspect
+    "UNDEFINED"
+  end
+end
+puts M::UNDEFINED.inspect`
+	runExpect(t, src, "UNDEFINED\n")
+}
+
+func TestAttrAccessorAsModuleMethod(t *testing.T) {
+	// attr_accessor reachable as a Module instance method, so the
+	// idiom `Foo.attr_accessor :bar` installs reader+writer methods
+	// on Foo. Without this, attr_* was only the bare-name class-body
+	// DSL form. minitest's cattr_accessor pattern depends on this.
+	src := `class Foo
+end
+Foo.attr_accessor :bar
+f = Foo.new
+f.bar = 42
+puts f.bar`
+	runExpect(t, src, "42\n")
+}
+
+func TestEtcNprocessors(t *testing.T) {
+	// Etc.nprocessors returns 1 in our serial-fallback world. Lets
+	// minitest's parallelism sizing line (which calls Etc.nprocessors
+	// unconditionally) succeed.
+	runExpect(t, `require "etc"
+puts Etc.nprocessors`, "1\n")
+}
+
+func TestThreadColonColonQueueAlias(t *testing.T) {
+	// Thread::Queue is an alias of the top-level Queue, matching
+	// modern Ruby. Lets minitest's Thread::Queue.new shape work.
+	src := `q = Thread::Queue.new
+q.enq(1)
+puts q.deq`
+	runExpect(t, src, "1\n")
+}
+
+func TestRegexpStripsLookaround(t *testing.T) {
+	// Go's regexp engine doesn't support (?<=...) lookbehind etc.
+	// A literal regex using them now strips the look-around and
+	// retries rather than raising RegexpError at parse time.
+	// rake/task.rb's first_sentence uses this shape; without the
+	// fallback rake's Task#comment errored on every read.
+	src := `r = /(?<=\w)(\.|!)/
+puts "ok.".split(r).first
+puts "abc".split(r).first`
+	// With lookbehind stripped, the regex matches `(\.|!)` anywhere
+	// (it'd match position-after-word-char in MRI). For "ok.", the
+	// split happens at the period, giving "ok"; for "abc", no match,
+	// the string returns whole.
+	runExpect(t, src, "ok\nabc\n")
+}
+
+func TestKernelCallerReturnsArray(t *testing.T) {
+	// Kernel#caller currently returns []. Lets rake's find_location
+	// (which iterates caller) bottom out without erroring.
+	runExpect(t, `puts caller.class`, "Array\n")
+}
+
+func TestScopedClassDef(t *testing.T) {
+	// class Outer::Inner def-syntax creates Inner under Outer's
+	// Constants, not as a top-level class named "Outer::Inner".
+	src := `module Outer; end
+class Outer::Inner
+  def hi; "hi"; end
+end
+puts Outer::Inner.new.hi`
+	runExpect(t, src, "hi\n")
+}
+
+func TestConstantLookupWalksLexical(t *testing.T) {
+	// A bare constant reference walks the nested-module chain so
+	// inner code can see outer-defined constants without ::.
+	src := `module Outer
+  CONST = 42
+  module Inner
+    def self.value
+      CONST
+    end
+  end
+end
+puts Outer::Inner.value`
+	runExpect(t, src, "42\n")
+}
+
+func TestTimeBasics(t *testing.T) {
+	src := `t1 = Time.mktime(2020, 1, 1)
+t2 = Time.mktime(2021, 6, 15)
+puts t1.to_i
+puts t1 < t2
+puts t2 > t1
+puts t1 == t1
+puts t2.strftime("%Y-%m-%d")
+puts t2.strftime("%B")`
+	runExpect(t, src, "1577836800\ntrue\ntrue\ntrue\n2021-06-15\nJune\n")
+}
+
+func TestThreadNewSerialInline(t *testing.T) {
+	// Serial-fallback Thread.new runs the block inline before returning.
+	src := `Thread.new { puts "ran" }
+puts "after"`
+	runExpect(t, src, "ran\nafter\n")
+}
+
+func TestQueueEnqDeq(t *testing.T) {
+	src := `q = Queue.new
+q.enq(1)
+q.enq(2)
+puts q.size
+puts q.deq
+puts q.deq
+puts q.empty?`
+	runExpect(t, src, "2\n1\n2\ntrue\n")
+}
+
+func TestMutexSynchronize(t *testing.T) {
+	// Serial-fallback Mutex#synchronize just runs the block.
+	src := `m = Mutex.new
+m.synchronize { puts "in" }
+puts m.try_lock`
+	runExpect(t, src, "in\ntrue\n")
+}
+
+func TestBareNameResolvesBuiltinMethod(t *testing.T) {
+	// evalIdentifier's instance-receiver fallback now dispatches
+	// BuiltinMethod, not just UserMethod. Lets bare-name `object_id`
+	// (an Object instance method backed by Go) resolve from inside
+	// an instance method body without an explicit receiver.
+	src := `class C
+  def go
+    object_id
+  end
+end
+puts C.new.go.is_a?(Integer)`
+	runExpect(t, src, "true\n")
+}
+
+func TestRegexpNew(t *testing.T) {
+	// Regexp.new compiles a String pattern. rake/task_manager.rb's
+	// create_rule converts the user's String pattern via
+	// Regexp.new(Regexp.quote(s) + "$").
+	src := `r = Regexp.new("foo")
+puts r.match?("xfoox")
+puts r.match?("bar")
+puts r.source`
+	runExpect(t, src, "true\nfalse\nfoo\n")
+}
+
+func TestSetBasics(t *testing.T) {
+	// Set#new / add / include? / size / to_a. Insertion order
+	// preserved; equal entries deduplicate.
+	src := `s = Set.new
+s.add(:a)
+s.add(:b)
+s.add(:a)  # dup; ignored
+puts s.size
+puts s.include?(:a)
+puts s.include?(:c)
+p s.to_a`
+	runExpect(t, src, "2\ntrue\nfalse\n[:a, :b]\n")
+}
+
+func TestArrayReplace(t *testing.T) {
+	// Array#replace mutates self to hold other's elements; returns self.
+	src := `a = [1, 2, 3]
+b = a.replace([10, 20])
+p a
+p b
+puts a.equal?(b)`
+	runExpect(t, src, "[10, 20]\n[10, 20]\ntrue\n")
+}
+
+func TestKernelFailIsAliasOfRaise(t *testing.T) {
+	src := `begin
+  fail "oh"
+rescue RuntimeError => e
+  puts e.message
+end`
+	runExpect(t, src, "oh\n")
+}
+
+func TestLambdaInsideInstanceMethod(t *testing.T) {
+	// lambda { ... } inside an instance method must short-circuit
+	// past the inst-receiver dispatch and resolve via Kernel.
+	// Without that, `lambda do ... end` inside a method body
+	// NoMethodErrors on the inst's class.
+	src := `class C
+  def make
+    lambda { 42 }
+  end
+end
+p = C.new.make
+puts p.lambda?
+puts p.call`
+	runExpect(t, src, "true\n42\n")
+}
+
+func TestKernelSystem(t *testing.T) {
+	// Kernel#system runs the command, returns true on exit-0 and
+	// false on non-zero. Single-arg form goes through /bin/sh -c.
+	runExpect(t, `puts system("exit 0")`, "true\n")
+	runExpect(t, `puts system("exit 1")`, "false\n")
+}
+
+func TestClassEvalStringInstallsMethods(t *testing.T) {
+	// class_eval(string) parses the string as Ruby and evaluates it
+	// in the class body context. Used by rake/file_list.rb to
+	// synthesise Array-proxy methods at load time.
+	src := `class C
+  ["foo", "bar"].each do |name|
+    class_eval %{
+      def #{name}; "#{name}!"; end
+    }
+  end
+end
+c = C.new
+puts c.foo
+puts c.bar`
+	runExpect(t, src, "foo!\nbar!\n")
+}
+
+func TestSelfInBlockForwardedViaAmpBlock(t *testing.T) {
+	// Self inside a block forwarded via &block must be the call-site's
+	// self, not the receiving method's def-time enclosing class.
+	// rake's resolve_exclude pattern: outer method passes its &block
+	// down through send(:reject!, *args, &block); the block calls a
+	// bare-name method that should resolve on the original self.
+	src := `class C
+  def reject_wrapper(&block)
+    [1, 2, 3].send(:reject, &block)
+  end
+  def go
+    out = reject_wrapper { |x| check(x) }
+    puts out.join(",")
+  end
+  def check(x)
+    x > 1
+  end
+end
+C.new.go`
+	runExpect(t, src, "1\n")
+}
+
+func TestObjectIDStableAndDistinct(t *testing.T) {
+	// object_id stays the same for one object across reads, differs
+	// across two distinct array literals.
+	src := `a = [1]
+b = [1]
+puts a.object_id == a.object_id
+puts a.object_id != b.object_id
+puts a.equal?(a)
+puts a.equal?(b)`
+	runExpect(t, src, "true\ntrue\ntrue\nfalse\n")
+}
+
+func TestBlockArityToleranceThroughClassForward(t *testing.T) {
+	// Block forwarded through a chain of class methods via &b must
+	// keep MRI's non-lambda arity tolerance: calling a 1-param block
+	// with 2 args drops the extra, doesn't ArgumentError. rake's
+	// `act.call(self, args)` on a `do |t| ... end` is the motivating
+	// shape; the forward chain is task -> Rake::Task.define_task ->
+	// Rake.application.define_task -> enhance.
+	src := `class A
+  def self.f(&b)
+    B.g(&b)
+  end
+end
+class B
+  def self.g(&b)
+    b
+  end
+end
+p = A.f { |x| puts "got: " + x.to_s }
+p.call("a")
+p.call("a", "b")`
+	runExpect(t, src, "got: a\ngot: a\n")
+}
+
+func TestFileWrite(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "out.txt")
+	src := `File.write("` + path + `", "hi")
+puts File.read("` + path + `")`
+	runExpect(t, src, "hi\n")
+}
+
+func TestMethodBodyLvarPredeclare(t *testing.T) {
+	// MRI's parser-time lvar introduction: any assignment in a method
+	// body pre-declares the local in the method's scope, even when
+	// the assignment sits inside a branch that doesn't run. Reading
+	// the name later yields nil rather than NameError.
+	// rake/task.rb's lookup_prerequisite is the motivating shape.
+	src := `def f(cond)
+  if cond
+    x = 1
+  end
+  x || 42
+end
+puts f(false)
+puts f(true)`
+	runExpect(t, src, "42\n1\n")
+}
+
+func TestModuleToS(t *testing.T) {
+	// Module#to_s / Module#inspect return the class/module name.
+	runExpect(t, "puts String.to_s\nputs String.inspect", "String\nString\n")
+}
+
+func TestArrayToAry(t *testing.T) {
+	// Array#to_ary returns self. Lets respond_to?(:to_ary) succeed
+	// and to_ary itself short-circuit.
+	src := `a = [1, 2, 3]
+puts a.respond_to?(:to_ary)
+puts a.to_ary.equal?(a)`
+	runExpect(t, src, "true\ntrue\n")
+}
+
+func TestHashTryConvert(t *testing.T) {
+	// Hash.try_convert returns the arg if it's already a Hash, nil
+	// otherwise. rake/task.rb's execute uses it to detect a kwargs
+	// trailing Hash in a positional args bundle.
+	src := `p Hash.try_convert({ a: 1 })
+p Hash.try_convert([1, 2])
+p Hash.try_convert(nil)`
+	runExpect(t, src, "{:a=>1}\nnil\nnil\n")
+}
+
+func TestBlockForwardThroughClassMethod(t *testing.T) {
+	// Block forwarding through a class method: `def task(&blk);
+	// C.deftask(&blk); end`. Previously the &blk capture didn't reach
+	// C.deftask -- callMethodWithProc built a goBlockMarker with fn
+	// set but blk (the AST literal) nil, and dispatchWithBlock's
+	// Class-receiver branch only forwarded marker.blk to
+	// invokeMethodOnWithBlock. Now passes the full marker through
+	// invokeMethodOn so the body's &block capture reifies via
+	// procFromGoBlock.
+	src := `class C
+  def self.deftask(*args, &block)
+    block
+  end
+end
+def task(*args, &blk)
+  C.deftask(*args, &blk)
+end
+b = task(:hello) { puts "yes" }
+puts b.class
+b.call`
+	runExpect(t, src, "Proc\nyes\n")
+}
+
+func TestSuperViaIncludedModule(t *testing.T) {
+	// Application < Object includes TaskManager; both define initialize.
+	// Application#initialize calls super -> TaskManager#initialize.
+	// TaskManager#initialize calls super -> Object#initialize (the
+	// builtin noop). Without DefClass tracking, super from
+	// TaskManager#initialize sees CurrentClass=Application (the
+	// receiver's class) and loops back to TaskManager#initialize.
+	src := `module Mix
+  def setup
+    @parts ||= []
+    @parts << "mix"
+    super
+  end
+end
+class Base
+  def setup
+    @parts ||= []
+    @parts << "base"
+  end
+end
+class Sub < Base
+  include Mix
+  def setup
+    @parts ||= []
+    @parts << "sub"
+    super
+  end
+end
+s = Sub.new
+s.setup
+puts s.instance_variable_get(:@parts).join(",")`
+	runExpect(t, src, "sub,mix,base\n")
+}
+
+func TestNameErrorRescuable(t *testing.T) {
+	// Undefined bare-name identifier raises a Ruby NameError, not a
+	// Go-level evaluator error. `rescue StandardError` catches it.
+	// rake/cpu_counter.rb's count_with_default depends on this --
+	// `count || default; rescue StandardError; default` only works
+	// when the NameError is recoverable.
+	src := `def safe
+  missing_method || 1
+rescue StandardError
+  42
+end
+puts safe`
+	runExpect(t, src, "42\n")
+}
+
+func TestCaseEqualOnClass(t *testing.T) {
+	// === on a Class checks is_a?. Used by rake's `String === task_name`
+	// shape for runtime type checks.
+	src := `puts String === "hi"
+puts String === 42
+puts Integer === 42`
+	runExpect(t, src, "true\nfalse\ntrue\n")
+}
+
+func TestNilToINilToF(t *testing.T) {
+	// MRI: nil.to_i is 0, nil.to_f is 0.0. rake's ENV["UNSET"].to_i
+	// shape depends on it.
+	runExpect(t, "puts nil.to_i\nputs nil.to_f", "0\n0.0\n")
+}
+
+func TestToplevelExtendDSLWithBlock(t *testing.T) {
+	// `self.extend Mod` at toplevel installs Mod's instance methods
+	// as singleton methods on main. A subsequent bare call w/ a
+	// block (e.g. `task :hello do ...; end`) must route through
+	// main's singleton table -- previously this hit "blocks on
+	// kernel calls not yet supported" because main wasn't being
+	// pinned as the receiver at toplevel. rake/dsl_definition.rb's
+	// pattern is the motivating use.
+	src := `module DSL
+  def task(name, &blk)
+    puts "task: #{name}"
+    blk.call if blk
+  end
+end
+self.extend DSL
+task :hello do
+  puts "block ran"
+end`
+	runExpect(t, src, "task: hello\nblock ran\n")
+}
+
+func TestHashValuesAt(t *testing.T) {
+	// Hash#values_at(*keys) -- per-key slot, nil for misses.
+	// Motivating shape: RbConfig::CONFIG.values_at(*SYS_KEYS) in
+	// rake/backtrace.rb collecting prefix/libdir paths.
+	src := `h = { "a" => 1, "b" => 2, "c" => 3 }
+p h.values_at("a", "c")
+p h.values_at("a", "missing", "b")
+p h.values_at`
+	runExpect(t, src, "[1, 3]\n[1, nil, 2]\n[]\n")
+}
+
+func TestArrayValuesAt(t *testing.T) {
+	// Array#values_at(*indices) -- positive and negative indices,
+	// out-of-range -> nil.
+	src := `a = [10, 20, 30, 40]
+p a.values_at(0, 2)
+p a.values_at(-1, -2)
+p a.values_at(0, 99, -99)`
+	runExpect(t, src, "[10, 30]\n[40, 30]\n[10, nil, nil]\n")
+}
+
+func TestModuleConstDefined(t *testing.T) {
+	// const_defined?(name, inherit=true). Own + inherited + global
+	// lookup paths exercised. Symbol and String name forms accepted.
+	src := `class A
+  X = 1
+end
+class B < A
+  Y = 2
+end
+puts B.const_defined?(:X)         # inherited
+puts B.const_defined?(:X, false)  # own only
+puts B.const_defined?(:Y)         # own
+puts B.const_defined?(:Z)         # missing
+puts B.const_defined?("X")        # String name
+puts Object.const_defined?(:A)    # via global env`
+	runExpect(t, src, "true\nfalse\ntrue\nfalse\ntrue\ntrue\n")
+}
+
+func TestRequireAbsentStdlibRaisesLoadError(t *testing.T) {
+	// Names in the "absent" stub group raise LoadError on require so
+	// gems' begin/rescue LoadError fallbacks engage cleanly. Use
+	// win32ole as a portably-absent name (the etc / monitor / rbconfig
+	// names earlier in this group have since moved to "loaded" with
+	// minimal runtime support).
+	src := `loaded = true
+begin
+  require "win32ole"
+rescue LoadError
+  loaded = false
+end
+puts loaded`
+	runExpect(t, src, "false\n")
+}
+
+func TestClassInstanceVariables(t *testing.T) {
+	// @var at class-body scope (self = the class) and inside
+	// def self.foo (self = the class) attach to the class object,
+	// distinct from @@var (class variables, shared up the chain).
+	// rake/linked_list.rb's `class EmptyLinkedList < LinkedList;
+	// @parent = LinkedList; end` is the motivating shape.
+	src := `class Foo
+  @ivar = 1
+  def self.read; @ivar; end
+  def self.write(v); @ivar = v; end
+end
+puts Foo.read
+Foo.write(42)
+puts Foo.read
+class Bar < Foo
+end
+p Bar.read`
+	// Subclass does NOT inherit class-instance vars (per MRI).
+	runExpect(t, src, "1\n42\nnil\n")
+}
+
+func TestModuleMethodDefined(t *testing.T) {
+	// method_defined?(name) returns true for an own instance method
+	// and for one inherited via Super or include. Used by rake's
+	// `rake_extension(name) { method_defined?(name) ? warn : yield }`
+	// DSL to gate monkey-patching.
+	src := `class Base
+  def own; end
+end
+class Sub < Base
+  def own_sub; end
+end
+puts Sub.method_defined?(:own)         # inherited
+puts Sub.method_defined?(:own_sub)     # local
+puts Sub.method_defined?(:missing)     # absent
+puts Sub.method_defined?("own")        # String name accepted too`
+	runExpect(t, src, "true\ntrue\nfalse\ntrue\n")
+}
+
+func TestEvalMultiAssignConstantsInModule(t *testing.T) {
+	// Constant identifiers on the LHS of a multi-assignment must bind on
+	// the enclosing module's Constants table (not as locals in the
+	// current frame), so M::A / M::B remain reachable. Regression for
+	// the rake/version.rb pattern `MAJOR, MINOR, BUILD, *OTHER = ...`.
+	src := `module M
+  A, B, C = "1.2.3".split(".")
+end
+puts M::A
+puts M::B
+puts M::C`
+	runExpect(t, src, "1\n2\n3\n")
+}
+
+func TestEvalMultiAssignConstantsTopLevel(t *testing.T) {
+	// At top level, multi-assigned constants land in the global env
+	// (mirrors single-assignment behaviour). Was working before the
+	// in-module fix but no test pinned it, so add coverage.
+	src := `X, Y = 10, 20
+puts X
+puts Y`
+	runExpect(t, src, "10\n20\n")
+}
+
+func TestEvalMultiAssignConstantsWithSplat(t *testing.T) {
+	// Constants on either side of a splat. The exact rake/version.rb
+	// shape, modulo the require_relative.
+	src := `module N
+  MAJOR, MINOR, BUILD, *OTHER = "13.2.1".split(".")
+end
+puts N::MAJOR
+puts N::MINOR
+puts N::BUILD
+p N::OTHER`
+	runExpect(t, src, "13\n2\n1\n[]\n")
 }
 
 func TestEvalArrayMutation(t *testing.T) {
