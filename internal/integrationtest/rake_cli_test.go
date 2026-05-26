@@ -89,12 +89,14 @@ func rakeGemPaths(t *testing.T) (libDir, exePath string) {
 	return
 }
 
-// rakeEnv builds an env slice with PATH pointing at a tempdir bin/
-// holding a `ruby -> goruby` symlink. Any subprocess that resolves
-// `ruby` via PATH ends up running goruby.
-func rakeEnv(t *testing.T, tmpdir, gorubyPath string) []string {
+// rakeEnv builds an env slice with PATH pointing at a fresh bin dir
+// (created under t.TempDir) holding a `ruby -> goruby` symlink. Any
+// subprocess that resolves `ruby` via PATH ends up running goruby.
+// Kept separate from the script-cwd so real-world Rakefile tests can
+// run from a vendored gem directory without polluting it.
+func rakeEnv(t *testing.T, gorubyPath string) []string {
 	t.Helper()
-	binDir := filepath.Join(tmpdir, "bin")
+	binDir := filepath.Join(t.TempDir(), "bin")
 	require.NoError(t, os.MkdirAll(binDir, 0o755))
 	symlinkPath := filepath.Join(binDir, "ruby")
 	require.NoError(t, os.Symlink(gorubyPath, symlinkPath))
@@ -123,7 +125,7 @@ func runRake(t *testing.T, cwd string, args ...string) (string, error) {
 	fullArgs := append([]string{"-I", libDir, exePath}, args...)
 	cmd := exec.Command(bin, fullArgs...)
 	cmd.Dir = cwd
-	cmd.Env = rakeEnv(t, cwd, bin)
+	cmd.Env = rakeEnv(t, bin)
 	var buf bytes.Buffer
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf
@@ -258,4 +260,87 @@ end
 	out, err := runRake(t, dir, "-T")
 	require.NoError(t, err, "rake -T: %s", out)
 	require.ContainsString(t, out, "rake test")
+}
+
+// gemDir returns the absolute path to a vendored gem dir under
+// testdata/gems/. Used by the real-world Rakefile tests.
+func gemDir(t *testing.T, name string) string {
+	t.Helper()
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	return filepath.Join(cwd, "testdata", "gems", name)
+}
+
+// TestRakeCLI_RealWorld_RakeSelf runs rake -T against rake's own
+// Rakefile. The Rakefile requires rdoc/task (stubbed in goruby) and
+// rake/testtask (real). Asserts the `test` task surfaces.
+func TestRakeCLI_RealWorld_RakeSelf(t *testing.T) {
+	dir := gemDir(t, "rake")
+	out, err := runRake(t, dir, "-T")
+	require.NoError(t, err, "rake -T on rake: %s", out)
+	require.ContainsString(t, out, "rake test")
+}
+
+// TestRakeCLI_RealWorld_PanUnicode runs rake -A -T against pan-unicode-lang's
+// Rakefile. No `desc` calls, so -T alone shows nothing; -A includes
+// all tasks. Asserts `compile` / `run` / `default` appear.
+func TestRakeCLI_RealWorld_PanUnicode(t *testing.T) {
+	dir := gemDir(t, "pan-unicode-lang")
+	out, err := runRake(t, dir, "-A", "-T")
+	require.NoError(t, err, "rake -A -T on pan-unicode-lang: %s", out)
+	for _, task := range []string{"rake compile", "rake default", "rake run"} {
+		require.ContainsString(t, out, task)
+	}
+}
+
+// TestRakeCLI_RealWorld_EsolangBook_List runs rake -T against the
+// esolang-book-sources Rakefile. Asserts the `test` task surfaces with
+// its desc.
+func TestRakeCLI_RealWorld_EsolangBook_List(t *testing.T) {
+	dir := gemDir(t, "esolang-book-sources")
+	out, err := runRake(t, dir, "-T")
+	require.NoError(t, err, "rake -T on esolang-book-sources: %s", out)
+	require.ContainsString(t, out, "rake test")
+	require.ContainsString(t, out, "run test")
+}
+
+// TestRakeCLI_RealWorld_EsolangBook_RunHQ9 invokes `rake test_hq9plus`
+// against the esolang-book-sources Rakefile. The task backticks
+// `ruby hq9plus.rb <input>` three times and compares output via the
+// Rakefile's `assert_equal` (prints "NG:" on mismatch, nothing on
+// success). With ruby -> goruby on PATH the backticked subprocesses
+// run goruby on the pure-ruby interpreter scripts.
+//
+// Skipped: blocked on `cd "dir" do ... end` inside task bodies.
+// extend Rake::DSL on main pulls in DSL methods but the transitive
+// `include FileUtils` chain doesn't surface FileUtils.cd / .sh on
+// main as singleton methods in goruby. Separate issue from the rake
+// CLI work; tracked as a follow-up.
+func TestRakeCLI_RealWorld_EsolangBook_RunHQ9(t *testing.T) {
+	t.Skip("cd / sh inside task body: transitive include FileUtils via extend Rake::DSL doesn't surface on main")
+	dir := gemDir(t, "esolang-book-sources")
+	out, err := runRake(t, dir, "test_hq9plus")
+	require.NoError(t, err, "rake test_hq9plus: %s", out)
+	if strings.Contains(out, "NG:") {
+		t.Fatalf("test_hq9plus reported mismatch:\n%s", out)
+	}
+}
+
+// TestRakeCLI_TaskShellsOutToRuby exercises the symlinked
+// ruby -> goruby on PATH: a task backticks `ruby -e 'puts 7+8'`. With
+// the symlink, that subprocess runs goruby and the result lands in
+// the captured stdout. Demonstrates the end-to-end shellout path
+// works once we wire it -- a simpler shape than the HQ9 task because
+// the body doesn't reach into FileUtils.
+func TestRakeCLI_TaskShellsOutToRuby(t *testing.T) {
+	dir := t.TempDir()
+	writeRakefile(t, dir, `
+task :probe do
+  result = ` + "`ruby -e 'puts 7 + 8'`" + `
+  puts "got: #{result.strip}"
+end
+`)
+	out, err := runRake(t, dir, "probe")
+	require.NoError(t, err, "rake probe: %s", out)
+	require.Equal(t, "got: 15\n", out)
 }
