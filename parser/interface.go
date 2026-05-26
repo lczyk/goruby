@@ -9,10 +9,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/lczyk/trace"
-	"github.com/lczyk/trace/printer"
 	"github.com/lczyk/goruby/ast"
 	"github.com/lczyk/goruby/token"
+	"github.com/lczyk/trace"
+	"github.com/lczyk/trace/printer"
 	"github.com/pkg/errors"
 )
 

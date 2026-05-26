@@ -986,4 +986,3 @@ func resolveMethod(env *object.Environment, recv object.RubyObject, name string)
 	}
 	return nil
 }
-

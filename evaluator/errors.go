@@ -19,4 +19,3 @@ type Error = builtinapi.Error
 func errorf(format string, args ...any) *Error {
 	return builtinapi.Errorf(format, args...)
 }
-

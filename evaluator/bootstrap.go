@@ -1470,7 +1470,9 @@ func bootstrapMonitor(env *object.Environment) {
 	// signal / broadcast all noop. Used by rake's ThreadPool#join
 	// when the queue drains.
 	condCls := object.NewClass("ConditionVariable", nil)
-	condCls.Methods["wait"] = &object.BuiltinMethod{Name: "wait", Fn: func(*object.Environment, object.RubyObject, []object.RubyObject, any) (object.RubyObject, error) { return object.NIL, nil }}
+	condCls.Methods["wait"] = &object.BuiltinMethod{Name: "wait", Fn: func(*object.Environment, object.RubyObject, []object.RubyObject, any) (object.RubyObject, error) {
+		return object.NIL, nil
+	}}
 	condCls.Methods["signal"] = condCls.Methods["wait"]
 	condCls.Methods["broadcast"] = condCls.Methods["wait"]
 	c.Methods["new_cond"] = &object.BuiltinMethod{
@@ -1564,10 +1566,16 @@ func bootstrapMutexClass(env *object.Environment) {
 			return recv, nil
 		},
 	}
-	c.Methods["try_lock"] = &object.BuiltinMethod{Name: "try_lock", Fn: func(*object.Environment, object.RubyObject, []object.RubyObject, any) (object.RubyObject, error) { return object.TRUE, nil }}
-	c.Methods["lock"] = &object.BuiltinMethod{Name: "lock", Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) { return recv, nil }}
+	c.Methods["try_lock"] = &object.BuiltinMethod{Name: "try_lock", Fn: func(*object.Environment, object.RubyObject, []object.RubyObject, any) (object.RubyObject, error) {
+		return object.TRUE, nil
+	}}
+	c.Methods["lock"] = &object.BuiltinMethod{Name: "lock", Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+		return recv, nil
+	}}
 	c.Methods["unlock"] = c.Methods["lock"]
-	c.Methods["locked?"] = &object.BuiltinMethod{Name: "locked?", Fn: func(*object.Environment, object.RubyObject, []object.RubyObject, any) (object.RubyObject, error) { return object.FALSE, nil }}
+	c.Methods["locked?"] = &object.BuiltinMethod{Name: "locked?", Fn: func(*object.Environment, object.RubyObject, []object.RubyObject, any) (object.RubyObject, error) {
+		return object.FALSE, nil
+	}}
 	env.SetGlobal("Mutex", c)
 }
 
@@ -1663,8 +1671,12 @@ func bootstrapThreadClass(env *object.Environment) {
 		}
 		return object.FALSE, nil
 	}}
-	c.Methods["join"] = &object.BuiltinMethod{Name: "join", Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) { return recv, nil }}
-	c.Methods["alive?"] = &object.BuiltinMethod{Name: "alive?", Fn: func(*object.Environment, object.RubyObject, []object.RubyObject, any) (object.RubyObject, error) { return object.FALSE, nil }}
+	c.Methods["join"] = &object.BuiltinMethod{Name: "join", Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+		return recv, nil
+	}}
+	c.Methods["alive?"] = &object.BuiltinMethod{Name: "alive?", Fn: func(*object.Environment, object.RubyObject, []object.RubyObject, any) (object.RubyObject, error) {
+		return object.FALSE, nil
+	}}
 	env.SetGlobal("Thread", c)
 	makeQueueAccessibleAsThreadQueue(env, c)
 }

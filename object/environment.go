@@ -307,10 +307,10 @@ func (e *Environment) Stdin() io.Reader { return e.root().stdin }
 // the evaluator to cache a *bufio.Reader across successive `gets` so
 // they share line-buffering state. Caller manages the type; env just
 // holds the value.
-func (e *Environment) StdinBR() any        { return e.root().stdinBR }
-func (e *Environment) SetStdinBR(br any)   { e.root().stdinBR = br }
-func (e *Environment) ArgfBR() any         { return e.root().argfBR }
-func (e *Environment) SetArgfBR(br any)    { e.root().argfBR = br }
+func (e *Environment) StdinBR() any      { return e.root().stdinBR }
+func (e *Environment) SetStdinBR(br any) { e.root().stdinBR = br }
+func (e *Environment) ArgfBR() any       { return e.root().argfBR }
+func (e *Environment) SetArgfBR(br any)  { e.root().argfBR = br }
 
 // CurrentFile returns the path of the source file currently being
 // evaluated. Empty when no file-backed eval is on the stack.

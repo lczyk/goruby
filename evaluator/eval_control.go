@@ -569,4 +569,3 @@ func caseEqual(env *object.Environment, pattern, subject object.RubyObject) bool
 	}
 	return rubyEqual(pattern, subject)
 }
-

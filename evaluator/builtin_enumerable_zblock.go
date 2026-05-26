@@ -235,4 +235,3 @@ func init() {
 	register("find", findBlock, findPlain)
 	c.Methods["detect"] = c.Methods["find"]
 }
-

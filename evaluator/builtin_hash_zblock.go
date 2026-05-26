@@ -423,37 +423,37 @@ func init() {
 			return &object.Enumerator{Receiver: object.NewArray(pairs...), Method: "sort_by"}, nil
 		},
 		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
-		h, err := asHash(recv, "sort_by")
-		if err != nil {
-			return nil, err
-		}
-		type keyed struct {
-			key object.RubyObject
-			ent object.HashEntry
-		}
-		ke := make([]keyed, 0, len(h.Entries))
-		for _, e := range h.Entries {
-			v, stop, err := iterStep(invoke, []object.RubyObject{e.Key, e.Value})
+			h, err := asHash(recv, "sort_by")
 			if err != nil {
 				return nil, err
 			}
-			if stop {
-				return v, nil
+			type keyed struct {
+				key object.RubyObject
+				ent object.HashEntry
 			}
-			ke = append(ke, keyed{key: v, ent: e})
-		}
-		sortStable(len(ke), func(i, j int) bool {
-			c, _ := compareObjects(ke[i].key, ke[j].key)
-			return c < 0
-		}, func(i, j int) {
-			ke[i], ke[j] = ke[j], ke[i]
+			ke := make([]keyed, 0, len(h.Entries))
+			for _, e := range h.Entries {
+				v, stop, err := iterStep(invoke, []object.RubyObject{e.Key, e.Value})
+				if err != nil {
+					return nil, err
+				}
+				if stop {
+					return v, nil
+				}
+				ke = append(ke, keyed{key: v, ent: e})
+			}
+			sortStable(len(ke), func(i, j int) bool {
+				c, _ := compareObjects(ke[i].key, ke[j].key)
+				return c < 0
+			}, func(i, j int) {
+				ke[i], ke[j] = ke[j], ke[i]
+			})
+			out := make([]object.RubyObject, len(ke))
+			for i, k := range ke {
+				out[i] = object.NewArray(k.ent.Key, k.ent.Value)
+			}
+			return object.NewArray(out...), nil
 		})
-		out := make([]object.RubyObject, len(ke))
-		for i, k := range ke {
-			out[i] = object.NewArray(k.ent.Key, k.ent.Value)
-		}
-		return object.NewArray(out...), nil
-	})
 
 	// Hash Enumerable-shaped delegations that materialise to
 	// [[k,v], ...] then dispatch on the resulting Array. Saves

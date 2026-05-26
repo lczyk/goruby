@@ -236,7 +236,7 @@ func BenchmarkParseFuzzCorpus(b *testing.B) {
 		if end <= idx {
 			continue
 		}
-		raw, err := unquoteGoString(s[idx+len("string("):end+1])
+		raw, err := unquoteGoString(s[idx+len("string(") : end+1])
 		if err != nil {
 			continue
 		}

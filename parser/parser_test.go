@@ -1636,7 +1636,7 @@ func TestConditionalExpressionWithAlternative(t *testing.T) {
 
 			stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 			require.That(t, ok, "program.Statements[0] is not ast.ExpressionStatement. got=%T",
-					program.Statements[0])
+				program.Statements[0])
 
 			exp, ok := stmt.Expression.(*ast.ConditionalExpression)
 			require.That(t, ok, "stmt.Expression is not ast.IfExpression. got=%T", stmt.Expression)
@@ -1649,7 +1649,7 @@ func TestConditionalExpressionWithAlternative(t *testing.T) {
 
 			consequence, ok := exp.Consequence.Statements[0].(*ast.ExpressionStatement)
 			require.That(t, ok, "Statements[0] is not ast.ExpressionStatement. got=%T",
-					exp.Consequence.Statements[0])
+				exp.Consequence.Statements[0])
 
 			if !testLiteralExpression(t, consequence.Expression, tt.consequence) {
 				return
@@ -1659,7 +1659,7 @@ func TestConditionalExpressionWithAlternative(t *testing.T) {
 
 			alternative, ok := exp.Alternative.Statements[0].(*ast.ExpressionStatement)
 			require.That(t, ok, "Statements[0] is not ast.ExpressionStatement. got=%T",
-					exp.Alternative.Statements[0])
+				exp.Alternative.Statements[0])
 
 			if !testLiteralExpression(t, alternative.Expression, tt.alternative) {
 				return
@@ -1685,7 +1685,7 @@ func TestConditionalExpressionWithAlternative(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		require.That(t, ok, "program.Statements[0] is not ast.ExpressionStatement. got=%T",
-				program.Statements[0])
+			program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ConditionalExpression)
 		require.That(t, ok, "stmt.Expression is not ast.IfExpression. got=%T", stmt.Expression)
@@ -1698,7 +1698,7 @@ func TestConditionalExpressionWithAlternative(t *testing.T) {
 
 		consequence, ok := exp.Consequence.Statements[0].(*ast.ExpressionStatement)
 		require.That(t, ok, "Statements[0] is not ast.ExpressionStatement. got=%T",
-				exp.Consequence.Statements[0])
+			exp.Consequence.Statements[0])
 
 		if consequence.String() != tt.consequence {
 			t.Logf("Expected consequence to equal %s, got %s", tt.consequence, consequence.String())
@@ -1709,7 +1709,7 @@ func TestConditionalExpressionWithAlternative(t *testing.T) {
 
 		alternative, ok := exp.Alternative.Statements[0].(*ast.ExpressionStatement)
 		require.That(t, ok, "Statements[0] is not ast.ExpressionStatement. got=%T",
-				exp.Alternative.Statements[0])
+			exp.Alternative.Statements[0])
 
 		if !testLiteralExpression(t, alternative.Expression, tt.alternative) {
 			return
@@ -2595,11 +2595,11 @@ func TestContextCallExpression(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
-				program.Statements[0])
+			program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
 		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
-				stmt.Expression)
+			stmt.Expression)
 
 		if !testIdentifier(t, exp.Context, "foo") {
 			return
@@ -2629,11 +2629,11 @@ func TestContextCallExpression(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
-				program.Statements[0])
+			program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
 		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
-				stmt.Expression)
+			stmt.Expression)
 
 		if !testIdentifier(t, exp.Context, "foo") {
 			return
@@ -2664,11 +2664,11 @@ func TestContextCallExpression(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
-				program.Statements[0])
+			program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
 		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
-				stmt.Expression)
+			stmt.Expression)
 
 		if !testIdentifier(t, exp.Context, "foo") {
 			return
@@ -2694,11 +2694,11 @@ func TestContextCallExpression(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
-				program.Statements[0])
+			program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
 		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
-				stmt.Expression)
+			stmt.Expression)
 
 		if !testIdentifier(t, exp.Context, "foo") {
 			return
@@ -2729,11 +2729,11 @@ func TestContextCallExpression(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
-				program.Statements[0])
+			program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
 		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
-				stmt.Expression)
+			stmt.Expression)
 
 		if !testIdentifier(t, exp.Context, "foo") {
 			return
@@ -2755,11 +2755,11 @@ func TestContextCallExpression(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
-				program.Statements[0])
+			program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
 		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
-				stmt.Expression)
+			stmt.Expression)
 
 		if _, ok := exp.Context.(*ast.Self); !ok {
 			t.Logf("exp.Context is not ast.Self, got=%T", exp.Context)
@@ -2822,7 +2822,7 @@ func TestContextCallExpression(t *testing.T) {
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
 		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
-				stmt.Expression)
+			stmt.Expression)
 
 		if !testIntegerLiteral(t, exp.Context, 1) {
 			return
@@ -2847,7 +2847,7 @@ func TestContextCallExpression(t *testing.T) {
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
 		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
-				stmt.Expression)
+			stmt.Expression)
 
 		if !testIntegerLiteral(t, exp.Context, 1) {
 			return
@@ -2872,7 +2872,7 @@ func TestContextCallExpression(t *testing.T) {
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
 		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
-				stmt.Expression)
+			stmt.Expression)
 
 		if !testIntegerLiteral(t, exp.Context, 1) {
 			return
@@ -2898,11 +2898,11 @@ func TestContextCallExpression(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
-				program.Statements[0])
+			program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
 		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
-				stmt.Expression)
+			stmt.Expression)
 
 		if !testIdentifier(t, exp.Function, "foo") {
 			return
@@ -2924,11 +2924,11 @@ func TestContextCallExpression(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
-				program.Statements[0])
+			program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
 		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
-				stmt.Expression)
+			stmt.Expression)
 
 		if !testIdentifier(t, exp.Function, "Integer") {
 			return
@@ -2950,11 +2950,11 @@ func TestContextCallExpression(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
-				program.Statements[0])
+			program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
 		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
-				stmt.Expression)
+			stmt.Expression)
 
 		if !testIdentifier(t, exp.Function, "add") {
 			return
@@ -2976,11 +2976,11 @@ func TestContextCallExpression(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
-				program.Statements[0])
+			program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
 		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
-				stmt.Expression)
+			stmt.Expression)
 
 		context, ok := exp.Context.(*ast.ContextCallExpression)
 		require.That(t, ok)
@@ -3011,11 +3011,11 @@ func TestContextCallExpression(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
-				program.Statements[0])
+			program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
 		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
-				stmt.Expression)
+			stmt.Expression)
 
 		context, ok := exp.Context.(*ast.ContextCallExpression)
 		require.That(t, ok)
@@ -3046,11 +3046,11 @@ func TestContextCallExpression(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
-				program.Statements[0])
+			program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
 		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
-				stmt.Expression)
+			stmt.Expression)
 
 		context, ok := exp.Context.(*ast.ContextCallExpression)
 		require.That(t, ok)
@@ -3077,11 +3077,11 @@ func TestContextCallExpression(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
-				program.Statements[0])
+			program.Statements[0])
 
 		exp, ok := stmt.Expression.(*ast.ContextCallExpression)
 		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
-				stmt.Expression)
+			stmt.Expression)
 
 		context, ok := exp.Context.(*ast.ContextCallExpression)
 		require.That(t, ok)
@@ -3108,11 +3108,11 @@ func TestContextCallExpression(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
-				program.Statements[0])
+			program.Statements[0])
 
 		expr, ok := stmt.Expression.(*ast.ContextCallExpression)
 		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
-				stmt.Expression)
+			stmt.Expression)
 
 		if !testIdentifier(t, expr.Context, "foo") {
 			return
@@ -3132,11 +3132,11 @@ func TestContextCallExpression(t *testing.T) {
 
 		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 		require.That(t, ok, "stmt is not ast.ExpressionStatement. got=%T",
-				program.Statements[0])
+			program.Statements[0])
 
 		expr, ok := stmt.Expression.(*ast.ContextCallExpression)
 		require.That(t, ok, "stmt.Expression is not ast.ContextCallExpression. got=%T",
-				stmt.Expression)
+			stmt.Expression)
 
 		if !testIdentifier(t, expr.Context, "foo") {
 			return
