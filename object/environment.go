@@ -454,6 +454,11 @@ func (e *Environment) root() *Environment {
 	return e
 }
 
+// Root returns the root environment (the one with no outer). Exposed so
+// Kernel#load can evaluate the loaded file at top-level scope instead
+// of in the caller's frame.
+func (e *Environment) Root() *Environment { return e.root() }
+
 // Inspect renders obj per this environment's pools and version. Routes
 // through the env-aware path so Symbols and FrozenStrings resolve their
 // text, and Hash/Array honour the version-specific formatting rules.

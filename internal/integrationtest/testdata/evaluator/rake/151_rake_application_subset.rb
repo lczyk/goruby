@@ -39,4 +39,4 @@ end
 
 $stdout = real_out
 $stderr = real_err
-puts "TestRakeApplication: p=#{rep.passed}" #=> TestRakeApplication: p=41
+puts "TestRakeApplication: p=#{rep.passed}" #=> TestRakeApplication: p=43

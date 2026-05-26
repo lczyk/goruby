@@ -361,7 +361,14 @@ func loadAndForce(env *object.Environment, abs, displayName string) (object.Ruby
 	if err != nil {
 		return nil, errorf("evaluator: load: parse %s: %s", abs, err.Error())
 	}
-	if _, err := Eval(prog, env); err != nil {
+	// Kernel#load evaluates the file at top-level scope: locals don't
+	// leak into the caller and `self` is the main object regardless of
+	// who called load. Build a fresh frame wrapping the root env with
+	// Self bound to main so `def`/`extend self`/etc. land where MRI
+	// would put them.
+	loadEnv := object.NewEnclosedEnvironment(env.Root())
+	loadEnv.Self = mainObject(env)
+	if _, err := Eval(prog, loadEnv); err != nil {
 		return nil, err
 	}
 	postLoadFixup(env, abs)
