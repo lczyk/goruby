@@ -4459,7 +4459,12 @@ func parseSource(src string, modes ...Mode) (*ast.Program, *Errors) {
 	for _, m := range modes {
 		mode = mode | m
 	}
-	prog, err := ParseFile("", src, mode)
+	// Pin to 3.3: avoids 3.4's parse-time rejection of bare
+	// yield/break/next/redo/retry outside their valid context, which
+	// would break a swarm of unit tests that exercise those tokens
+	// directly (no surrounding def/loop/rescue). Tests that need to
+	// exercise the 3.4 gates use ParseFile with WithVersion directly.
+	prog, err := ParseFile("", src, mode, WithVersion(token.MustParseVersion("3.3")))
 	var parserErrors *Errors
 	if err != nil {
 		parserErrors = err.(*Errors)
@@ -4562,7 +4567,15 @@ func TestRubyExtraFixtures(t *testing.T) {
 			}
 			done := make(chan result, 1)
 			go func() {
-				prog, err := ParseFile(path, nil, AllErrors|ParseComments)
+				// Pin to 3.3 -- includes all features the fixtures use
+				// (pattern matching 2.7, endless def 3.0, anon block
+				// forwarding 3.1, ...) while pre-dating 3.4's
+				// context-sensitive rejection of bare
+				// break/next/redo/retry. Version-specific fixtures
+				// live under version-boundaries/ and are exercised
+				// elsewhere.
+				prog, err := ParseFile(path, nil, AllErrors|ParseComments,
+					WithVersion(token.MustParseVersion("3.3")))
 				done <- result{prog, err}
 			}()
 

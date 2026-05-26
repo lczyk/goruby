@@ -249,7 +249,20 @@ type parser struct {
 	suppressHashrocket bool // true in call-arg lists to prevent => as rightward assignment
 	suppressKwAndOr    bool // true in paren-less call args -- `foo x and y` is `foo(x) and y`
 	embExprDepth       int  // depth of `#{...}` interpolation nesting; heredocs constructed here need the chain-quirk workaround
-	comments           []*ast.Comment
+	// blockOrLoopDepth counts surrounding loops (for/while/until) and
+	// iterator blocks (do/end, { }). break/next/redo are valid only
+	// when > 0. Reset across a def boundary (a method body needs its
+	// own enclosing block to break out of). Read by parseJumpExpression
+	// at >=3.4 to reject context-less bare jumps, matching MRI 3.4.
+	blockOrLoopDepth int
+	// rescueDepth counts surrounding rescue clauses. retry is valid
+	// only when > 0. Same def-boundary reset rule as blockOrLoopDepth.
+	rescueDepth int
+	// methodDepth counts surrounding def bodies. yield is valid only
+	// when > 0. Read by parseYield at >=3.4 to match MRI 3.4's
+	// parse-time rejection of bare yield outside methods.
+	methodDepth int
+	comments    []*ast.Comment
 }
 
 // lit resolves a token's literal text via the lexer pool. Zero-alloc
@@ -1067,7 +1080,9 @@ func (p *parser) parseRescueBlock() *ast.RescueBlock {
 	if !p.acceptOneOf(token.NEWLINE, token.SEMICOLON) {
 		return nil
 	}
+	p.rescueDepth++
 	block.Body = p.parseBlockStatement(token.END, token.RESCUE, token.KW_ENSURE, token.ELSE)
+	p.rescueDepth--
 	return block
 }
 
@@ -1473,6 +1488,29 @@ func (p *parser) parseJumpExpression() ast.Expression {
 	defer p.traceEnter()()
 	jmp := p.arena.NewJumpExpression()
 	jmp.Token = p.curToken
+	// 3.4+ enforces context: break/next/redo only inside a loop or
+	// iterator block; retry only inside a rescue clause. Earlier MRIs
+	// silently parsed them anywhere (deferring the error to runtime).
+	if p.version.AtLeast(ruby34) {
+		switch p.curToken.Type {
+		case token.BREAK, token.NEXT, token.KW_REDO:
+			if p.blockOrLoopDepth == 0 {
+				p.errors = append(p.errors, &parseError{
+					Pos:  p.file.Position(p.pos),
+					Kind: SyntaxError,
+					Msg:  "Invalid " + p.lit(p.curToken),
+				})
+			}
+		case token.KW_RETRY:
+			if p.rescueDepth == 0 {
+				p.errors = append(p.errors, &parseError{
+					Pos:  p.file.Position(p.pos),
+					Kind: SyntaxError,
+					Msg:  "Invalid retry without rescue",
+				})
+			}
+		}
+	}
 	// break/next can take an optional value: break expr, next expr
 	// redo/retry take no value
 	if p.currentTokenIs(token.BREAK) || p.currentTokenIs(token.NEXT) {
@@ -2264,6 +2302,14 @@ func (p *parser) parseYield() ast.Expression {
 	defer p.traceEnter()()
 	yield := p.arena.NewYieldExpression()
 	yield.Token = p.curToken
+	// 3.4+ rejects yield outside a method body at parse time.
+	if p.version.AtLeast(ruby34) && p.methodDepth == 0 {
+		p.errors = append(p.errors, &parseError{
+			Pos:  p.file.Position(p.pos),
+			Kind: SyntaxError,
+			Msg:  "Invalid yield",
+		})
+	}
 	if p.peekTokenOneOf(token.NEWLINE, token.SEMICOLON, token.END, token.EOF, token.RBRACE, token.RPAREN, token.RBRACKET, token.EMBEXPR_END,
 		token.IF, token.UNLESS, token.WHILE, token.UNTIL, token.RESCUE, token.DOT) {
 		return yield
@@ -2359,7 +2405,15 @@ func (p *parser) parseAliasName() *ast.Identifier {
 		if sym != nil {
 			_a := p.arena.NewIdentifier()
 			_a.Token = p.curToken
-			_a.Value = sym.String()
+			// LabelString strips the leading colon so alias resolves
+			// to the underlying method name. String() includes ':',
+			// which would make alias :bar :foo look up `:foo` (with
+			// the colon literally) and miss.
+			if symLit, ok := sym.(*ast.SymbolLiteral); ok {
+				_a.Value = symLit.LabelString()
+			} else {
+				_a.Value = sym.String()
+			}
 			return _a
 		}
 	}
@@ -3162,6 +3216,9 @@ func (p *parser) parseBlock() ast.Expression {
 	prevAO := p.suppressKwAndOr
 	p.suppressKwAndOr = false
 	defer p.restoreSuppressKwAndOr(prevAO)
+	// Blocks are valid break/next/redo targets.
+	p.blockOrLoopDepth++
+	defer func() { p.blockOrLoopDepth-- }()
 	block := p.arena.NewBlockExpression()
 	block.Token = p.curToken
 	if p.peekTokenIs(token.NEWLINE) && p.peek2TokenIs(token.PIPE) {
@@ -3639,7 +3696,9 @@ func (p *parser) parseLoopExpression() ast.Expression {
 	if p.peekTokenIs(token.DO) {
 		p.accept(token.DO)
 	}
+	p.blockOrLoopDepth++
 	loop.Block = p.parseBlockStatement(token.END)
+	p.blockOrLoopDepth--
 	p.nextToken()
 	return loop
 }
@@ -3824,6 +3883,20 @@ func (p *parser) parseSingletonClass() ast.Expression {
 
 func (p *parser) parseFunctionLiteral() ast.Expression {
 	defer p.traceEnter()()
+	// A def boundary opens a fresh jump-context scope: an enclosing
+	// loop/block/rescue doesn't reach into the method body. Save and
+	// restore so the surrounding context tracking is unaffected.
+	// methodDepth increments so yield gates can detect "inside def".
+	prevBlock := p.blockOrLoopDepth
+	prevRescue := p.rescueDepth
+	p.blockOrLoopDepth = 0
+	p.rescueDepth = 0
+	p.methodDepth++
+	defer func() {
+		p.blockOrLoopDepth = prevBlock
+		p.rescueDepth = prevRescue
+		p.methodDepth--
+	}()
 	lit := p.arena.NewFunctionLiteral()
 	lit.Token = p.curToken
 
@@ -5054,7 +5127,10 @@ func (p *parser) parseImplicitHash(firstKey ast.Expression, end ...token.Type) a
 		if p.currentTokenOneOf(token.CAPTURE, token.AND) {
 			break
 		}
-		key := p.parseExpression(precAssignment)
+		// Stop at COLON so kwarg-style keys (`name: value`) don't get
+		// swallowed into a ternary InfixExpression. The colon-aware
+		// branches below handle the kwarg form explicitly.
+		key := p.parseExpression(precTenary)
 		if p.peekTokenIs(token.HASHROCKET) {
 			p.accept(token.HASHROCKET)
 			p.nextToken()
@@ -5063,6 +5139,29 @@ func (p *parser) parseImplicitHash(firstKey ast.Expression, end ...token.Type) a
 			}
 			v := p.parseExpression(precAssignment)
 			hash.Map.Set(key, v)
+		} else if isLabelPair(key) {
+			// kwarg form already wrapped by parseLabelExpression as
+			// an InfixExpression{":", SymbolLiteral, value}. Unwrap
+			// into a plain hash entry.
+			ix := key.(*ast.InfixExpression)
+			hash.Map.Set(ix.Left, ix.Right)
+		} else if id, ok := key.(*ast.Identifier); ok && p.peekTokenIs(token.COLON) {
+			// kwarg form (parser didn't combine LABEL):
+			// `task "a" => "b", order_only: ["c"]`.
+			p.accept(token.COLON)
+			p.nextToken()
+			for p.currentTokenOneOf(token.NEWLINE, token.SEMICOLON) {
+				p.nextToken()
+			}
+			v := p.parseExpression(precAssignment)
+			sym := p.arena.NewSymbolLiteral()
+			sym.Token = id.Token
+			ident := p.arena.NewIdentifier()
+			ident.Token = id.Token
+			ident.Value = id.Value
+			sym.Value = ident
+			sym.LabelText = id.Value + ":"
+			hash.Map.Set(sym, v)
 		} else {
 			hash.Map.Set(key, nil)
 		}
