@@ -120,7 +120,22 @@ func composeRegexSource(env *object.Environment, n *ast.RegexLiteral) (string, e
 			if err != nil {
 				return "", err
 			}
-			b.WriteString(toStringValue(env, v))
+			// Regex interpolated into another regex: embed the source
+			// directly, wrapped in a non-capturing group so adjacent
+			// literal text doesn't bind into it. MRI uses Regexp#to_s
+			// here (producing `(?-mix:source)`); the simpler `(?:source)`
+			// wrap is equivalent for embedding purposes since the outer
+			// regex already controls flags. Bare toStringValue would
+			// fall through to Inspect and emit `/source/` -- the
+			// surrounding slashes then become literal in the composed
+			// regex, which is wrong.
+			if r, ok := v.(*object.Regex); ok {
+				b.WriteString("(?:")
+				b.WriteString(r.Source)
+				b.WriteString(")")
+			} else {
+				b.WriteString(toStringValue(env, v))
+			}
 		}
 	}
 	return b.String(), nil
