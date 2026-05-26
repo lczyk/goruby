@@ -13,6 +13,7 @@ type blockCallback func(args []object.RubyObject) (object.RubyObject, error)
 // callMethodWithBlock dispatches receiver methods that take a block.
 // Used for `obj.method { ... }`, `obj.method(&proc)`, and `obj.method(&:sym)`.
 func callMethodWithBlock(env *object.Environment, recv object.RubyObject, name string, args []object.RubyObject, blk *ast.BlockExpression) (object.RubyObject, error) {
+	args = bundleKwargsForBuiltin(env, recv, name, args)
 	cb := func(a []object.RubyObject) (object.RubyObject, error) {
 		return invokeBlock(env, blk, a)
 	}
@@ -22,10 +23,11 @@ func callMethodWithBlock(env *object.Environment, recv object.RubyObject, name s
 // callMethodWithProc routes a call whose block came from a `&proc`
 // (or `&:sym`) capture rather than a literal block.
 func callMethodWithProc(env *object.Environment, recv object.RubyObject, name string, args []object.RubyObject, p *object.Proc) (object.RubyObject, error) {
+	args = bundleKwargsForBuiltin(env, recv, name, args)
 	cb := func(a []object.RubyObject) (object.RubyObject, error) {
 		return invokeProc(env, p, a)
 	}
-	return dispatchWithBlock(env, recv, name, args, &goBlockMarker{fn: cb})
+	return dispatchWithBlock(env, recv, name, args, &goBlockMarker{fn: cb, proc: p})
 }
 
 // dispatchWithBlock is the shared dispatch path: walk recv.Class()'s
@@ -35,18 +37,55 @@ func callMethodWithProc(env *object.Environment, recv object.RubyObject, name st
 func dispatchWithBlock(env *object.Environment, recv object.RubyObject, name string, args []object.RubyObject, marker *goBlockMarker) (object.RubyObject, error) {
 	if cls, ok := recv.(*object.Class); ok {
 		if m, found := cls.LookupClassMethod(name); found {
-			if um, ok := m.(*object.UserMethod); ok {
-				return invokeMethodOnWithBlock(env, cls, um, args, marker.blk)
+			switch mm := m.(type) {
+			case *object.UserMethod:
+				// Pass the marker itself (not marker.blk) so a
+				// callMethodWithProc-originated dispatch -- where
+				// marker.blk is nil but marker.fn invokes the
+				// supplied Proc -- still reaches the body's
+				// CurrentBlock as something procFromGoBlock can
+				// reify into a Proc for `&block` capture.
+				return invokeMethodOn(env, cls, mm, args, marker)
+			case *object.BuiltinMethod:
+				// Block-aware Go-implemented class methods (e.g.
+				// Thread.new { ... }) take the marker directly so
+				// their Fn can invoke or stash it.
+				return mm.Fn(env, cls, args, marker)
 			}
 		}
 	}
 	if v, ok, err := object.Send(env, recv, name, args, marker); ok {
 		return v, err
 	}
+	// Before raising NoMethodError, consult method_missing on the
+	// receiver. Prepend the missing name as a Symbol so MRI-shaped
+	// method_missing(name, *args, &block) handlers receive it.
 	if inst, ok := recv.(*object.Instance); ok {
-		return nil, errorf("evaluator: NoMethodError: undefined method `%s' for instance of %s", name, inst.C.Name)
+		var m object.RubyMethod
+		var found bool
+		if inst.SingletonMethods != nil {
+			m, found = inst.SingletonMethods["method_missing"]
+		}
+		if !found {
+			m, found = dispatchClass(env, inst).LookupMethod("method_missing")
+		}
+		if found {
+			mmArgs := append([]object.RubyObject{env.Symbols().Intern(name)}, args...)
+			switch mm := m.(type) {
+			case *object.UserMethod:
+				return invokeMethodOn(env, inst, mm, mmArgs, marker)
+			case *object.BuiltinMethod:
+				return mm.Fn(env, inst, mmArgs, marker)
+			}
+		}
+		return raiseBuiltin(env, "NoMethodError", "undefined method `"+name+"' for instance of "+inst.C.Name)
 	}
-	return nil, errorf("evaluator: NoMethodError: undefined method `%s' for %T", name, recv)
+	cls := classOfRaw(env, recv)
+	className := "Object"
+	if cls != nil {
+		className = cls.Name
+	}
+	return raiseBuiltin(env, "NoMethodError", "undefined method `"+name+"' for "+className)
 }
 
 // iterStep runs one iteration step via the block callback. Translates

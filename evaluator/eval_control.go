@@ -542,7 +542,13 @@ func caseEqual(env *object.Environment, pattern, subject object.RubyObject) bool
 		if !ok {
 			return false
 		}
-		return re.RE.MatchString(s)
+		idx := re.RE.FindStringSubmatchIndex(s)
+		if idx == nil {
+			setMatchGlobals(env, nil)
+			return false
+		}
+		setMatchGlobals(env, submatchesFromIndices(s, idx))
+		return true
 	}
 	if rng, ok := pattern.(*object.Range); ok {
 		i, ok := subject.(*object.Integer)

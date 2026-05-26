@@ -89,8 +89,15 @@ func evalBinaryOp(env *object.Environment, op string, left, right object.RubyObj
 // method would accept the call.
 func receiverResponds(env *object.Environment, recv object.RubyObject, name string) bool {
 	if inst, ok := recv.(*object.Instance); ok {
-		_, found := dispatchClass(env, inst).LookupMethod(name)
-		if found {
+		if _, found := inst.SingletonMethods[name]; found {
+			return true
+		}
+		if inst.SingletonClass != nil {
+			if _, found := inst.SingletonClass.LookupMethod(name); found {
+				return true
+			}
+		}
+		if _, found := dispatchClass(env, inst).LookupMethod(name); found {
 			return true
 		}
 	}
@@ -104,6 +111,34 @@ func receiverResponds(env *object.Environment, recv object.RubyObject, name stri
 		if mc := cls.Class(); mc != nil {
 			if _, found := mc.LookupMethod(name); found {
 				return true
+			}
+		}
+	}
+	// Consult respond_to_missing? if defined -- the canonical way to
+	// extend respond_to? for method_missing-driven dispatch. Pass
+	// (name, include_private=false) per MRI; rake's mock objects rely
+	// on this to gate respond_to? before exercising method_missing.
+	if inst, ok := recv.(*object.Instance); ok {
+		var rtm object.RubyMethod
+		var foundRTM bool
+		if inst.SingletonMethods != nil {
+			rtm, foundRTM = inst.SingletonMethods["respond_to_missing?"]
+		}
+		if !foundRTM {
+			rtm, foundRTM = dispatchClass(env, inst).LookupMethod("respond_to_missing?")
+		}
+		if foundRTM {
+			args := []object.RubyObject{env.Symbols().Intern(name), object.FALSE}
+			var v object.RubyObject
+			var err error
+			switch mm := rtm.(type) {
+			case *object.UserMethod:
+				v, err = invokeMethodOn(env, inst, mm, args, nil)
+			case *object.BuiltinMethod:
+				v, err = mm.Fn(env, inst, args, nil)
+			}
+			if err == nil {
+				return truthy(v)
 			}
 		}
 	}
@@ -131,12 +166,40 @@ func sortArray(env *object.Environment, xs []object.RubyObject) error {
 		}
 		c, ok := compareObjectsEnv(env, xs[i], xs[j])
 		if !ok {
-			sortErr = errorf("evaluator: ArgumentError: comparison of %T with %T failed", xs[i], xs[j])
+			_, sortErr = raiseBuiltin(env, "ArgumentError",
+				"comparison of "+classNameOf(xs[i])+" with "+classNameOf(xs[j])+" failed")
 			return false
 		}
 		return c < 0
 	})
 	return sortErr
+}
+
+// classNameOf returns the ruby-visible class name of obj for error
+// messages. Mirrors MRI's "comparison of X with Y" formatting.
+func classNameOf(obj object.RubyObject) string {
+	if inst, ok := obj.(*object.Instance); ok && inst.C != nil {
+		return inst.C.Name
+	}
+	switch obj.(type) {
+	case *object.Integer:
+		return "Integer"
+	case *object.Float:
+		return "Float"
+	case *object.String:
+		return "String"
+	case *object.Symbol:
+		return "Symbol"
+	case *object.Array:
+		return "Array"
+	case *object.Hash:
+		return "Hash"
+	case *object.Nil:
+		return "NilClass"
+	case *object.Boolean:
+		return "TrueClass"
+	}
+	return "Object"
 }
 
 // compareObjects is the env-less form used in tests; production callers
@@ -211,6 +274,36 @@ func compareObjects(a, b object.RubyObject) (int, bool) {
 // compareObjectsEnv extends compareObjects with Symbol-by-name and
 // user `<=>` dispatch for Instance receivers.
 func compareObjectsEnv(env *object.Environment, a, b object.RubyObject) (int, bool) {
+	// Array case handled here (not in compareObjects) so element
+	// recursion can see env-aware extensions (Symbol-by-name, user
+	// <=>). The env-less compareObjects's Array branch only works
+	// for value types it natively understands.
+	if ax, ok := a.(*object.Array); ok {
+		bx, ok := b.(*object.Array)
+		if !ok {
+			return 0, false
+		}
+		n := len(ax.Elements)
+		if len(bx.Elements) < n {
+			n = len(bx.Elements)
+		}
+		for i := 0; i < n; i++ {
+			c, ok := compareObjectsEnv(env, ax.Elements[i], bx.Elements[i])
+			if !ok {
+				return 0, false
+			}
+			if c != 0 {
+				return c, true
+			}
+		}
+		switch {
+		case len(ax.Elements) < len(bx.Elements):
+			return -1, true
+		case len(ax.Elements) > len(bx.Elements):
+			return 1, true
+		}
+		return 0, true
+	}
 	if c, ok := compareObjects(a, b); ok {
 		return c, true
 	}
@@ -248,22 +341,64 @@ func strCompare(a, b string) int {
 // evalContextCall handles both implicit-self calls (e.g. `puts 1`,
 // where Context is nil) and receiver calls (e.g. `[1,2,3].length`).
 func evalContextCall(env *object.Environment, n *ast.ContextCallExpression) (object.RubyObject, error) {
-	args, kwargs, blockProc, err := evalCallArguments(env, n.Arguments)
+	args, kwargs, kwargOrder, blockProc, err := evalCallArguments(env, n.Arguments)
 	if err != nil {
 		return nil, err
 	}
 	// Stash pending kwargs on the env so the dispatch path (which
 	// builds a fresh callEnv) can copy them onto the new frame's
 	// CurrentKwargs without us threading another parameter through
-	// every helper. Cleared after this call returns.
+	// every helper. Cleared after this call returns. CurrentKwargOrder
+	// preserves source-text order for places that need to build a
+	// Hash from the kwargs (Go maps don't keep insertion order).
 	prevKwargs := env.CurrentKwargs
+	prevKwargOrder := env.CurrentKwargOrder
 	env.CurrentKwargs = kwargs
-	defer func() { env.CurrentKwargs = prevKwargs }()
+	env.CurrentKwargOrder = kwargOrder
+	defer func() {
+		env.CurrentKwargs = prevKwargs
+		env.CurrentKwargOrder = prevKwargOrder
+	}()
 
 	if n.Context == nil {
-		if cls := env.EnclosingClass(); cls != nil {
-			if v, handled, err := classBodyDSL(env, cls, n.Function.Value, args); handled {
+		// SingletonHost takes precedence over EnclosingClass: inside
+		// `class << host`, attr_reader / attr_writer / attr_accessor
+		// must install on host's singleton table rather than the
+		// enclosing class's instance methods. Mirrors the `def` routing
+		// in eval_def.go's EnclosingSingletonHost branch (checked
+		// before EnclosingClass for the same reason).
+		if host := env.EnclosingSingletonHost(); host != nil {
+			if v, handled, err := singletonBodyDSL(env, host, n.Function.Value, args); handled {
 				return v, err
+			}
+		}
+		if cls := env.EnclosingClass(); cls != nil {
+			// classBodyDSL (attr_accessor / include / private / ...)
+			// is only valid in the class body itself. Inside an
+			// instance method body self is the instance; a bare-name
+			// call like `include(pattern)` must dispatch to the
+			// instance method, not the class-body helper. Skip the
+			// DSL when EnclosingSelf is a concrete *Instance (i.e. we
+			// are inside an instance-method frame). Class/Module body
+			// scope leaves Self == cls; eigenclass body and top-level
+			// nesting both keep Self as either the class or nil, so
+			// neither flips into Instance.
+			if _, isInst := env.EnclosingSelf().(*object.Instance); !isInst {
+				// When self is a Class that differs from the
+				// lexically enclosing class, prefer self as the DSL
+				// target. This is the helper-method pattern: a method
+				// defined on module CM and extended onto C, then
+				// called inside C's body as `helper :foo` -- the
+				// expected target is C (the receiver), not CM (the
+				// lexical home of helper). MRI routes class-body DSL
+				// calls through self for exactly this reason.
+				target := cls
+				if selfCls, ok := env.EnclosingSelf().(*object.Class); ok && selfCls != cls {
+					target = selfCls
+				}
+				if v, handled, err := classBodyDSL(env, target, n.Function.Value, args); handled {
+					return v, err
+				}
 			}
 		}
 		// Implicit-self: bare-name calls inside a method body should
@@ -274,7 +409,22 @@ func evalContextCall(env *object.Environment, n *ast.ContextCallExpression) (obj
 		// body finds itself even when self happens to be a user
 		// Instance -- only fall back to instance dispatch when no top-
 		// level method matches.
-		if self := env.EnclosingSelf(); self != nil {
+		self := env.EnclosingSelf()
+		// At toplevel, EnclosingSelf returns nil. If main has a
+		// singleton method by this name (installed e.g. via
+		// `self.extend Rake::DSL` -- the rake/dsl_definition.rb shape),
+		// pin main as the receiver so the singleton dispatch is
+		// reachable. Skip the synthesis when the name is a top-level
+		// method or a kernel-builtin keyword (loop / proc / lambda),
+		// since those go through their dedicated branches further down.
+		if self == nil {
+			if main, ok := mainObject(env).(*object.Instance); ok && main.SingletonMethods != nil {
+				if _, ok := main.SingletonMethods[n.Function.Value]; ok {
+					self = main
+				}
+			}
+		}
+		if self != nil {
 			if _, isTop := env.GetMethod(n.Function.Value); !isTop {
 				// Implicit-self inside a class method: dispatch via
 				// the receiver's Class table (covers `new` inside
@@ -353,14 +503,21 @@ func evalContextCall(env *object.Environment, n *ast.ContextCallExpression) (obj
 							return invokeMethodOn(env, inst, um, args, nil)
 						}
 					}
-					// Bare-name block builtins (loop, etc.) take
+					// Bare-name block builtins (loop, proc, lambda) take
 					// precedence over instance-receiver dispatch when the
 					// instance class doesn't define the name. Without
-					// this, `loop do ... end` inside an instance method
+					// this, `lambda do ... end` inside an instance method
 					// would route to the inst's class and raise
 					// NoMethodError on a name MRI resolves to Kernel.
-					if n.Block != nil && n.Function.Value == "loop" {
-						return kernelLoop(env, n.Block)
+					if n.Block != nil {
+						switch n.Function.Value {
+						case "loop":
+							return kernelLoop(env, n.Block)
+						case "proc", "lambda":
+							p := procFromBlock(env, n.Block)
+							p.IsLambda = n.Function.Value == "lambda"
+							return p, nil
+						}
 					}
 					// Fall through to receiver-style dispatch so
 					// Comparable / Enumerable derivations (now living
@@ -375,9 +532,15 @@ func evalContextCall(env *object.Environment, n *ast.ContextCallExpression) (obj
 					// Last-ditch implicit-self: route through
 					// callMethod so universal methods (send,
 					// instance_variable_set, etc.) work. Suppress
-					// NoMethodError so we still fall back to kernel.
+					// NoMethodError so we still fall back to kernel,
+					// but propagate raised exceptions from inside the
+					// method body -- a method that ran and raised
+					// (Assertion / RuntimeError / ...) must NOT silently
+					// fall through to the Kernel lookup.
 					if v, err := callMethod(env, inst, n.Function.Value, args); err == nil {
 						return v, nil
+					} else if _, isRaise := err.(*raiseSignal); isRaise {
+						return nil, err
 					}
 				}
 			}
@@ -398,6 +561,20 @@ func evalContextCall(env *object.Environment, n *ast.ContextCallExpression) (obj
 				// lambda on return + arity behaviour, which the corpus
 				// doesn't currently hinge on.
 				return procFromBlock(env, n.Block), nil
+			}
+			// Fall back to implicit-self dispatch with block. Picks up
+			// kernel-module instance methods reached via the main
+			// object's class chain (e.g. Kernel#describe from
+			// minitest/spec) and singleton methods on main.
+			if main := mainObject(env); main != nil {
+				if _, found := dispatchClass(env, main).LookupMethod(n.Function.Value); found {
+					return callMethodWithBlock(env, main, n.Function.Value, args, n.Block)
+				}
+				if inst, ok := main.(*object.Instance); ok && inst.SingletonMethods != nil {
+					if _, ok := inst.SingletonMethods[n.Function.Value]; ok {
+						return callMethodWithBlock(env, main, n.Function.Value, args, n.Block)
+					}
+				}
 			}
 			return nil, errorf("evaluator: blocks on kernel calls not yet supported")
 		}
@@ -420,6 +597,16 @@ func evalContextCall(env *object.Environment, n *ast.ContextCallExpression) (obj
 				}
 			}
 		}
+		// Before falling to callKernel, check if main has the method
+		// via its class chain (Object includes Kernel; gems may have
+		// added methods directly to Kernel). Lets throw / describe /
+		// other Kernel-module methods route correctly without a
+		// dedicated callKernel switch case.
+		if main := mainObject(env); main != nil {
+			if _, found := dispatchClass(env, main).LookupMethod(n.Function.Value); found {
+				return callMethod(env, main, n.Function.Value, args)
+			}
+		}
 		return callKernel(env, n.Function.Value, args)
 	}
 
@@ -435,11 +622,16 @@ func evalContextCall(env *object.Environment, n *ast.ContextCallExpression) (obj
 		}
 	}
 	// Explicit-receiver call: enforce visibility. Private methods
-	// reject any explicit receiver (including `self.foo`); MRI raises
-	// NoMethodError with a private-method message.
+	// reject any explicit receiver (including `self.foo`); protected
+	// methods reject unless the caller's self is an instance of the
+	// same class (or a subclass).
 	if inst, ok := recv.(*object.Instance); ok {
-		if isPrivateMethod(inst.C, n.Function.Value) {
-			return raiseBuiltin(env, "NoMethodError", "private method `"+n.Function.Value+"' called for instance of "+inst.C.Name)
+		mname := n.Function.Value
+		if isPrivateMethod(inst.C, mname) {
+			return raiseBuiltin(env, "NoMethodError", "private method `"+mname+"' called for instance of "+inst.C.Name)
+		}
+		if isProtectedMethod(inst.C, mname) && !callerIsKin(env, inst.C) {
+			return raiseBuiltin(env, "NoMethodError", "protected method `"+mname+"' called for instance of "+inst.C.Name)
 		}
 	}
 	if n.Block != nil {
@@ -463,19 +655,55 @@ func isPrivateMethod(c *object.Class, name string) bool {
 	return false
 }
 
+// isProtectedMethod is the Protected counterpart of isPrivateMethod.
+func isProtectedMethod(c *object.Class, name string) bool {
+	for cur := c; cur != nil; cur = cur.Super {
+		if cur.Protected != nil && cur.Protected[name] {
+			return true
+		}
+	}
+	return false
+}
+
+// callerIsKin reports whether the caller's class shares lineage with
+// target. Used to gate protected dispatch: MRI lets a protected method
+// be called with an explicit receiver as long as both classes sit on
+// the same inheritance chain in either direction. So either
+// callerClass descends from target or target descends from callerClass.
+func callerIsKin(env *object.Environment, target *object.Class) bool {
+	self := env.EnclosingSelf()
+	inst, ok := self.(*object.Instance)
+	if !ok {
+		return false
+	}
+	return inst.C == target ||
+		inst.C.IsAncestor(target) ||
+		target.IsAncestor(inst.C)
+}
+
 // evalCallArguments evaluates a call's argument list, splitting out
 // trailing keyword args and a `&block` capture. Arguments shaped like
 // `name: value` are emitted by the parser as `InfixExpression{Operator: ":"}`;
 // `&expr` arrives as a `BlockCapture` node.
-func evalCallArguments(env *object.Environment, exprs []ast.Expression) ([]object.RubyObject, map[string]object.RubyObject, *object.Proc, error) {
+func evalCallArguments(env *object.Environment, exprs []ast.Expression) ([]object.RubyObject, map[string]object.RubyObject, []string, *object.Proc, error) {
 	var args []object.RubyObject
 	var kwargs map[string]object.RubyObject
+	var kwargOrder []string
 	var blockProc *object.Proc
+	addKwarg := func(name string, v object.RubyObject) {
+		if kwargs == nil {
+			kwargs = make(map[string]object.RubyObject)
+		}
+		if _, seen := kwargs[name]; !seen {
+			kwargOrder = append(kwargOrder, name)
+		}
+		kwargs[name] = v
+	}
 	for _, e := range exprs {
 		if bc, ok := e.(*ast.BlockCapture); ok {
 			p, err := blockCaptureToProc(env, bc)
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, nil, nil, err
 			}
 			blockProc = p
 			continue
@@ -483,7 +711,7 @@ func evalCallArguments(env *object.Environment, exprs []ast.Expression) ([]objec
 		if sp, ok := e.(*ast.SplatExpression); ok {
 			v, err := Eval(sp.Right, env)
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, nil, nil, err
 			}
 			switch sp.Operator {
 			case "*":
@@ -497,17 +725,14 @@ func evalCallArguments(env *object.Environment, exprs []ast.Expression) ([]objec
 			case "**":
 				h, ok := v.(*object.Hash)
 				if !ok {
-					return nil, nil, nil, errorf("evaluator: ** splat needs Hash, got %T", v)
-				}
-				if kwargs == nil {
-					kwargs = make(map[string]object.RubyObject)
+					return nil, nil, nil, nil, errorf("evaluator: ** splat needs Hash, got %T", v)
 				}
 				for _, ent := range h.Entries {
 					name, ok := symbolOrString(env, ent.Key)
 					if !ok {
-						return nil, nil, nil, errorf("evaluator: ** splat key must be Symbol/String, got %T", ent.Key)
+						return nil, nil, nil, nil, errorf("evaluator: ** splat key must be Symbol/String, got %T", ent.Key)
 					}
-					kwargs[name] = ent.Value
+					addKwarg(name, ent.Value)
 				}
 				continue
 			}
@@ -515,21 +740,18 @@ func evalCallArguments(env *object.Environment, exprs []ast.Expression) ([]objec
 		if key, val, ok := splitKwargInfix(e); ok {
 			v, err := Eval(val, env)
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, nil, nil, err
 			}
-			if kwargs == nil {
-				kwargs = make(map[string]object.RubyObject)
-			}
-			kwargs[key] = v
+			addKwarg(key, v)
 			continue
 		}
 		v, err := Eval(e, env)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 		args = append(args, v)
 	}
-	return args, kwargs, blockProc, nil
+	return args, kwargs, kwargOrder, blockProc, nil
 }
 
 // blockCaptureToProc resolves `&x` for the shapes the evaluator
@@ -555,11 +777,16 @@ func blockCaptureToProc(env *object.Environment, bc *ast.BlockCapture) (*object.
 		if _, isNil := v.(*object.Nil); isNil {
 			return nil, nil
 		}
-		p, ok := v.(*object.Proc)
-		if !ok {
-			return nil, errorf("evaluator: &-capture: %T is not a Proc", v)
+		if p, ok := v.(*object.Proc); ok {
+			return p, nil
 		}
-		return p, nil
+		// MRI: &sym implicitly invokes Symbol#to_proc, building a Proc
+		// that calls the symbol's name on each yielded value. Matches
+		// `args.map(&op)` where op = :method_name.
+		if sym, ok := v.(*object.Symbol); ok {
+			return procFromSymbol(env.Symbols().Name(sym.ID)), nil
+		}
+		return nil, errorf("evaluator: &-capture: %T is not a Proc", v)
 	}
 	if bc.Expr == nil {
 		return nil, errorf("evaluator: empty &-capture")
@@ -575,11 +802,17 @@ func blockCaptureToProc(env *object.Environment, bc *ast.BlockCapture) (*object.
 	if err != nil {
 		return nil, err
 	}
-	p, ok := v.(*object.Proc)
-	if !ok {
-		return nil, errorf("evaluator: &-capture: %T is not a Proc", v)
+	if p, ok := v.(*object.Proc); ok {
+		return p, nil
 	}
-	return p, nil
+	// MRI: &sym implicitly invokes Symbol#to_proc, so passing a
+	// Symbol-typed local via &-capture builds a Proc that calls the
+	// named method on each yielded value. Matches the `&:to_s`
+	// shape via a local variable holding the symbol.
+	if sym, ok := v.(*object.Symbol); ok {
+		return procFromSymbol(env.Symbols().Name(sym.ID)), nil
+	}
+	return nil, errorf("evaluator: &-capture: %T is not a Proc", v)
 }
 
 // splitKwargInfix recognises `key:value` call-site syntax (parsed as
@@ -636,19 +869,121 @@ func evalExpressions(env *object.Environment, exprs []ast.Expression) ([]object.
 // ClassClass / ModuleClass-level fallbacks. Then Send walks
 // recv.Class()'s ancestry. NoMethodError on miss.
 func callMethod(env *object.Environment, recv object.RubyObject, name string, args []object.RubyObject) (object.RubyObject, error) {
+	args = bundleKwargsForBuiltin(env, recv, name, args)
 	if cls, ok := recv.(*object.Class); ok {
 		if m, found := cls.LookupClassMethod(name); found {
-			if um, ok := m.(*object.UserMethod); ok {
-				return invokeMethodOn(env, cls, um, args, nil)
+			switch mm := m.(type) {
+			case *object.UserMethod:
+				return invokeMethodOn(env, cls, mm, args, nil)
+			case *object.BuiltinMethod:
+				return mm.Fn(env, cls, args, nil)
 			}
 		}
 	}
 	if v, ok, err := object.Send(env, recv, name, args, nil); ok {
 		return v, err
 	}
+	// Try method_missing on Instance receivers before raising.
 	if inst, ok := recv.(*object.Instance); ok {
+		var m object.RubyMethod
+		var found bool
+		if inst.SingletonMethods != nil {
+			m, found = inst.SingletonMethods["method_missing"]
+		}
+		if !found {
+			m, found = dispatchClass(env, inst).LookupMethod("method_missing")
+		}
+		if found {
+			mmArgs := append([]object.RubyObject{env.Symbols().Intern(name)}, args...)
+			switch mm := m.(type) {
+			case *object.UserMethod:
+				return invokeMethodOn(env, inst, mm, mmArgs, nil)
+			case *object.BuiltinMethod:
+				return mm.Fn(env, inst, mmArgs, nil)
+			}
+		}
 		return raiseBuiltin(env, "NoMethodError", "undefined method `"+name+"' for instance of "+inst.C.Name)
 	}
 	return raiseBuiltin(env, "NoMethodError", "undefined method `"+name+"'")
+}
+
+// bundleKwargsForBuiltin bridges the kwargs/Hash gap for builtin
+// targets. When the caller passed trailing `key: val` syntax (which
+// evalCallArguments stashed in env.CurrentKwargs) and the resolved
+// method is a builtin (no kwargs consumption), pack the kwargs into a
+// trailing Hash positional arg and clear them so the existing
+// UserMethod kwargs flow doesn't double-handle. UserMethod targets
+// keep their own kwargs binding path (eval_def.go), so they're left
+// alone here.
+//
+// Lookup mirrors object.Send's chain: singleton methods, then the
+// class ancestry. We resolve once just to classify the method shape;
+// the actual dispatch re-resolves through Send for consistency.
+func bundleKwargsForBuiltin(env *object.Environment, recv object.RubyObject, name string, args []object.RubyObject) []object.RubyObject {
+	if len(env.CurrentKwargs) == 0 {
+		return args
+	}
+	m := resolveMethod(env, recv, name)
+	if m == nil {
+		return args
+	}
+	if _, isUser := m.(*object.UserMethod); isUser {
+		return args
+	}
+	// `Class#new` is a builtin but forwards to user-defined
+	// `initialize`, which may declare kwargs. Leave the kwargs alone
+	// so initialize's bindParams can consume them. classNew handles
+	// the threading.
+	if _, ok := recv.(*object.Class); ok && name == "new" {
+		return args
+	}
+	entries := make([]object.HashEntry, 0, len(env.CurrentKwargs))
+	// Prefer ordered iteration so the resulting Hash preserves source
+	// order (matches MRI's `{c: 3, a: 1}` literal-order inspect).
+	keys := env.CurrentKwargOrder
+	if len(keys) != len(env.CurrentKwargs) {
+		keys = keys[:0]
+		for k := range env.CurrentKwargs {
+			keys = append(keys, k)
+		}
+	}
+	for _, k := range keys {
+		entries = append(entries, object.HashEntry{
+			Key:   env.Symbols().Intern(k),
+			Value: env.CurrentKwargs[k],
+		})
+	}
+	env.CurrentKwargs = nil
+	env.CurrentKwargOrder = nil
+	return append(args, object.NewHash(entries...))
+}
+
+// resolveMethod replays object.Send's lookup order and returns the
+// matched RubyMethod (without invoking it). Returns nil when nothing
+// matches -- callers treat that as "let Send raise NoMethodError".
+func resolveMethod(env *object.Environment, recv object.RubyObject, name string) object.RubyMethod {
+	if cls, ok := recv.(*object.Class); ok {
+		if m, found := cls.LookupClassMethod(name); found {
+			return m
+		}
+	}
+	if inst, ok := recv.(*object.Instance); ok {
+		if m, found := inst.SingletonMethods[name]; found {
+			return m
+		}
+		if inst.SingletonClass != nil {
+			if m, found := inst.SingletonClass.LookupMethod(name); found {
+				return m
+			}
+		}
+	}
+	cls := classOfRaw(env, recv)
+	if cls == nil {
+		return nil
+	}
+	if m, found := cls.LookupMethod(name); found {
+		return m
+	}
+	return nil
 }
 

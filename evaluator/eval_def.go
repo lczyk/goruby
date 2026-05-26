@@ -36,6 +36,7 @@ func evalFunctionLiteral(env *object.Environment, n *ast.FunctionLiteral) (objec
 		EnsureBody:    n.EnsureBody,
 		Endless:       n.IsEndless,
 		SourceFile:    env.CurrentFile(),
+		DefClass:      env.EnclosingClass(),
 	}
 
 	// `def self.foo` (Receiver.Value == "self") -> class method on the
@@ -57,6 +58,35 @@ func evalFunctionLiteral(env *object.Environment, n *ast.FunctionLiteral) (objec
 		// methods that win over the class chain in Send.
 		recv, ok := env.Get(n.Receiver.Value)
 		if !ok {
+			// Receiver might be a Constant defined on an enclosing
+			// class/module. Walk the lexical class chain and check
+			// each class's Constants table before bailing.
+			if isConstantName(n.Receiver.Value) {
+				for cur := env; cur != nil; cur = cur.Outer() {
+					if cls := cur.CurrentClass; cls != nil {
+						if v, found := cls.Constants[n.Receiver.Value]; found {
+							recv = v
+							ok = true
+							break
+						}
+					}
+				}
+			}
+		}
+		// Ivar receiver: `def @app.foo` -- look up @app on the enclosing
+		// self's instance variables. Rake's test suite uses this shape
+		// extensively to stub methods on per-test fixtures.
+		if !ok && len(n.Receiver.Value) > 0 && n.Receiver.Value[0] == '@' {
+			if self := env.EnclosingSelf(); self != nil {
+				if inst, isInst := self.(*object.Instance); isInst {
+					if v, found := inst.Ivars[n.Receiver.Value]; found {
+						recv = v
+						ok = true
+					}
+				}
+			}
+		}
+		if !ok {
 			return nil, errorf("evaluator: singleton def: undefined receiver %q", n.Receiver.Value)
 		}
 		switch r := recv.(type) {
@@ -73,9 +103,33 @@ func evalFunctionLiteral(env *object.Environment, n *ast.FunctionLiteral) (objec
 		return env.Symbols().Intern(n.Name.Value), nil
 	}
 
+	// `class << host ... def foo ...` installs onto host's singleton
+	// table. Checked before EnclosingClass so a singleton block inside
+	// a class body still routes correctly.
+	if host := env.EnclosingSingletonHost(); host != nil {
+		if err := installSingletonMethod(host, n.Name.Value, m); err != nil {
+			return nil, err
+		}
+		return env.Symbols().Intern(n.Name.Value), nil
+	}
+
 	if cls := env.EnclosingClass(); cls != nil {
 		cls.AddMethod(n.Name.Value, m)
-		if cls.CurrentVisibility == "private" {
+		switch cls.CurrentVisibility {
+		case "private":
+			if cls.Private == nil {
+				cls.Private = map[string]bool{}
+			}
+			cls.Private[n.Name.Value] = true
+		case "protected":
+			if cls.Protected == nil {
+				cls.Protected = map[string]bool{}
+			}
+			cls.Protected[n.Name.Value] = true
+		case "module_function":
+			// Also install as a class method so Module.method works.
+			// Instance copy stays private per MRI.
+			cls.AddClassMethod(n.Name.Value, m)
 			if cls.Private == nil {
 				cls.Private = map[string]bool{}
 			}
@@ -86,6 +140,24 @@ func evalFunctionLiteral(env *object.Environment, n *ast.FunctionLiteral) (objec
 
 	env.SetMethod(n.Name.Value, m)
 	return env.Symbols().Intern(n.Name.Value), nil
+}
+
+// installSingletonMethod registers m on host's per-object method table.
+// Class -> ClassMethods (so a class-level singleton def matches
+// `def self.foo`); Instance -> SingletonMethods (per-object).
+func installSingletonMethod(host object.RubyObject, name string, m object.RubyMethod) error {
+	switch h := host.(type) {
+	case *object.Class:
+		h.AddClassMethod(name, m)
+	case *object.Instance:
+		if h.SingletonMethods == nil {
+			h.SingletonMethods = map[string]object.RubyMethod{}
+		}
+		h.SingletonMethods[name] = m
+	default:
+		return errorf("evaluator: singleton def on %T not yet supported", host)
+	}
+	return nil
 }
 
 // evalAlias implements `alias new_name old_name`: registers the
@@ -159,7 +231,22 @@ func callUserMethodWithBlock(env *object.Environment, m *object.UserMethod, args
 		prev := env.SetCurrentFile(m.SourceFile)
 		defer env.SetCurrentFile(prev)
 	}
+	pushMethodFrame(env, m)
+	defer env.PopCallFrame()
 	return runMethodBody(callEnv, m, args)
+}
+
+// pushMethodFrame records the called method on the call stack. MRI's
+// backtrace lists frames innermost-first including the raising
+// method; Kernel#caller drops the topmost (current method) and lists
+// outward. So we push the callee's name on entry and pop on return;
+// Kernel#caller skips the head, exception backtrace reads it all.
+func pushMethodFrame(env *object.Environment, m *object.UserMethod) {
+	sf := m.SourceFile
+	if sf == "" {
+		sf = "(eval)"
+	}
+	env.PushCallFrame(sf + ":0:in `" + m.Name + "'")
 }
 
 // hasKeywordParam reports whether any param is keyword-shaped.
@@ -203,6 +290,19 @@ func runMethodBody(callEnv *object.Environment, m *object.UserMethod, args []obj
 		return nil, err
 	}
 
+	// Pre-declare locals introduced anywhere in the body so a read
+	// inside a branch that didn't run still sees nil (MRI's parser-
+	// time lvar introduction). Without this, the Ruby idiom
+	//   if cond; x = ...; end
+	//   x || default
+	// trips a NameError on `x` when cond is false. rake/task.rb's
+	// lookup_prerequisite is the motivating shape.
+	if body != nil {
+		for _, s := range body.Statements {
+			predeclareNode(callEnv, s)
+		}
+	}
+
 	if cap, ok := m.CapturedBlock.(*ast.BlockCapture); ok && cap != nil && cap.Name != nil {
 		var bound object.RubyObject = object.NIL
 		if blkAny := callEnv.CurrentBlock; blkAny != nil {
@@ -220,8 +320,6 @@ func runMethodBody(callEnv *object.Environment, m *object.UserMethod, args []obj
 		callEnv.Set(cap.Name.Value, bound)
 	}
 
-	result, err := evalBlockStatement(callEnv, body)
-
 	// Method-body rescue / else / ensure: wraps the body in the same
 	// dispatch as ExceptionHandlingBlock so `def foo; ...; rescue Foo
 	// => e; ...; end` works without an explicit begin/end.
@@ -229,35 +327,52 @@ func runMethodBody(callEnv *object.Environment, m *object.UserMethod, args []obj
 	elseBody, _ := m.ElseBody.(*ast.BlockStatement)
 	ensureBody, _ := m.EnsureBody.(*ast.BlockStatement)
 
-	if err == nil && elseBody != nil {
-		result, err = evalBlockStatement(callEnv, elseBody)
-	}
+	var result object.RubyObject
+	var err error
+	for {
+		result, err = evalBlockStatement(callEnv, body)
 
-	if err != nil {
-		if rs, ok := err.(*returnSignal); ok {
-			result = rs.Value
-			err = nil
-		} else if rs, ok := err.(*raiseSignal); ok && len(rescues) > 0 {
-			handled := false
-			for _, r := range rescues {
-				match, mErr := rescueMatches(callEnv, r, rs.Exception)
-				if mErr != nil {
-					err = mErr
+		if err == nil && elseBody != nil {
+			result, err = evalBlockStatement(callEnv, elseBody)
+		}
+
+		retried := false
+		if err != nil {
+			if rs, ok := err.(*returnSignal); ok {
+				result = rs.Value
+				err = nil
+			} else if rs, ok := err.(*raiseSignal); ok && len(rescues) > 0 {
+				handled := false
+				for _, r := range rescues {
+					match, mErr := rescueMatches(callEnv, r, rs.Exception)
+					if mErr != nil {
+						err = mErr
+						break
+					}
+					if !match {
+						continue
+					}
+					if r.Exception != nil {
+						callEnv.AssignVisible(r.Exception.Value, rs.Exception)
+					}
+					prevExc := callEnv.CurrentException
+					callEnv.CurrentException = rs.Exception
+					result, err = evalBlockStatement(callEnv, r.Body)
+					callEnv.CurrentException = prevExc
+					handled = true
+					if _, isRetry := err.(*retrySignal); isRetry {
+						retried = true
+						err = nil
+					}
 					break
 				}
-				if !match {
-					continue
+				if !handled {
+					err = rs
 				}
-				if r.Exception != nil {
-					callEnv.AssignVisible(r.Exception.Value, rs.Exception)
-				}
-				result, err = evalBlockStatement(callEnv, r.Body)
-				handled = true
-				break
 			}
-			if !handled {
-				err = rs
-			}
+		}
+		if !retried {
+			break
 		}
 	}
 
@@ -353,24 +468,40 @@ func dispatchAttrMarker(callEnv *object.Environment, m *object.UserMethod, args 
 		v, err := marker.Fn(callEnv, args)
 		return v, true, err
 	case attrReaderMarker:
-		inst, ok := callEnv.Self.(*object.Instance)
-		if !ok {
-			return nil, true, errorf("evaluator: attr reader on non-instance receiver %T", callEnv.Self)
+		key := "@" + string(marker)
+		switch self := callEnv.Self.(type) {
+		case *object.Instance:
+			if v, ok := self.Ivars[key]; ok {
+				return v, true, nil
+			}
+			return object.NIL, true, nil
+		case *object.Class:
+			// class-level attr accessor (installed via `class << self;
+			// attr_accessor :x; end` in a class/module body). Reads the
+			// class-instance variable rather than an Instance's ivar.
+			if v, ok := self.Ivars[key]; ok {
+				return v, true, nil
+			}
+			return object.NIL, true, nil
 		}
-		if v, ok := inst.Ivars["@"+string(marker)]; ok {
-			return v, true, nil
-		}
-		return object.NIL, true, nil
+		return nil, true, errorf("evaluator: attr reader on non-instance receiver %T", callEnv.Self)
 	case attrWriterMarker:
-		inst, ok := callEnv.Self.(*object.Instance)
-		if !ok {
-			return nil, true, errorf("evaluator: attr writer on non-instance receiver %T", callEnv.Self)
-		}
 		if len(args) != 1 {
 			return nil, true, errorf("evaluator: attr writer expected 1 arg, got %d", len(args))
 		}
-		inst.Ivars["@"+string(marker)] = args[0]
-		return args[0], true, nil
+		key := "@" + string(marker)
+		switch self := callEnv.Self.(type) {
+		case *object.Instance:
+			self.Ivars[key] = args[0]
+			return args[0], true, nil
+		case *object.Class:
+			if self.Ivars == nil {
+				self.Ivars = map[string]object.RubyObject{}
+			}
+			self.Ivars[key] = args[0]
+			return args[0], true, nil
+		}
+		return nil, true, errorf("evaluator: attr writer on non-instance receiver %T", callEnv.Self)
 	}
 	return nil, false, nil
 }
@@ -495,7 +626,10 @@ func bindPositionalParams(env *object.Environment, params []*ast.FunctionParamet
 	splatLen := len(args) - preCount - postCount
 	splatArgs := make([]object.RubyObject, splatLen)
 	copy(splatArgs, args[preCount:preCount+splatLen])
-	env.Set(params[splatIdx].Name.Value, object.NewArray(splatArgs...))
+	// Anonymous splat (`*` with no name): consume args, don't bind.
+	if params[splatIdx].Name != nil {
+		env.Set(params[splatIdx].Name.Value, object.NewArray(splatArgs...))
+	}
 	for i := 0; i < postCount; i++ {
 		if err := bindOneParam(env, params[splatIdx+1+i], args[preCount+splatLen+i]); err != nil {
 			return err
@@ -545,6 +679,24 @@ func (b *breakSignal) Error() string { return "unhandled break" }
 // iteration's value (used e.g. by Array#map).
 type nextSignal struct{ Value object.RubyObject }
 
+// retrySignal flows out of a rescue clause to re-run the
+// surrounding begin body. Caught by the rescue handler in
+// runMethodBody / ExceptionHandlingBlock; reaches further out
+// only if no rescue context catches it (which is an error).
+type retrySignal struct{}
+
+func (r *retrySignal) Error() string { return "retry" }
+
+// throwSignal flows out of throw to the matching catch frame.
+// Caught by Kernel#catch when the Tag matches; propagates
+// otherwise.
+type throwSignal struct {
+	Tag   object.RubyObject
+	Value object.RubyObject
+}
+
+func (t *throwSignal) Error() string { return "throw" }
+
 func (n *nextSignal) Error() string { return "unhandled next" }
 
 // exitSignal short-circuits the entire program. Raised by Kernel#exit
@@ -589,6 +741,8 @@ func evalJump(env *object.Environment, n *ast.JumpExpression) (object.RubyObject
 			v = expandSingle(got)
 		}
 		return nil, &nextSignal{Value: v}
+	case "retry":
+		return nil, &retrySignal{}
 	}
 	return nil, errorf("evaluator: %s not yet supported", kind)
 }

@@ -1,6 +1,8 @@
 package evaluator
 
 import (
+	"strings"
+
 	"github.com/lczyk/goruby/ast"
 	"github.com/lczyk/goruby/evaluator/builtinapi"
 	"github.com/lczyk/goruby/object"
@@ -24,11 +26,33 @@ func evalClassExpression(env *object.Environment, n *ast.ClassExpression) (objec
 		super = c
 	}
 
+	// Track whether this is a fresh-create vs reopen so the inherited
+	// hook only fires on initial creation, matching MRI semantics.
+	preexisting := classExists(env, name)
 	cls := lookupOrCreateNestedClass(env, name, super, false)
 
 	bodyEnv := object.NewEnclosedEnvironment(env)
 	bodyEnv.CurrentClass = cls
 	bodyEnv.Self = cls
+
+	// Fire super.inherited(cls) hook on first creation when the
+	// superclass defines one. MRI's contract for class introspection
+	// and DSL frameworks (rspec, rails, minitest's own Runnable
+	// subclass-registry).
+	if !preexisting && super != nil {
+		if m, found := super.LookupClassMethod("inherited"); found {
+			switch mm := m.(type) {
+			case *object.UserMethod:
+				if _, err := invokeMethodOn(env, super, mm, []object.RubyObject{cls}, nil); err != nil {
+					return nil, err
+				}
+			case *object.BuiltinMethod:
+				if _, err := mm.Fn(env, super, []object.RubyObject{cls}, nil); err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
 
 	if n.Body != nil {
 		if _, err := evalBlockStatement(bodyEnv, n.Body); err != nil {
@@ -38,6 +62,25 @@ func evalClassExpression(env *object.Environment, n *ast.ClassExpression) (objec
 	return cls, nil
 }
 
+// classExists returns true if name resolves to a Class in env's chain
+// (including enclosing-class constants and the global env), used to
+// distinguish reopen from fresh-create for hook routing.
+func classExists(env *object.Environment, name string) bool {
+	if strings.Contains(name, "::") {
+		return false
+	}
+	if encl := env.EnclosingClass(); encl != nil {
+		if _, ok := encl.Constants[name].(*object.Class); ok {
+			return true
+		}
+	}
+	if v, ok := env.Get(name); ok {
+		_, isClass := v.(*object.Class)
+		return isClass
+	}
+	return false
+}
+
 // lookupOrCreateNestedClass is lookupOrCreateClass that also honours
 // the enclosing-class scope: when called inside `module Outer ; class
 // Inner ; end ; end`, the new class is also registered as
@@ -45,6 +88,63 @@ func evalClassExpression(env *object.Environment, n *ast.ClassExpression) (objec
 // effectively does that too -- the global is the canonical home but
 // nested constants can be looked up via the outer's Constants table).
 func lookupOrCreateNestedClass(env *object.Environment, name string, super *object.Class, isModule bool) *object.Class {
+	// Scoped name (Outer::Inner): resolve Outer first, then create /
+	// reopen Inner inside its Constants. Handles arbitrary nesting.
+	// Outermost name still pulls from the global env when no in-scope
+	// class has it.
+	if strings.Contains(name, "::") {
+		parts := strings.Split(name, "::")
+		var parent *object.Class
+		// Outermost: try EnclosingClass then global.
+		head := parts[0]
+		if encl := env.EnclosingClass(); encl != nil {
+			if c, ok := encl.Constants[head].(*object.Class); ok {
+				parent = c
+			}
+		}
+		if parent == nil {
+			if v, ok := env.Get(head); ok {
+				if c, ok := v.(*object.Class); ok {
+					parent = c
+				}
+			}
+		}
+		if parent == nil {
+			// Outermost not found -- create as a global class so the
+			// next part can hang off it. Mirrors MRI's autovivify of
+			// `class X::Y` when X happens to be undefined (actually
+			// MRI raises here; ours autocreates for robustness against
+			// require-order ambiguities).
+			parent = lookupOrCreateClass(env, head, nil)
+		}
+		for i := 1; i < len(parts)-1; i++ {
+			child, ok := parent.Constants[parts[i]].(*object.Class)
+			if !ok {
+				child = object.NewClass(parts[i], nil)
+				child.IsModule = true
+				child.Parent = parent
+				parent.Constants[parts[i]] = child
+			}
+			parent = child
+		}
+		leaf := parts[len(parts)-1]
+		if c, ok := parent.Constants[leaf].(*object.Class); ok {
+			if isModule {
+				c.IsModule = true
+			}
+			if c.Parent == nil {
+				c.Parent = parent
+			}
+			return c
+		}
+		cls := object.NewClass(leaf, super)
+		if isModule {
+			cls.IsModule = true
+		}
+		cls.Parent = parent
+		parent.Constants[leaf] = cls
+		return cls
+	}
 	enclosing := env.EnclosingClass()
 	if enclosing != nil {
 		if existing, ok := enclosing.Constants[name]; ok {
@@ -53,14 +153,78 @@ func lookupOrCreateNestedClass(env *object.Environment, name string, super *obje
 			}
 		}
 	}
-	cls := lookupOrCreateClass(env, name, super)
+	// Reopen a global class/module by name if one exists. Lets
+	// `module Foo` inside any scope find an existing top-level Foo
+	// (matching MRI's nesting-then-Object lookup for the constant
+	// receiver of a class def).
+	if existing, ok := env.Get(name); ok {
+		if c, ok := existing.(*object.Class); ok {
+			if enclosing != nil {
+				enclosing.Constants[name] = c
+			}
+			return c
+		}
+	}
+	// New class. Create under enclosing (no global bleed) when
+	// nested; bind globally for top-level defs.
+	cls := object.NewClass(name, super)
 	if isModule {
 		cls.IsModule = true
 	}
 	if enclosing != nil {
+		cls.Parent = enclosing
 		enclosing.Constants[name] = cls
+	} else {
+		env.SetGlobal(name, cls)
 	}
 	return cls
+}
+
+// evalSingletonClassExpression handles `class << expr ... end`. Methods
+// defined in the body install onto the host's singleton table rather
+// than the enclosing class's instance methods:
+//
+//   - Class host (incl. `class << self` inside a class body) -> the
+//     host's ClassMethods (== `def self.foo`).
+//   - Instance host -> the receiver's per-object SingletonMethods.
+//
+// We don't materialise a separate singleton class object; the body
+// runs with SingletonHost set on the env so evalFunctionLiteral routes
+// the def accordingly. Returns the host as a proxy for the singleton
+// class -- close enough for `class << obj; def x; end; end` idioms.
+func evalSingletonClassExpression(env *object.Environment, n *ast.SingletonClassExpression) (object.RubyObject, error) {
+	host, err := Eval(n.Expr, env)
+	if err != nil {
+		return nil, err
+	}
+	switch host.(type) {
+	case *object.Class, *object.Instance:
+		// supported
+	default:
+		return nil, errorf("evaluator: class << on %T not yet supported", host)
+	}
+	bodyEnv := object.NewEnclosedEnvironment(env)
+	bodyEnv.SingletonHost = host
+	// For Class hosts, Self inside the body becomes the materialised
+	// singleton class object -- matches MRI. Lets the eigenclass-as-
+	// value idiom `(class << host; self; end).attr_accessor :x`
+	// reach the singleton class for attr_* installation.
+	// For Instance hosts the existing host-as-self stays (the
+	// per-object SingletonMethods path is unchanged).
+	selfForBody := host
+	if cls, ok := host.(*object.Class); ok {
+		selfForBody = cls.EnsureClassSingleton()
+	}
+	bodyEnv.Self = selfForBody
+	if n.Body != nil {
+		if _, err := evalBlockStatement(bodyEnv, n.Body); err != nil {
+			return nil, err
+		}
+	}
+	// Return the singleton class for Class hosts so the
+	// caller can chain attr_* / def via the returned value
+	// (the cattr_accessor idiom).
+	return selfForBody, nil
 }
 
 // evalModuleExpression treats a module as a class with IsModule=true
@@ -107,10 +271,21 @@ func evalScopedIdentifier(env *object.Environment, n *ast.ScopedIdentifier) (obj
 	if !ok {
 		return nil, errorf("evaluator: unsupported ::Inner %T", n.Inner)
 	}
-	if v, ok := cls.Constants[innerID.Value]; ok {
+	if v, ok := lookupConstant(cls, innerID.Value); ok {
 		return v, nil
 	}
-	return nil, errorf("evaluator: NameError: uninitialized constant %s::%s", cls.Name, innerID.Value)
+	// const_missing hook: if cls (or an ancestor) defines
+	// const_missing as a class method, dispatch it with the missing
+	// constant name as a Symbol arg.
+	if m, found := cls.LookupClassMethod("const_missing"); found {
+		switch mm := m.(type) {
+		case *object.UserMethod:
+			return invokeMethodOn(env, cls, mm, []object.RubyObject{env.Symbols().Intern(innerID.Value)}, nil)
+		case *object.BuiltinMethod:
+			return mm.Fn(env, cls, []object.RubyObject{env.Symbols().Intern(innerID.Value)}, nil)
+		}
+	}
+	return raiseBuiltin(env, "NameError", "uninitialized constant "+cls.Name+"::"+innerID.Value)
 }
 
 // lookupOrCreateClass returns the existing class bound to name on the
@@ -166,13 +341,18 @@ func classForCVar(env *object.Environment) *object.Class {
 // Returns nil on miss (MRI: undefined ivar reads return nil with a
 // warning).
 func evalInstanceVariable(env *object.Environment, n *ast.InstanceVariable) (object.RubyObject, error) {
-	self := env.EnclosingSelf()
-	inst, ok := self.(*object.Instance)
-	if !ok {
-		return object.NIL, nil
-	}
-	if v, ok := inst.Ivars["@"+n.Name.Value]; ok {
-		return v, nil
+	key := "@" + n.Name.Value
+	switch self := env.EnclosingSelf().(type) {
+	case *object.Instance:
+		if v, ok := self.Ivars[key]; ok {
+			return v, nil
+		}
+	case *object.Class:
+		// Class-instance variables: @var at class scope (or in a
+		// `def self.foo` method) attaches to the class object itself.
+		if v, ok := self.Ivars[key]; ok {
+			return v, nil
+		}
 	}
 	return object.NIL, nil
 }
@@ -217,6 +397,14 @@ func bootstrapObjectClass(env *object.Environment) *object.Class {
 		env.SetGlobal("FalseClass", object.FalseClassClass)
 		env.SetGlobal("Module", object.ModuleClass)
 		env.SetGlobal("Class", object.ClassClass)
+		// Default Object.inherited as a noop. Lets user-defined
+		// inherited hooks call super without crashing the chain.
+		object.ObjectClass.ClassMethods["inherited"] = &object.BuiltinMethod{
+			Name: "inherited",
+			Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+				return object.NIL, nil
+			},
+		}
 	}
 	return object.ObjectClass
 }
@@ -233,19 +421,21 @@ func evalSuper(env *object.Environment, n *ast.SuperExpression) (object.RubyObje
 	self := env.EnclosingSelf()
 	cls := findCallClass(env)
 	if cls == nil || cls.Super == nil {
-		return nil, errorf("evaluator: NoMethodError: super: no superclass method `%s'", name)
+		return raiseBuiltin(env, "NoMethodError", "super: no superclass method `"+name+"'")
 	}
-	// Class-method super: self is the Class itself. Walk the Super chain
-	// for a matching ClassMethod and invoke it with self bound to the
-	// current class so further `super` calls keep climbing.
-	if cls, ok := self.(*object.Class); ok {
+	// Class-method super: self is the Class itself. Walk from the
+	// *defining* class's super (not self's super) so the hook chain
+	// climbs through where the method was actually defined. Matches
+	// MRI semantics for inherited / included / extended hooks where
+	// super has to keep climbing from the definition site, not the
+	// dispatch receiver.
+	if selfCls, ok := self.(*object.Class); ok {
+		if cls.Super == nil {
+			return raiseBuiltin(env, "NoMethodError", "super: no superclass method `"+name+"'")
+		}
 		m, found := cls.Super.LookupClassMethod(name)
 		if !found {
-			return nil, errorf("evaluator: NoMethodError: super: no superclass method `%s'", name)
-		}
-		um, ok := m.(*object.UserMethod)
-		if !ok {
-			return nil, errorf("evaluator: super on non-user method %T", m)
+			return raiseBuiltin(env, "NoMethodError", "super: no superclass method `"+name+"'")
 		}
 		var args []object.RubyObject
 		if n.Arguments == nil {
@@ -257,19 +447,24 @@ func evalSuper(env *object.Environment, n *ast.SuperExpression) (object.RubyObje
 			}
 			args = got
 		}
-		return invokeMethodOn(env, cls, um, args, nil)
-	}
-	inst, ok := self.(*object.Instance)
-	if !ok {
-		return nil, errorf("evaluator: super outside instance context not yet supported")
-	}
-	m, found := cls.Super.LookupMethod(name)
-	if !found {
-		return nil, errorf("evaluator: NoMethodError: super: no superclass method `%s'", name)
-	}
-	um, ok := m.(*object.UserMethod)
-	if !ok {
+		switch mm := m.(type) {
+		case *object.UserMethod:
+			return invokeMethodOn(env, selfCls, mm, args, nil)
+		case *object.BuiltinMethod:
+			return mm.Fn(env, selfCls, args, nil)
+		}
 		return nil, errorf("evaluator: super on non-user method %T", m)
+	}
+	// Instance / builtin path. self may be *Instance, *Integer,
+	// *String, etc. Walk the receiver's linearised MRO and find the
+	// next class after the defining class -- that's where super
+	// resumes. Plain Super-chain walk is insufficient when the
+	// defining class is an included Module: after Mix in
+	// (Sub -> Mix -> Base -> Object), MRI continues to Base, not to
+	// Mix.Super (Object) which is what a naive walk would pick.
+	m, found := lookupSuperMRO(env, self, cls, name)
+	if !found {
+		return raiseBuiltin(env, "NoMethodError", "super: no superclass method `"+name+"'")
 	}
 
 	var args []object.RubyObject
@@ -302,7 +497,64 @@ func evalSuper(env *object.Environment, n *ast.SuperExpression) (object.RubyObje
 			blockArg = cb
 		}
 	}
-	return invokeMethodOn(env, inst, um, args, blockArg)
+	if um, ok := m.(*object.UserMethod); ok {
+		return invokeMethodOn(env, self, um, args, blockArg)
+	}
+	return m.Call(env, self, args, blockArg)
+}
+
+// lookupSuper finds the next implementation of name above the class
+// where the current method lives. Walks the defining class's Includes
+// first, then climbs its Super chain (each step consults that class's
+// Methods + Includes via LookupMethod). Returns the matched method,
+// false when nothing further up defines name.
+func lookupSuper(defining *object.Class, name string) (object.RubyMethod, bool) {
+	for _, inc := range defining.Includes {
+		if m, ok := inc.LookupMethod(name); ok {
+			return m, true
+		}
+	}
+	if defining.Super != nil {
+		return defining.Super.LookupMethod(name)
+	}
+	return nil, false
+}
+
+// lookupSuperMRO finds the next implementation of name in the
+// receiver's linearised MRO past the defining class. Compute MRO by
+// walking recv.Class()'s super chain, splicing each class's Includes
+// (in declaration order) just after the class. Then scan the list
+// starting one past the index of defining; pick the first class with
+// a matching own method.
+func lookupSuperMRO(env *object.Environment, recv object.RubyObject, defining *object.Class, name string) (object.RubyMethod, bool) {
+	rootCls := classOfRaw(env, recv)
+	if rootCls == nil {
+		return lookupSuper(defining, name)
+	}
+	mro := []*object.Class{}
+	for cur := rootCls; cur != nil; cur = cur.Super {
+		mro = append(mro, cur)
+		mro = append(mro, cur.Includes...)
+	}
+	startIdx := -1
+	for i, c := range mro {
+		if c == defining {
+			startIdx = i
+			break
+		}
+	}
+	if startIdx < 0 {
+		// defining class isn't in the receiver's MRO -- happens for
+		// some metaclass shapes. Fall back to the old chain walk so
+		// the lookup doesn't silently return nothing.
+		return lookupSuper(defining, name)
+	}
+	for i := startIdx + 1; i < len(mro); i++ {
+		if m, ok := mro[i].Methods[name]; ok {
+			return m, true
+		}
+	}
+	return nil, false
 }
 
 func findMethodName(env *object.Environment) string {
@@ -360,6 +612,59 @@ func arrayClassNew(args []object.RubyObject) (object.RubyObject, error) {
 	return nil, errorf("evaluator: Array.new: wrong number of arguments (%d)", len(args))
 }
 
+// singletonBodyDSL handles the class-level helpers used inside a
+// `class << host` body. Currently covers attr_reader / attr_writer /
+// attr_accessor -- they synthesise methods on host's singleton-method
+// table so that `host.name` / `host.name=` resolve. For a Class host
+// the singleton table is its ClassMethods (mirrors `def self.foo`);
+// for an Instance host it's the per-object SingletonMethods.
+//
+// `include` inside an eigenclass body would mix into the singleton
+// class -- not supported yet, returns handled=false so dispatch falls
+// through to the regular call path (which currently errors -- the
+// idiom is rare enough not to chase).
+func singletonBodyDSL(env *object.Environment, host object.RubyObject, name string, args []object.RubyObject) (object.RubyObject, bool, error) {
+	switch name {
+	case "attr_reader":
+		for _, a := range args {
+			n, ok := symbolOrString(env, a)
+			if !ok {
+				return nil, true, errorf("evaluator: attr_reader: expected Symbol or String, got %T", a)
+			}
+			if err := installSingletonMethod(host, n, makeAttrReader(n)); err != nil {
+				return nil, true, err
+			}
+		}
+		return object.NIL, true, nil
+	case "attr_writer":
+		for _, a := range args {
+			n, ok := symbolOrString(env, a)
+			if !ok {
+				return nil, true, errorf("evaluator: attr_writer: expected Symbol or String, got %T", a)
+			}
+			if err := installSingletonMethod(host, n+"=", makeAttrWriter(n)); err != nil {
+				return nil, true, err
+			}
+		}
+		return object.NIL, true, nil
+	case "attr_accessor":
+		for _, a := range args {
+			n, ok := symbolOrString(env, a)
+			if !ok {
+				return nil, true, errorf("evaluator: attr_accessor: expected Symbol or String, got %T", a)
+			}
+			if err := installSingletonMethod(host, n, makeAttrReader(n)); err != nil {
+				return nil, true, err
+			}
+			if err := installSingletonMethod(host, n+"=", makeAttrWriter(n)); err != nil {
+				return nil, true, err
+			}
+		}
+		return object.NIL, true, nil
+	}
+	return nil, false, nil
+}
+
 // classBodyDSL handles the class-level helpers used inside a class
 // body: attr_accessor / attr_reader / attr_writer (which synthesise
 // instance methods) and include (which mixes a module's methods into
@@ -402,11 +707,66 @@ func classBodyDSL(env *object.Environment, cls *object.Class, name string, args 
 				return nil, true, errorf("evaluator: include: expected Module, got %T", a)
 			}
 			cls.Includes = append(cls.Includes, mod)
+			// MRI calls `mod.included(base)` after a successful
+			// include, if the hook is defined. PrivateReader-style
+			// extension uses this to copy class methods over to the
+			// includer. Best-effort: only invoke when the hook is
+			// available on mod's ClassMethods (mri also looks at the
+			// singleton class, equivalent here).
+			if hook, ok := mod.ClassMethods["included"]; ok {
+				if _, err := hook.Call(env, mod, []object.RubyObject{cls}, nil); err != nil {
+					return nil, true, err
+				}
+			}
 		}
 		return object.NIL, true, nil
 	case "private", "public", "protected":
-		// Visibility modifiers: silently accept; we don't enforce
-		// visibility yet.
+		// Bare form (no args) flips the body's visibility mode -- the
+		// Identifier path in evalIdentifier handles that and we never
+		// reach here. With args, retroactively mark each named method
+		// with the requested visibility, leaving CurrentVisibility
+		// alone (matches MRI: `private :foo` does not change subsequent
+		// def visibility).
+		if len(args) == 0 {
+			switch name {
+			case "private":
+				cls.CurrentVisibility = "private"
+			case "public":
+				cls.CurrentVisibility = "public"
+			case "protected":
+				cls.CurrentVisibility = "protected"
+			}
+			return object.NIL, true, nil
+		}
+		for _, a := range args {
+			mname, ok := symbolOrString(env, a)
+			if !ok {
+				return nil, true, errorf("evaluator: %s: expected Symbol or String, got %T", name, a)
+			}
+			switch name {
+			case "private":
+				if cls.Private == nil {
+					cls.Private = map[string]bool{}
+				}
+				cls.Private[mname] = true
+				delete(cls.Protected, mname)
+			case "protected":
+				if cls.Protected == nil {
+					cls.Protected = map[string]bool{}
+				}
+				cls.Protected[mname] = true
+				delete(cls.Private, mname)
+			case "public":
+				delete(cls.Private, mname)
+				delete(cls.Protected, mname)
+			}
+		}
+		return object.NIL, true, nil
+	case "private_class_method", "public_class_method":
+		// Class-method visibility flips. We don't model per-method
+		// visibility for ClassMethods, so accept the call and noop.
+		// Sufficient for rake/clean.rb's
+		// `private_class_method :file_already_gone?` line.
 		return object.NIL, true, nil
 	}
 	return nil, false, nil
@@ -477,7 +837,21 @@ func classNew(env *object.Environment, cls *object.Class, args []object.RubyObje
 
 // invokeMethodOnWithBlock is the block-carrying form of invokeMethodOn.
 func invokeMethodOnWithBlock(env *object.Environment, recv object.RubyObject, m *object.UserMethod, args []object.RubyObject, blk *ast.BlockExpression) (object.RubyObject, error) {
-	return invokeMethodOn(env, recv, m, args, blk)
+	// Wrap the literal block as a marker that captures env (the
+	// call-site env, where the block was syntactically defined).
+	// Otherwise the method body's &block reification later uses
+	// callEnv.Outer() == m.DefEnv as the proc's closure env, which
+	// is the def-time env (class body), not the call-site env --
+	// so self inside the reified block ends up as the class
+	// rather than the receiver of the call.
+	callerEnv := env
+	marker := &goBlockMarker{
+		fn: func(a []object.RubyObject) (object.RubyObject, error) {
+			return invokeBlock(callerEnv, blk, a)
+		},
+		blk: blk,
+	}
+	return invokeMethodOn(env, recv, m, args, marker)
 }
 
 func init() {
@@ -504,10 +878,23 @@ func invokeMethodOn(env *object.Environment, recv object.RubyObject, m *object.U
 	if blk != nil {
 		callEnv.CurrentBlock = blk
 	}
-	if inst, ok := recv.(*object.Instance); ok {
+	// Prefer the method's defining class (set at def time) so super
+	// inside the body climbs strictly later in the ancestry. Crucial
+	// for methods that came in via include: a `class Application
+	// include TaskManager; def initialize; super; end; end` shape
+	// needs CurrentClass == Application initially, then == TaskManager
+	// after super dispatches into it -- without DefClass tracking,
+	// every callEnv would see the receiver's class (Application) and
+	// super would loop back to the same method.
+	if m.DefClass != nil {
+		callEnv.CurrentClass = m.DefClass
+	} else if inst, ok := recv.(*object.Instance); ok {
 		callEnv.CurrentClass = inst.C
-	}
-	if cls, ok := recv.(*object.Class); ok {
+	} else if cls, ok := recv.(*object.Class); ok {
+		callEnv.CurrentClass = cls
+	} else if cls := classOfRaw(env, recv); cls != nil {
+		// Builtin receivers (Integer, String, ...) need CurrentClass
+		// set so super lookups inside the method body have an anchor.
 		callEnv.CurrentClass = cls
 	}
 	// Switch CurrentFile to the method's defining source so errors
@@ -517,5 +904,7 @@ func invokeMethodOn(env *object.Environment, recv object.RubyObject, m *object.U
 		prev := env.SetCurrentFile(m.SourceFile)
 		defer env.SetCurrentFile(prev)
 	}
+	pushMethodFrame(env, m)
+	defer env.PopCallFrame()
 	return runMethodBody(callEnv, m, args)
 }

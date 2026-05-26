@@ -96,14 +96,28 @@ func evalIdentifier(env *object.Environment, n *ast.Identifier) (object.RubyObje
 		case "public":
 			cls.CurrentVisibility = "public"
 			return object.NIL, nil
-		case "protected", "module_function":
+		case "protected":
+			cls.CurrentVisibility = "protected"
+			return object.NIL, nil
+		case "module_function":
+			// Subsequent defs install as both private instance methods
+			// and class methods on the module. MRI semantics; rake's
+			// Cleaner module relies on it (Rake::Cleaner.cleanup).
+			cls.CurrentVisibility = "module_function"
 			return object.NIL, nil
 		}
 	}
 	if isConstantName(n.Value) {
-		if cls := env.EnclosingClass(); cls != nil {
-			if v, ok := lookupConstant(cls, n.Value); ok {
-				return v, nil
+		// Walk the lexical chain: every enclosing class/module body
+		// gets a shot, then their Super chains. Matches MRI's
+		// `Module.nesting`-driven constant lookup -- a constant
+		// declared in an outer module is visible from any nested
+		// module's body without an explicit ::.
+		for cur := env; cur != nil; cur = cur.Outer() {
+			if cls := cur.CurrentClass; cls != nil {
+				if v, ok := lookupConstant(cls, n.Value); ok {
+					return v, nil
+				}
 			}
 		}
 		if v, ok := env.Get(n.Value); ok {
@@ -122,8 +136,11 @@ func evalIdentifier(env *object.Environment, n *ast.Identifier) (object.RubyObje
 	if self := env.EnclosingSelf(); self != nil {
 		if inst, ok := self.(*object.Instance); ok {
 			if m, found := dispatchClass(env, inst).LookupMethod(n.Value); found {
-				if um, ok := m.(*object.UserMethod); ok {
-					return invokeMethodOn(env, inst, um, nil, nil)
+				switch mm := m.(type) {
+				case *object.UserMethod:
+					return invokeMethodOn(env, inst, mm, nil, nil)
+				case *object.BuiltinMethod:
+					return mm.Fn(env, inst, nil, nil)
 				}
 			}
 		}
@@ -147,13 +164,31 @@ func evalIdentifier(env *object.Environment, n *ast.Identifier) (object.RubyObje
 			}
 		}
 	}
+	// Top-level fallback: if main has the name via its class chain
+	// (typically a method added by reopening Kernel), dispatch
+	// against main as the implicit receiver.
+	if env.EnclosingSelf() == nil {
+		if main, ok := mainObject(env).(*object.Instance); ok {
+			if m, found := dispatchClass(env, main).LookupMethod(n.Value); found {
+				switch mm := m.(type) {
+				case *object.UserMethod:
+					return invokeMethodOn(env, main, mm, nil, nil)
+				case *object.BuiltinMethod:
+					return mm.Fn(env, main, nil, nil)
+				}
+			}
+		}
+	}
 	// Final fallback: try Kernel builtins for bare-name identifiers
 	// (`puts` / `print` / `p` etc. used as statements without parens
 	// or arguments). Suppresses the NameError when the builtin exists.
 	if v, kerr := callKernel(env, n.Value, nil); kerr == nil {
 		return v, nil
 	}
-	return nil, errorf("evaluator: NameError: undefined local variable or method `%s'", n.Value)
+	// NameError is a raisable Ruby exception so `rescue NameError`
+	// (and `rescue StandardError`, its ancestor) can recover -- the
+	// shape rake/cpu_counter.rb's count_with_default relies on.
+	return raiseBuiltin(env, "NameError", "undefined local variable or method `"+n.Value+"'")
 }
 
 func isConstantName(s string) bool {
@@ -168,6 +203,29 @@ func isConstantName(s string) bool {
 func lookupConstant(cls *object.Class, name string) (object.RubyObject, bool) {
 	for cur := cls; cur != nil; cur = cur.Super {
 		if v, ok := cur.Constants[name]; ok {
+			return v, true
+		}
+		for _, inc := range cur.Includes {
+			if v, ok := lookupConstantInIncludes(inc, name); ok {
+				return v, true
+			}
+		}
+	}
+	return nil, false
+}
+
+// lookupConstantInIncludes walks an included module's own constants and
+// its (recursive) includes, but does NOT follow Super -- mirrors MRI's
+// constant resolution which scans the module-ancestor chain.
+func lookupConstantInIncludes(m *object.Class, name string) (object.RubyObject, bool) {
+	if m == nil {
+		return nil, false
+	}
+	if v, ok := m.Constants[name]; ok {
+		return v, true
+	}
+	for _, inc := range m.Includes {
+		if v, ok := lookupConstantInIncludes(inc, name); ok {
 			return v, true
 		}
 	}
@@ -229,12 +287,19 @@ func evalAssignment(env *object.Environment, n *ast.Assignment) (object.RubyObje
 		}
 		return right, nil
 	case *ast.InstanceVariable:
-		self := env.EnclosingSelf()
-		inst, ok := self.(*object.Instance)
-		if !ok {
+		key := "@" + lhs.Name.Value
+		v := expandSingle(right)
+		switch self := env.EnclosingSelf().(type) {
+		case *object.Instance:
+			self.Ivars[key] = v
+		case *object.Class:
+			if self.Ivars == nil {
+				self.Ivars = map[string]object.RubyObject{}
+			}
+			self.Ivars[key] = v
+		default:
 			return nil, errorf("evaluator: @%s set outside an instance context", lhs.Name.Value)
 		}
-		inst.Ivars["@"+lhs.Name.Value] = expandSingle(right)
 		return right, nil
 	case *ast.ClassVariable:
 		cls := classForCVar(env)
@@ -272,6 +337,42 @@ func evalAssignment(env *object.Environment, n *ast.Assignment) (object.RubyObje
 			return nil, err
 		}
 		return v, nil
+	}
+	if lhs, ok := n.Left.(*ast.ScopedIdentifier); ok {
+		// Outer::Inner = value -- assign a constant under the named
+		// enclosing class/module. Resolves Outer through the
+		// usual lexical lookup, then sets Constants[Inner] = value.
+		// Mirrors the same path lookupOrCreateNestedClass uses when
+		// installing nested defs.
+		parent, err := Eval(lhs.Outer, env)
+		if err != nil {
+			return nil, err
+		}
+		cls, ok := parent.(*object.Class)
+		if !ok {
+			return nil, errorf("evaluator: scoped assign: %s is not a class/module", lhs.Outer)
+		}
+		inner, ok := lhs.Inner.(*ast.Identifier)
+		if !ok {
+			return nil, errorf("evaluator: scoped assign: inner must be an Identifier, got %T", lhs.Inner)
+		}
+		v := expandSingle(right)
+		if cls.Constants == nil {
+			cls.Constants = map[string]object.RubyObject{}
+		}
+		cls.Constants[inner.Value] = v
+		// If the value is itself a class with no Parent yet, stamp it
+		// so subsequent QualifiedName lookups render Outer::Inner.
+		if vcls, ok := v.(*object.Class); ok && vcls.Parent == nil {
+			vcls.Parent = cls
+			// Rename when the class is anonymous or carries the
+			// generic Struct/Data placeholder names (Struct.new and
+			// Data.define both produce classes pending a real name).
+			if vcls.Name == "" || vcls.Name == "StructClass" || vcls.Name == "Data" {
+				vcls.Name = inner.Value
+			}
+		}
+		return right, nil
 	}
 	return nil, errorf("evaluator: unsupported assignment lhs %T", n.Left)
 }
@@ -394,7 +495,8 @@ func evalIndexAssign(env *object.Environment, n *ast.IndexExpression, value obje
 					return err
 				}
 			}
-			return errorf("evaluator: NoMethodError: undefined method `[]=' for instance of %s", inst.C.Name)
+			_, err := raiseBuiltin(env, "NoMethodError", "undefined method `[]=' for instance of "+inst.C.Name)
+			return err
 		}
 		return errorf("evaluator: []= with %d args not yet supported on %T", len(keys), recv)
 	}
@@ -428,12 +530,32 @@ func evalIndexAssign(env *object.Environment, n *ast.IndexExpression, value obje
 		return nil
 	case *object.Instance:
 		if m, found := dispatchClass(env, r).LookupMethod("[]="); found {
-			if um, ok := m.(*object.UserMethod); ok {
-				_, err := invokeMethodOn(env, r, um, []object.RubyObject{key, value}, nil)
+			switch m := m.(type) {
+			case *object.UserMethod:
+				_, err := invokeMethodOn(env, r, m, []object.RubyObject{key, value}, nil)
+				return err
+			case *object.BuiltinMethod:
+				_, err := m.Fn(env, r, []object.RubyObject{key, value}, nil)
 				return err
 			}
 		}
-		return errorf("evaluator: NoMethodError: undefined method `[]=' for instance of %s", r.C.Name)
+		_, err := raiseBuiltin(env, "NoMethodError", "undefined method `[]=' for instance of "+r.C.Name)
+		return err
+	case *object.Class:
+		// Class-receiver []= (e.g. Warning[:x] = v) -- dispatch to
+		// the class's []= class method if defined.
+		if m, found := r.LookupClassMethod("[]="); found {
+			switch m := m.(type) {
+			case *object.UserMethod:
+				_, err := invokeMethodOn(env, r, m, []object.RubyObject{key, value}, nil)
+				return err
+			case *object.BuiltinMethod:
+				_, err := m.Fn(env, r, []object.RubyObject{key, value}, nil)
+				return err
+			}
+		}
+		_, err := raiseBuiltin(env, "NoMethodError", "undefined method `[]=' for "+r.Name+":Class")
+		return err
 	}
 	return errorf("evaluator: []= not yet supported on %T", recv)
 }
@@ -441,18 +563,41 @@ func evalIndexAssign(env *object.Environment, n *ast.IndexExpression, value obje
 func assignTarget(env *object.Environment, target ast.Expression, value object.RubyObject) error {
 	switch t := target.(type) {
 	case *ast.Identifier:
+		if isConstantName(t.Value) {
+			// Mirror evalAssignment's constant-binding rules so that
+			// `MAJOR, MINOR, BUILD = ...` inside a module body lands the
+			// names on the enclosing class's Constants map, and at
+			// top-level lands them in the global env. Without this,
+			// AssignVisible buries the name as a local in the current
+			// frame and `M::NAME` lookup fails.
+			if c, ok := value.(*object.Class); ok && (c.Name == "" || c.Name == "StructClass" || c.Name == "Data") {
+				c.Name = t.Value
+			}
+			if cls := env.EnclosingClass(); cls != nil {
+				cls.Constants[t.Value] = value
+			} else {
+				env.SetGlobal(t.Value, value)
+			}
+			return nil
+		}
 		env.AssignVisible(t.Value, value)
 		return nil
 	case *ast.Global:
 		env.SetGlobal(t.Value, value)
 		return nil
 	case *ast.InstanceVariable:
-		self := env.EnclosingSelf()
-		inst, ok := self.(*object.Instance)
-		if !ok {
+		key := "@" + t.Name.Value
+		switch self := env.EnclosingSelf().(type) {
+		case *object.Instance:
+			self.Ivars[key] = value
+		case *object.Class:
+			if self.Ivars == nil {
+				self.Ivars = map[string]object.RubyObject{}
+			}
+			self.Ivars[key] = value
+		default:
 			return errorf("evaluator: @%s= outside instance context (self=%T)", t.Name.Value, self)
 		}
-		inst.Ivars["@"+t.Name.Value] = value
 		return nil
 	case *ast.ClassVariable:
 		cls := classForCVar(env)

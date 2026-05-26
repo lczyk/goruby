@@ -70,6 +70,15 @@ func invokeBlock(env *object.Environment, blk *ast.BlockExpression, args []objec
 			return nil, err
 		}
 	}
+	// Pre-declare locals introduced anywhere in the block body so
+	// a read inside a branch that didn't run still sees nil --
+	// matches MRI's parser-time lvar introduction. Same semantics
+	// as the method-body predeclare in runMethodBody.
+	if blk.Body != nil {
+		for _, s := range blk.Body.Statements {
+			predeclareNode(inner, s)
+		}
+	}
 	return evalBlockStatement(inner, blk.Body)
 }
 

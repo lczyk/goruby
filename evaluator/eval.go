@@ -116,6 +116,9 @@ func Eval(node ast.Node, env *object.Environment) (object.RubyObject, error) {
 	case *ast.ClassExpression:
 		return evalClassExpression(env, n)
 
+	case *ast.SingletonClassExpression:
+		return evalSingletonClassExpression(env, n)
+
 	case *ast.InstanceVariable:
 		return evalInstanceVariable(env, n)
 
@@ -140,6 +143,42 @@ func Eval(node ast.Node, env *object.Environment) (object.RubyObject, error) {
 	case *ast.Keyword__FILE__:
 		return object.NewString(n.Filename), nil
 
+	case *ast.Keyword__DIR__:
+		// `__dir__` expands to the absolute directory of the file
+		// currently being evaluated. Mirrors MRI: returns nil for
+		// hand-built ASTs / -e oneliners with no backing file.
+		cur := env.CurrentFile()
+		if cur == "" {
+			return object.NIL, nil
+		}
+		// Absolute path matches MRI semantics; without abs-ification,
+		// relative __dir__ + "/..." paths break when the working dir
+		// shifts mid-script (Dir.chdir).
+		abs, err := filepath.Abs(filepath.Dir(cur))
+		if err != nil {
+			return object.NewString(filepath.Dir(cur)), nil
+		}
+		return object.NewString(abs), nil
+
+	case *ast.Keyword__LINE__:
+		// `__LINE__` should expand to the source line. Tokens carry
+		// only byte offset (PosOff) today, not a line number. Compute
+		// the line on demand from env.CurrentFile() once that gap is
+		// closed; for now return a stub so the common use (passing
+		// __LINE__ as a hint to class_eval / module_eval) doesn't
+		// trip the unhandled-AST-node guard. TODO(lczyk): real line lookup.
+		return object.NewInteger(0), nil
+
+	case *ast.Keyword__METHOD__, *ast.Keyword__CALLEE__:
+		// MRI returns the current method name as a Symbol; nil at
+		// top level. Walk frames to find the innermost named one.
+		for cur := env; cur != nil; cur = cur.Outer() {
+			if cur.MethodFrame && cur.CurrentMethodName != "" {
+				return env.Symbols().Intern(cur.CurrentMethodName), nil
+			}
+		}
+		return object.NIL, nil
+
 	case *ast.AliasExpression:
 		return evalAlias(env, n)
 
@@ -154,6 +193,13 @@ func Eval(node ast.Node, env *object.Environment) (object.RubyObject, error) {
 			return nil, errorf("evaluator: unsupported splat operator %q", n.Operator)
 		}
 		return Eval(n.Right, env)
+	case *ast.BlockCapture:
+		// `&expr` in expression position. Inside a call's args list the
+		// caller intercepts this before reaching Eval (to wire it up as
+		// the block payload), so we only hit this case when the
+		// BlockCapture leaks into a regular expression slot -- e.g. as
+		// a method's single argument. Resolve to the underlying Proc.
+		return blockCaptureToProc(env, n)
 	}
 
 	return nil, errorf("evaluator: unhandled AST node type %T", node)
@@ -211,6 +257,19 @@ func evalProgram(env *object.Environment, p *ast.Program) (object.RubyObject, er
 				}
 				return nil, errorf("exit: %d", es.Code)
 			}
+			// Unrescued SystemExit: behave like the legacy exitSignal --
+			// code 0 returns cleanly, non-zero bubbles as an exit error.
+			if rs, ok := err.(*raiseSignal); ok && rs.Exception != nil &&
+				rs.Exception.C != nil && rs.Exception.C.Name == "SystemExit" {
+				code := int64(0)
+				if i, ok := rs.Exception.Ivars["@status"].(*object.Integer); ok {
+					code = i.Value
+				}
+				if code == 0 {
+					return object.NIL, nil
+				}
+				return nil, errorf("exit: %d", code)
+			}
 			return nil, err
 		}
 		result = v
@@ -219,8 +278,8 @@ func evalProgram(env *object.Environment, p *ast.Program) (object.RubyObject, er
 }
 
 func evalStringLiteral(env *object.Environment, n *ast.StringLiteral) (object.RubyObject, error) {
+	var b strings.Builder
 	if len(n.Parts) > 0 {
-		var b strings.Builder
 		for _, p := range n.Parts {
 			switch part := p.(type) {
 			case *ast.StringContent:
@@ -233,12 +292,24 @@ func evalStringLiteral(env *object.Environment, n *ast.StringLiteral) (object.Ru
 				b.WriteString(toStringValue(env, v))
 			}
 		}
-		return object.NewString(b.String()), nil
+	} else {
+		// Parser keeps escape sequences verbatim in Value (for source-
+		// faithful roundtripping). The evaluator decodes them per the
+		// quote style.
+		b.WriteString(decodeStringEscapes(n.Value, n.Token.SingleQuoted()))
 	}
-	// Parser keeps escape sequences verbatim in Value (for source-faithful
-	// roundtripping). The evaluator decodes them per the quote style.
-	decoded := decodeStringEscapes(n.Value, n.Token.SingleQuoted())
-	return object.NewString(decoded), nil
+	// Adjacent literals (`"foo" "bar"` / `"foo" \\\n "bar"`) -- MRI
+	// concatenates at parse time. concatStringPart stores them on the
+	// left literal's Adjacent slice; evaluate each and append.
+	for _, adj := range n.Adjacent {
+		v, err := evalStringLiteral(env, adj)
+		if err != nil {
+			return nil, err
+		}
+		s, _ := v.(*object.String)
+		b.Write(s.Buf)
+	}
+	return object.NewString(b.String()), nil
 }
 
 // toStringValue is the Kernel#to_s rendering used during string
@@ -254,6 +325,23 @@ func toStringValue(env *object.Environment, o object.RubyObject) string {
 		return env.Strings().Get(v.ID)
 	case *object.Symbol:
 		return env.Symbols().Name(v.ID)
+	}
+	// MRI: interpolation calls #to_s. For Instances, dispatch
+	// to_s so a user-defined to_s overrides the default
+	// "#<ClassName>" repr. Fall through to env.Inspect on
+	// anything that doesn't define to_s or where dispatch fails.
+	if inst, ok := o.(*object.Instance); ok {
+		if _, found := dispatchClass(env, inst).LookupMethod("to_s"); found {
+			result, err := callMethod(env, inst, "to_s", nil)
+			if err == nil {
+				if s, ok := result.(*object.String); ok {
+					return string(s.Buf)
+				}
+				if fs, ok := result.(*object.FrozenString); ok {
+					return env.Strings().Get(fs.ID)
+				}
+			}
+		}
 	}
 	return env.Inspect(o)
 }
@@ -521,6 +609,25 @@ func evalInfix(env *object.Environment, n *ast.InfixExpression) (object.RubyObje
 			return left, nil
 		}
 		return Eval(n.Right, env)
+	case "rescue":
+		// `expr rescue fallback` -- eval the left side; if it raises
+		// a StandardError descendant, eval and return the fallback.
+		// Non-StandardError exceptions (SystemExit, NoMemoryError,
+		// SignalException, ...) propagate per MRI.
+		left, err := Eval(n.Left, env)
+		if err == nil {
+			return left, nil
+		}
+		rs, ok := err.(*raiseSignal)
+		if !ok {
+			return nil, err
+		}
+		stdErr, _ := env.Get("StandardError")
+		base, _ := stdErr.(*object.Class)
+		if base != nil && !rs.Exception.C.IsAncestor(base) {
+			return nil, err
+		}
+		return Eval(n.Right, env)
 	}
 
 	left, err := Eval(n.Left, env)
@@ -536,7 +643,7 @@ func evalInfix(env *object.Environment, n *ast.InfixExpression) (object.RubyObje
 	// over the built-in Object equality check below, mirroring MRI.
 	if _, ok := left.(*object.Instance); ok {
 		switch n.Operator {
-		case "+", "-", "*", "/", "%", "**", "<", "<=", ">", ">=", "<=>", "==":
+		case "+", "-", "*", "/", "%", "**", "<", "<=", ">", ">=", "<=>", "==", "<<", ">>", "&", "|", "^", "===":
 			return callMethod(env, left, n.Operator, []object.RubyObject{right})
 		case "!=":
 			eq, err := callMethod(env, left, "==", []object.RubyObject{right})
@@ -560,6 +667,23 @@ func evalInfix(env *object.Environment, n *ast.InfixExpression) (object.RubyObje
 		return object.BooleanOf(rubyEqual(left, right)), nil
 	case "!=":
 		return object.BooleanOf(!rubyEqual(left, right)), nil
+	case "===":
+		// Case equality. Dispatches through caseEqual which handles
+		// Class (is_a? check), Regexp (match?), Range (cover?), Proc
+		// (call), and falls back to == elsewhere. Same op the case/when
+		// dispatch uses.
+		return object.BooleanOf(caseEqual(env, left, right)), nil
+	case "^":
+		// Boolean xor on TrueClass / FalseClass / NilClass: true if
+		// exactly one operand is truthy. minitest's assert / refute
+		// chain uses such a flip to swap the assertion direction.
+		_, lb := left.(*object.Boolean)
+		_, ln := left.(*object.Nil)
+		_, rb := right.(*object.Boolean)
+		_, rn := right.(*object.Nil)
+		if (lb || ln) && (rb || rn) {
+			return object.BooleanOf(truthy(left) != truthy(right)), nil
+		}
 	case "..":
 		return object.NewRange(left, right, false), nil
 	case "...":
@@ -599,7 +723,7 @@ func evalInfix(env *object.Environment, n *ast.InfixExpression) (object.RubyObje
 		}
 	case "+":
 		if larr, ok := left.(*object.Array); ok {
-			if rarr, ok := right.(*object.Array); ok {
+			if rarr, ok := arrayCoerce(env, right); ok {
 				out := make([]object.RubyObject, 0, len(larr.Elements)+len(rarr.Elements))
 				out = append(out, larr.Elements...)
 				out = append(out, rarr.Elements...)
@@ -614,7 +738,7 @@ func evalInfix(env *object.Environment, n *ast.InfixExpression) (object.RubyObje
 		}
 	case "-":
 		if larr, ok := left.(*object.Array); ok {
-			if rarr, ok := right.(*object.Array); ok {
+			if rarr, ok := arrayCoerce(env, right); ok {
 				out := []object.RubyObject{}
 			nextElem:
 				for _, e := range larr.Elements {
@@ -713,6 +837,67 @@ func evalInfix(env *object.Environment, n *ast.InfixExpression) (object.RubyObje
 		return v, err
 	}
 
+	// Class subclass comparison via infix < / <= / > / >=.
+	// MRI: A < B is true iff A is a proper subclass of B; A <= B
+	// also true when A == B; returns nil if classes aren't related.
+	if lc, ok := left.(*object.Class); ok {
+		if rc, ok := right.(*object.Class); ok {
+			switch n.Operator {
+			case "<", "<=", ">", ">=":
+				lessOrEq := lc.IsAncestor(rc)
+				greaterOrEq := rc.IsAncestor(lc)
+				if !lessOrEq && !greaterOrEq {
+					return object.NIL, nil
+				}
+				switch n.Operator {
+				case "<":
+					return object.BooleanOf(lessOrEq && lc != rc), nil
+				case "<=":
+					return object.BooleanOf(lessOrEq), nil
+				case ">":
+					return object.BooleanOf(greaterOrEq && lc != rc), nil
+				case ">=":
+					return object.BooleanOf(greaterOrEq), nil
+				}
+			case "==":
+				return object.BooleanOf(lc == rc), nil
+			}
+		}
+	}
+
+	// Boolean & / | / ^: bitwise on truthiness. MRI semantics --
+	// nil and false are false, everything else is true.
+	if lb, ok := left.(*object.Boolean); ok {
+		switch n.Operator {
+		case "&", "|", "^":
+			rt := truthy(right)
+			lt := lb.Value
+			switch n.Operator {
+			case "&":
+				return object.BooleanOf(lt && rt), nil
+			case "|":
+				return object.BooleanOf(lt || rt), nil
+			case "^":
+				return object.BooleanOf(lt != rt), nil
+			}
+		}
+	}
+	if _, ok := left.(*object.Nil); ok {
+		switch n.Operator {
+		case "&", "|", "^":
+			// nil & x -> false; nil | x -> truthy(x); nil ^ x -> truthy(x).
+			rt := truthy(right)
+			switch n.Operator {
+			case "&":
+				return object.FALSE, nil
+			case "|":
+				return object.BooleanOf(rt), nil
+			case "^":
+				return object.BooleanOf(rt), nil
+			}
+		}
+	}
+
 	return nil, errorf("evaluator: unsupported infix %q for %T / %T", n.Operator, left, right)
 }
 
@@ -752,11 +937,14 @@ func evalIndex(env *object.Environment, n *ast.IndexExpression) (object.RubyObje
 		return invokeProc(env, r, args)
 	case *object.Instance:
 		if m, found := dispatchClass(env, r).LookupMethod("[]"); found {
-			if um, ok := m.(*object.UserMethod); ok {
-				return invokeMethodOn(env, r, um, args, nil)
+			switch m := m.(type) {
+			case *object.UserMethod:
+				return invokeMethodOn(env, r, m, args, nil)
+			case *object.BuiltinMethod:
+				return m.Fn(env, r, args, nil)
 			}
 		}
-		return nil, errorf("evaluator: NoMethodError: undefined method `[]' for instance of %s", r.C.Name)
+		return raiseBuiltin(env, "NoMethodError", "undefined method `[]' for instance of "+r.C.Name)
 	case *object.Class:
 		// User-defined class-level [] (def self.[](...) ... end).
 		// Dispatch through ClassMethods first so a user definition
@@ -1176,6 +1364,15 @@ func rubyEqual(a, b object.RubyObject) bool {
 	case *object.Nil:
 		_, ok := b.(*object.Nil)
 		return ok
+	case *object.Class:
+		y, ok := b.(*object.Class)
+		return ok && x == y
+	case *object.Instance:
+		// Default Object#== is identity. User-defined == should be
+		// dispatched via rubyEqualDispatch (the wrapper); rubyEqual
+		// itself stays env-less and just compares pointers.
+		y, ok := b.(*object.Instance)
+		return ok && x == y
 	case *object.Array:
 		y, ok := b.(*object.Array)
 		if !ok || len(x.Elements) != len(y.Elements) {
