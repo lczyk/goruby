@@ -441,6 +441,37 @@ func kernelRequire(env *object.Environment, args []object.RubyObject) (object.Ru
 			}
 		}
 		return object.TRUE, nil
+	case "bundler/gem_tasks":
+		// Stub: real bundler/gem_tasks registers :build / :install /
+		// :release rake tasks based on the gemspec. We don't ship a
+		// gemspec runtime, so the require returns true and the tasks
+		// don't get defined. Rakefiles that wrap the require in
+		// begin/rescue LoadError still fall through; ones that call
+		// it unconditionally proceed to whatever comes after.
+		return object.TRUE, nil
+	case "rspec/core/rake_task":
+		// Stub RSpec::Core::RakeTask so Rakefiles that wire RSpec via
+		// `RSpec::Core::RakeTask.new(:spec)` load cleanly. The .new
+		// registers a real rake task with the given name whose body
+		// is a noop (we don't ship rspec). Tasks surface in rake -T
+		// so callers see the wiring; invocation runs the noop body.
+		_, _ = evalString(env, `
+module RSpec
+  module Core
+    class RakeTask
+      attr_accessor :name, :pattern, :rspec_opts, :ruby_opts,
+                    :rspec_path, :failure_message, :verbose,
+                    :fail_on_error
+      def initialize(name = :spec, *args)
+        @name = name
+        yield self if block_given?
+        Rake::Task.define_task(@name) {}
+      end
+    end
+  end
+end
+`)
+		return object.TRUE, nil
 	case "rdoc/task":
 		// Stub RDoc::Task so Rakefiles that call RDoc::Task.new { |t| ... }
 		// load cleanly. The block is yielded a struct with attr accessors
