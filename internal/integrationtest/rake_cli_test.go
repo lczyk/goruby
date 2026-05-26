@@ -1,0 +1,261 @@
+//go:build integration
+
+// End-to-end exercise of the rake CLI through the goruby binary. Each
+// scenario builds a Rakefile in a tempdir, execs `goruby -I<rake/lib>
+// <rake/exe/rake> <args...>` against it, and asserts stdout + exit
+// code. A `ruby -> goruby` symlink is dropped into the tempdir's bin
+// and prepended to PATH so anything that shells out to `ruby` (rake's
+// FileUtils.sh, TestTask) ends up back inside goruby.
+package integrationtest
+
+import (
+	"bytes"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"sync"
+	"testing"
+
+	"github.com/lczyk/assert"
+	"github.com/lczyk/assert/require"
+)
+
+var (
+	gorubyBinPath string
+	gorubyBinErr  error
+	gorubyBinOnce sync.Once
+)
+
+// gorubyBin builds the goruby binary once per test process and returns
+// its absolute path. Subsequent calls reuse the cached path. Test fails
+// fatally if the build itself fails -- nothing in this file makes sense
+// without it.
+func gorubyBin(t *testing.T) string {
+	t.Helper()
+	gorubyBinOnce.Do(func() {
+		dir, err := os.MkdirTemp("", "goruby-bin-")
+		if err != nil {
+			gorubyBinErr = err
+			return
+		}
+		bin := filepath.Join(dir, "goruby")
+		if runtime.GOOS == "windows" {
+			bin += ".exe"
+		}
+		// Find repo root by walking up from cwd until go.mod surfaces.
+		cwd, err := os.Getwd()
+		if err != nil {
+			gorubyBinErr = err
+			return
+		}
+		root := cwd
+		for {
+			if _, statErr := os.Stat(filepath.Join(root, "go.mod")); statErr == nil {
+				break
+			}
+			parent := filepath.Dir(root)
+			if parent == root {
+				gorubyBinErr = err
+				return
+			}
+			root = parent
+		}
+		cmd := exec.Command("go", "build", "-o", bin, "./cmd/goruby")
+		cmd.Dir = root
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			gorubyBinErr = err
+			gorubyBinPath = string(out)
+			return
+		}
+		gorubyBinPath = bin
+	})
+	if gorubyBinErr != nil {
+		t.Fatalf("build goruby: %v\n%s", gorubyBinErr, gorubyBinPath)
+	}
+	return gorubyBinPath
+}
+
+// rakeGemPaths returns absolute paths to the rake gem's lib and exe
+// directories shipped under testdata.
+func rakeGemPaths(t *testing.T) (libDir, exePath string) {
+	t.Helper()
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	libDir = filepath.Join(cwd, "testdata", "gems", "rake", "lib")
+	exePath = filepath.Join(cwd, "testdata", "gems", "rake", "exe", "rake")
+	return
+}
+
+// rakeEnv builds an env slice with PATH pointing at a tempdir bin/
+// holding a `ruby -> goruby` symlink. Any subprocess that resolves
+// `ruby` via PATH ends up running goruby.
+func rakeEnv(t *testing.T, tmpdir, gorubyPath string) []string {
+	t.Helper()
+	binDir := filepath.Join(tmpdir, "bin")
+	require.NoError(t, os.MkdirAll(binDir, 0o755))
+	symlinkPath := filepath.Join(binDir, "ruby")
+	require.NoError(t, os.Symlink(gorubyPath, symlinkPath))
+	env := os.Environ()
+	pathOverride := binDir + string(os.PathListSeparator) + os.Getenv("PATH")
+	for i, kv := range env {
+		if strings.HasPrefix(kv, "PATH=") {
+			env[i] = "PATH=" + pathOverride
+			pathOverride = ""
+			break
+		}
+	}
+	if pathOverride != "" {
+		env = append(env, "PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	}
+	return env
+}
+
+// runRake invokes goruby on the rake CLI with the given args, in the
+// given working directory, with `ruby -> goruby` on PATH. Returns
+// combined stdout/stderr and any exit error.
+func runRake(t *testing.T, cwd string, args ...string) (string, error) {
+	t.Helper()
+	bin := gorubyBin(t)
+	libDir, exePath := rakeGemPaths(t)
+	fullArgs := append([]string{"-I", libDir, exePath}, args...)
+	cmd := exec.Command(bin, fullArgs...)
+	cmd.Dir = cwd
+	cmd.Env = rakeEnv(t, cwd, bin)
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
+	err := cmd.Run()
+	return buf.String(), err
+}
+
+const basicRakefile = `
+desc "say hi"
+task :hi do
+  puts "hello from rake"
+end
+
+namespace :db do
+  desc "migrate db"
+  task :migrate do
+    puts "migrating"
+  end
+
+  desc "seed db"
+  task :seed => :migrate do
+    puts "seeding"
+  end
+end
+
+desc "run all"
+task :all => ["db:seed", :hi]
+
+task :default => :hi
+`
+
+func writeRakefile(t *testing.T, dir, body string) {
+	t.Helper()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "Rakefile"), []byte(body), 0o644))
+}
+
+func TestRakeCLI_DashT(t *testing.T) {
+	dir := t.TempDir()
+	writeRakefile(t, dir, basicRakefile)
+	out, err := runRake(t, dir, "-T")
+	require.NoError(t, err, "rake -T: %s", out)
+	want := "rake all         # run all\n" +
+		"rake db:migrate  # migrate db\n" +
+		"rake db:seed     # seed db\n" +
+		"rake hi          # say hi\n"
+	require.Equal(t, want, out)
+}
+
+func TestRakeCLI_RunTask(t *testing.T) {
+	dir := t.TempDir()
+	writeRakefile(t, dir, basicRakefile)
+	out, err := runRake(t, dir, "hi")
+	require.NoError(t, err, "rake hi: %s", out)
+	require.Equal(t, "hello from rake\n", out)
+}
+
+func TestRakeCLI_Default(t *testing.T) {
+	dir := t.TempDir()
+	writeRakefile(t, dir, basicRakefile)
+	out, err := runRake(t, dir)
+	require.NoError(t, err, "rake (default): %s", out)
+	require.Equal(t, "hello from rake\n", out)
+}
+
+func TestRakeCLI_Namespace(t *testing.T) {
+	dir := t.TempDir()
+	writeRakefile(t, dir, basicRakefile)
+	out, err := runRake(t, dir, "db:migrate")
+	require.NoError(t, err, "rake db:migrate: %s", out)
+	require.Equal(t, "migrating\n", out)
+}
+
+func TestRakeCLI_Prereq(t *testing.T) {
+	dir := t.TempDir()
+	writeRakefile(t, dir, basicRakefile)
+	out, err := runRake(t, dir, "db:seed")
+	require.NoError(t, err, "rake db:seed: %s", out)
+	require.Equal(t, "migrating\nseeding\n", out)
+}
+
+func TestRakeCLI_Multi(t *testing.T) {
+	dir := t.TempDir()
+	writeRakefile(t, dir, basicRakefile)
+	out, err := runRake(t, dir, "db:migrate", "hi")
+	require.NoError(t, err, "rake db:migrate hi: %s", out)
+	require.Equal(t, "migrating\nhello from rake\n", out)
+}
+
+func TestRakeCLI_All(t *testing.T) {
+	dir := t.TempDir()
+	writeRakefile(t, dir, basicRakefile)
+	out, err := runRake(t, dir, "all")
+	require.NoError(t, err, "rake all: %s", out)
+	require.Equal(t, "migrating\nseeding\nhello from rake\n", out)
+}
+
+func TestRakeCLI_TaskArgs(t *testing.T) {
+	dir := t.TempDir()
+	writeRakefile(t, dir, `
+task :greet, [:who, :punct] do |_t, args|
+  puts "hi #{args[:who]}#{args[:punct]}"
+end
+`)
+	out, err := runRake(t, dir, "greet[world,!]")
+	require.NoError(t, err, "rake greet[...]: %s", out)
+	require.Equal(t, "hi world!\n", out)
+}
+
+func TestRakeCLI_UnknownTaskNonzeroExit(t *testing.T) {
+	dir := t.TempDir()
+	writeRakefile(t, dir, basicRakefile)
+	out, err := runRake(t, dir, "does-not-exist")
+	require.Error(t, err, assert.AnyError, "expected nonzero exit, got out=%q", out)
+	if !strings.Contains(out, "Don't know how to build task") && !strings.Contains(out, "does-not-exist") {
+		t.Fatalf("expected unknown-task message, got %q", out)
+	}
+}
+
+func TestRakeCLI_TestTaskDefinition(t *testing.T) {
+	// TestTask DSL surfaces a `test` task in `rake -T` even when we
+	// don't invoke it. Exercises the DSL load path; invocation needs
+	// the subprocess chain (rake -> ruby -> test files) which is
+	// covered separately when we wire it up.
+	dir := t.TempDir()
+	writeRakefile(t, dir, `
+require "rake/testtask"
+Rake::TestTask.new(:test) do |t|
+  t.libs << "test"
+  t.test_files = FileList["test/**/test_*.rb"]
+end
+`)
+	out, err := runRake(t, dir, "-T")
+	require.NoError(t, err, "rake -T: %s", out)
+	require.ContainsString(t, out, "rake test")
+}
