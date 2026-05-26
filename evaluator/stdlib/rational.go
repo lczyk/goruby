@@ -1,11 +1,16 @@
 package stdlib
 
 import (
+	"math"
 	"strconv"
 
 	"github.com/lczyk/goruby/evaluator/builtinapi"
 	"github.com/lczyk/goruby/object"
 )
+
+// mathFrexp aliases math.Frexp -- kept local so the conversion site
+// reads as a single decomposition step.
+func mathFrexp(v float64) (frac float64, exp int) { return math.Frexp(v) }
 
 // BootstrapRationalClass installs a minimal Rational class. Instances
 // carry @num and @den (both Integer; @den always positive, GCD-reduced).
@@ -129,6 +134,55 @@ func rationalInspect(env *object.Environment, recv object.RubyObject, args []obj
 		return nil, builtinapi.Errorf("evaluator: Rational#inspect on non-Rational %T", recv)
 	}
 	return object.NewString("(" + strconv.FormatInt(num, 10) + "/" + strconv.FormatInt(den, 10) + ")"), nil
+}
+
+// FloatToRational converts v into a Rational using the IEEE 754
+// binary mantissa decomposition: x = frac * 2^exp where frac is in
+// [0.5, 1). Scales frac by 2^53 (full mantissa precision) so the
+// fraction is an integer, then reduces by GCD. NaN / Inf raise
+// FloatDomainError. Caller must guarantee the Rational class is
+// bootstrapped; this looks it up from env.
+func FloatToRational(env *object.Environment, v float64) (object.RubyObject, error) {
+	if v != v {
+		return nil, builtinapi.Errorf("evaluator: FloatDomainError: NaN")
+	}
+	if v > 1e308 || v < -1e308 {
+		return nil, builtinapi.Errorf("evaluator: FloatDomainError: Infinity")
+	}
+	rcls, _ := env.Get("Rational")
+	c, _ := rcls.(*object.Class)
+	if c == nil {
+		c = BootstrapRationalClass(env)
+	}
+	if v == 0 {
+		return newRational(c, 0, 1), nil
+	}
+	sign := int64(1)
+	if v < 0 {
+		sign = -1
+		v = -v
+	}
+	frac, exp := mathFrexp(v)
+	// x = frac * 2^exp, frac in [0.5, 1). Scale: num = frac * 2^53;
+	// denom = 2^(53 - exp). Both fit in int64 for typical inputs.
+	num := int64(frac * (1 << 53))
+	shift := int64(53 - exp)
+	var denom int64 = 1
+	if shift >= 0 {
+		if shift >= 63 {
+			// Underflow guard -- denom would overflow int64.
+			return nil, builtinapi.Errorf("evaluator: Float#to_r value out of representable Rational range")
+		}
+		denom = int64(1) << shift
+	} else {
+		// shift negative -> denom = 1, num scaled up.
+		s := -shift
+		if s >= 63 {
+			return nil, builtinapi.Errorf("evaluator: Float#to_r value out of representable Rational range")
+		}
+		num <<= uint(s)
+	}
+	return newRational(c, sign*num, denom), nil
 }
 
 // IntegerPowToRational handles the negative-exponent case for

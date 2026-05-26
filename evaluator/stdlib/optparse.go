@@ -15,7 +15,12 @@ import (
 type optHandler struct {
 	prefixes []string
 	valueful bool
-	block    any
+	// optionalValue is true when the spec used `--flag=[VAL]` brackets
+	// (or "--flag [VAL]" -- optional value form). MRI only consumes a
+	// next-token value for required-value flags; optional-value flags
+	// only accept the attached `--flag=val` form.
+	optionalValue bool
+	block         any
 }
 
 // BootstrapOptionParser installs a minimal stub of ruby's stdlib
@@ -41,6 +46,21 @@ func BootstrapOptionParser(env *object.Environment) *object.Class {
 	stdErr, _ := env.Get("StandardError")
 	stdErrCls, _ := stdErr.(*object.Class)
 	invalid := object.NewClass("InvalidOption", stdErrCls)
+	// MRI's InvalidOption#message prefixes "invalid option: " to the
+	// user-supplied message. Wire as a method override on the class.
+	invalid.AddMethod("message", &object.BuiltinMethod{Name: "message", Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+		if inst, ok := recv.(*object.Instance); ok {
+			if m, ok := inst.Ivars["@message"].(*object.String); ok {
+				msg := m.Value()
+				if !strings.HasPrefix(msg, "invalid option: ") {
+					msg = "invalid option: " + msg
+				}
+				return object.NewString(msg), nil
+			}
+		}
+		return object.NewString("invalid option"), nil
+	}})
+	invalid.AddMethod("to_s", invalid.Methods["message"])
 	c.Constants["InvalidOption"] = invalid
 
 	c.ClassMethods["new"] = &object.UserMethod{
@@ -68,7 +88,34 @@ func BootstrapOptionParser(env *object.Environment) *object.Class {
 	c.Methods["on_tail"] = c.Methods["on"]
 	c.Methods["on_head"] = c.Methods["on"]
 	c.Methods["parse!"] = &object.BuiltinMethod{Name: "parse!", Fn: optionParseBang}
-	c.Methods["parse"] = c.Methods["parse!"]
+	// parse (non-destructive form): MRI parses argv but leaves it
+	// untouched. Clone the array first; parse! mutates the clone.
+	c.Methods["parse"] = &object.BuiltinMethod{Name: "parse", Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+		if len(args) >= 1 {
+			if arr, ok := args[0].(*object.Array); ok {
+				dup := &object.Array{Elements: append([]object.RubyObject(nil), arr.Elements...)}
+				return optionParseBang(env, recv, []object.RubyObject{dup}, block)
+			}
+		}
+		return optionParseBang(env, recv, args, block)
+	}}
+	// Help-text builders -- rake's options() calls these throughout
+	// the parser configuration. We don't render help; just accept
+	// the call and return self so chaining works.
+	noopSelf := &object.BuiltinMethod{Name: "(optparse-noop)", Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+		return recv, nil
+	}}
+	c.Methods["separator"] = noopSelf
+	c.Methods["version="] = noopSelf
+	c.Methods["program_name="] = noopSelf
+	c.Methods["summary_width="] = noopSelf
+	c.Methods["accept"] = noopSelf
+	c.Methods["environment"] = noopSelf
+	c.Methods["help"] = &object.BuiltinMethod{Name: "help", Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+		// MRI returns a String dump of the help; we have no help
+		// table to render, so an empty String is honest.
+		return object.NewString(""), nil
+	}}
 
 	env.SetGlobal("OptionParser", c)
 	return c
@@ -127,6 +174,13 @@ func optionOn(env *object.Environment, recv object.RubyObject, args []object.Rub
 	}
 	h := optHandler{block: block}
 	for _, a := range args {
+		// rake's standard_rake_options passes lambdas as a positional
+		// arg (not as a block). Capture the last Proc-shaped arg as
+		// the handler block.
+		if p, ok := a.(*object.Proc); ok {
+			h.block = p
+			continue
+		}
 		s, ok := builtinapi.StringText(env, a)
 		if !ok {
 			continue
@@ -137,10 +191,20 @@ func optionOn(env *object.Environment, recv object.RubyObject, args []object.Rub
 		}
 		// Strip an argument placeholder ("-n NAME" / "--name=NAME") so
 		// the stored prefix is just the flag itself; mark valueful.
+		// `[BRACKETED]` placeholders mark the value as optional.
 		flag := s
 		if i := strings.IndexAny(s, " \t="); i >= 0 {
 			flag = s[:i]
 			h.valueful = true
+			rest := s[i:]
+			// Only `=[...]` (equals + brackets) means strict optional:
+			// value can only come via the attached =VAL form. Space-
+			// separated `[VAL]` is also optional but MRI lets the
+			// space-form consume the next token if it's not a flag.
+			trimmed := strings.TrimSpace(rest)
+			if strings.HasPrefix(rest, "=[") || (strings.HasPrefix(rest, "=") && strings.HasPrefix(trimmed[1:], "[")) {
+				h.optionalValue = true
+			}
 		}
 		h.prefixes = append(h.prefixes, flag)
 	}
@@ -185,9 +249,12 @@ func optionParseBang(env *object.Environment, recv object.RubyObject, args []obj
 		for _, h := range handlers {
 			for _, p := range h.prefixes {
 				if tok == p {
-					// Plain match.
-					if h.valueful && i+1 < len(arr.Elements) {
-						if val, ok := builtinapi.StringText(env, arr.Elements[i+1]); ok {
+					// Plain match. For required-value options (not the
+					// optional-value `--name=[VAL]` form), peek ahead
+					// for a value, refusing to consume a flag-prefixed
+					// next token.
+					if h.valueful && !h.optionalValue && i+1 < len(arr.Elements) {
+						if val, ok := builtinapi.StringText(env, arr.Elements[i+1]); ok && !strings.HasPrefix(val, "-") {
 							if _, err := builtinapi.InvokeBlockValue(env, h.block, []object.RubyObject{object.NewString(val)}); err != nil {
 								return nil, err
 							}
@@ -196,7 +263,12 @@ func optionParseBang(env *object.Environment, recv object.RubyObject, args []obj
 							break
 						}
 					}
-					if _, err := builtinapi.InvokeBlockValue(env, h.block, nil); err != nil {
+					// Valueful with no value -> nil; non-valueful -> true.
+					var arg object.RubyObject = object.TRUE
+					if h.valueful {
+						arg = object.NIL
+					}
+					if _, err := builtinapi.InvokeBlockValue(env, h.block, []object.RubyObject{arg}); err != nil {
 						return nil, err
 					}
 					i++
@@ -228,10 +300,36 @@ func optionParseBang(env *object.Environment, recv object.RubyObject, args []obj
 			}
 		}
 		if !matched {
+			// MRI raises OptionParser::InvalidOption for unknown
+			// flag tokens. Bare non-option tokens (no leading '-')
+			// pass through.
+			if strings.HasPrefix(tok, "-") && tok != "-" && tok != "--" {
+				return nil, raiseInvalidOption(env, tok)
+			}
 			out = append(out, arr.Elements[i])
 			i++
 		}
 	}
 	arr.Elements = out
 	return arr, nil
+}
+
+// raiseInvalidOption raises OptionParser::InvalidOption via the
+// builtinapi hook, falling back to StandardError when the class isn't
+// installed yet.
+func raiseInvalidOption(env *object.Environment, flag string) error {
+	// builtinapi.RaiseBuiltin takes a class name; install
+	// OptionParser::InvalidOption as a const-named class so it can
+	// be resolved by name from the env.
+	if op, ok := env.Get("OptionParser"); ok {
+		if cls, ok := op.(*object.Class); ok {
+			if _, ok := cls.Constants["InvalidOption"].(*object.Class); ok {
+				env.SetGlobal("OptionParser::InvalidOption", cls.Constants["InvalidOption"])
+				_, err := builtinapi.RaiseBuiltin(env, "OptionParser::InvalidOption", "invalid option: "+flag)
+				return err
+			}
+		}
+	}
+	_, err := builtinapi.RaiseBuiltin(env, "StandardError", "invalid option: "+flag)
+	return err
 }
