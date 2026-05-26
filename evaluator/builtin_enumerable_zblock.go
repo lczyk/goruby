@@ -44,7 +44,7 @@ func init() {
 						mmArgs = append(mmArgs, args...)
 						return mm.Call(env, inst, mmArgs, blkAny)
 					}
-					return nil, errorf("evaluator: NoMethodError: undefined method `%s' for instance of %s", name, inst.C.Name)
+					return raiseBuiltin(env, "NoMethodError", "undefined method `"+name+"' for instance of "+inst.C.Name)
 				}
 				if bm, ok := blkAny.(*goBlockMarker); ok && bm != nil {
 					return blockForm(env, recv, args, bm.fn)

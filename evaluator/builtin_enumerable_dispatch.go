@@ -154,20 +154,29 @@ func init() {
 // UserMethod, provided the class includes Enumerable and defines
 // `each`. Returns a NoMethodError otherwise.
 func enumGate(env *object.Environment, recv object.RubyObject, name string) (*object.Instance, *object.UserMethod, error) {
+	raise := func(target string) error {
+		_, e := raiseBuiltin(env, "NoMethodError", "undefined method `"+name+"' for "+target)
+		return e
+	}
 	inst, ok := recv.(*object.Instance)
 	if !ok {
-		return nil, nil, errorf("evaluator: NoMethodError: undefined method `%s' for %T", name, recv)
+		cls := classOfRaw(env, recv)
+		target := "Object"
+		if cls != nil {
+			target = cls.Name
+		}
+		return nil, nil, raise(target)
 	}
 	if !instanceIncludesEnumerable(env, inst) {
-		return nil, nil, errorf("evaluator: NoMethodError: undefined method `%s' for instance of %s", name, inst.C.Name)
+		return nil, nil, raise("instance of " + inst.C.Name)
 	}
 	m, ok := dispatchClass(env, inst).LookupMethod("each")
 	if !ok {
-		return nil, nil, errorf("evaluator: NoMethodError: undefined method `%s' for instance of %s", name, inst.C.Name)
+		return nil, nil, raise("instance of " + inst.C.Name)
 	}
 	um, ok := m.(*object.UserMethod)
 	if !ok {
-		return nil, nil, errorf("evaluator: NoMethodError: undefined method `%s' for instance of %s", name, inst.C.Name)
+		return nil, nil, raise("instance of " + inst.C.Name)
 	}
 	return inst, um, nil
 }

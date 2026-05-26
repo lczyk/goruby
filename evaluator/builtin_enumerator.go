@@ -87,6 +87,42 @@ func bootstrapEnumeratorClass(env *object.Environment) *object.Class {
 			return recv, nil
 		},
 	})
+	// Enumerator#first(n=1) -- take first n elements from the buffered
+	// receiver array. With no arg, returns the single first element.
+	c.AddMethod("first", &object.BuiltinMethod{
+		Name: "first",
+		Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+			e, ok := recv.(*object.Enumerator)
+			if !ok {
+				return object.NIL, nil
+			}
+			arr, ok := e.Receiver.(*object.Array)
+			if !ok {
+				return object.NIL, nil
+			}
+			if len(args) == 0 {
+				if len(arr.Elements) == 0 {
+					return object.NIL, nil
+				}
+				return arr.Elements[0], nil
+			}
+			n, ok := args[0].(*object.Integer)
+			if !ok {
+				return nil, errorf("evaluator: Enumerator#first count must be Integer")
+			}
+			k := int(n.Value)
+			if k < 0 {
+				return nil, errorf("evaluator: negative array size")
+			}
+			if k > len(arr.Elements) {
+				k = len(arr.Elements)
+			}
+			out := make([]object.RubyObject, k)
+			copy(out, arr.Elements[:k])
+			return object.NewArray(out...), nil
+		},
+	})
+	c.AddMethod("take", c.Methods["first"])
 	env.SetGlobal("Enumerator", c)
 	return c
 }

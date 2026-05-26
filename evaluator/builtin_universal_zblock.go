@@ -53,5 +53,50 @@ func init() {
 		},
 		sendFn)
 	c.Methods["__send__"] = c.Methods["send"]
-	c.Methods["public_send"] = c.Methods["send"]
+
+	// public_send is dispatch-identical to send but enforces
+	// visibility: private + protected methods raise NoMethodError
+	// instead of silently dispatching.
+	publicSendCheck := func(env *object.Environment, recv object.RubyObject, mname string) (object.RubyObject, error) {
+		inst, ok := recv.(*object.Instance)
+		if !ok {
+			return nil, nil
+		}
+		if isPrivateMethod(inst.C, mname) {
+			return raiseBuiltin(env, "NoMethodError", "private method `"+mname+"' called for instance of "+inst.C.Name)
+		}
+		if isProtectedMethod(inst.C, mname) && !callerIsKin(env, inst.C) {
+			return raiseBuiltin(env, "NoMethodError", "protected method `"+mname+"' called for instance of "+inst.C.Name)
+		}
+		return nil, nil
+	}
+	publicSendBlock := func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, blk *ast.BlockExpression) (object.RubyObject, error) {
+		if len(args) < 1 {
+			return nil, errorf("evaluator: public_send needs a method name")
+		}
+		mname, ok := symbolOrString(env, args[0])
+		if !ok {
+			return nil, errorf("evaluator: public_send: method name must be Symbol or String")
+		}
+		if _, err := publicSendCheck(env, recv, mname); err != nil {
+			return nil, err
+		}
+		marker := &goBlockMarker{fn: invoke, blk: blk}
+		return dispatchWithBlock(env, recv, mname, args[1:], marker)
+	}
+	addBlockOrPlainMethod(c, "public_send",
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
+			if len(args) < 1 {
+				return nil, errorf("evaluator: public_send needs a method name")
+			}
+			mname, ok := symbolOrString(env, args[0])
+			if !ok {
+				return nil, errorf("evaluator: public_send: method name must be Symbol or String")
+			}
+			if _, err := publicSendCheck(env, recv, mname); err != nil {
+				return nil, err
+			}
+			return callMethod(env, recv, mname, args[1:])
+		},
+		publicSendBlock)
 }
