@@ -31,6 +31,7 @@ var (
 	ArrayClass       *Class
 	HashClass        *Class
 	ProcClass        *Class
+	MethodClass      *Class
 	RangeClass       *Class
 	NilClassClass    *Class
 	TrueClassClass   *Class
@@ -51,6 +52,7 @@ func init() {
 	ArrayClass = NewClass("Array", ObjectClass)
 	HashClass = NewClass("Hash", ObjectClass)
 	ProcClass = NewClass("Proc", ObjectClass)
+	MethodClass = NewClass("Method", ObjectClass)
 	RangeClass = NewClass("Range", ObjectClass)
 	NilClassClass = NewClass("NilClass", ObjectClass)
 	TrueClassClass = NewClass("TrueClass", ObjectClass)

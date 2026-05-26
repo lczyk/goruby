@@ -35,6 +35,12 @@ type UserMethod struct {
 	// when the method was *called* (after a chain of require_relative
 	// + cross-file dispatches).
 	SourceFile string
+	// DefClass records the class/module the method was defined inside.
+	// Used to anchor `super` lookups so that a method defined in a
+	// module mixed into a class climbs strictly later in the ancestry
+	// (rather than re-finding itself through the includer's chain).
+	// Nil for toplevel defs.
+	DefClass *Class
 }
 
 func (m *UserMethod) Type() Type       { return OBJECT_OBJ }

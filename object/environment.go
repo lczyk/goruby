@@ -54,6 +54,11 @@ type Environment struct {
 	// is the base for resolving relative loads. Empty for hand-built ASTs
 	// and ad-hoc Eval calls without a backing file.
 	currentFile string
+	// callStack records active method calls for Kernel#caller. Each
+	// entry is "<file>:<line>:in `<method>'". Pushed on method entry,
+	// popped on exit. Maintained on the root env so all method calls
+	// converge on a single stack.
+	callStack []string
 	// loadedFiles records absolute paths already loaded by
 	// require_relative / require, so re-requiring is a no-op (matches
 	// MRI's $LOADED_FEATURES semantics, scoped to this interpreter).
@@ -75,9 +80,20 @@ type Environment struct {
 	// evaluator falls back to the main object.
 	Self RubyObject
 
+	// CurrentException holds the exception currently being handled in
+	// a rescue clause. Bare `raise` (no args) inside the clause
+	// re-raises this value. nil outside of a rescue body.
+	CurrentException RubyObject
+
 	// CurrentClass is the open class body being executed (set inside
 	// `class Foo ... end`). nil at top level.
 	CurrentClass *Class
+
+	// SingletonHost is set inside `class << expr ... end`. Unprefixed
+	// `def foo` in this scope installs onto the host's singleton table
+	// (Class.ClassMethods or Instance.SingletonMethods) instead of the
+	// enclosing class's instance methods.
+	SingletonHost RubyObject
 
 	// CurrentMethodName / CurrentMethodArgs are set on a method's call
 	// frame so `super` can find the next-up implementation and (for
@@ -90,6 +106,12 @@ type Environment struct {
 	// parameters. Stashed on the call frame because plumbing kwargs
 	// through every dispatcher signature would balloon the API.
 	CurrentKwargs map[string]RubyObject
+	// CurrentKwargOrder records the order keys were added to
+	// CurrentKwargs (Go maps don't preserve insertion order). Read by
+	// places that build a Hash from kwargs and need MRI-stable
+	// ordering -- in particular the implicit-hash bundling for builtin
+	// targets like Hash#merge(c: 3).
+	CurrentKwargOrder []string
 }
 
 // NewMainEnvironment returns a fresh root environment with default stdout
@@ -294,6 +316,30 @@ func (e *Environment) SetArgfBR(br any)    { e.root().argfBR = br }
 // evaluated. Empty when no file-backed eval is on the stack.
 func (e *Environment) CurrentFile() string { return e.root().currentFile }
 
+// PushCallFrame appends a backtrace entry to the root call stack.
+// Caller is Kernel#caller; PopCallFrame trims back on method return.
+func (e *Environment) PushCallFrame(frame string) {
+	r := e.root()
+	r.callStack = append(r.callStack, frame)
+}
+
+// PopCallFrame trims one entry off the root call stack.
+func (e *Environment) PopCallFrame() {
+	r := e.root()
+	if n := len(r.callStack); n > 0 {
+		r.callStack = r.callStack[:n-1]
+	}
+}
+
+// CallStack returns a snapshot of the active backtrace entries,
+// outermost first. Caller reverses to get caller-first ordering.
+func (e *Environment) CallStack() []string {
+	r := e.root()
+	out := make([]string, len(r.callStack))
+	copy(out, r.callStack)
+	return out
+}
+
 // SetCurrentFile overwrites the active source-file path on the root
 // env, returning the previous value so callers can restore it on
 // frame exit (caller-managed stack discipline).
@@ -380,6 +426,22 @@ func (e *Environment) EnclosingClass() *Class {
 	for cur := e; cur != nil; cur = cur.outer {
 		if cur.CurrentClass != nil {
 			return cur.CurrentClass
+		}
+	}
+	return nil
+}
+
+// EnclosingSingletonHost walks outward to the nearest frame inside a
+// `class << expr` body and returns its host receiver. Stops at the
+// nearest method frame so a `def foo` inside a method body doesn't
+// accidentally see a stale SingletonHost from a wider scope.
+func (e *Environment) EnclosingSingletonHost() RubyObject {
+	for cur := e; cur != nil; cur = cur.outer {
+		if cur.SingletonHost != nil {
+			return cur.SingletonHost
+		}
+		if cur.MethodFrame {
+			return nil
 		}
 	}
 	return nil

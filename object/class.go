@@ -15,6 +15,10 @@ type Class struct {
 	// Private records instance-method names that may not be called via
 	// an explicit receiver. Populated by `private` inside a class body.
 	Private map[string]bool
+	// Protected records instance-method names callable via explicit
+	// receiver only from inside an instance of the same class (or a
+	// subclass). Populated by `protected` inside a class body.
+	Protected map[string]bool
 	// CurrentVisibility is the visibility mode the next method def in
 	// this class body will inherit. "public" by default; flipped by
 	// bare `private` / `public` keywords; transient -- meaningful only
@@ -24,6 +28,29 @@ type Class struct {
 	// this class. Inline call-site caches (e.g. spaceshipCache below)
 	// compare against Version to detect invalidation.
 	Version uint64
+
+	// Parent is the enclosing module/class this class was defined inside,
+	// when known. Used by QualifiedName / Inspect to render the dotted
+	// path (Outer::Inner). nil for top-level classes and for classes
+	// whose enclosure was not tracked at creation time.
+	Parent *Class
+
+	// Ivars holds class-level instance variables -- @var assigned at
+	// class-body scope (where self == the class object), or via
+	// `def self.foo; @var = ...; end`. Distinct from ClassVars (@@x),
+	// which are shared up the inheritance chain; class-instance vars
+	// belong to one class object only.
+	Ivars map[string]RubyObject
+
+	// SingletonClass is the per-class metaclass. Materialised on first
+	// access (typically when `class << SomeClass; ...; end` opens the
+	// eigenclass and code inside reads `self`). Methods installed on
+	// it are class-level methods of the host, distinct from ClassMethods
+	// only in that they survive the singleton-class-as-value idiom
+	// `(class << self; self; end).attr_accessor :foo`. Send / dispatch
+	// for Class receivers consult ClassSingleton.Methods alongside
+	// ClassMethods.
+	ClassSingleton *Class
 
 	// spaceshipCache memoises the result of LookupMethod("<=>") for
 	// this class. Comparable derivations (Object#<, #<=, etc. on
@@ -86,7 +113,16 @@ func (c *Class) Class() RubyClass {
 	}
 	return ClassClass
 }
-func (c *Class) Inspect() string { return c.Name }
+func (c *Class) Inspect() string { return c.QualifiedName() }
+
+// QualifiedName walks Parent and returns the dotted path
+// (Outer::Inner::Leaf). Falls back to bare Name when Parent is nil.
+func (c *Class) QualifiedName() string {
+	if c.Parent == nil || c.Parent.Name == "" {
+		return c.Name
+	}
+	return c.Parent.QualifiedName() + "::" + c.Name
+}
 
 // LookupSpaceship returns this class's `<=>` method, cached. Cache is
 // version-gated against the class's Version counter: any AddMethod /
@@ -104,15 +140,33 @@ func (c *Class) LookupSpaceship() (RubyMethod, bool) {
 	return m, m != nil
 }
 
+// EnsureClassSingleton returns c's per-class metaclass, lazy-
+// creating it on first call. Methods installed on the singleton
+// behave as class methods on c, with the eigenclass-as-value
+// idiom `(class << self; self; end).attr_accessor name` working
+// because the value handed out is a real Class.
+func (c *Class) EnsureClassSingleton() *Class {
+	if c.ClassSingleton == nil {
+		sc := NewClass("#<Class:"+c.QualifiedName()+">", nil)
+		sc.IsModule = true
+		c.ClassSingleton = sc
+	}
+	return c.ClassSingleton
+}
+
 // LookupMethod walks the inheritance + include chain for an instance
-// method with the given name.
+// method with the given name. Mirrors MRI's MRO: own Methods, then
+// each Include (only the include's own Methods + its further
+// Includes; the include's Super chain is NOT followed, since that
+// would route Object methods ahead of the receiver's real Super
+// and break method-resolution order).
 func (c *Class) LookupMethod(name string) (RubyMethod, bool) {
 	for cur := c; cur != nil; cur = cur.Super {
 		if m, ok := cur.Methods[name]; ok {
 			return m, true
 		}
 		for _, inc := range cur.Includes {
-			if m, ok := inc.LookupMethod(name); ok {
+			if m, ok := inc.lookupOwnAndIncludes(name); ok {
 				return m, true
 			}
 		}
@@ -120,9 +174,36 @@ func (c *Class) LookupMethod(name string) (RubyMethod, bool) {
 	return nil, false
 }
 
+// lookupOwnAndIncludes returns name from this class's Methods or any
+// of its (recursive) Includes' Methods, but does NOT follow Super.
+// Used by LookupMethod when walking the includes chain so the
+// includes only contribute their own contents to the MRO.
+func (c *Class) lookupOwnAndIncludes(name string) (RubyMethod, bool) {
+	if c == nil {
+		return nil, false
+	}
+	if m, ok := c.Methods[name]; ok {
+		return m, true
+	}
+	for _, inc := range c.Includes {
+		if m, ok := inc.lookupOwnAndIncludes(name); ok {
+			return m, true
+		}
+	}
+	return nil, false
+}
+
 // LookupClassMethod walks the chain for a class-level method.
+// Consults each class's ClassSingleton (singleton-class instance
+// methods land here under the eigenclass-as-value idiom) before
+// its ClassMethods table.
 func (c *Class) LookupClassMethod(name string) (RubyMethod, bool) {
 	for cur := c; cur != nil; cur = cur.Super {
+		if cur.ClassSingleton != nil {
+			if m, ok := cur.ClassSingleton.Methods[name]; ok {
+				return m, true
+			}
+		}
 		if m, ok := cur.ClassMethods[name]; ok {
 			return m, true
 		}
@@ -131,14 +212,24 @@ func (c *Class) LookupClassMethod(name string) (RubyMethod, bool) {
 }
 
 // IsAncestor reports whether other appears in c's inheritance / include
-// chain (inclusive).
+// chain (inclusive). Cycle-safe: a visited set guards against include
+// loops (e.g. minitest/spec's class-of-class self-reference shapes).
 func (c *Class) IsAncestor(other *Class) bool {
+	visited := map[*Class]bool{}
+	return c.isAncestorVisit(other, visited)
+}
+
+func (c *Class) isAncestorVisit(other *Class, visited map[*Class]bool) bool {
 	for cur := c; cur != nil; cur = cur.Super {
+		if visited[cur] {
+			return false
+		}
+		visited[cur] = true
 		if cur == other {
 			return true
 		}
 		for _, inc := range cur.Includes {
-			if inc.IsAncestor(other) {
+			if inc.isAncestorVisit(other, visited) {
 				return true
 			}
 		}
@@ -154,6 +245,24 @@ type Instance struct {
 	// `def obj.foo; ... end`. Consulted by Send before the class chain
 	// so a singleton method overrides the class definition.
 	SingletonMethods map[string]RubyMethod
+	// SingletonClass is the per-object metaclass, lazily materialised
+	// on first `singleton_class` call. Its Super is the object's
+	// regular class; Send consults its method chain before falling
+	// through to C. Distinct from SingletonMethods only in that
+	// methods installed via define_method on the singleton class land
+	// in SingletonClass.Methods rather than the SingletonMethods map.
+	SingletonClass *Class
+}
+
+// EnsureSingletonClass returns the object's per-object metaclass,
+// creating it on first call. Super chains up to the object's regular
+// class so inherited methods stay reachable.
+func (i *Instance) EnsureSingletonClass() *Class {
+	if i.SingletonClass == nil {
+		sc := NewClass("#<Class:#<"+i.C.Name+">>", i.C)
+		i.SingletonClass = sc
+	}
+	return i.SingletonClass
 }
 
 func NewInstance(c *Class) *Instance {

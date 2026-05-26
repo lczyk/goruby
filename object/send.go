@@ -11,10 +11,21 @@ package object
 func Send(env *Environment, recv RubyObject, name string, args []RubyObject, block any) (result RubyObject, found bool, err error) {
 	// Per-instance singleton methods (def obj.foo) win over the class
 	// chain. Check before LookupMethod walks the ancestry.
-	if inst, ok := recv.(*Instance); ok && inst.SingletonMethods != nil {
-		if m, ok := inst.SingletonMethods[name]; ok {
-			v, e := m.Call(env, recv, args, block)
-			return v, true, e
+	if inst, ok := recv.(*Instance); ok {
+		if inst.SingletonMethods != nil {
+			if m, ok := inst.SingletonMethods[name]; ok {
+				v, e := m.Call(env, recv, args, block)
+				return v, true, e
+			}
+		}
+		// Singleton class (lazily materialised by Object#singleton_class
+		// + populated via define_method) takes the same precedence as
+		// SingletonMethods. Walk its chain before the regular class.
+		if inst.SingletonClass != nil {
+			if m, ok := inst.SingletonClass.LookupMethod(name); ok {
+				v, e := m.Call(env, recv, args, block)
+				return v, true, e
+			}
 		}
 	}
 	cls := recv.Class()
