@@ -5,7 +5,9 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/lczyk/goruby/evaluator/builtinapi"
 	"github.com/lczyk/goruby/object"
@@ -40,6 +42,7 @@ func stdinReader(env *object.Environment) *bufio.Reader {
 func bootstrapIO(env *object.Environment) {
 	bootstrapFileClass(env)
 	bootstrapSignalClass(env)
+	bootstrapIOClass(env)
 	stdin := bootstrapSTDIN(env)
 	stdout := bootstrapSTDOUT(env)
 	stderr := bootstrapSTDERR(env)
@@ -80,6 +83,23 @@ func bootstrapIO(env *object.Environment) {
 	}
 }
 
+// bootstrapIOClass installs the IO class. MRI's STDOUT and STDERR
+// are IO instances; in goruby they're Class objects (legacy choice),
+// so we install IO with the same interface stubs and make
+// STDOUT.Super / STDERR.Super = IO so .is_a?(IO) at the class-as-
+// receiver level evaluates true via the ancestor walk. Class
+// methods (puts, print, write, etc.) are inherited automatically.
+func bootstrapIOClass(env *object.Environment) *object.Class {
+	if existing, ok := env.Get("IO"); ok {
+		if c, ok := existing.(*object.Class); ok {
+			return c
+		}
+	}
+	c := object.NewClass("IO", nil)
+	env.SetGlobal("IO", c)
+	return c
+}
+
 // bootstrapSTDOUT installs the STDOUT constant: a class object with
 // `puts`/`print`/`write` class methods that delegate to env.Stdout().
 // Idempotent.
@@ -89,7 +109,9 @@ func bootstrapSTDOUT(env *object.Environment) *object.Class {
 			return c
 		}
 	}
-	c := object.NewClass("STDOUT", nil)
+	io, _ := env.Get("IO")
+	ioCls, _ := io.(*object.Class)
+	c := object.NewClass("STDOUT", ioCls)
 	c.ClassMethods["puts"] = &object.UserMethod{Name: "puts", Body: nativeFn{Fn: stdoutPuts}}
 	c.ClassMethods["print"] = &object.UserMethod{Name: "print", Body: nativeFn{Fn: stdoutPrint}}
 	c.ClassMethods["write"] = &object.UserMethod{Name: "write", Body: nativeFn{Fn: stdoutWrite}}
@@ -115,7 +137,9 @@ func bootstrapSTDERR(env *object.Environment) *object.Class {
 			return c
 		}
 	}
-	c := object.NewClass("STDERR", nil)
+	io, _ := env.Get("IO")
+	ioCls, _ := io.(*object.Class)
+	c := object.NewClass("STDERR", ioCls)
 	c.ClassMethods["puts"] = &object.UserMethod{Name: "puts", Body: nativeFn{Fn: stderrPuts}}
 	c.ClassMethods["print"] = &object.UserMethod{Name: "print", Body: nativeFn{Fn: stderrPrint}}
 	c.ClassMethods["write"] = &object.UserMethod{Name: "write", Body: nativeFn{Fn: stderrWrite}}
@@ -362,6 +386,43 @@ func bootstrapFileClass(env *object.Environment) *object.Class {
 	c.ClassMethods["exists?"] = &object.UserMethod{Name: "exists?", Body: nativeFn{Fn: fileExist}}
 	c.ClassMethods["new"] = &object.UserMethod{Name: "new", Body: nativeFn{Fn: fileNew(c)}}
 	c.ClassMethods["open"] = &object.UserMethod{Name: "open", Body: nativeFn{Fn: fileNew(c)}}
+	c.ClassMethods["join"] = &object.UserMethod{Name: "join", Body: nativeFn{Fn: fileJoin}}
+	c.ClassMethods["dirname"] = &object.UserMethod{Name: "dirname", Body: nativeFn{Fn: fileDirname}}
+	c.ClassMethods["split"] = &object.UserMethod{Name: "split", Body: nativeFn{Fn: fileSplit}}
+	// MRI File::SEPARATOR ("/"") and File::ALT_SEPARATOR (nil on
+	// posix, "\\" on win). Rake's pathmap "%s" reads them; without
+	// the constants the chain blows up before the format walker.
+	if c.Constants == nil {
+		c.Constants = map[string]object.RubyObject{}
+	}
+	c.Constants["SEPARATOR"] = object.NewString("/")
+	c.Constants["Separator"] = c.Constants["SEPARATOR"]
+	c.Constants["PATH_SEPARATOR"] = object.NewString(":")
+	c.Constants["ALT_SEPARATOR"] = object.NIL
+	// FNM_* glob match flags. MRI exposes these as Integer bitmasks
+	// on File. Numeric values match MRI's fnmatch implementation.
+	c.Constants["FNM_NOESCAPE"] = object.NewInteger(0x01)
+	c.Constants["FNM_PATHNAME"] = object.NewInteger(0x02)
+	c.Constants["FNM_DOTMATCH"] = object.NewInteger(0x04)
+	c.Constants["FNM_CASEFOLD"] = object.NewInteger(0x08)
+	c.Constants["FNM_EXTGLOB"] = object.NewInteger(0x10)
+	c.Constants["FNM_SYSCASE"] = object.NewInteger(0x00)
+	c.Constants["FNM_SHORTNAME"] = object.NewInteger(0x40)
+	c.ClassMethods["basename"] = &object.UserMethod{Name: "basename", Body: nativeFn{Fn: fileBasename}}
+	c.ClassMethods["extname"] = &object.UserMethod{Name: "extname", Body: nativeFn{Fn: fileExtname}}
+	c.ClassMethods["expand_path"] = &object.UserMethod{Name: "expand_path", Body: nativeFn{Fn: fileExpandPath}}
+	c.ClassMethods["realpath"] = &object.UserMethod{Name: "realpath", Body: nativeFn{Fn: fileExpandPath}}
+	c.ClassMethods["absolute_path"] = &object.UserMethod{Name: "absolute_path", Body: nativeFn{Fn: fileExpandPath}}
+	c.ClassMethods["write"] = &object.UserMethod{Name: "write", Body: nativeFn{Fn: fileWrite}}
+	c.ClassMethods["mtime"] = &object.UserMethod{Name: "mtime", Body: nativeFn{Fn: fileMtime}}
+	c.ClassMethods["stat"] = &object.UserMethod{Name: "stat", Body: nativeFn{Fn: fileStat(c)}}
+	c.ClassMethods["utime"] = &object.UserMethod{Name: "utime", Body: nativeFn{Fn: fileUtime}}
+	c.ClassMethods["chmod"] = &object.UserMethod{Name: "chmod", Body: nativeFn{Fn: fileChmod}}
+	c.ClassMethods["directory?"] = &object.UserMethod{Name: "directory?", Body: nativeFn{Fn: fileDirectoryQ}}
+	c.ClassMethods["file?"] = &object.UserMethod{Name: "file?", Body: nativeFn{Fn: fileFileQ}}
+	c.ClassMethods["readable?"] = &object.UserMethod{Name: "readable?", Body: nativeFn{Fn: fileReadableQ}}
+	c.ClassMethods["writable?"] = &object.UserMethod{Name: "writable?", Body: nativeFn{Fn: fileWritableQ}}
+	c.ClassMethods["executable?"] = &object.UserMethod{Name: "executable?", Body: nativeFn{Fn: fileExecutableQ}}
 	c.Methods["each"] = &object.BuiltinMethod{Name: "each", Fn: fileEach}
 	c.Methods["each_line"] = c.Methods["each"]
 	c.Methods["read"] = &object.BuiltinMethod{Name: "read", Fn: fileInstanceRead}
@@ -505,6 +566,419 @@ func fileExist(_ *object.Environment, args []object.RubyObject) (object.RubyObje
 		return object.FALSE, nil
 	}
 	return nil, errorf("evaluator: File.exist?: %s", err.Error())
+}
+
+// fileJoin: File.join(seg, seg, ...) -> "seg/seg/...". Mirrors MRI:
+// empty segments collapse, redundant separators around each join site
+// dedupe. Array args are recursively joined too (so File.join(["a","b"],
+// "c") -> "a/b/c").
+func fileJoin(_ *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	parts := make([]string, 0, len(args))
+	var collect func(o object.RubyObject) error
+	collect = func(o object.RubyObject) error {
+		switch v := o.(type) {
+		case *object.String:
+			parts = append(parts, v.Value())
+		case *object.Array:
+			for _, e := range v.Elements {
+				if err := collect(e); err != nil {
+					return err
+				}
+			}
+		default:
+			return errorf("evaluator: File.join: expected String/Array, got %T", o)
+		}
+		return nil
+	}
+	for _, a := range args {
+		if err := collect(a); err != nil {
+			return nil, err
+		}
+	}
+	// Trim leading/trailing separator from each interior piece so the
+	// canonical form has exactly one separator between segments. MRI
+	// preserves an absolute-style leading separator on the first piece.
+	for i := range parts {
+		if i > 0 {
+			parts[i] = strings.TrimLeft(parts[i], "/")
+		}
+		if i < len(parts)-1 {
+			parts[i] = strings.TrimRight(parts[i], "/")
+		}
+	}
+	return object.NewString(strings.Join(parts, "/")), nil
+}
+
+// fileSplit mirrors MRI's File.split -- returns [dirname, basename] as
+// a two-element Array. Rake's pathmap_explode iterates via this.
+func fileSplit(_ *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) != 1 {
+		return nil, errorf("evaluator: File.split: expected 1 arg, got %d", len(args))
+	}
+	s, ok := args[0].(*object.String)
+	if !ok {
+		return nil, errorf("evaluator: File.split: expected String, got %T", args[0])
+	}
+	v := s.Value()
+	return object.NewArray(
+		object.NewString(filepath.Dir(v)),
+		object.NewString(filepath.Base(v)),
+	), nil
+}
+
+func fileDirname(_ *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) != 1 {
+		return nil, errorf("evaluator: File.dirname: expected 1 arg, got %d", len(args))
+	}
+	s, ok := args[0].(*object.String)
+	if !ok {
+		return nil, errorf("evaluator: File.dirname: expected String, got %T", args[0])
+	}
+	return object.NewString(filepath.Dir(s.Value())), nil
+}
+
+func fileBasename(_ *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) < 1 || len(args) > 2 {
+		return nil, errorf("evaluator: File.basename: expected 1..2 args, got %d", len(args))
+	}
+	s, ok := args[0].(*object.String)
+	if !ok {
+		return nil, errorf("evaluator: File.basename: expected String, got %T", args[0])
+	}
+	base := filepath.Base(s.Value())
+	if len(args) == 2 {
+		ext, ok := args[1].(*object.String)
+		if !ok {
+			return nil, errorf("evaluator: File.basename: expected String ext, got %T", args[1])
+		}
+		extVal := ext.Value()
+		if extVal == ".*" {
+			if dot := strings.LastIndexByte(base, '.'); dot > 0 {
+				base = base[:dot]
+			}
+		} else if strings.HasSuffix(base, extVal) {
+			base = base[:len(base)-len(extVal)]
+		}
+	}
+	return object.NewString(base), nil
+}
+
+func fileExtname(_ *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) != 1 {
+		return nil, errorf("evaluator: File.extname: expected 1 arg, got %d", len(args))
+	}
+	s, ok := args[0].(*object.String)
+	if !ok {
+		return nil, errorf("evaluator: File.extname: expected String, got %T", args[0])
+	}
+	// MRI's File.extname returns "" for dotfiles (no dot-prefix
+	// counts as the extension separator). Compare basename's
+	// rightmost dot position: if there is none, or it's at index 0,
+	// no extension.
+	base := filepath.Base(s.Value())
+	dot := strings.LastIndexByte(base, '.')
+	if dot <= 0 {
+		return object.NewString(""), nil
+	}
+	return object.NewString(base[dot:]), nil
+}
+
+func fileExpandPath(_ *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) < 1 || len(args) > 2 {
+		return nil, errorf("evaluator: File.expand_path: expected 1..2 args, got %d", len(args))
+	}
+	s, ok := args[0].(*object.String)
+	if !ok {
+		return nil, errorf("evaluator: File.expand_path: expected String, got %T", args[0])
+	}
+	target := s.Value()
+	// MRI expands ~ to $HOME. Simplistic handling; enough for the
+	// most common cases callers reach for.
+	if strings.HasPrefix(target, "~/") || target == "~" {
+		if home, _ := os.UserHomeDir(); home != "" {
+			target = filepath.Join(home, strings.TrimPrefix(target, "~"))
+		}
+	}
+	if !filepath.IsAbs(target) {
+		base := ""
+		if len(args) == 2 {
+			b, ok := args[1].(*object.String)
+			if !ok {
+				return nil, errorf("evaluator: File.expand_path: expected String base, got %T", args[1])
+			}
+			base = b.Value()
+		}
+		if base == "" {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return nil, errorf("evaluator: File.expand_path: %s", err.Error())
+			}
+			base = cwd
+		}
+		target = filepath.Join(base, target)
+	}
+	abs, err := filepath.Abs(target)
+	if err != nil {
+		return nil, errorf("evaluator: File.expand_path: %s", err.Error())
+	}
+	return object.NewString(abs), nil
+}
+
+func fileWrite(_ *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) < 2 {
+		return nil, errorf("evaluator: File.write: expected 2..3 args, got %d", len(args))
+	}
+	path, ok := args[0].(*object.String)
+	if !ok {
+		return nil, errorf("evaluator: File.write: expected String path, got %T", args[0])
+	}
+	var data []byte
+	switch s := args[1].(type) {
+	case *object.String:
+		data = []byte(s.Value())
+	default:
+		return nil, errorf("evaluator: File.write: expected String content, got %T", args[1])
+	}
+	if err := os.WriteFile(path.Value(), data, 0o644); err != nil {
+		return nil, errorf("evaluator: File.write: %s", err.Error())
+	}
+	return object.NewInteger(int64(len(data))), nil
+}
+
+// fileChmod mirrors MRI's File.chmod(mode, *paths) -- changes the
+// Unix permission bits on each path. Returns the count of paths
+// changed.
+func fileChmod(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) < 2 {
+		return nil, errorf("evaluator: File.chmod: expected mode + at least one path")
+	}
+	modeInt, ok := args[0].(*object.Integer)
+	if !ok {
+		return nil, errorf("evaluator: File.chmod: expected Integer mode, got %T", args[0])
+	}
+	count := 0
+	for _, p := range args[1:] {
+		s, ok := stringText(env, p)
+		if !ok {
+			return nil, errorf("evaluator: File.chmod: expected String path, got %T", p)
+		}
+		if err := os.Chmod(s, os.FileMode(modeInt.Value)); err != nil {
+			return raiseBuiltin(env, "Errno::ENOENT", err.Error())
+		}
+		count++
+	}
+	return object.NewInteger(int64(count)), nil
+}
+
+// fileUtime mirrors MRI's File.utime(atime, mtime, *paths) -- sets
+// access + modify times on each path. Returns the number of paths
+// touched. Rake's file_creation helper bumps mtime to forge "old" /
+// "new" timestamps in tests.
+func fileUtime(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) < 3 {
+		return nil, errorf("evaluator: File.utime: expected atime, mtime, *paths")
+	}
+	atime, aErr := timeFromRubyObject(args[0])
+	if aErr != nil {
+		return nil, aErr
+	}
+	mtime, mErr := timeFromRubyObject(args[1])
+	if mErr != nil {
+		return nil, mErr
+	}
+	count := 0
+	for _, p := range args[2:] {
+		s, ok := stringText(env, p)
+		if !ok {
+			return nil, errorf("evaluator: File.utime: expected String path, got %T", p)
+		}
+		if err := os.Chtimes(s, atime, mtime); err != nil {
+			return raiseBuiltin(env, "Errno::ENOENT", err.Error())
+		}
+		count++
+	}
+	return object.NewInteger(int64(count)), nil
+}
+
+// timeFromRubyObject extracts a time.Time from either a Time Instance
+// (@__unix__ / @__nsec__ ivars laid down by bootstrapTimeClass) or
+// a numeric Integer / Float epoch seconds.
+func timeFromRubyObject(o object.RubyObject) (time.Time, error) {
+	switch v := o.(type) {
+	case *object.Integer:
+		return time.Unix(v.Value, 0), nil
+	case *object.Float:
+		sec := int64(v.Value)
+		nsec := int64((v.Value - float64(sec)) * 1e9)
+		return time.Unix(sec, nsec), nil
+	case *object.Instance:
+		var sec, nsec int64
+		if u, ok := v.Ivars["@__unix__"].(*object.Integer); ok {
+			sec = u.Value
+		}
+		if n, ok := v.Ivars["@__nsec__"].(*object.Integer); ok {
+			nsec = n.Value
+		}
+		return time.Unix(sec, nsec), nil
+	}
+	return time.Time{}, errorf("evaluator: File.utime: expected Time / Numeric, got %T", o)
+}
+
+// fileStat returns an Instance with read-accessor ivars for the common
+// stat fields that rake/minitest poke at: mtime (Time), size (Integer),
+// directory? / file? predicates. Closure captures the File class so
+// the Stat shares ancestors with File for ===/is_a? if anyone asks
+// (no real File::Stat class to mirror, alas).
+func fileStat(fileClass *object.Class) func(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	return func(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+		if len(args) != 1 {
+			return nil, errorf("evaluator: File.stat: expected 1 arg, got %d", len(args))
+		}
+		path, ok := args[0].(*object.String)
+		if !ok {
+			return nil, errorf("evaluator: File.stat: expected String, got %T", args[0])
+		}
+		info, err := os.Stat(path.Value())
+		if err != nil {
+			return raiseBuiltin(env, "Errno::ENOENT", err.Error())
+		}
+		mtime, mErr := fileMtime(env, []object.RubyObject{path})
+		if mErr != nil {
+			return nil, mErr
+		}
+		statCls, ok := fileClass.Constants["Stat"].(*object.Class)
+		if !ok {
+			statCls = object.NewClass("Stat", nil)
+			readIvar := func(name string) *object.BuiltinMethod {
+				return &object.BuiltinMethod{Name: name, Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+					inst, _ := recv.(*object.Instance)
+					if v, ok := inst.Ivars["@"+name]; ok {
+						return v, nil
+					}
+					return object.NIL, nil
+				}}
+			}
+			statCls.AddMethod("mtime", readIvar("mtime"))
+			statCls.AddMethod("size", readIvar("size"))
+			statCls.AddMethod("directory?", readIvar("directory?"))
+			statCls.AddMethod("file?", readIvar("file?"))
+			if fileClass.Constants == nil {
+				fileClass.Constants = map[string]object.RubyObject{}
+			}
+			fileClass.Constants["Stat"] = statCls
+		}
+		inst := object.NewInstance(statCls)
+		inst.Ivars["@mtime"] = mtime
+		inst.Ivars["@size"] = object.NewInteger(info.Size())
+		inst.Ivars["@directory?"] = object.BooleanOf(info.IsDir())
+		inst.Ivars["@file?"] = object.BooleanOf(info.Mode().IsRegular())
+		return inst, nil
+	}
+}
+
+func fileMtime(env *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) != 1 {
+		return nil, errorf("evaluator: File.mtime: expected 1 arg, got %d", len(args))
+	}
+	path, ok := args[0].(*object.String)
+	if !ok {
+		return nil, errorf("evaluator: File.mtime: expected String, got %T", args[0])
+	}
+	info, err := os.Stat(path.Value())
+	if err != nil {
+		// MRI raises Errno::ENOENT for missing files. rake's
+		// FileTask#needed? hinges on this -- it treats the raised
+		// exception as "target doesn't exist, must rebuild".
+		return raiseBuiltin(env, "Errno::ENOENT", err.Error())
+	}
+	// Return a Time instance (with @__unix__ / @__nsec__ ivars) so
+	// callers can compare via <=>, format via strftime, etc. Bootstrap
+	// the Time class lazily in case env didn't include it; safe even
+	// if called concurrently since bootstrapTimeClass is idempotent.
+	timeCls, ok := env.Get("Time")
+	if !ok {
+		return object.NewInteger(info.ModTime().Unix()), nil
+	}
+	tc, ok := timeCls.(*object.Class)
+	if !ok {
+		return object.NewInteger(info.ModTime().Unix()), nil
+	}
+	inst := object.NewInstance(tc)
+	inst.Ivars["@__unix__"] = object.NewInteger(info.ModTime().Unix())
+	inst.Ivars["@__nsec__"] = object.NewInteger(int64(info.ModTime().Nanosecond()))
+	return inst, nil
+}
+
+func fileDirectoryQ(_ *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) != 1 {
+		return nil, errorf("evaluator: File.directory?: expected 1 arg, got %d", len(args))
+	}
+	path, ok := args[0].(*object.String)
+	if !ok {
+		return nil, errorf("evaluator: File.directory?: expected String, got %T", args[0])
+	}
+	info, err := os.Stat(path.Value())
+	if err != nil {
+		return object.FALSE, nil
+	}
+	return object.BooleanOf(info.IsDir()), nil
+}
+
+// fileReadableQ / fileWritableQ / fileExecutableQ test the
+// corresponding Unix permission bits via os.Stat. Rake's
+// Cleaner.cant_be_deleted? probes these on a path before deleting.
+func fileReadableQ(_ *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	mode, ok := statModeOf(args)
+	if !ok {
+		return object.FALSE, nil
+	}
+	return object.BooleanOf(mode&0o400 != 0), nil
+}
+
+func fileWritableQ(_ *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	mode, ok := statModeOf(args)
+	if !ok {
+		return object.FALSE, nil
+	}
+	return object.BooleanOf(mode&0o200 != 0), nil
+}
+
+func fileExecutableQ(_ *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	mode, ok := statModeOf(args)
+	if !ok {
+		return object.FALSE, nil
+	}
+	return object.BooleanOf(mode&0o100 != 0), nil
+}
+
+func statModeOf(args []object.RubyObject) (uint32, bool) {
+	if len(args) != 1 {
+		return 0, false
+	}
+	s, ok := args[0].(*object.String)
+	if !ok {
+		return 0, false
+	}
+	info, err := os.Stat(s.Value())
+	if err != nil {
+		return 0, false
+	}
+	return uint32(info.Mode().Perm()), true
+}
+
+func fileFileQ(_ *object.Environment, args []object.RubyObject) (object.RubyObject, error) {
+	if len(args) != 1 {
+		return nil, errorf("evaluator: File.file?: expected 1 arg, got %d", len(args))
+	}
+	path, ok := args[0].(*object.String)
+	if !ok {
+		return nil, errorf("evaluator: File.file?: expected String, got %T", args[0])
+	}
+	info, err := os.Stat(path.Value())
+	if err != nil {
+		return object.FALSE, nil
+	}
+	return object.BooleanOf(info.Mode().IsRegular()), nil
 }
 
 func stdinGets(env *object.Environment, _ []object.RubyObject) (object.RubyObject, error) {
