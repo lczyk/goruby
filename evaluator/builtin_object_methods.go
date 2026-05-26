@@ -174,12 +174,23 @@ func init() {
 		if len(args) == 0 {
 			return nil, errorf("evaluator: extend: wrong number of arguments (given 0, expected 1+)")
 		}
-		for _, a := range args {
-			mod, ok := a.(*object.Class)
-			if !ok {
-				return nil, errorf("evaluator: extend: expected Module, got %T", a)
+		// install copies methods from src onto recv. Walks src's include
+		// chain so transitively included modules (e.g. extend Rake::DSL
+		// where DSL includes FileUtilsExt which includes FileUtils)
+		// surface their methods too. MRI achieves this by splicing the
+		// modules into the singleton's ancestors chain; goruby's extend
+		// is copy-based so the walk has to happen explicitly. Methods
+		// declared directly on the deepest module win over inherited
+		// ones because we install includes first, then the module
+		// itself.
+		var install func(src *object.Class) error
+		install = func(src *object.Class) error {
+			for _, inc := range src.Includes {
+				if err := install(inc); err != nil {
+					return err
+				}
 			}
-			for name, m := range mod.Methods {
+			for name, m := range src.Methods {
 				switch r := recv.(type) {
 				case *object.Class:
 					r.AddClassMethod(name, m)
@@ -189,8 +200,18 @@ func init() {
 					}
 					r.SingletonMethods[name] = m
 				default:
-					return nil, errorf("evaluator: extend: cannot extend %T", recv)
+					return errorf("evaluator: extend: cannot extend %T", recv)
 				}
+			}
+			return nil
+		}
+		for _, a := range args {
+			mod, ok := a.(*object.Class)
+			if !ok {
+				return nil, errorf("evaluator: extend: expected Module, got %T", a)
+			}
+			if err := install(mod); err != nil {
+				return nil, err
 			}
 		}
 		return recv, nil
