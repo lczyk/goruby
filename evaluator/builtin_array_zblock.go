@@ -163,6 +163,59 @@ func init() {
 	c.Methods["filter"] = c.Methods["select"]
 	c.Methods["find_all"] = c.Methods["select"]
 
+	// sum with block: map each element through the block first, then
+	// accumulate. Without block, falls through to the plain
+	// callArrayMethod sum.
+	addBlockOrPlainMethod(c, "sum",
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
+			arr, err := asArray(recv, "sum")
+			if err != nil {
+				return nil, err
+			}
+			return callArrayMethod(env, arr, "sum", args)
+		},
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+			arr, err := asArray(recv, "sum")
+			if err != nil {
+				return nil, err
+			}
+			mapped := make([]object.RubyObject, 0, len(arr.Elements))
+			for _, e := range arr.Elements {
+				v, stop, err := yieldOne(invoke, e)
+				if err != nil {
+					return nil, err
+				}
+				if stop {
+					return v, nil
+				}
+				mapped = append(mapped, v)
+			}
+			return callArrayMethod(env, object.NewArray(mapped...), "sum", args)
+		})
+
+	// filter_map -- map + compact in one pass. Falsy / nil block
+	// results are dropped from the output. MRI 2.7+ standard.
+	addBlockMethod(c, "filter_map", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+		arr, err := asArray(recv, "filter_map")
+		if err != nil {
+			return nil, err
+		}
+		out := make([]object.RubyObject, 0, len(arr.Elements))
+		for _, e := range arr.Elements {
+			v, stop, err := yieldOne(invoke, e)
+			if err != nil {
+				return nil, err
+			}
+			if stop {
+				return v, nil
+			}
+			if truthy(v) {
+				out = append(out, v)
+			}
+		}
+		return object.NewArray(out...), nil
+	})
+
 	// index / find_index with a block: returns the index of the first
 	// element for which the block is truthy, nil otherwise.
 	indexBlockFn := func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
@@ -260,6 +313,27 @@ func init() {
 			}
 			for _, e := range arr.Elements {
 				_, stop, err := yieldOne(invoke, e)
+				if err != nil {
+					return nil, err
+				}
+				if stop {
+					return arr, nil
+				}
+			}
+			return arr, nil
+		})
+
+	addBlockOrPlainMethod(c, "reverse_each",
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
+			return &object.Enumerator{Receiver: recv, Method: "reverse_each"}, nil
+		},
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+			arr, err := asArray(recv, "reverse_each")
+			if err != nil {
+				return nil, err
+			}
+			for i := len(arr.Elements) - 1; i >= 0; i-- {
+				_, stop, err := yieldOne(invoke, arr.Elements[i])
 				if err != nil {
 					return nil, err
 				}
@@ -487,6 +561,37 @@ func init() {
 				return nil, sortErr
 			}
 			return object.NewArray(out...), nil
+		})
+
+	// sort! with block: same comparator but mutates recv in-place.
+	addBlockOrPlainMethod(c, "sort!", plain("sort!"),
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+			arr, err := asArray(recv, "sort!")
+			if err != nil {
+				return nil, err
+			}
+			var sortErr error
+			sortStable(len(arr.Elements), func(i, j int) bool {
+				if sortErr != nil {
+					return false
+				}
+				v, _, err := iterStep(invoke, []object.RubyObject{arr.Elements[i], arr.Elements[j]})
+				if err != nil {
+					sortErr = err
+					return false
+				}
+				if c, ok := v.(*object.Integer); ok {
+					return c.Value < 0
+				}
+				sortErr = errorf("evaluator: sort! block must return Integer, got %T", v)
+				return false
+			}, func(i, j int) {
+				arr.Elements[i], arr.Elements[j] = arr.Elements[j], arr.Elements[i]
+			})
+			if sortErr != nil {
+				return nil, sortErr
+			}
+			return arr, nil
 		})
 
 	addBlockOrPlainMethod(c, "sort_by",
@@ -753,6 +858,110 @@ func init() {
 		}
 		return object.NewArray(out...), nil
 	})
+
+	addBlockMethod(c, "chunk", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+		arr, err := asArray(recv, "chunk")
+		if err != nil {
+			return nil, err
+		}
+		out := []object.RubyObject{}
+		if len(arr.Elements) == 0 {
+			return object.NewArray(), nil
+		}
+		// chunk groups adjacent elements whose block return value
+		// compares equal. Each group emits [key, [elements...]].
+		var curKey object.RubyObject
+		curGroup := []object.RubyObject{}
+		for i, e := range arr.Elements {
+			v, stop, err := yieldOne(invoke, e)
+			if err != nil {
+				return nil, err
+			}
+			if stop {
+				return v, nil
+			}
+			if i == 0 {
+				curKey = v
+				curGroup = []object.RubyObject{e}
+				continue
+			}
+			if rubyEqualDispatch(env, v, curKey) {
+				curGroup = append(curGroup, e)
+				continue
+			}
+			out = append(out, object.NewArray(curKey, object.NewArray(curGroup...)))
+			curKey = v
+			curGroup = []object.RubyObject{e}
+		}
+		out = append(out, object.NewArray(curKey, object.NewArray(curGroup...)))
+		return object.NewArray(out...), nil
+	})
+
+	addBlockOrPlainMethod(c, "cycle",
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
+			arr, err := asArray(recv, "cycle")
+			if err != nil {
+				return nil, err
+			}
+			// cycle(n) materialise; bare cycle returns an Enumerator
+			// over the array (allows .first(k) to take k elems from
+			// the start of one cycle).
+			if len(args) == 1 {
+				ni, ok := args[0].(*object.Integer)
+				if !ok {
+					return nil, errorf("evaluator: Array#cycle needs Integer count, got %T", args[0])
+				}
+				if ni.Value <= 0 || len(arr.Elements) == 0 {
+					return object.NewArray(), nil
+				}
+				out := make([]object.RubyObject, 0, int(ni.Value)*len(arr.Elements))
+				for iter := int64(0); iter < ni.Value; iter++ {
+					out = append(out, arr.Elements...)
+				}
+				return object.NewArray(out...), nil
+			}
+			// No-arg cycle: return an Enumerator that .first(n) can
+			// drive. Materialise enough cycles to satisfy realistic
+			// .first(n) -- cap at 1024 for safety.
+			cap := 1024
+			if len(arr.Elements) == 0 {
+				return &object.Enumerator{Receiver: object.NewArray(), Method: "each"}, nil
+			}
+			out := make([]object.RubyObject, 0, cap)
+			for len(out) < cap {
+				out = append(out, arr.Elements...)
+			}
+			return &object.Enumerator{Receiver: object.NewArray(out...), Method: "each"}, nil
+		},
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+			arr, err := asArray(recv, "cycle")
+			if err != nil {
+				return nil, err
+			}
+			n := int64(-1)
+			if len(args) == 1 {
+				ni, ok := args[0].(*object.Integer)
+				if !ok {
+					return nil, errorf("evaluator: Array#cycle needs Integer count, got %T", args[0])
+				}
+				n = ni.Value
+			}
+			if n == 0 || len(arr.Elements) == 0 {
+				return object.NIL, nil
+			}
+			for iter := int64(0); n < 0 || iter < n; iter++ {
+				for _, e := range arr.Elements {
+					v, stop, err := iterStep(invoke, []object.RubyObject{e})
+					if err != nil {
+						return nil, err
+					}
+					if stop {
+						return v, nil
+					}
+				}
+			}
+			return object.NIL, nil
+		})
 
 	addBlockMethod(c, "chunk_while", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
 		arr, err := asArray(recv, "chunk_while")

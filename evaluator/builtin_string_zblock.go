@@ -79,23 +79,36 @@ func init() {
 			return recv, nil
 		})
 
-	addBlockMethod(c, "each_line", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
-		s, err := stringRecv(env, recv, "each_line")
-		if err != nil {
-			return nil, err
-		}
-		parts := splitLinesKeepNL(s)
-		for _, p := range parts {
-			_, stop, err := iterStep(invoke, []object.RubyObject{object.NewString(p)})
+	addBlockOrPlainMethod(c, "each_line",
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
+			s, err := stringRecv(env, recv, "each_line")
 			if err != nil {
 				return nil, err
 			}
-			if stop {
-				return recv, nil
+			parts := splitLinesKeepNL(s)
+			out := make([]object.RubyObject, 0, len(parts))
+			for _, p := range parts {
+				out = append(out, object.NewString(p))
 			}
-		}
-		return recv, nil
-	})
+			return object.NewArray(out...), nil
+		},
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+			s, err := stringRecv(env, recv, "each_line")
+			if err != nil {
+				return nil, err
+			}
+			parts := splitLinesKeepNL(s)
+			for _, p := range parts {
+				_, stop, err := iterStep(invoke, []object.RubyObject{object.NewString(p)})
+				if err != nil {
+					return nil, err
+				}
+				if stop {
+					return recv, nil
+				}
+			}
+			return recv, nil
+		})
 
 	// gsub / sub: plain form handled by string_methods.go's existing
 	// registration; block form below.

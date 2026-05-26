@@ -207,26 +207,34 @@ func init() {
 		return object.TRUE, nil
 	})
 
-	addBlockMethod(c, "count", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
-		h, err := asHash(recv, "count")
-		if err != nil {
-			return nil, err
-		}
-		n := 0
-		for _, e := range h.Entries {
-			v, stop, err := iterStep(invoke, []object.RubyObject{e.Key, e.Value})
+	addBlockOrPlainMethod(c, "count",
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
+			h, err := asHash(recv, "count")
 			if err != nil {
 				return nil, err
 			}
-			if stop {
-				return v, nil
+			return object.NewInteger(int64(len(h.Entries))), nil
+		},
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+			h, err := asHash(recv, "count")
+			if err != nil {
+				return nil, err
 			}
-			if truthy(v) {
-				n++
+			n := 0
+			for _, e := range h.Entries {
+				v, stop, err := iterStep(invoke, []object.RubyObject{e.Key, e.Value})
+				if err != nil {
+					return nil, err
+				}
+				if stop {
+					return v, nil
+				}
+				if truthy(v) {
+					n++
+				}
 			}
-		}
-		return object.NewInteger(int64(n)), nil
-	})
+			return object.NewInteger(int64(n)), nil
+		})
 
 	addBlockMethod(c, "transform_values", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
 		h, err := asHash(recv, "transform_values")
@@ -330,8 +338,21 @@ func init() {
 			return object.NewArray(bestVal.Key, bestVal.Value), nil
 		}
 	}
-	addBlockMethod(c, "min_by", minmaxBy("min_by", -1))
-	addBlockMethod(c, "max_by", minmaxBy("max_by", 1))
+	minmaxByPlain := func(name string) func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
+		return func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
+			h, err := asHash(recv, name)
+			if err != nil {
+				return nil, err
+			}
+			pairs := make([]object.RubyObject, 0, len(h.Entries))
+			for _, e := range h.Entries {
+				pairs = append(pairs, object.NewArray(e.Key, e.Value))
+			}
+			return &object.Enumerator{Receiver: object.NewArray(pairs...), Method: name}, nil
+		}
+	}
+	addBlockOrPlainMethod(c, "min_by", minmaxByPlain("min_by"), minmaxBy("min_by", -1))
+	addBlockOrPlainMethod(c, "max_by", minmaxByPlain("max_by"), minmaxBy("max_by", 1))
 
 	addBlockOrPlainMethod(c, "merge", plain("merge"),
 		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
@@ -389,7 +410,19 @@ func init() {
 		return object.NewHash(out...), nil
 	})
 
-	addBlockMethod(c, "sort_by", func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
+	addBlockOrPlainMethod(c, "sort_by",
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject) (object.RubyObject, error) {
+			h, err := asHash(recv, "sort_by")
+			if err != nil {
+				return nil, err
+			}
+			pairs := make([]object.RubyObject, 0, len(h.Entries))
+			for _, e := range h.Entries {
+				pairs = append(pairs, object.NewArray(e.Key, e.Value))
+			}
+			return &object.Enumerator{Receiver: object.NewArray(pairs...), Method: "sort_by"}, nil
+		},
+		func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, _ *ast.BlockExpression) (object.RubyObject, error) {
 		h, err := asHash(recv, "sort_by")
 		if err != nil {
 			return nil, err
@@ -421,4 +454,30 @@ func init() {
 		}
 		return object.NewArray(out...), nil
 	})
+
+	// Hash Enumerable-shaped delegations that materialise to
+	// [[k,v], ...] then dispatch on the resulting Array. Saves
+	// re-implementing each one.
+	delegateNames := []string{
+		"group_by", "partition",
+		"flat_map", "collect_concat",
+		"take_while", "drop_while",
+		"chunk_while", "slice_when",
+	}
+	for _, name := range delegateNames {
+		n := name
+		addBlockMethod(c, n, func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, invoke blockCallback, blk *ast.BlockExpression) (object.RubyObject, error) {
+			h, err := asHash(recv, n)
+			if err != nil {
+				return nil, err
+			}
+			pairs := make([]object.RubyObject, len(h.Entries))
+			for i, e := range h.Entries {
+				pairs[i] = object.NewArray(e.Key, e.Value)
+			}
+			arr := object.NewArray(pairs...)
+			marker := &goBlockMarker{fn: invoke, blk: blk}
+			return dispatchWithBlock(env, arr, n, args, marker)
+		})
+	}
 }

@@ -32,6 +32,67 @@ func init() {
 	add("zero?", func(env *object.Environment, r *object.Integer, args []object.RubyObject) (object.RubyObject, error) {
 		return object.BooleanOf(r.Value == 0), nil
 	})
+	add("nonzero?", func(env *object.Environment, r *object.Integer, args []object.RubyObject) (object.RubyObject, error) {
+		if r.Value == 0 {
+			return object.NIL, nil
+		}
+		return r, nil
+	})
+	add("pow", func(env *object.Environment, r *object.Integer, args []object.RubyObject) (object.RubyObject, error) {
+		if len(args) < 1 || len(args) > 2 {
+			return raiseBuiltin(env, "ArgumentError", "wrong number of arguments (given 0, expected 1..2)")
+		}
+		exp, ok := args[0].(*object.Integer)
+		if !ok {
+			return nil, errorf("evaluator: Integer#pow exponent must be Integer")
+		}
+		if len(args) == 1 {
+			if exp.Value < 0 {
+				return nil, errorf("evaluator: Integer#pow with negative exponent yields Rational; not yet supported")
+			}
+			out := int64(1)
+			base := r.Value
+			e := exp.Value
+			for e > 0 {
+				if e&1 == 1 {
+					out *= base
+				}
+				base *= base
+				e >>= 1
+			}
+			return object.NewInteger(out), nil
+		}
+		// Two-arg form: modular exponentiation. (self ** exp) mod mod
+		// without materialising the intermediate huge integer.
+		mod, ok := args[1].(*object.Integer)
+		if !ok {
+			return nil, errorf("evaluator: Integer#pow modulus must be Integer")
+		}
+		if mod.Value == 0 {
+			return raiseBuiltin(env, "ZeroDivisionError", "divided by 0")
+		}
+		if exp.Value < 0 {
+			return nil, errorf("evaluator: Integer#pow with negative exponent + modulus not yet supported")
+		}
+		m := mod.Value
+		result := int64(1) % m
+		base := r.Value % m
+		if base < 0 {
+			base += m
+		}
+		e := exp.Value
+		for e > 0 {
+			if e&1 == 1 {
+				result = (result * base) % m
+			}
+			base = (base * base) % m
+			e >>= 1
+		}
+		if result < 0 {
+			result += m
+		}
+		return object.NewInteger(result), nil
+	})
 	add("negative?", func(env *object.Environment, r *object.Integer, args []object.RubyObject) (object.RubyObject, error) {
 		return object.BooleanOf(r.Value < 0), nil
 	})
@@ -49,6 +110,18 @@ func init() {
 	})
 	add("to_i", func(env *object.Environment, r *object.Integer, args []object.RubyObject) (object.RubyObject, error) {
 		return r, nil
+	})
+	add("integer?", func(env *object.Environment, r *object.Integer, args []object.RubyObject) (object.RubyObject, error) {
+		return object.TRUE, nil
+	})
+	add("real?", func(env *object.Environment, r *object.Integer, args []object.RubyObject) (object.RubyObject, error) {
+		return object.TRUE, nil
+	})
+	add("finite?", func(env *object.Environment, r *object.Integer, args []object.RubyObject) (object.RubyObject, error) {
+		return object.TRUE, nil
+	})
+	add("infinite?", func(env *object.Environment, r *object.Integer, args []object.RubyObject) (object.RubyObject, error) {
+		return object.NIL, nil
 	})
 	add("to_int", func(env *object.Environment, r *object.Integer, args []object.RubyObject) (object.RubyObject, error) {
 		return r, nil
@@ -207,15 +280,7 @@ func init() {
 		}
 		return object.NewInteger(r.Value % d.Value), nil
 	})
-	add("gcd", func(env *object.Environment, r *object.Integer, args []object.RubyObject) (object.RubyObject, error) {
-		if len(args) != 1 {
-			return nil, errorf("evaluator: Integer#gcd expects 1 arg")
-		}
-		d, ok := args[0].(*object.Integer)
-		if !ok {
-			return nil, errorf("evaluator: Integer#gcd needs Integer")
-		}
-		a, b := r.Value, d.Value
+	gcdInt := func(a, b int64) int64 {
 		if a < 0 {
 			a = -a
 		}
@@ -225,7 +290,38 @@ func init() {
 		for b != 0 {
 			a, b = b, a%b
 		}
-		return object.NewInteger(a), nil
+		return a
+	}
+	add("gcd", func(env *object.Environment, r *object.Integer, args []object.RubyObject) (object.RubyObject, error) {
+		if len(args) != 1 {
+			return nil, errorf("evaluator: Integer#gcd expects 1 arg")
+		}
+		d, ok := args[0].(*object.Integer)
+		if !ok {
+			return nil, errorf("evaluator: Integer#gcd needs Integer")
+		}
+		return object.NewInteger(gcdInt(r.Value, d.Value)), nil
+	})
+	add("lcm", func(env *object.Environment, r *object.Integer, args []object.RubyObject) (object.RubyObject, error) {
+		if len(args) != 1 {
+			return nil, errorf("evaluator: Integer#lcm expects 1 arg")
+		}
+		d, ok := args[0].(*object.Integer)
+		if !ok {
+			return nil, errorf("evaluator: Integer#lcm needs Integer")
+		}
+		if r.Value == 0 || d.Value == 0 {
+			return object.NewInteger(0), nil
+		}
+		g := gcdInt(r.Value, d.Value)
+		a, b := r.Value, d.Value
+		if a < 0 {
+			a = -a
+		}
+		if b < 0 {
+			b = -b
+		}
+		return object.NewInteger(a / g * b), nil
 	})
 	add("bit_length", func(env *object.Environment, r *object.Integer, args []object.RubyObject) (object.RubyObject, error) {
 		v := r.Value
@@ -239,6 +335,42 @@ func init() {
 		}
 		return object.NewInteger(n), nil
 	})
+	// Operator methods: +, -, *, /, %, **, <, <=, >, >=, <=>, ==.
+	// Mirrors the infix path so `n.send(:<, m)` /
+	// `n.__send__(:<, m)` resolves the same way `n < m` does. Minitest's
+	// assert_operator depends on this.
+	registerNumOp := func(name string) {
+		add(name, func(env *object.Environment, r *object.Integer, args []object.RubyObject) (object.RubyObject, error) {
+			if len(args) != 1 {
+				return nil, errorf("evaluator: Integer#%s expects 1 arg, got %d", name, len(args))
+			}
+			v, handled, err := numericInfix(env, name, r, args[0])
+			if err != nil {
+				return nil, err
+			}
+			if !handled {
+				// MRI raises TypeError / ArgumentError for mismatched
+				// operand types depending on op. == returns false
+				// rather than raising. <=> returns nil. Others raise.
+				if name == "==" {
+					return object.FALSE, nil
+				}
+				if name == "<=>" {
+					return object.NIL, nil
+				}
+				other := "Object"
+				if cls := classOfRaw(env, args[0]); cls != nil {
+					other = cls.Name
+				}
+				return raiseBuiltin(env, "ArgumentError", "comparison of Integer with "+other+" failed")
+			}
+			return v, nil
+		})
+	}
+	for _, op := range []string{"+", "-", "*", "/", "%", "**", "<", "<=", ">", ">=", "<=>", "=="} {
+		registerNumOp(op)
+	}
+
 	add("digits", func(env *object.Environment, r *object.Integer, args []object.RubyObject) (object.RubyObject, error) {
 		base := int64(10)
 		if len(args) == 1 {
@@ -265,4 +397,29 @@ func init() {
 		}
 		return object.NewArray(out...), nil
 	})
+	// Integer.sqrt(n) class method -- integer square root.
+	c.ClassMethods["sqrt"] = &object.BuiltinMethod{Name: "sqrt", Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+		if len(args) != 1 {
+			return nil, errorf("evaluator: Integer.sqrt expects 1 arg, got %d", len(args))
+		}
+		n, ok := args[0].(*object.Integer)
+		if !ok {
+			return nil, errorf("evaluator: Integer.sqrt arg must be Integer, got %T", args[0])
+		}
+		if n.Value < 0 {
+			return raiseBuiltin(env, "ArgumentError", "Integer.sqrt(): argument out of domain")
+		}
+		v := n.Value
+		// Newton's method on int64.
+		if v == 0 {
+			return object.NewInteger(0), nil
+		}
+		x := v
+		y := (x + 1) / 2
+		for y < x {
+			x = y
+			y = (x + v/x) / 2
+		}
+		return object.NewInteger(x), nil
+	}}
 }

@@ -182,4 +182,32 @@ func init() {
 				return dispatchWithBlock(env, arr, n, args, marker)
 			})
 	}
+
+	// Range#step: materialise to Array, then take every Nth element.
+	c.Methods["step"] = &object.BuiltinMethod{Name: "step", Fn: func(env *object.Environment, recv object.RubyObject, args []object.RubyObject, block any) (object.RubyObject, error) {
+		r, err := asRange(recv, "step")
+		if err != nil {
+			return nil, err
+		}
+		stride := int64(1)
+		if len(args) >= 1 {
+			n, ok := args[0].(*object.Integer)
+			if !ok {
+				return nil, errorf("evaluator: Range#step stride must be Integer, got %T", args[0])
+			}
+			if n.Value <= 0 {
+				return nil, errorf("evaluator: ArgumentError: step can't be 0 or negative")
+			}
+			stride = n.Value
+		}
+		elems, err := rangeToSlice(env, r)
+		if err != nil {
+			return nil, err
+		}
+		out := []object.RubyObject{}
+		for i := int64(0); i < int64(len(elems)); i += stride {
+			out = append(out, elems[i])
+		}
+		return object.NewArray(out...), nil
+	}}
 }

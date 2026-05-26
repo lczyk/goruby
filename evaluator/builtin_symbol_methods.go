@@ -22,6 +22,7 @@ func init() {
 	}
 	add("to_s", toS)
 	add("id2name", toS)
+	add("name", toS)
 	add("to_sym", func(env *object.Environment, r *object.Symbol, args []object.RubyObject) (object.RubyObject, error) {
 		return r, nil
 	})
@@ -33,6 +34,25 @@ func init() {
 	}
 	add("length", sz)
 	add("size", sz)
+	add("match?", func(env *object.Environment, r *object.Symbol, args []object.RubyObject) (object.RubyObject, error) {
+		if len(args) != 1 {
+			return object.FALSE, nil
+		}
+		re, ok := args[0].(*object.Regex)
+		if !ok {
+			return object.FALSE, nil
+		}
+		return object.BooleanOf(re.RE.MatchString(env.Symbols().Name(r.ID))), nil
+	})
+	add("=~", func(env *object.Environment, r *object.Symbol, args []object.RubyObject) (object.RubyObject, error) {
+		if len(args) != 1 {
+			return object.NIL, nil
+		}
+		return regexMatch(env, object.NewString(env.Symbols().Name(r.ID)), args[0]), nil
+	})
+	add("empty?", func(env *object.Environment, r *object.Symbol, args []object.RubyObject) (object.RubyObject, error) {
+		return object.BooleanOf(env.Symbols().Name(r.ID) == ""), nil
+	})
 	add("upcase", func(env *object.Environment, r *object.Symbol, args []object.RubyObject) (object.RubyObject, error) {
 		return env.Symbols().Intern(strings.ToUpper(env.Symbols().Name(r.ID))), nil
 	})

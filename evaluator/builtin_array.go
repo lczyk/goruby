@@ -194,6 +194,25 @@ func callArrayMethod(env *object.Environment, r *object.Array, name string, args
 			out[c] = object.NewArray(col...)
 		}
 		return object.NewArray(out...), nil
+	case "fetch":
+		if len(args) < 1 || len(args) > 2 {
+			return nil, errorf("evaluator: Array#fetch expects 1..2 args, got %d", len(args))
+		}
+		idx, ok := args[0].(*object.Integer)
+		if !ok {
+			return nil, errorf("evaluator: Array#fetch index must be Integer, got %T", args[0])
+		}
+		i := int(idx.Value)
+		if i < 0 {
+			i += len(r.Elements)
+		}
+		if i >= 0 && i < len(r.Elements) {
+			return r.Elements[i], nil
+		}
+		if len(args) == 2 {
+			return args[1], nil
+		}
+		return raiseBuiltin(env, "IndexError", "index out of array bounds")
 	case "sample":
 		// Array#sample: pick a random element. Without args returns
 		// nil on empty. We don't track an Rng seed; use math/rand's
@@ -258,6 +277,45 @@ func callArrayMethod(env *object.Environment, r *object.Array, name string, args
 			return object.NIL, nil
 		}
 		return r.Elements[len(r.Elements)-1], nil
+	case "to_ary":
+		// MRI: returns self (Array implements the to_ary contract).
+		// Lets `x.respond_to?(:to_ary) ? x.to_ary : [x]` shapes
+		// short-circuit to the existing array.
+		return r, nil
+	case "replace":
+		// Array#replace(other) -- mutates self to contain other's
+		// elements. Returns self. Used by ARGV.replace([...]) when a
+		// test driver wants to re-seed the script args.
+		if len(args) != 1 {
+			return nil, errorf("evaluator: Array#replace: expected 1 arg, got %d", len(args))
+		}
+		other, ok := args[0].(*object.Array)
+		if !ok {
+			return nil, errorf("evaluator: Array#replace: expected Array, got %T", args[0])
+		}
+		r.Elements = append(r.Elements[:0], other.Elements...)
+		return r, nil
+	case "values_at":
+		// Array#values_at(*indices) -- one slot per index; out-of-
+		// range (positive or negative beyond -len) maps to nil. Mirrors
+		// MRI w/o the Range-index form (rake never hits it).
+		out := make([]object.RubyObject, 0, len(args))
+		for _, a := range args {
+			n, ok := a.(*object.Integer)
+			if !ok {
+				return nil, errorf("evaluator: Array#values_at: indices must be Integer, got %T", a)
+			}
+			i := int(n.Value)
+			if i < 0 {
+				i += len(r.Elements)
+			}
+			if i < 0 || i >= len(r.Elements) {
+				out = append(out, object.NIL)
+			} else {
+				out = append(out, r.Elements[i])
+			}
+		}
+		return object.NewArray(out...), nil
 	case "push", "append":
 		r.Elements = append(r.Elements, args...)
 		return r, nil
@@ -324,6 +382,17 @@ func callArrayMethod(env *object.Environment, r *object.Array, name string, args
 		out := make([]object.RubyObject, len(r.Elements))
 		for i, v := range r.Elements {
 			out[len(r.Elements)-1-i] = v
+		}
+		return object.NewArray(out...), nil
+	case "shuffle":
+		// Fisher-Yates via the eval-shared rand source. Returns a
+		// fresh Array; receiver unchanged. With srand-seeded rand
+		// the result is deterministic.
+		out := make([]object.RubyObject, len(r.Elements))
+		copy(out, r.Elements)
+		for i := len(out) - 1; i > 0; i-- {
+			j := rng.Intn(i + 1)
+			out[i], out[j] = out[j], out[i]
 		}
 		return object.NewArray(out...), nil
 	case "reverse!":
@@ -428,9 +497,87 @@ func callArrayMethod(env *object.Environment, r *object.Array, name string, args
 			}
 		}
 		return object.NIL, nil
-	case "include?":
+	case "assoc":
 		if len(args) != 1 {
-			return nil, errorf("evaluator: wrong number of arguments to Array#include? (given %d, expected 1)", len(args))
+			return nil, errorf("evaluator: wrong number of arguments to Array#assoc (given %d, expected 1)", len(args))
+		}
+		for _, e := range r.Elements {
+			arr, ok := e.(*object.Array)
+			if !ok || len(arr.Elements) == 0 {
+				continue
+			}
+			if rubyEqualDispatch(env, arr.Elements[0], args[0]) {
+				return arr, nil
+			}
+		}
+		return object.NIL, nil
+	case "rassoc":
+		if len(args) != 1 {
+			return nil, errorf("evaluator: wrong number of arguments to Array#rassoc (given %d, expected 1)", len(args))
+		}
+		for _, e := range r.Elements {
+			arr, ok := e.(*object.Array)
+			if !ok || len(arr.Elements) < 2 {
+				continue
+			}
+			if rubyEqualDispatch(env, arr.Elements[1], args[0]) {
+				return arr, nil
+			}
+		}
+		return object.NIL, nil
+	case "lazy":
+		return lazyFromArray(r), nil
+	case "product":
+		// Cartesian product of self with each Array in args.
+		others := make([][]object.RubyObject, 0, len(args)+1)
+		others = append(others, r.Elements)
+		for _, a := range args {
+			arr, ok := a.(*object.Array)
+			if !ok {
+				return nil, errorf("evaluator: Array#product needs Array args, got %T", a)
+			}
+			others = append(others, arr.Elements)
+		}
+		out := []object.RubyObject{}
+		acc := []object.RubyObject{}
+		var rec func(depth int)
+		rec = func(depth int) {
+			if depth == len(others) {
+				tuple := make([]object.RubyObject, len(acc))
+				copy(tuple, acc)
+				out = append(out, object.NewArray(tuple...))
+				return
+			}
+			for _, e := range others[depth] {
+				acc = append(acc, e)
+				rec(depth + 1)
+				acc = acc[:len(acc)-1]
+			}
+		}
+		rec(0)
+		return object.NewArray(out...), nil
+	case "combination":
+		if len(args) != 1 {
+			return nil, errorf("evaluator: Array#combination expects 1 arg, got %d", len(args))
+		}
+		k, ok := args[0].(*object.Integer)
+		if !ok {
+			return nil, errorf("evaluator: Array#combination needs Integer")
+		}
+		return arrayOfArrays(combinations(r.Elements, int(k.Value))), nil
+	case "permutation":
+		k := int64(len(r.Elements))
+		if len(args) == 1 {
+			n, ok := args[0].(*object.Integer)
+			if !ok {
+				return nil, errorf("evaluator: Array#permutation needs Integer")
+			}
+			k = n.Value
+		}
+		return arrayOfArrays(permutations(r.Elements, int(k))), nil
+	case "include?", "member?":
+		if len(args) != 1 {
+			return nil, errorf("evaluator: wrong number of arguments to Array#%s (given %d, expected 1)", name, len(args))
 		}
 		for _, v := range r.Elements {
 			if rubyEqualDispatch(env, v, args[0]) {
@@ -441,6 +588,15 @@ func callArrayMethod(env *object.Environment, r *object.Array, name string, args
 	case "empty?":
 		return object.BooleanOf(len(r.Elements) == 0), nil
 	case "any?":
+		// any?(pat) -> any { |e| pat === e }; any? alone -> truthy.
+		if len(args) == 1 {
+			for _, e := range r.Elements {
+				if caseEqual(env, args[0], e) {
+					return object.TRUE, nil
+				}
+			}
+			return object.FALSE, nil
+		}
 		for _, e := range r.Elements {
 			if truthy(e) {
 				return object.TRUE, nil
@@ -448,6 +604,14 @@ func callArrayMethod(env *object.Environment, r *object.Array, name string, args
 		}
 		return object.FALSE, nil
 	case "all?":
+		if len(args) == 1 {
+			for _, e := range r.Elements {
+				if !caseEqual(env, args[0], e) {
+					return object.FALSE, nil
+				}
+			}
+			return object.TRUE, nil
+		}
 		for _, e := range r.Elements {
 			if !truthy(e) {
 				return object.FALSE, nil
@@ -455,6 +619,14 @@ func callArrayMethod(env *object.Environment, r *object.Array, name string, args
 		}
 		return object.TRUE, nil
 	case "none?":
+		if len(args) == 1 {
+			for _, e := range r.Elements {
+				if caseEqual(env, args[0], e) {
+					return object.FALSE, nil
+				}
+			}
+			return object.TRUE, nil
+		}
 		for _, e := range r.Elements {
 			if truthy(e) {
 				return object.FALSE, nil
@@ -866,5 +1038,88 @@ func callArrayMethod(env *object.Environment, r *object.Array, name string, args
 		}
 		return object.NewHash(entries...), nil
 	}
-	return nil, errorf("evaluator: NoMethodError: undefined method `%s' for Array", name)
+	return raiseBuiltin(env, "NoMethodError", "undefined method `"+name+"' for Array")
+}
+
+// arrayOfArrays wraps a Go [][]RubyObject into a Ruby Array of Arrays
+// for combination / permutation results.
+func arrayOfArrays(rows [][]object.RubyObject) *object.Array {
+	out := make([]object.RubyObject, len(rows))
+	for i, row := range rows {
+		out[i] = object.NewArray(row...)
+	}
+	return object.NewArray(out...)
+}
+
+// combinations enumerates all unordered k-element subsets of elems in
+// MRI's lexicographic order (preserves elems' relative order). k <= 0
+// returns a single empty subset; k > len(elems) returns no subsets.
+func combinations(elems []object.RubyObject, k int) [][]object.RubyObject {
+	if k < 0 {
+		return nil
+	}
+	if k == 0 {
+		return [][]object.RubyObject{{}}
+	}
+	if k > len(elems) {
+		return nil
+	}
+	out := [][]object.RubyObject{}
+	cur := make([]object.RubyObject, 0, k)
+	var rec func(start int)
+	rec = func(start int) {
+		if len(cur) == k {
+			cp := make([]object.RubyObject, k)
+			copy(cp, cur)
+			out = append(out, cp)
+			return
+		}
+		for i := start; i < len(elems); i++ {
+			cur = append(cur, elems[i])
+			rec(i + 1)
+			cur = cur[:len(cur)-1]
+		}
+	}
+	rec(0)
+	return out
+}
+
+// permutations enumerates all ordered k-element arrangements of elems
+// in MRI's order (positions iterated left-to-right over remaining
+// candidates). k <= 0 returns the single empty arrangement; k > len
+// returns no arrangements.
+func permutations(elems []object.RubyObject, k int) [][]object.RubyObject {
+	if k < 0 {
+		return nil
+	}
+	if k == 0 {
+		return [][]object.RubyObject{{}}
+	}
+	if k > len(elems) {
+		return nil
+	}
+	out := [][]object.RubyObject{}
+	cur := make([]object.RubyObject, 0, k)
+	used := make([]bool, len(elems))
+	var rec func()
+	rec = func() {
+		if len(cur) == k {
+			cp := make([]object.RubyObject, k)
+			copy(cp, cur)
+			out = append(out, cp)
+			return
+		}
+		for i := range elems {
+			if used[i] {
+				continue
+			}
+			used[i] = true
+			cur = append(cur, elems[i])
+			rec()
+			cur = cur[:len(cur)-1]
+			used[i] = false
+		}
+	}
+	rec()
+	return out
 }

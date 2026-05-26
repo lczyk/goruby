@@ -58,6 +58,23 @@ func callHashMethod(env *object.Environment, r *object.Hash, name string, args [
 			vs = append(vs, e.Value)
 		}
 		return object.NewArray(vs...), nil
+	case "values_at":
+		// Hash#values_at(*keys) -- one slot per key, nil for misses.
+		// MRI also honours the Hash#default / DefaultBlock on misses;
+		// rake/backtrace.rb only feeds keys it knows are present,
+		// keeping the simple impl honest there.
+		out := make([]object.RubyObject, 0, len(args))
+		for _, k := range args {
+			var hit object.RubyObject = object.NIL
+			for _, e := range r.Entries {
+				if rubyEqualDispatch(env, e.Key, k) {
+					hit = e.Value
+					break
+				}
+			}
+			out = append(out, hit)
+		}
+		return object.NewArray(out...), nil
 	case "merge":
 		out := make([]object.HashEntry, len(r.Entries))
 		copy(out, r.Entries)
@@ -227,6 +244,16 @@ func callHashMethod(env *object.Environment, r *object.Hash, name string, args [
 			}
 		}
 		return object.FALSE, nil
+	case "has_value?", "value?":
+		if len(args) != 1 {
+			return nil, errorf("evaluator: wrong number of arguments to Hash#%s (given %d, expected 1)", name, len(args))
+		}
+		for _, e := range r.Entries {
+			if rubyEqualDispatch(env, e.Value, args[0]) {
+				return object.TRUE, nil
+			}
+		}
+		return object.FALSE, nil
 	}
-	return nil, errorf("evaluator: NoMethodError: undefined method `%s' for Hash", name)
+	return raiseBuiltin(env, "NoMethodError", "undefined method `"+name+"' for Hash")
 }

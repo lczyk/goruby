@@ -139,6 +139,19 @@ func sprintfFormat(env *object.Environment, format string, args []object.RubyObj
 				return "", err
 			}
 			out.WriteString(printfFmt("%"+spec+string(verb), f))
+		case 'p':
+			// MRI's %p formats with inspect.
+			out.WriteString(env.Inspect(a))
+		case 'c':
+			// %c -- single-char from Integer codepoint or String first char.
+			switch v := a.(type) {
+			case *object.Integer:
+				out.WriteRune(rune(v.Value))
+			default:
+				if s, ok := stringText(env, a); ok && len(s) > 0 {
+					out.WriteByte(s[0])
+				}
+			}
 		default:
 			return "", errorf("evaluator: unsupported format verb %%%c", verb)
 		}
@@ -487,12 +500,96 @@ func callStringMethod(env *object.Environment, recv object.RubyObject, name stri
 		return object.NewString(string(runes)), true, nil
 	case "strip":
 		return object.NewString(strings.TrimSpace(s)), true, nil
+	case "lstrip":
+		return object.NewString(strings.TrimLeft(s, " \t\n\r\v\f\x00")), true, nil
+	case "rstrip":
+		return object.NewString(strings.TrimRight(s, " \t\n\r\v\f\x00")), true, nil
+	case "strip!", "lstrip!", "rstrip!", "upcase!", "downcase!":
+		var newStr string
+		switch name {
+		case "strip!":
+			newStr = strings.TrimSpace(s)
+		case "lstrip!":
+			newStr = strings.TrimLeft(s, " \t\n\r\v\f\x00")
+		case "rstrip!":
+			newStr = strings.TrimRight(s, " \t\n\r\v\f\x00")
+		case "upcase!":
+			newStr = strings.ToUpper(s)
+		case "downcase!":
+			newStr = strings.ToLower(s)
+		}
+		ms, ok := recv.(*object.String)
+		if !ok {
+			return nil, true, errorf("evaluator: String#%s receiver must be mutable String, got %T", name, recv)
+		}
+		if newStr == s {
+			return object.NIL, true, nil
+		}
+		ms.Buf = []byte(newStr)
+		return ms, true, nil
 	case "reverse":
 		runes := []rune(s)
 		for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
 			runes[i], runes[j] = runes[j], runes[i]
 		}
 		return object.NewString(string(runes)), true, nil
+	case "squeeze":
+		// Squeeze runs of repeated chars. With no arg, all chars;
+		// with a string arg, only those chars in the set.
+		var set string
+		if len(args) == 1 {
+			t, ok := stringText(env, args[0])
+			if !ok {
+				return nil, true, errorf("evaluator: String#squeeze: arg must be String")
+			}
+			set = t
+		}
+		runes := []rune(s)
+		out := []rune{}
+		var last rune
+		first := true
+		for _, r := range runes {
+			if !first && r == last {
+				if set == "" || strings.ContainsRune(set, r) {
+					continue
+				}
+			}
+			out = append(out, r)
+			last = r
+			first = false
+		}
+		return object.NewString(string(out)), true, nil
+	case "prepend":
+		ms, isMut := recv.(*object.String)
+		if !isMut {
+			return nil, true, errorf("evaluator: String#prepend: receiver must be mutable String")
+		}
+		var buf []byte
+		for _, a := range args {
+			t, ok := stringText(env, a)
+			if !ok {
+				return nil, true, errorf("evaluator: String#prepend: args must be Strings")
+			}
+			buf = append(buf, []byte(t)...)
+		}
+		ms.Buf = append(buf, ms.Buf...)
+		return ms, true, nil
+	case "delete":
+		// String#delete(set) -- remove chars in the set.
+		if len(args) != 1 {
+			return nil, true, errorf("evaluator: String#delete expects 1 arg, got %d", len(args))
+		}
+		set, ok := stringText(env, args[0])
+		if !ok {
+			return nil, true, errorf("evaluator: String#delete arg must be String")
+		}
+		out := strings.Map(func(r rune) rune {
+			if strings.ContainsRune(set, r) {
+				return -1
+			}
+			return r
+		}, s)
+		return object.NewString(out), true, nil
 	case "include?":
 		if len(args) != 1 {
 			return nil, true, errorf("evaluator: wrong number of arguments to String#include? (given %d, expected 1)", len(args))
@@ -517,6 +614,15 @@ func callStringMethod(env *object.Environment, recv object.RubyObject, name stri
 		// Shallow copy. Ruby distinguishes dup vs clone (clone copies
 		// frozen state too); we don't track frozen state, so both
 		// produce a fresh mutable String with the same buffer.
+		cp := make([]byte, len(s))
+		copy(cp, s)
+		return object.NewStringFromBytes(cp), true, nil
+	case "encode":
+		// encode(target_encoding) returns a String in the target
+		// encoding. We don't transcode bytes; return a String dup
+		// (mirrors the common use of encode-to-tag-as-target). MRI
+		// would raise on impossible conversions; we just return the
+		// content. enough for minitest's String#encode use.
 		cp := make([]byte, len(s))
 		copy(cp, s)
 		return object.NewStringFromBytes(cp), true, nil
@@ -670,7 +776,12 @@ func callStringMethod(env *object.Environment, recv object.RubyObject, name stri
 		if !ok {
 			return nil, true, errorf("evaluator: String#replace needs String arg")
 		}
-		return object.NewString(t), true, nil
+		ms, ok := recv.(*object.String)
+		if !ok {
+			return nil, true, errorf("evaluator: String#replace receiver must be mutable String, got %T", recv)
+		}
+		ms.Buf = []byte(t)
+		return ms, true, nil
 	case "match?":
 		if len(args) != 1 {
 			return nil, true, errorf("evaluator: String#match? expects 1 arg")
@@ -731,33 +842,51 @@ func callStringMethod(env *object.Environment, recv object.RubyObject, name stri
 			return object.NewArray(out...), true, nil
 		}
 		return nil, true, errorf("evaluator: String#scan: bad pattern %T", args[0])
-	case "sub":
+	case "sub", "sub!":
 		if len(args) != 2 {
-			return nil, true, errorf("evaluator: String#sub expects 2 args, got %d", len(args))
+			return nil, true, errorf("evaluator: String#%s expects 2 args, got %d", name, len(args))
 		}
 		repl, ok := stringText(env, args[1])
 		if !ok {
-			return nil, true, errorf("evaluator: String#sub replacement must be String")
+			return nil, true, errorf("evaluator: String#%s replacement must be String", name)
 		}
+		var newStr string
+		matched := false
 		if re, ok := args[0].(*object.Regex); ok {
 			loc := re.RE.FindStringIndex(s)
 			if loc == nil {
-				return object.NewString(s), true, nil
+				newStr = s
+			} else {
+				newStr = s[:loc[0]] + repl + s[loc[1]:]
+				matched = true
 			}
-			return object.NewString(s[:loc[0]] + repl + s[loc[1]:]), true, nil
+		} else {
+			pat, ok := stringText(env, args[0])
+			if !ok {
+				return nil, true, errorf("evaluator: String#%s pattern must be String/Regexp", name)
+			}
+			if pat == "" {
+				newStr = s
+			} else {
+				idx := strings.Index(s, pat)
+				if idx < 0 {
+					newStr = s
+				} else {
+					newStr = s[:idx] + repl + s[idx+len(pat):]
+					matched = true
+				}
+			}
 		}
-		pat, ok := stringText(env, args[0])
-		if !ok {
-			return nil, true, errorf("evaluator: String#sub pattern must be String/Regexp")
+		if name == "sub!" {
+			if !matched {
+				return object.NIL, true, nil
+			}
+			if mut, ok := recv.(*object.String); ok {
+				mut.Buf = []byte(newStr)
+				return mut, true, nil
+			}
 		}
-		if pat == "" {
-			return object.NewString(s), true, nil
-		}
-		idx := strings.Index(s, pat)
-		if idx < 0 {
-			return object.NewString(s), true, nil
-		}
-		return object.NewString(s[:idx] + repl + s[idx+len(pat):]), true, nil
+		return object.NewString(newStr), true, nil
 	case "gsub", "gsub!":
 		if len(args) != 2 {
 			return nil, true, errorf("evaluator: String#%s expects 2 args, got %d", name, len(args))
@@ -812,36 +941,52 @@ func callStringMethod(env *object.Environment, recv object.RubyObject, name stri
 		return object.NewInteger(int64(runes[0])), true, nil
 	case "to_sym":
 		return env.Symbols().Intern(s), true, nil
-	case "tr":
+	case "tr", "tr_s":
 		if len(args) != 2 {
-			return nil, true, errorf("evaluator: String#tr expects 2 args, got %d", len(args))
+			return nil, true, errorf("evaluator: String#%s expects 2 args, got %d", name, len(args))
 		}
 		from, ok1 := stringText(env, args[0])
 		to, ok2 := stringText(env, args[1])
 		if !ok1 || !ok2 {
-			return nil, true, errorf("evaluator: String#tr needs String args")
+			return nil, true, errorf("evaluator: String#%s needs String args", name)
 		}
 		fromRunes := expandTrRanges(from)
 		toRunes := expandTrRanges(to)
-		mapping := func(r rune) rune {
+		translatedSet := make(map[rune]bool)
+		for _, f := range fromRunes {
+			translatedSet[f] = true
+		}
+		mapping := func(r rune) (rune, bool) {
 			for i, f := range fromRunes {
 				if r == f {
 					if i < len(toRunes) {
-						return toRunes[i]
+						return toRunes[i], true
 					}
 					if len(toRunes) > 0 {
-						return toRunes[len(toRunes)-1]
+						return toRunes[len(toRunes)-1], true
 					}
-					return -1
+					return -1, true
 				}
 			}
-			return r
+			return r, false
 		}
 		var b strings.Builder
+		var prev rune
+		havePrev := false
 		for _, r := range s {
-			if m := mapping(r); m != -1 {
-				b.WriteRune(m)
+			m, wasTr := mapping(r)
+			if m == -1 {
+				continue
 			}
+			// tr_s squeezes adjacent duplicates resulting from the
+			// translation (MRI: squeeze only chars in the translation
+			// set, including the translated targets).
+			if name == "tr_s" && havePrev && m == prev && wasTr {
+				continue
+			}
+			b.WriteRune(m)
+			prev = m
+			havePrev = true
 		}
 		return object.NewString(b.String()), true, nil
 	case "count":
