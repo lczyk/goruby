@@ -49,6 +49,14 @@ func StringText(env *object.Environment, o object.RubyObject) (string, bool) {
 		return string(v.Buf), true
 	case *object.FrozenString:
 		return env.Strings().Get(v.ID), true
+	case *object.Symbol:
+		// Symbols stringify by name for purposes of regex /
+		// case-equal matching (`/^test_/ === :test_x`). MRI also
+		// treats Symbols this way in regex context. Distinct from
+		// general String coercion (which MRI doesn't do for
+		// symbols), but the methods that consume stringText all
+		// want this behaviour.
+		return env.Symbols().Name(v.ID), true
 	}
 	return "", false
 }
