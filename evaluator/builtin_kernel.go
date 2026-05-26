@@ -411,7 +411,7 @@ func kernelRequire(env *object.Environment, args []object.RubyObject) (object.Ru
 		"digest/sha1", "digest/sha256", "base64", "zlib", "socket",
 		"net/http", "open-uri", "io/console", "strscan",
 		"rbconfig", "monitor", "thread", "mutex_m", "weakref",
-		"tmpdir", "etc":
+		"tmpdir", "etc", "rubygems":
 		return object.TRUE, nil
 	case "test/unit":
 		// test/unit aliased to minitest as a shim. rake's own test
@@ -440,6 +440,24 @@ func kernelRequire(env *object.Environment, args []object.RubyObject) (object.Ru
 				}
 			}
 		}
+		return object.TRUE, nil
+	case "rdoc/task":
+		// Stub RDoc::Task so Rakefiles that call RDoc::Task.new { |t| ... }
+		// load cleanly. The block is yielded a struct with attr accessors
+		// so attribute assignments don't NameError. No real rdoc tasks
+		// get registered with rake -- the doc subsystem isn't shipped.
+		_, _ = evalString(env, `
+module RDoc
+  class Task
+    attr_accessor :name, :main, :title, :rdoc_files, :rdoc_dir,
+                  :options, :template, :markup, :generator, :external
+    def initialize(name = :rdoc)
+      @name = name
+      yield self if block_given?
+    end
+  end
+end
+`)
 		return object.TRUE, nil
 	case "win32ole", "win32/registry":
 		// "absent" group -- callers wrap in begin/rescue LoadError to
